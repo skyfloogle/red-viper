@@ -56,7 +56,7 @@ ROM_INFO rom_db[] =
     { "Waterworld (U)",                  0x82A95E51, "Good" },
     { "Waterworld (U)",                  0x742298D1, "Bad (1)" },
 
-    { '\0', 0, '\0'}
+    { '\0', 0, '\0' }
 };
 
 int db_find(unsigned long crc32) {

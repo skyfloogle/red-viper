@@ -182,11 +182,10 @@ int v810_init(char * rom_name) {
 
 int main() {
     int qwe;
-    int i = 0;
+    int frame = 0;
     int err = 0;
     static int Left = 0;
     int skip = 0;
-    uint8_t* top_fb;
     uint8_t* bottom_fb;
 
     srvInit();
@@ -219,7 +218,6 @@ int main() {
     clearCache();
 
     while(aptMainLoop()) {
-        top_fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
         bottom_fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             // Trace
@@ -241,15 +239,15 @@ int main() {
             V810_Dsp_Frame(Left); //Temporary...
         }
 
-        sprintf(info, "Frame: %i\nPC: %i", i, PC);
-        sprintf(debug_info, "\n\x1b[34;1mFrame: %i\nPC: %i\x1b[0m", i, PC);
+        sprintf(info, "Frame: %i\nPC: %i", frame, (int) PC);
+        sprintf(debug_info, "\n\x1b[34;1mFrame: %i\nPC: %i\x1b[0m", frame, (int) PC);
         drawString(bottom_fb, info, 0, 0);
         svcOutputDebugString(debug_info, strlen(debug_info));
 
         gfxFlushBuffers();
         gfxSwapBuffers();
         gspWaitForVBlank();
-        i++;
+        frame++;
     }
 
     V810_DSP_Quit();

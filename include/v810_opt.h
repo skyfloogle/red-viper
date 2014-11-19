@@ -134,17 +134,17 @@ static operation optable[80] = {
     { AM_III,     "bge  ", /*&(ins_bge)  */ &(ins_err) },           // 0x4E
     { AM_III,     "bgt  ", /*&(ins_bgt)  */ &(ins_err) },           // 0x4F
 };
-// All instructions greater than 0x50 are undefined (this should not be posible of cource)
+// All instructions greater than 0x50 are undefined (this should not be posible of course)
 
 
-//Structure for holding the SubOpcodes, Same as above, without the InsType.
+// Structure for holding the SubOpcodes, Same as above, without the InsType.
 typedef struct {
     char * opname;               // Optcode name (string)
     void (*func)(int, int, int); //pointer to handler func =)
 } suboperation;
 
 
-//  Bit String Subopcodes
+// Bit String Subopcodes
 static suboperation bssuboptable[16] = {
     { "sch0bsu", &(ins_sch0bsu)  },           // 0x00
     { "sch0bsd", &(ins_sch0bsd)  },           // 0x01
@@ -164,7 +164,7 @@ static suboperation bssuboptable[16] = {
     { "notbsu ", &(ins_notbsu)   },           // 0x0F
 };
 
-//  Floating Point Subopcodes
+// Floating Point Subopcodes
 static suboperation fpsuboptable[16] = {
     { "cmpf.s ", &(ins_cmpf_s ) },           // 0x00
     { "FError1", &(ins_err )    },           // 0x01  // Unknown
@@ -248,8 +248,8 @@ static suboperation fpsuboptable[16] = {
 #define         OUT_W                           0x3F
 
 
-//      Branch Instructions ( Extended opcode only for Branch command)
-//  Common instrcutions commented out
+// Branch Instructions ( Extended opcode only for Branch command)
+// Common instrcutions commented out
 
 #define         BV                              0x40
 #define         BL                              0x41
@@ -273,7 +273,7 @@ static suboperation fpsuboptable[16] = {
 //#define       BNC                             0x49
 //#define       BNZ                             0x4A
 
-//  Bit String Subopcodes
+// Bit String Subopcodes
 #define         SCH0BSU                         0x00
 #define         SCH0BSD                         0x01
 #define         SCH1BSU                         0x02
@@ -289,7 +289,7 @@ static suboperation fpsuboptable[16] = {
 #define         NOTBSU                          0x0F
 
 
-//  Floating Point Subopcodes
+// Floating Point Subopcodes
 #define         CMPF_S                          0x00
 
 #define         CVT_WS                          0x02

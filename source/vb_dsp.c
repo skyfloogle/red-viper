@@ -966,7 +966,7 @@ bool V810_DSP_Init() {
 }
 
 void V810_SetPal(int BRTA, int BRTB, int BRTC) {
-    int i, j;
+    int i;
     int tPal[] = {0, 0, 21, 42, 63};
 
     if (!tVBOpt.FIXPAL) {
