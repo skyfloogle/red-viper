@@ -94,11 +94,11 @@ int v810_trc(int num, int noKey) {
         clocks += opcycle[opcode];
 
         switch(optable[opcode].addr_mode) {
-        case AM_I:		// Do the same Ither way =)
+        case AM_I: // Do the same Ither way =)
         case AM_II:
             arg1 = (lowB & 0x1F);
             arg2 = (lowB >> 5) + ((highB & 0x3) << 3);
-            PC += 2;   // 16 bit instruction
+            PC += 2; // 16 bit instruction
             break;
         case AM_III:
             arg1 = ((highB & 0x1) << 8) + (lowB & 0xFE);
@@ -110,48 +110,43 @@ int v810_trc(int num, int noKey) {
             arg3 = (lowB >> 5) + ((highB & 0x3) << 3);
             arg2 = (lowB & 0x1F);
             arg1 = (highB2 << 8) + lowB2;
-            PC += 4;   // 32 bit instruction
+            PC += 4; // 32 bit instruction
             break;
-        case AM_VIa:	// Mode6 form1
+        case AM_VIa: // Mode6 form1
             arg1 = (highB2 << 8) + lowB2;
             arg2 = (lowB & 0x1F);
             arg3 = (lowB >> 5) + ((highB & 0x3) << 3);
-            PC += 4;   // 32 bit instruction
+            PC += 4; // 32 bit instruction
             break;
-        case AM_VIb:	// Mode6 form2
+        case AM_VIb: // Mode6 form2
             arg1 = (lowB >> 5) + ((highB & 0x3) << 3);
             arg2 = (highB2 << 8) + lowB2;                              //  whats the order??? 2,3,1 or 1,3,2
             arg3 = (lowB & 0x1F);
-            PC += 4;   // 32 bit instruction
+            PC += 4; // 32 bit instruction
             break;
-        case AM_VII:	// Unhandled
-            //~ dtprintf(6,ferr,"\n%08lx\t\t%2x %2x %2x %2x", PC, lowB, highB, lowB2, highB2);
+        case AM_VII: // Unhandled
             PC +=4; // 32 bit instruction
             break;
-        case AM_VIII:	// Unhandled
-            //~ dtprintf(6,ferr,"\n%08lx\t%\t2x %2x %2x %2x", PC, lowB, highB, lowB2, highB2);
-            PC += 4;   // 32 bit instruction
+        case AM_VIII: // Unhandled
+            PC += 4; // 32 bit instruction
             break;
         case AM_IX:
             arg1 = (lowB & 0x1); // Mode ID, Ignore for now
-            PC += 2;   // 16 bit instruction
+            PC += 2; // 16 bit instruction
             break;
-        case AM_BSTR:	// Bit String Subopcodes
-            //~ dtprintf(6,ferr,"\nBitStr");
+        case AM_BSTR: // Bit String Subopcodes
             arg1 = (lowB >> 5) + ((highB & 0x3) << 3);
             arg2 = (lowB & 0x1F);
-            PC += 2;   // 16 bit instruction
+            PC += 2; // 16 bit instruction
             break;
-        case AM_FPP:	// Floating Point Subcode
-            //dtprintf(6,ferr,"\nFPU");
+        case AM_FPP: // Floating Point Subcode
             arg1 = (lowB >> 5) + ((highB & 0x3) << 3);
             arg2 = (lowB & 0x1F);
             arg3 = ((highB2 >> 2)&0x3F);
-            PC += 4;   // 32 bit instruction
+            PC += 4; // 32 bit instruction
             break;
-        case AM_UDEF:	// Invalid opcode.
-        default:		// Invalid opcode.
-            //~ dtprintf(6,ferr,"\n%08lx\t\t%2x %2x  ;Invalid Opcode", PC, lowB, highB);
+        case AM_UDEF: // Invalid opcode.
+        default: // Invalid opcode.
             PC += 2;
             break;
         }
