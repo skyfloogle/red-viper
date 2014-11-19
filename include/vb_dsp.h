@@ -108,14 +108,15 @@ typedef struct {
     bool    DDSPDataWrite;          // Direct DisplayDraws True
 } VB_DSPCACHE;
 
-// Blit a bgmap to the screen buffer, wraping around if we take an immage past the edge of the source bmp..
-void dt_blit(BITMAP *source[], BITMAP *dest, int source_x, int source_y, int dest_x, int dest_y, int width, int height, int source_width, int source_height);
-
 ////////////////////////////////////////////////////////////////////
 // Keybd Fn's. Had to put it somewhere!
-
 // Read the Controller
 HWORD V810_RControll(void);
+
+void screen_blit(BITMAP *bitmap, int src_x, int src_y, int screen);
+
+// Blit a bgmap to the screen buffer, wraping around if we take an immage past the edge of the source bmp..
+void dt_blit(BITMAP *source[], BITMAP *dest, int source_x, int source_y, int dest_x, int dest_y, int width, int height, int source_width, int source_height);
 
 ////////////////////////////////////////////////////////////////////
 // Retreaves a character(Sprite) from the character table, old!

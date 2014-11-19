@@ -61,6 +61,20 @@ HWORD V810_RControll() {
     return ret_keys;
 }
 
+void screen_blit(BITMAP *bitmap, int src_x, int src_y, int screen) {
+    int x, y;
+    uint8_t* fb = gfxGetFramebuffer(GFX_TOP, screen, NULL, NULL);
+
+    for (y = src_y; y < 224+src_y; y++) {
+        for (x = src_x; x < 384+src_x; x++) {
+            uint32_t v = ((224+src_y+8 - y - 1) + x * 240) * 3;
+            fb[v]     = pallete[bitmap->line[y][x]].b << 2;
+            fb[v + 1] = pallete[bitmap->line[y][x]].g << 2;
+            fb[v + 2] = pallete[bitmap->line[y][x]].r << 2;
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////
 // Blit a bgmap to the screen buffer, wraping around if we take an image
 // past the edge of the source bmp.. Also handle sources in the negative...
@@ -805,33 +819,6 @@ void DSP2World(int num, BITMAP *wPlane) {
 #endif //FBHACK
 }
 
-void memdump(BITMAP *b){
-    int x, y;
-    char str[32];
-    sprintf(str, "\nMEMDUMP:%ix%i", b->w, b->h);
-    svcOutputDebugString(str, strlen(str));
-    for (y = 0; y < b->h; y++) {
-        for (x = 0; x < b->w; x++) {
-            sprintf(str, "\nMEMDUMP:%i", pallete[b->line[y][x]].r);
-            svcOutputDebugString(str, strlen(str));
-        }
-    }
-}
-
-void bmp2scr(BITMAP *bitmap) {
-    int x, y;
-    uint8_t* fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-
-    for (y =7; y < 224+7; y++) {
-        for (x = 7; x < 384+7; x++) {
-            uint32_t v = ((224+7+8 - y - 1) + x * 240) * 3;
-            fb[v]     = pallete[bitmap->line[y][x]].b << 2;
-            fb[v + 1] = pallete[bitmap->line[y][x]].g << 2;
-            fb[v + 2] = pallete[bitmap->line[y][x]].r << 2;
-        }
-    }
-}
-
 // Returns a WORLD_buf Buffer VB_WORLD WORLD_Buff[32]
 // Now directly acesses the video ram (Scary)
 void getWorld(HWORD num, VB_WORLD WORLD_Buff[]) {
@@ -1127,7 +1114,7 @@ void V810_Dsp_Frame(int dNum) {
             tmp_bmp = create_sub_bitmap(dsp_bmp, 0, 0, 384, 224);
         }
     }
-    bmp2scr(world_bmp);
+    screen_blit(world_bmp, 7, 7, GFX_LEFT);
 
     destroy_bitmap(tmp_bmp);
     isDsp = 0; // Secret flag...

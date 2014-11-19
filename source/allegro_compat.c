@@ -1,3 +1,4 @@
+#include <3ds.h>
 #include <malloc.h>
 #include "allegro_compat.h"
 
