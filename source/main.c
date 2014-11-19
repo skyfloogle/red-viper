@@ -193,7 +193,6 @@ int main() {
     aptInit();
     hidInit(NULL);
     gfxInit();
-    gfxSet3D(false);
 
 #ifndef NOFS
     fsInit();
@@ -203,6 +202,12 @@ int main() {
 
     setDefaults();
     V810_DSP_Init();
+
+    if (tVBOpt.SCR_MODE == DM_3D) {
+        gfxSet3D(true);
+    } else {
+        gfxSet3D(false);
+    }
 
     v810_init("/rom.vb");
     v810_reset();

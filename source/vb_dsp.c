@@ -978,38 +978,19 @@ void V810_SetPal(int BRTA, int BRTB, int BRTC) {
         if (tPal[2] > 63) tPal[2]=63;
     }
 
-    // Normal Pallet
-    if (tVBOpt.DSPMODE == dm_RedBlue) { // Red/Blue Pallet...
-        for (i = 0; i < 4; i++) {
-            for (j = 0; j < 4; j++) {
-                pallete[i+(j*4)+8].r = tPal[i+1]; // tpal goes from 0-4, with 0 and 1 being black (What a Cluge)
-                if (tVBOpt.PALMODE == pal_RB) { // Red_Blue Pallet
-                    pallete[i+(j*4)+8].g = 0; // tPal[j+1];
-                    pallete[i+(j*4)+8].b = tPal[j+1];
-                } else if (tVBOpt.PALMODE == pal_RG) { // Red_Green Pallet
-                    pallete[i+(j*4)+8].g = tPal[j+1];
-                    pallete[i+(j*4)+8].b = 0; // tPal[j+1];
-                } else if (tVBOpt.PALMODE == pal_RBG) { // Red_BlueGreen Pallet
-                    pallete[i+(j*4)+8].g = tPal[j+1];
-                    pallete[i+(j*4)+8].b = tPal[j+1];
-                }
-            }
+    if (tVBOpt.PALMODE == PAL_RED) { // Red Pallet
+        for(i = 0; i < 5; i++) {
+            pallete[i].r = tPal[i];
+            pallete[i].g = 0;
+            pallete[i].b = 0;
         }
-    } else { // Standard palette
-        if (tVBOpt.PALMODE == pal_RED) { // Red Pallet
-            for(i = 0; i < 5; i++) {
-                pallete[i].r = tPal[i];
-                pallete[i].g = 0;
-                pallete[i].b = 0;
-            }
-        } else { // Standard Pallet
-            for (i = 0; i < 5; i++) {
-                pallete[i].r = tPal[i];
-                pallete[i].g = tPal[i];
-                pallete[i].b = tPal[i];
-            }
+    } else { // Standard Pallet
+        for (i = 0; i < 5; i++) {
+            pallete[i].r = tPal[i];
+            pallete[i].g = tPal[i];
+            pallete[i].b = tPal[i];
         }
-    }// End Standard palette
+    }
 
     // Standard text color
     pallete[252].r = 63;
@@ -1036,7 +1017,7 @@ void V810_DSP_Quit() {
 void V810_Dsp_Frame(int dNum) {
     BITMAP *tmp_bmp = NULL;
     VB_WORLD WORLD_Buff[32];
-    int i, j;
+    int i;
     int T_X,T_Y;
     int tObj = 0;
 
@@ -1061,7 +1042,7 @@ void V810_Dsp_Frame(int dNum) {
         tDSPCACHE.BrtPALMod = 0;
     }
 
-    if (tVBOpt.DSPMODE == dm_NORMAL) {  // Normal
+    if (tVBOpt.DSPMODE == DM_NORMAL) {  // Normal
         clear_to_color(world_bmp,(tVIPREG.BKCOL&0x3)+1); // Zero the memory bitmap
         for (i = 31; i >= 0; i--) {
             getWorld(i,WORLD_Buff);
@@ -1071,13 +1052,9 @@ void V810_Dsp_Frame(int dNum) {
         }
 
         DSP2World(dNum, world_bmp);
-
-        //~ tmp_bmp = create_sub_bitmap(world_bmp, 7, 7, 384, 224);
-        //~ if (tVBOpt.DSP2X) stretch_blit(tmp_bmp, screen, 0, 0, T_X, T_Y, 0, 0, T_X2, T_Y2);
-        //~ else blit(tmp_bmp, screen, 0, 0, 0, 0, T_X, T_Y);
     } else { // 3D Mode...
-        clear_to_color(world_bmp,(tVIPREG.BKCOL&0x3)+1);					  // zero the memory bitmap
-        clear_to_color(world_bmp2,(tVIPREG.BKCOL&0x3)+1);					  // zero the memory bitmap
+        clear_to_color(world_bmp,(tVIPREG.BKCOL&0x3)+1);  // zero the memory bitmap
+        clear_to_color(world_bmp2,(tVIPREG.BKCOL&0x3)+1); // zero the memory bitmap
         for (i = 31; i >= 0; i--) {
             getWorld(i,WORLD_Buff);
             if (WORLD_Buff[i].END)
@@ -1091,28 +1068,7 @@ void V810_Dsp_Frame(int dNum) {
         DSP2World((dNum&1), world_bmp);
         DSP2World((dNum&1)+2, world_bmp2);
 
-        if (tVBOpt.DSPMODE == dm_INTERLACED) {  // Interlaced
-            for (i = 0; i <= 224; i++) {
-//                blit(world_bmp, dsp_bmp, 7, i+7, 0, (i*2), 384, 1);
-//                blit(world_bmp2, dsp_bmp, 7, i+7, 0, (i*2)+1, 384, 1);
-            }
-            tmp_bmp = create_sub_bitmap(dsp_bmp, 0, 0, 384, 224*2);
-        } else if (tVBOpt.DSPMODE == dm_OVRUNDR) { // Over/Under
-            masked_blit(world_bmp, dsp_bmp, 7, 7, 0, 0, 384, 224);
-//            blit(world_bmp2, dsp_bmp, 7, 7, 0, 224, 384, 224);
-            tmp_bmp = create_sub_bitmap(dsp_bmp, 0, 0, 384, 224*2);
-        } else if (tVBOpt.DSPMODE == dm_RedBlue) {
-            for (i = 0; i < 225; i++){
-                for (j = 0; j < 385; j++) {
-                    if (world_bmp->line[i+7][j+7] > 0)
-                        world_bmp->line[i+7][j+7] -= 1;   //Normalize the display
-                    if (world_bmp2->line[i+7][j+7] > 0)
-                        world_bmp2->line[i+7][j+7] -= 1;
-                    dsp_bmp->line[i][j] = (world_bmp->line[i+7][j+7] + (world_bmp2->line[i+7][j+7]*4))+8;
-                }
-            }
-            tmp_bmp = create_sub_bitmap(dsp_bmp, 0, 0, 384, 224);
-        }
+        screen_blit(world_bmp2, 7, 7, GFX_RIGHT);
     }
     screen_blit(world_bmp, 7, 7, GFX_LEFT);
 

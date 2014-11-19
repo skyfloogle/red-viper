@@ -1,22 +1,18 @@
 #ifndef VB_SET_H_
 #define VB_SET_H_
 
-#define d_VGA   0
-#define d_VESA1 1
-#define d_VESA2 2
+#define D_VGA       0
+#define D_VESA1     1
+#define D_VESA2     2
 
-#define dm_NORMAL		0
-#define dm_RedBlue	1
-#define dm_INTERLACED	2
-#define dm_OVRUNDR	3
-#define dm_SIDESIDE	4
-#define dm_CYBERSCOPE	5
+#define DM_NORMAL   0
+#define DM_3D       1
 
-#define pal_NORMAL	0
-#define pal_RED		1
-#define pal_RB          2
-#define pal_RG          3
-#define pal_RBG         4
+#define PAL_NORMAL  0
+#define PAL_RED     1
+#define PAL_RB      2
+#define PAL_RG      3
+#define PAL_RBG     4
 
 //Global Options list
 typedef struct VB_OPT {
@@ -42,11 +38,9 @@ typedef struct VB_OPT {
 //optionfilename, filled with option file name and full path upon startup
 //~ char optionfilename[256];
 
-//~ void setOptions(int argc, char *argv[]);
 void setDefaults(void);
 
-extern VB_OPT         tVBOpt;
-extern int            vbkey[15];
+extern VB_OPT tVBOpt;
+extern int vbkey[15];
 
 #endif
-

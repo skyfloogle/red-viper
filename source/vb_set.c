@@ -9,9 +9,9 @@ int     vbkey[15];
 void setDefaults(void) {
     //Set up the Defaults
     tVBOpt.FRMSKIP  = 0;
-    tVBOpt.DSPMODE  = dm_NORMAL;
+    tVBOpt.DSPMODE  = DM_NORMAL;
     tVBOpt.DSPSWAP  = 0;
-    tVBOpt.PALMODE  = pal_NORMAL;
+    tVBOpt.PALMODE  = PAL_NORMAL;
     tVBOpt.DEBUG    = 0;
     tVBOpt.STDOUT   = 0;
     tVBOpt.BFACTOR  = 64;
