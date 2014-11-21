@@ -26,19 +26,15 @@ BITMAP *create_bitmap(int w, int h) {
 
     bm->line = malloc(h*sizeof(uint8_t*));
     int i;
-//    for (i = 0; i < h; i++) {
-//        bm->line[i] = (uint8_t*)malloc(w*sizeof(uint8_t));
-//    }
+
     bm->dat = malloc(w * h * sizeof(char));
     if (h > 0) {
         bm->line[0] = bm->dat;
-        for (i=1; i<h; i++)
+        for (i = 1; i < h; i++)
             bm->line[i] = bm->line[i-1] + w;
     }
 
     return bm;
-
-//    return create_bitmap_ex(8, w, h);
 }
 
 void destroy_bitmap(BITMAP *bitmap) {
