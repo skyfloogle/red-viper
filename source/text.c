@@ -1,3 +1,6 @@
+// Stolen from ftpony
+// github.com/smealum/ftpony
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
