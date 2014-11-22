@@ -10,12 +10,25 @@ void masked_blit(BITMAP *src, BITMAP *dst, int src_x, int src_y, int dst_x, int 
             if (src->line[(src_y+y)%(src->h)][(src_x+x)%(src->w)]) {
                 dst->line[(dst_y+y)%(dst->h)][(dst_x+x)%(dst->w)] = src->line[(src_y+y)%(src->h)][(src_x+x)%(src->w)];
             }
+
         }
     }
 }
 
-void masked_stretch_blit(BITMAP *source, BITMAP *dest, int source_x, int source_y, int source_w, int source_h, int dest_x, int dest_y, int dest_w, int dest_h) {
-    masked_blit(source, dest, source_x, source_y, dest_x, dest_y, source_w, source_h);
+void masked_stretch_blit(BITMAP *src, BITMAP *dst, int src_x, int src_y, int src_w, int src_h, int dst_x, int dst_y, int dst_w, int dst_h) {
+    int x, y, xpos, ypos;
+    float xratio = ((float) src_w) / ((float) dst_w);
+    float yratio = ((float) src_h) / ((float) dst_h);
+
+    for (y = 0; y < dst_h; y++) {
+        for (x = 0; x < dst_w; x++) {
+            xpos = ((int) ((x + src_x) * xratio)) % src->w;
+            ypos = ((int) ((y + src_y) * yratio)) % src->h;
+            if (src->line[ypos][xpos]) {
+                dst->line[(dst_y+y)%dst->h][(dst_x+x)%dst->w] = src->line[ypos][xpos];
+            }
+        }
+    }
 }
 
 BITMAP *create_bitmap(int w, int h) {
@@ -44,10 +57,6 @@ void destroy_bitmap(BITMAP *bitmap) {
     }
     free(bitmap->line);
     free(bitmap);
-}
-
-BITMAP *create_sub_bitmap(BITMAP *parent, int x, int y, int width, int height) {
-    return 0;
 }
 
 void clear_to_color(BITMAP *bitmap, int color) {

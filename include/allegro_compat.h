@@ -21,7 +21,6 @@ void masked_stretch_blit(BITMAP *source, BITMAP *dest, int source_x, int source_
 
 BITMAP *create_bitmap(int w, int h);
 void destroy_bitmap(BITMAP *bitmap);
-BITMAP *create_sub_bitmap(BITMAP *parent, int x, int y, int width, int height);
 void clear_to_color(BITMAP *bitmap, int color);
 
 #endif
