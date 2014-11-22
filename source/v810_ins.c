@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <3ds.h>
-
 #include "vb_types.h"
 #include "v810_opt.h"
 #include "v810_cpu.h"
