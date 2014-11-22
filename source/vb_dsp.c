@@ -1015,7 +1015,6 @@ void V810_DSP_Quit() {
 
 // Display one frame of graphics...
 void V810_Dsp_Frame(int dNum) {
-    BITMAP *tmp_bmp = NULL;
     VB_WORLD WORLD_Buff[32];
     int i;
     int T_X,T_Y;
@@ -1072,7 +1071,6 @@ void V810_Dsp_Frame(int dNum) {
     }
     screen_blit(world_bmp, 7, 7, GFX_LEFT);
 
-    destroy_bitmap(tmp_bmp);
     isDsp = 0; // Secret flag...
 }
 
