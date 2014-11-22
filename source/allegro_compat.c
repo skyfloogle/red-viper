@@ -51,10 +51,7 @@ BITMAP *create_bitmap(int w, int h) {
 }
 
 void destroy_bitmap(BITMAP *bitmap) {
-    int i;
-    for (i = 0; i < (bitmap->h); i++) {
-        free(bitmap->line[i]);
-    }
+    free(bitmap->dat);
     free(bitmap->line);
     free(bitmap);
 }
