@@ -39,7 +39,7 @@ HWORD V810_RControll() {
     int ret_keys = 0;
 
     hidScanInput();
-    int key = hidKeysDown();
+    int key = hidKeysHeld();
 
     if (key & vbkey[14])        ret_keys |= VB_BATERY_LOW;  // Batery Low
     if (key & vbkey[13])        ret_keys |= VB_KEY_L;       // L Trigger
