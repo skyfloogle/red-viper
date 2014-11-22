@@ -1,4 +1,3 @@
-#include <3ds.h>
 #include <malloc.h>
 #include "allegro_compat.h"
 
@@ -51,9 +50,12 @@ BITMAP *create_bitmap(int w, int h) {
 }
 
 void destroy_bitmap(BITMAP *bitmap) {
-    free(bitmap->dat);
-    free(bitmap->line);
-    free(bitmap);
+    if (bitmap) {
+        if (bitmap->dat)
+            free(bitmap->dat);
+        free(bitmap->line);
+        free(bitmap);
+    }
 }
 
 void clear_to_color(BITMAP *bitmap, int color) {
