@@ -202,7 +202,7 @@ int main() {
     setDefaults();
     V810_DSP_Init();
 
-    if (tVBOpt.SCR_MODE == DM_3D) {
+    if (tVBOpt.DSPMODE == DM_3D) {
         gfxSet3D(true);
     } else {
         gfxSet3D(false);
