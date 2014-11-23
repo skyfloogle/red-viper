@@ -84,30 +84,18 @@ typedef struct {
     void  (*wfuncw)(WORD, WORD);    // Pointer to the Register Write func
 } V810_REGFETCH;
 
-
 ///////////////////////////////////////////////////////////////////
 // Define CPU Globals
-
 
 extern WORD P_REG[32];  // Main program reg pr0-pr31
 extern WORD S_REG[32];  // System registers sr0-sr31
 extern WORD PC;         // Program Counter
 extern const BYTE opcycle[0x50]; //clock cycles
 
-
 //DEBUG Globals :P
 
 // Uncomment this line to include the FrameBuffer hack, for Yeti3D, etc!
 //#define FBHACK
-
-// Uncomment this line to compile trace logging without minimal output
-//#define DBGLOGALL
-
-#ifndef DBGLOGALL
-extern unsigned char *xlog;
-#endif //DBGLOGALL
-extern int debuglog;
-
 
 //////////////////////////////////////////////////////////////////////////
 // Define CPU Functions
@@ -116,7 +104,7 @@ extern int debuglog;
 void v810_reset();
 
 // Trace num instructions
-int v810_trc(int num, int noKey);
+int v810_trc();
 
 // Generate Interupt #n
 void v810_int(WORD iNum);

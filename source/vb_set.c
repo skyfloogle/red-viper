@@ -24,26 +24,26 @@ void setDefaults(void) {
     tVBOpt.DSP2X    = 0;
 
     //Default keys
-    vbkey[0] = KEY_DUP;		// L Up
-    vbkey[1] = KEY_DDOWN;	// L Down
-    vbkey[2] = KEY_DLEFT;	// L Left
-    vbkey[3] = KEY_DRIGHT;	// L Right
+    vbkey[0] = KEY_DUP;     // L Up
+    vbkey[1] = KEY_DDOWN;   // L Down
+    vbkey[2] = KEY_DLEFT;   // L Left
+    vbkey[3] = KEY_DRIGHT;  // L Right
 
-    vbkey[4] = KEY_X;		// R Up
-    vbkey[5] = KEY_B;		// R Down
-    vbkey[6] = KEY_Y;		// R Left
-    vbkey[7] = KEY_A;		// R Right
+    vbkey[4] = KEY_X;       // R Up
+    vbkey[5] = KEY_B;       // R Down
+    vbkey[6] = KEY_Y;       // R Left
+    vbkey[7] = KEY_A;       // R Right
 
-    vbkey[8] = KEY_A;		// A
-    vbkey[9] = KEY_B;		// B
+    vbkey[8] = KEY_A;       // A
+    vbkey[9] = KEY_B;       // B
 
-    vbkey[10] = KEY_START;	// Start
-    vbkey[11] = KEY_SELECT;	// Select
+    vbkey[10] = KEY_START;  // Start
+    vbkey[11] = KEY_SELECT; // Select
 
-    vbkey[12] = KEY_L;		// L Trigger
-    vbkey[13] = KEY_R;		// R Trigger
+    vbkey[12] = KEY_L;      // L Trigger
+    vbkey[13] = KEY_R;      // R Trigger
 
-    vbkey[14] = 1<<12;		// Low Battery
+    vbkey[14] = 1<<12;      // Low Battery
 }
 
 // TODO: Read options from file

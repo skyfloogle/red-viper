@@ -13,22 +13,16 @@
 #include "vb_set.h"
 #include "vb_dsp.h"
 
-#ifndef DBGLOGALL
-unsigned char *xlog=NULL;
-#endif //DBGLOGALL
-int debuglog=0;
-
 #define NEG(n) ((n) >> 31)
 #define POS(n) ((~(n)) >> 31)
 
 //could be done a lot better, later maby!
-int v810_trc(int num, int noKey) {
+int v810_trc() {
     int lowB, highB, lowB2, highB2;             // up to 4 bytes for instruction (either 16 or 32 bits)
     static int opcode;
     int arg1 = 0;
     int arg2 = 0;
     int arg3 = 0;
-    int tmp2;
     int i;
     int flags = 0;
     INT64 temp = 0;
@@ -41,18 +35,8 @@ int v810_trc(int num, int noKey) {
     while (1) {
         if (serviceint(clocks)) return 0; //serviceint() returns with 1 when the screen needs to be redrawn
 
-        //PC     = (((PC&0x07FFFFFE) & V810_ROM1.highaddr)|0x07000000); //If PC goes belowe 0x07000000 than we have a problem!!!
         PC = (PC&0x07FFFFFE);
 
-        // Interactive Dissasemble, remove in release...
-        if(tVBOpt.DISASM) { //turn on and off
-            //~ v810_addDasm(PC);
-        }
-
-        //Special Stack Trace (of sourts), remove in release
-#ifdef DBG_PRINT
-        vb_addQueue(PC); // Circular queue of last 100 instructions
-#endif
         if ((PC>>24) == 0x05) { // RAM
             PC     = (PC & V810_VB_RAM.highaddr);
             lowB   = ((BYTE *)(V810_VB_RAM.off + PC))[0];
@@ -73,11 +57,6 @@ int v810_trc(int num, int noKey) {
 
         // Remove Me!!!
         P_REG[0]=0; // Zero the Zero Reg!!!
-
-        tmp2 = ((PC&0x00FFFFFF)>>1);
-        if ((debuglog) && (!(xlog[tmp2>>3]&(1<<(tmp2&7))))) {
-            xlog[tmp2>>3] |= (1<<(tmp2&7));
-        }
 
         if ((opcode >0) && (opcode < 0x50)) { //hooray for instruction cache! (cache only if last opcode was not bad!)
             lastop = opcode;
@@ -120,7 +99,7 @@ int v810_trc(int num, int noKey) {
             break;
         case AM_VIb: // Mode6 form2
             arg1 = (lowB >> 5) + ((highB & 0x3) << 3);
-            arg2 = (highB2 << 8) + lowB2;                              //  whats the order??? 2,3,1 or 1,3,2
+            arg2 = (highB2 << 8) + lowB2; // Whats the order??? 2,3,1 or 1,3,2
             arg3 = (lowB & 0x1F);
             PC += 4; // 32 bit instruction
             break;

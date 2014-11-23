@@ -210,7 +210,7 @@ int main() {
 
     v810_init("/rom.vb");
     v810_reset();
-    v810_trc(0x20000,0);
+    v810_trc();
 
     char info[50];
     char debug_info[50];
@@ -222,7 +222,7 @@ int main() {
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             // Trace
             // TODO: Actually check for errors and display them
-            err = v810_trc(0, 0);
+            err = v810_trc();
 
             // Display a frame, only after the right number of 'skips'
             if((tVIPREG.FRMCYC & 0x00FF) < skip) {
