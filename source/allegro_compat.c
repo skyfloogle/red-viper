@@ -1,4 +1,5 @@
 #include <malloc.h>
+#include <string.h>
 #include "allegro_compat.h"
 
 void masked_blit(BITMAP *src, BITMAP *dst, int src_x, int src_y, int dst_x, int dst_y, int w, int h) {
@@ -59,15 +60,7 @@ void destroy_bitmap(BITMAP *bitmap) {
 }
 
 void clear_to_color(BITMAP *bitmap, int color) {
-    int x, y;
-
-    if (!bitmap) {
-        return;
-    }
-
-    for (y = 0; y < bitmap->h; y++){
-        for (x = 0; x < bitmap->w; x++){
-            bitmap->line[y][x] = (color&0b11)*0xff + (color&0b11100)*0xff00 + (color&0b11100000)*0xff0000;
-        }
+    if (bitmap) {
+        memset(bitmap->dat, color, (bitmap->w)*(bitmap->h));
     }
 }
