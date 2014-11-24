@@ -18,7 +18,7 @@
 
 //could be done a lot better, later maby!
 int v810_trc() {
-    int lowB, highB, lowB2, highB2;             // up to 4 bytes for instruction (either 16 or 32 bits)
+    int lowB, highB, lowB2, highB2; // Up to 4 bytes for instruction (either 16 or 32 bits)
     static int opcode;
     int arg1 = 0;
     int arg2 = 0;

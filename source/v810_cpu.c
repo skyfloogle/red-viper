@@ -14,8 +14,6 @@
 #include "vb_set.h"
 #include "vb_dsp.h"
 
-
-
 #define NEG(n) ((n) >> 31)
 #define POS(n) ((~(n)) >> 31)
 

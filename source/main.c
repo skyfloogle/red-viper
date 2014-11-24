@@ -56,7 +56,6 @@ int v810_init(char * rom_name) {
 #endif
     unsigned int rom_size = 0;
     unsigned int ram_size = 0;
-    int i;
 
 #ifdef NOFS
     V810_ROM1.pmemory = vbrom_bin;
@@ -136,10 +135,7 @@ int v810_init(char * rom_name) {
     V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
     // Alocate space for it in memory
     if(!is_sram) {
-        V810_GAME_RAM.pmemory = (unsigned char *)malloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr) * sizeof(BYTE));
-        for (i = 0; i < ((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr); i++){
-            V810_GAME_RAM.pmemory = 0;
-        }
+        V810_GAME_RAM.pmemory = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
     }
     // Offset + Lowaddr = pmemory
     V810_GAME_RAM.off = (unsigned)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
