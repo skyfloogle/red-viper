@@ -227,6 +227,7 @@ int main() {
 
             // Increment skip
             skip++;
+            frame++;
         }
 
         // Display
@@ -242,7 +243,6 @@ int main() {
         gfxFlushBuffers();
         gfxSwapBuffers();
         gspWaitForVBlank();
-        frame++;
     }
 
     V810_DSP_Quit();
