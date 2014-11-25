@@ -6,9 +6,6 @@
 #include <stdio.h>
 #include "v810_cpu.h"
 
-// TODO: Fix filesystem
-#define NOFS
-
 char errmsg[256];
 
 // Opens up a VB rom (pased in) and initializes the rom

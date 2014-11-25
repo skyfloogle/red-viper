@@ -17,37 +17,34 @@
 
 int is_sram = 0; //Flag if writes to sram...
 
-Handle gspEvent, gspSharedMemHandle;
-
 FS_archive sdmcArchive;
 
-int readFile(char* path, char** dest) {
+uint8_t* readFile(char* path, uint64_t* size) {
     Handle file;
-    FS_path filePath;
-    uint64_t size;
+    uint8_t* dest;
     uint32_t bytesRead;
 
-    filePath.type = PATH_CHAR;
-    filePath.size = strlen(path) + 1;
-    filePath.data = (uint8_t*)path;
-
-    Result res = FSUSER_OpenFile(NULL, &file, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-    if ((res & 0xFFFC03FF) != 0) {
+    Result res = FSUSER_OpenFile(NULL, &file, sdmcArchive, FS_makePath(PATH_CHAR, path), FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+    if (res) {
         return 0;
     }
 
-    FSFILE_GetSize(file, &size);
-    if (size < 16 || size >= 0x100000000ULL) {
+    FSFILE_GetSize(file, size);
+    if (*size == 0) {
         FSFILE_Close(file);
         return 0;
     }
 
-    *dest = malloc(size*sizeof(char));
-    FSFILE_Read(file, &bytesRead, 0x0, dest, size);
+    dest = malloc(*size);
+    FSFILE_Read(file, &bytesRead, 0x0, (uint32_t*)dest, *size);
+    if (!bytesRead) {
+        FSFILE_Close(file);
+        return 0;
+    }
 
     FSFILE_Close(file);
 
-    return size;
+    return dest;
 }
 
 int v810_init(char * rom_name) {
@@ -62,7 +59,7 @@ int v810_init(char * rom_name) {
     rom_size = vbrom_bin_size;
 #else
     // Open VB Rom
-    rom_size = readFile(rom_name, (char**) &(V810_ROM1.pmemory));
+    V810_ROM1.pmemory = readFile(rom_name, (uint64_t*)&rom_size);
     if (!rom_size) {
         return 0;
     }
@@ -121,7 +118,7 @@ int v810_init(char * rom_name) {
     strcpy(ram_name, rom_name);
     strcat(ram_name, ".ram");
 
-    ram_size = readFile(ram_name, (char**) &(V810_GAME_RAM.pmemory));
+    V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
 #endif
 
     if (!ram_size) {
@@ -204,7 +201,9 @@ int main() {
         gfxSet3D(false);
     }
 
-    v810_init("/rom.vb");
+    if (!v810_init("rom.vb")) {
+        return 1;
+    }
     v810_reset();
     v810_trc();
 
