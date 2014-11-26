@@ -19,6 +19,13 @@ int is_sram = 0; //Flag if writes to sram...
 
 FS_archive sdmcArchive;
 
+void clrScreen(int screen) {
+    if ((screen != GFX_TOP) && (screen != GFX_BOTTOM))
+        return;
+    memset(gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL), 0,
+           (GFX_BOTTOM ? 320 : 400) * 240 * 3);
+}
+
 uint8_t* readFile(char* path, uint64_t* size) {
     Handle file;
     uint8_t* dest;
@@ -45,6 +52,76 @@ uint8_t* readFile(char* path, uint64_t* size) {
     FSFILE_Close(file);
 
     return dest;
+}
+
+static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
+    if(!src || !dst) return;
+    int n = 0;
+    while (*src && n < max - 1) {
+        *(dst++) = (*(src++)) & 0xFF;
+        n++;
+    }
+    *dst = 0x00;
+}
+
+char* romSelect() {
+    uint8_t* bottom_fb;
+    int pos = 1;
+    int keys;
+    char romv[29][40];
+    int romc = 0;
+    int i;
+
+    // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
+    Handle dirHandle;
+    uint32_t entries_read = 1;
+    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/"));
+    static FS_dirent entry;
+
+    // Scrolling isn't implemented yet
+    for(i = 0; i < 29 && entries_read; i++) {
+        memset(&entry, 0, sizeof(FS_dirent));
+        FSDIR_Read(dirHandle, &entries_read, 1, &entry);
+        if(entries_read && entry.isArchive) {
+            if(!strcmp("VB ", (char*) entry.shortExt)) {
+                unicodeToChar(romv[romc], entry.name, 40);
+                romc++;
+            }
+        }
+    }
+
+    while(aptMainLoop()) {
+        bottom_fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+        clrScreen(GFX_BOTTOM);
+
+        hidScanInput();
+        keys = hidKeysDown();
+        if(keys & KEY_DUP) {
+            pos--;
+        } else if (keys & KEY_DDOWN) {
+            pos++;
+        } else if ((keys & KEY_START) || (keys & KEY_A)) {
+            break;
+        }
+
+        if (pos > romc) {
+            pos = 1;
+        } else if (pos <= 0) {
+            pos = romc;
+        }
+
+        drawString(bottom_fb, "Select a ROM:", 0, 0);
+        drawString(bottom_fb, ">", 0, pos * 8);
+        for(i = 0; i < romc; i++) {
+            drawString(bottom_fb, romv[i], 8, (i + 1) * 8);
+        }
+
+        gfxFlushBuffers();
+        gfxSwapBuffers();
+        gspWaitForVBlank();
+    }
+
+    return romv[pos-1];
 }
 
 int v810_init(char * rom_name) {
@@ -188,7 +265,7 @@ int main() {
 
 #ifndef NOFS
     fsInit();
-    sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)""}};
+    sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
     FSUSER_OpenArchive(NULL, &sdmcArchive);
 #endif
 
@@ -201,7 +278,7 @@ int main() {
         gfxSet3D(false);
     }
 
-    if (!v810_init("rom.vb")) {
+    if (!v810_init(romSelect())) {
         return 1;
     }
     v810_reset();
@@ -214,6 +291,8 @@ int main() {
 
     while(aptMainLoop()) {
         bottom_fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+        clrScreen(GFX_BOTTOM);
+
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             // Trace
             // TODO: Actually check for errors and display them
