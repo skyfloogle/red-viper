@@ -64,7 +64,7 @@ static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
     *dst = 0x00;
 }
 
-char* romSelect() {
+void romSelect(char* path) {
     uint8_t* bottom_fb;
     int pos = 1;
     int keys;
@@ -75,7 +75,7 @@ char* romSelect() {
     // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
     Handle dirHandle;
     uint32_t entries_read = 1;
-    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/"));
+    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, ""));
     static FS_dirent entry;
 
     // Scrolling isn't implemented yet
@@ -83,7 +83,7 @@ char* romSelect() {
         memset(&entry, 0, sizeof(FS_dirent));
         FSDIR_Read(dirHandle, &entries_read, 1, &entry);
         if(entries_read && entry.isArchive) {
-            if(!strcmp("VB ", (char*) entry.shortExt)) {
+            if(!strncmp("VB", (char*) entry.shortExt, 2)) {
                 unicodeToChar(romv[romc], entry.name, 40);
                 romc++;
             }
@@ -121,7 +121,7 @@ char* romSelect() {
         gspWaitForVBlank();
     }
 
-    return romv[pos-1];
+    strcpy(path, romv[pos-1]);
 }
 
 int v810_init(char * rom_name) {
@@ -192,10 +192,10 @@ int v810_init(char * rom_name) {
 #else
     // Try to load up the saveRam file...
     // First, copy the rom path and concatenate .ram to it
-    strcpy(ram_name, rom_name);
-    strcat(ram_name, ".ram");
+//    strcpy(ram_name, rom_name);
+//    strcat(ram_name, ".ram");
 
-    V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
+//    V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
 #endif
 
     if (!ram_size) {
@@ -278,7 +278,9 @@ int main() {
         gfxSet3D(false);
     }
 
-    if (!v810_init(romSelect())) {
+    char path[64];
+    romSelect(path);
+    if (!v810_init(path)) {
         return 1;
     }
     v810_reset();
@@ -314,8 +316,8 @@ int main() {
             V810_Dsp_Frame(Left); //Temporary...
         }
 
-        sprintf(info, "Frame: %i\nPC: %i", frame, (int) PC);
-        sprintf(debug_info, "\n\x1b[34;1mFrame: %i\nPC: %i\x1b[0m", frame, (int) PC);
+        sprintf(info, "Frame: %i\nPC: %i", frame, (unsigned int) PC);
+        sprintf(debug_info, "\n\x1b[34;1mFrame: %i\nPC: %i\x1b[0m", frame, (unsigned int) PC);
         drawString(bottom_fb, info, 0, 0);
         svcOutputDebugString(debug_info, strlen(debug_info));
 
