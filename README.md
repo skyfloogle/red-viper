@@ -1,8 +1,7 @@
 r3Ddragon
 =========
 
-A Virtual Boy emulator for the 3DS. Probably unplayable for now, but it runs.
-Still needs testing on actual hardware.
+A WIP Virtual Boy emulator for the 3DS. You can see the current progress [here](https://github.com/mrdanielps/r3Ddragon/wiki/Current-progress). Still needs optimizing.
 
 License
 =======
@@ -56,3 +55,10 @@ v810 is a trademark of NEC co.
 Virtual Boy is a trade mark of Nintendo
 Reality Boy is in no way affiliated with either of these parties
 ```
+
+Credits
+=======
+
+* Everyone mentioned in the license. without Reality Boy and Red Dragon it wouldn't have been possible.
+* smealum and contributors for ctrulib and everyone involved in the 3DS homebrew scene.
+* Vappy, Team Fail, HtheB, hippy dave and kane159 on GBAtemp for testing.
