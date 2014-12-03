@@ -5,6 +5,8 @@
 #include <3ds.h>
 
 #include "vbrom_bin.h"
+#include "lsplash_bin.h"
+#include "rsplash_bin.h"
 
 #include "main.h"
 #include "v810_mem.h"
@@ -68,7 +70,7 @@ void romSelect(char* path) {
     uint8_t* bottom_fb;
     int pos = 1;
     int keys;
-    char romv[29][40];
+    char romv[27][40];
     int romc = 0;
     int i;
 
@@ -79,7 +81,7 @@ void romSelect(char* path) {
     static FS_dirent entry;
 
     // Scrolling isn't implemented yet
-    for(i = 0; i < 29 && entries_read; i++) {
+    for(i = 0; i < 27 && entries_read; i++) {
         memset(&entry, 0, sizeof(FS_dirent));
         FSDIR_Read(dirHandle, &entries_read, 1, &entry);
         if(entries_read && entry.isArchive) {
@@ -91,7 +93,11 @@ void romSelect(char* path) {
     }
 
     while(aptMainLoop()) {
+        // Draw splash screen
+        memcpy(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL), lsplash_bin, lsplash_bin_size);
+        memcpy(gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL), rsplash_bin, rsplash_bin_size);
         bottom_fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+
         clrScreen(GFX_BOTTOM);
 
         hidScanInput();
@@ -102,6 +108,14 @@ void romSelect(char* path) {
             pos++;
         } else if ((keys & KEY_START) || (keys & KEY_A)) {
             break;
+        } else if (keys & KEY_R) {
+            // The splash screen should change to red
+            tVBOpt.PALMODE = PAL_RED;
+        } else if (keys & KEY_L) {
+            tVBOpt.PALMODE = PAL_NORMAL;
+        } else if (keys & KEY_SELECT) {
+            tVBOpt.DSPMODE = !tVBOpt.DSPMODE;
+            gfxSet3D(tVBOpt.DSPMODE);
         }
 
         if (pos > romc) {
@@ -110,6 +124,8 @@ void romSelect(char* path) {
             pos = romc;
         }
 
+        drawString(bottom_fb, "Press L/R to change palette and SELECT", 0, 224);
+        drawString(bottom_fb, "to toggle 3D", 0, 232);
         drawString(bottom_fb, "Select a ROM:", 0, 0);
         drawString(bottom_fb, ">", 0, pos * 8);
         for(i = 0; i < romc; i++) {
@@ -136,8 +152,20 @@ int v810_init(char * rom_name) {
     rom_size = vbrom_bin_size;
 #else
     // Open VB Rom
-    V810_ROM1.pmemory = readFile(rom_name, (uint64_t*)&rom_size);
-    if (!rom_size) {
+    char full_path[46] = "sdmc:/";
+    strcat(full_path, rom_name);
+
+    FILE* f = fopen(full_path, "r");
+    if (f) {
+        fseek(f , 0 , SEEK_END);
+        rom_size = ftell(f);
+        rewind(f);
+
+        V810_ROM1.pmemory = malloc(rom_size);
+        fread(V810_ROM1.pmemory, 1, rom_size, f);
+
+        fclose(f);
+    } else {
         return 0;
     }
 #endif
@@ -277,6 +305,8 @@ int main() {
     } else {
         gfxSet3D(false);
     }
+
+    sdmcInit();
 
     char path[64];
     romSelect(path);
