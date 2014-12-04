@@ -683,7 +683,6 @@ void BGMap2World(HWORD num, BITMAP *wPlane) {
     for(i = 0; i < (BGMAP_SIZE >> 1); i++) {// For each character in the map
         vRenderCharacter(BGMap_Buff[i].BCA, *wPlane->line, ((i&63)<<3), ((i>>6)<<3), wPlane->w, BGMap_Buff[i].HFLP, BGMap_Buff[i].VFLP, tDSPCACHE.BgmPAL[(BGMap_Buff[i].BPLTS&0x3)]);
     }// End for each character in the map
-
 }
 
 ////////////////////////////////////////////////////////////////////

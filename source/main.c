@@ -4,7 +4,6 @@
 
 #include <3ds.h>
 
-#include "vbrom_bin.h"
 #include "lsplash_bin.h"
 #include "rsplash_bin.h"
 
@@ -28,34 +27,6 @@ void clrScreen(int screen) {
            (GFX_BOTTOM ? 320 : 400) * 240 * 3);
 }
 
-uint8_t* readFile(char* path, uint64_t* size) {
-    Handle file;
-    uint8_t* dest;
-    uint32_t bytesRead;
-
-    Result res = FSUSER_OpenFile(NULL, &file, sdmcArchive, FS_makePath(PATH_CHAR, path), FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-    if (res) {
-        return 0;
-    }
-
-    FSFILE_GetSize(file, size);
-    if (*size == 0) {
-        FSFILE_Close(file);
-        return 0;
-    }
-
-    dest = malloc(*size);
-    FSFILE_Read(file, &bytesRead, 0x0, (uint32_t*)dest, *size);
-    if (!bytesRead) {
-        FSFILE_Close(file);
-        return 0;
-    }
-
-    FSFILE_Close(file);
-
-    return dest;
-}
-
 static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
     if(!src || !dst) return;
     int n = 0;
@@ -66,7 +37,12 @@ static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
     *dst = 0x00;
 }
 
-void romSelect(char* path) {
+void toggle3D() {
+    tVBOpt.DSPMODE = !tVBOpt.DSPMODE;
+    gfxSet3D(tVBOpt.DSPMODE);
+}
+
+int romSelect(char* path) {
     uint8_t* bottom_fb;
     int pos = 1;
     int keys;
@@ -77,7 +53,7 @@ void romSelect(char* path) {
     // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
     Handle dirHandle;
     uint32_t entries_read = 1;
-    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, ""));
+    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/"));
     static FS_dirent entry;
 
     // Scrolling isn't implemented yet
@@ -114,8 +90,11 @@ void romSelect(char* path) {
         } else if (keys & KEY_L) {
             tVBOpt.PALMODE = PAL_NORMAL;
         } else if (keys & KEY_SELECT) {
-            tVBOpt.DSPMODE = !tVBOpt.DSPMODE;
-            gfxSet3D(tVBOpt.DSPMODE);
+            return 0;
+        } else if ((CONFIG_3D_SLIDERSTATE > 0.0f) && !tVBOpt.DSPMODE) {
+            toggle3D();
+        } else if ((CONFIG_3D_SLIDERSTATE == 0.0f) && tVBOpt.DSPMODE) {
+            toggle3D();
         }
 
         if (pos > romc) {
@@ -124,8 +103,8 @@ void romSelect(char* path) {
             pos = romc;
         }
 
-        drawString(bottom_fb, "Press L/R to change palette and SELECT", 0, 224);
-        drawString(bottom_fb, "to toggle 3D", 0, 232);
+        drawString(bottom_fb, "Press L/R to change palette and adjust", 0, 224);
+        drawString(bottom_fb, "the slider to enable/disable 3D", 0, 232);
         drawString(bottom_fb, "Select a ROM:", 0, 0);
         drawString(bottom_fb, ">", 0, pos * 8);
         for(i = 0; i < romc; i++) {
@@ -138,19 +117,14 @@ void romSelect(char* path) {
     }
 
     strcpy(path, romv[pos-1]);
+    return 1;
 }
 
 int v810_init(char * rom_name) {
-#ifndef NOFS
     char ram_name[32];
-#endif
     unsigned int rom_size = 0;
     unsigned int ram_size = 0;
 
-#ifdef NOFS
-    V810_ROM1.pmemory = vbrom_bin;
-    rom_size = vbrom_bin_size;
-#else
     // Open VB Rom
     char full_path[46] = "sdmc:/";
     strcat(full_path, rom_name);
@@ -168,7 +142,6 @@ int v810_init(char * rom_name) {
     } else {
         return 0;
     }
-#endif
 
     // CRC32 Calculations
     gen_table();
@@ -215,16 +188,12 @@ int v810_init(char * rom_name) {
     // Offset + Lowaddr = pmemory
     V810_VB_RAM.off = (unsigned)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
 
-#ifdef NOFS
-    ram_size = 0;
-#else
     // Try to load up the saveRam file...
     // First, copy the rom path and concatenate .ram to it
 //    strcpy(ram_name, rom_name);
 //    strcat(ram_name, ".ram");
 
 //    V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
-#endif
 
     if (!ram_size) {
         is_sram = 0;
@@ -291,11 +260,9 @@ int main() {
     hidInit(NULL);
     gfxInit();
 
-#ifndef NOFS
     fsInit();
     sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
     FSUSER_OpenArchive(NULL, &sdmcArchive);
-#endif
 
     setDefaults();
     V810_DSP_Init();
@@ -308,10 +275,12 @@ int main() {
 
     sdmcInit();
 
-    char path[64];
-    romSelect(path);
+    char path[64] = "";
+    if (!romSelect(path)) {
+        goto error;
+    }
     if (!v810_init(path)) {
-        return 1;
+        goto error;
     }
     v810_reset();
     v810_trc();
@@ -356,12 +325,11 @@ int main() {
         gspWaitForVBlank();
     }
 
+error:
     V810_DSP_Quit();
 
-#ifndef NOFS
+    sdmcExit();
     fsExit();
-#endif
-
     hidExit();
     gfxExit();
     aptExit();

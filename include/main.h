@@ -9,9 +9,8 @@
 char errmsg[256];
 
 void clrScreen(int screen);
-uint8_t* readFile(char* path, uint64_t* size);
 static inline void unicodeToChar(char* dst, uint16_t* src, int max);
-void romSelect(char* path);
+int romSelect(char* path);
 
 // Opens up a VB rom (pased in) and initializes the rom
 // space, some day it will initialize ram as well

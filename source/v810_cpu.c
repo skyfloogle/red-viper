@@ -140,8 +140,7 @@ int serviceint(unsigned long long cycles) {
     if ((!(tHReg.SCR & 0x80)) && (V810_RControll()&0xFFFC)) {
         v810_int(0);
     }
-    //*
-    //new way
+
     if (tHReg.TCR & 0x01) { // Timer Enabled
         if ((cycles-lasttime) > tHReg.tTRC) {
             if (tHReg.tCount) tHReg.tCount--;

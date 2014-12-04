@@ -7,6 +7,8 @@
 #include "vb_types.h"
 #include "allegro_compat.h"
 
+#define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
+
 // VB input defines
 #define VB_BATERY_LOW   0x0001 // Batery Low
 #define VB_KEY_L        0x0010 // L Trigger
