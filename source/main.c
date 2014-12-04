@@ -296,8 +296,9 @@ int main() {
 
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             // Trace
-            // TODO: Actually check for errors and display them
             err = v810_trc();
+            if (err)
+                goto error;
 
             // Display a frame, only after the right number of 'skips'
             if((tVIPREG.FRMCYC & 0x00FF) < skip) {
