@@ -53,7 +53,7 @@ int romSelect(char* path) {
     // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
     Handle dirHandle;
     uint32_t entries_read = 1;
-    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
+    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/"));
     static FS_dirent entry;
 
     // Scrolling isn't implemented yet
@@ -126,7 +126,7 @@ int v810_init(char * rom_name) {
     unsigned int ram_size = 0;
 
     // Open VB Rom
-    char full_path[46] = "sdmc:/vb/";
+    char full_path[46] = "sdmc:/";
     strcat(full_path, rom_name);
 
     FILE* f = fopen(full_path, "r");
@@ -228,17 +228,17 @@ int v810_init(char * rom_name) {
 
     mem_whword(0x0005F840, 0x0004); //XPSTTS
 
-    tHReg.SCR   = 0x4C;
-    tHReg.WCR   = 0xFC;
-    tHReg.TCR   = 0xE4;
-    tHReg.THB   = 0xFF;
-    tHReg.TLB   = 0xFF;
-    tHReg.SHB   = 0x00;
-    tHReg.SLB   = 0x00;
-    tHReg.CDRR  = 0x00;
-    tHReg.CDTR  = 0x00;
-    tHReg.CCSR  = 0xFF;
-    tHReg.CCR   = 0x6D;
+    tHReg.SCR	= 0x4C;
+    tHReg.WCR	= 0xFC;
+    tHReg.TCR	= 0xE4;
+    tHReg.THB	= 0xFF;
+    tHReg.TLB	= 0xFF;
+    tHReg.SHB	= 0x00;
+    tHReg.SLB	= 0x00;
+    tHReg.CDRR	= 0x00;
+    tHReg.CDTR	= 0x00;
+    tHReg.CCSR	= 0xFF;
+    tHReg.CCR	= 0x6D;
 
     tHReg.tTRC = 2000;
     tHReg.tCount = 0xFFFF;
@@ -262,6 +262,9 @@ int main() {
     fsInit();
     sdmcInit();
 
+    sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/vb/"}};
+    FSUSER_OpenArchive(NULL, &sdmcArchive);
+
     setDefaults();
     V810_DSP_Init();
 
@@ -270,6 +273,8 @@ int main() {
     } else {
         gfxSet3D(false);
     }
+
+    sdmcInit();
 
     char path[64] = "";
     if (!romSelect(path)) {
