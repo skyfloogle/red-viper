@@ -277,10 +277,10 @@ int main() {
 
     char path[64] = "";
     if (!romSelect(path)) {
-        goto error;
+        goto exit;
     }
     if (!v810_init(path)) {
-        goto error;
+        goto exit;
     }
     v810_reset();
     v810_trc();
@@ -294,11 +294,20 @@ int main() {
         bottom_fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
         clrScreen(GFX_BOTTOM);
 
+        hidScanInput();
+        int keys = hidKeysHeld();
+
+        if (    (keys & KEY_A) &&
+                (keys & KEY_B) &&
+                (keys & KEY_X) &&
+                (keys & KEY_Y))
+            goto exit;
+
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             // Trace
             err = v810_trc();
             if (err)
-                goto error;
+                goto exit;
 
             // Display a frame, only after the right number of 'skips'
             if((tVIPREG.FRMCYC & 0x00FF) < skip) {
@@ -326,7 +335,7 @@ int main() {
         gspWaitForVBlank();
     }
 
-error:
+exit:
     V810_DSP_Quit();
 
     sdmcExit();

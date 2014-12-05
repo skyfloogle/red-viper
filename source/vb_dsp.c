@@ -324,135 +324,66 @@ void vRenderCharacter(HWORD p_hwCharacterNumber,// The number of the character t
     int l_nRowCounter;
 
     WORD l_wDataOffset = ChrOff[(p_hwCharacterNumber>>9)&0x03] + (CHR_SIZE * (p_hwCharacterNumber & 0x01FF)) + V810_DISPLAY_RAM.off;
-    //WORD offset = ChrOff[(num>>9)&0x03] + (CHR_SIZE * (num & 0x01FF)) + V810_DISPLAY_RAM.off;
+    //VB_WORD offset = ChrOff[(num>>9)&0x03] + (CHR_SIZE * (num & 0x01FF)) + V810_DISPLAY_RAM.off;
     HWORD * l_phwLineData = ((HWORD *)(l_wDataOffset));
     HWORD l_hwCurrentData; // We use this to store the current data.
 
     p_pbSpriteData += ((p_wStartingX) + (p_wStartingY*p_wBitmapWidth));
 
-    l_nRowCounter = 0;
-    if (!p_fFlipHorizontally && !p_fFlipVertically) {// Normal Character
-        for(l_nRowCounter = 0; l_nRowCounter < 8; l_nRowCounter++) {// For Each Line
-            l_hwCurrentData = *l_phwLineData;
-            *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-            p_pbSpriteData++;
-            l_hwCurrentData>>=2;
+    int vinc = 1;
+    int hinc = 1;
 
-            *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-            p_pbSpriteData++;
-            l_hwCurrentData>>=2;
-
-            *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-            p_pbSpriteData++;
-            l_hwCurrentData>>=2;
-
-            *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-            p_pbSpriteData++;
-            l_hwCurrentData>>=2;
-
-            *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-            p_pbSpriteData++;
-            l_hwCurrentData>>=2;
-
-            *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-            p_pbSpriteData++;
-            l_hwCurrentData>>=2;
-
-            *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-            p_pbSpriteData++;
-            l_hwCurrentData>>=2;
-
-            *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-            p_pbSpriteData++;
-            p_pbSpriteData+=(p_wBitmapWidth-8); // Skip to start of next.
-            l_phwLineData++;
-        }// End for Each Line
-    }// End Normal Character
-    else if (p_fFlipHorizontally && p_fFlipVertically) { // Flip both
+    if(p_fFlipVertically) {
+        vinc = -1;
         l_phwLineData+=7;
-        for (l_nRowCounter = 0; l_nRowCounter < 8; l_nRowCounter++) { // For Each Line
-            l_hwCurrentData = *l_phwLineData;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  14) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  12) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  10) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  8) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  6) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  4) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  2) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  0) & 3)];
-            p_pbSpriteData++;
-            p_pbSpriteData += (p_wBitmapWidth-8); // Skip to start of next.
-            l_phwLineData--;
-        } // End For Each Line
-    } // End Flip both
-    else if (p_fFlipHorizontally) { // Flip Horizontal
-        for (l_nRowCounter = 0; l_nRowCounter < 8; l_nRowCounter++) { // For Each Line
-            l_hwCurrentData = *l_phwLineData;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  14) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  12) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  10) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  8) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  6) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  4) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  2) & 3)];
-            p_pbSpriteData++;
-            *p_pbSpriteData= p_rgbPalette[((l_hwCurrentData >>  0) & 3)];
-            p_pbSpriteData++;
-            p_pbSpriteData += (p_wBitmapWidth-8); // Skip to start of next.
-            l_phwLineData++;
-        } // End For Each Line
-    } // End Flip Horizontal
-    else if (p_fFlipVertically) { // Vertically flipped
-            l_phwLineData+=7;
-            for (l_nRowCounter = 0; l_nRowCounter < 8; l_nRowCounter++) { // For Each Line
-                l_hwCurrentData = *l_phwLineData;
-                *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-                p_pbSpriteData++;
-                l_hwCurrentData>>=2;
+    }
+    if(p_fFlipHorizontally) {
+        hinc = -1;
+        p_pbSpriteData+=7;
+    }
 
-                *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-                p_pbSpriteData++;
-                l_hwCurrentData>>=2;
+    l_nRowCounter=7;
 
-                *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-                p_pbSpriteData++;
-                l_hwCurrentData>>=2;
+    do {
+        l_hwCurrentData = *l_phwLineData;
+        *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
+        p_pbSpriteData+=hinc;
+        l_hwCurrentData>>=2;
 
-                *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-                p_pbSpriteData++;
-                l_hwCurrentData>>=2;
+        *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
+        p_pbSpriteData+=hinc;
+        l_hwCurrentData>>=2;
 
-                *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-                p_pbSpriteData++;
-                l_hwCurrentData>>=2;
+        *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
+        p_pbSpriteData+=hinc;
+        l_hwCurrentData>>=2;
 
-                *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-                p_pbSpriteData++;
-                l_hwCurrentData>>=2;
+        *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
+        p_pbSpriteData+=hinc;
+        l_hwCurrentData>>=2;
 
-                *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-                p_pbSpriteData++;
-                l_hwCurrentData>>=2;
+        *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
+        p_pbSpriteData+=hinc;
+        l_hwCurrentData>>=2;
 
-                *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
-                p_pbSpriteData++;
-                p_pbSpriteData += (p_wBitmapWidth-8); // Skip to start of next.
-                l_phwLineData--;
-            } // End for Each Line
-        } // End vertical flip
+        *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
+        p_pbSpriteData+=hinc;
+        l_hwCurrentData>>=2;
+
+        *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
+        p_pbSpriteData+=hinc;
+        l_hwCurrentData>>=2;
+
+        *p_pbSpriteData= p_rgbPalette[(l_hwCurrentData & 3)];
+        p_pbSpriteData+=hinc;
+
+        if(p_fFlipHorizontally)
+            p_pbSpriteData+=16;
+
+        p_pbSpriteData+=(p_wBitmapWidth-8); // Skip to start of next.
+
+        l_phwLineData += vinc;
+    } while (l_nRowCounter--);
 } // End vRenderCharacter
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -642,47 +573,52 @@ void getBGmap(HWORD num, VB_BGMAP BGMap_Buff[]) {
     }
 }
 
+void updateBGMPalette() {
+    int i;
+
+    if(tDSPCACHE.BgmPALMod) { //If cache is invalid
+        i=3;
+        do {
+            tDSPCACHE.BgmPAL[i][0]=((tVIPREG.GPLT[i]   )&3)+1; //First collor is transparent, offset by 1
+            tDSPCACHE.BgmPAL[i][1]=((tVIPREG.GPLT[i]>>2)&3)+1;
+            tDSPCACHE.BgmPAL[i][2]=((tVIPREG.GPLT[i]>>4)&3)+1;
+            tDSPCACHE.BgmPAL[i][3]=((tVIPREG.GPLT[i]>>6)&3)+1;
+            tDSPCACHE.BgmPAL[i][0]=0; //Fill in the transparent char
+        } while(i--);
+        tDSPCACHE.BgmPALMod=0;
+    }
+}
+
 // Converts a BG Map Buffer to a World Picture, With Chrs in place.
 void BGMap2World(HWORD num, BITMAP *wPlane) {
     int i;
-    VB_BGMAP BGMap_Buff[4096];
+    // Temporary workaround for the 3dsx crash
+    VB_BGMAP* BGMap_Buff = malloc(4096*sizeof(VB_BGMAP*));
     HWORD thword;
-    WORD offset = BGMAP_OFFSET + (BGMAP_SIZE*(num & 0xF))+V810_DISPLAY_RAM.off;// only 14 posible bg's, this is 16 but whos counting?
 
-    // Grab the BGMap info...
-    for (i = 0; i < (BGMAP_SIZE>>1); i++) {
-        // Make shure we only grab num's from 0-4095...
+    //setup palette
+    updateBGMPalette();
+
+    // only 14 posible bg's, this is 16 but whos counting?
+    WORD offset = BGMAP_OFFSET + (BGMAP_SIZE*(num & 0xF))+V810_DISPLAY_RAM.off;
+
+    //Grab the BGMap info...
+    i = (BGMAP_SIZE>>1)-1;
+    do {
+        // Make sure we only grab num's from 0-4095...
         thword = ((HWORD *)(offset))[i];
         BGMap_Buff[i].BCA   = thword & 0x7FF;
         BGMap_Buff[i].VFLP  = (thword >> 12) & 0x1;
         BGMap_Buff[i].HFLP  = (thword >> 13) & 0x1;
         BGMap_Buff[i].BPLTS = (thword >> 14) & 0x3;
+    } while(i--);
+
+    // For each character in the map
+    for(i=0;i<(BGMAP_SIZE >> 1);i++) {
+        vRenderCharacter(BGMap_Buff[i].BCA, *wPlane->line, ((i&63)<<3), ((i>>6)<<3),
+                         wPlane->w, BGMap_Buff[i].HFLP, BGMap_Buff[i].VFLP, tDSPCACHE.BgmPAL[(BGMap_Buff[i].BPLTS&0x3)]);
     }
-
-
-    if (isDsp){ // If were in the Display and not the debug code...
-        if (tDSPCACHE.BgmPALMod>0) { // If cache is invalid
-            for (i = 0; i < 4; i++) {
-                tDSPCACHE.BgmPAL[i][0]=((tVIPREG.GPLT[i]   )&3)+1; // First collor is transparent, offset by 1
-                tDSPCACHE.BgmPAL[i][1]=((tVIPREG.GPLT[i]>>2)&3)+1;
-                tDSPCACHE.BgmPAL[i][2]=((tVIPREG.GPLT[i]>>4)&3)+1;
-                tDSPCACHE.BgmPAL[i][3]=((tVIPREG.GPLT[i]>>6)&3)+1;
-                tDSPCACHE.BgmPAL[i][0]=0; // Fill in the transparent char
-            }
-            tDSPCACHE.BgmPALMod=0;
-        }
-    } else { // If in debug land (make this better!)
-        for (i = 0; i < 4; i++) {
-            tDSPCACHE.BgmPAL[i][0]=1;
-            tDSPCACHE.BgmPAL[i][1]=2;
-            tDSPCACHE.BgmPAL[i][2]=3;
-            tDSPCACHE.BgmPAL[i][3]=4;
-        }
-    }
-
-    for(i = 0; i < (BGMAP_SIZE >> 1); i++) {// For each character in the map
-        vRenderCharacter(BGMap_Buff[i].BCA, *wPlane->line, ((i&63)<<3), ((i>>6)<<3), wPlane->w, BGMap_Buff[i].HFLP, BGMap_Buff[i].VFLP, tDSPCACHE.BgmPAL[(BGMap_Buff[i].BPLTS&0x3)]);
-    }// End for each character in the map
+    free(BGMap_Buff);
 }
 
 ////////////////////////////////////////////////////////////////////
