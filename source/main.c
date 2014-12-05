@@ -53,7 +53,7 @@ int romSelect(char* path) {
     // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
     Handle dirHandle;
     uint32_t entries_read = 1;
-    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/"));
+    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
     static FS_dirent entry;
 
     // Scrolling isn't implemented yet
@@ -126,7 +126,7 @@ int v810_init(char * rom_name) {
     unsigned int ram_size = 0;
 
     // Open VB Rom
-    char full_path[46] = "sdmc:/";
+    char full_path[46] = "sdmc:/vb/";
     strcat(full_path, rom_name);
 
     FILE* f = fopen(full_path, "r");
@@ -262,7 +262,7 @@ int main() {
     fsInit();
     sdmcInit();
 
-    sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/vb/"}};
+    sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
     FSUSER_OpenArchive(NULL, &sdmcArchive);
 
     setDefaults();
