@@ -274,8 +274,6 @@ int main() {
         gfxSet3D(false);
     }
 
-    sdmcInit();
-
     char path[64] = "";
     if (!romSelect(path)) {
         goto exit;
