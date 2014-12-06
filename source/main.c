@@ -297,17 +297,14 @@ int main() {
         hidScanInput();
         int keys = hidKeysHeld();
 
-        if (    (keys & KEY_A) &&
-                (keys & KEY_B) &&
-                (keys & KEY_X) &&
-                (keys & KEY_Y))
-            goto exit;
+        if ((keys & KEY_START) && (keys & KEY_SELECT))
+            break;
 
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             // Trace
             err = v810_trc();
             if (err)
-                goto exit;
+                break;
 
             // Display a frame, only after the right number of 'skips'
             if((tVIPREG.FRMCYC & 0x00FF) < skip) {
