@@ -14,7 +14,6 @@
 #include "vb_dsp.h"
 #include "vb_set.h"
 #include "rom_db.h"
-#include "text.h"
 
 int is_sram = 0; //Flag if writes to sram...
 
@@ -43,10 +42,9 @@ void toggle3D() {
 }
 
 int romSelect(char* path) {
-    uint8_t* bottom_fb;
     int pos = 1;
     int keys;
-    char romv[27][40];
+    char romv[27][100];
     int romc = 0;
     int i;
 
@@ -57,12 +55,12 @@ int romSelect(char* path) {
     static FS_dirent entry;
 
     // Scrolling isn't implemented yet
-    for(i = 0; i < 27 && entries_read; i++) {
+    for(i = 0; i < 29 && entries_read; i++) {
         memset(&entry, 0, sizeof(FS_dirent));
         FSDIR_Read(dirHandle, &entries_read, 1, &entry);
         if(entries_read && entry.isArchive) {
             if(!strncmp("VB", (char*) entry.shortExt, 2)) {
-                unicodeToChar(romv[romc], entry.name, 40);
+                unicodeToChar(romv[romc], entry.name, 100);
                 romc++;
             }
         }
@@ -70,11 +68,8 @@ int romSelect(char* path) {
 
     while(aptMainLoop()) {
         // Draw splash screen
-        memcpy(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL), lsplash_bin, lsplash_bin_size);
-        memcpy(gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL), rsplash_bin, rsplash_bin_size);
-        bottom_fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-
-        clrScreen(GFX_BOTTOM);
+//        memcpy(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL), lsplash_bin, lsplash_bin_size);
+//        memcpy(gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL), rsplash_bin, rsplash_bin_size);
 
         hidScanInput();
         keys = hidKeysDown();
@@ -103,12 +98,21 @@ int romSelect(char* path) {
             pos = romc;
         }
 
-        drawString(bottom_fb, "Press L/R to change palette and adjust", 0, 224);
-        drawString(bottom_fb, "the slider to enable/disable 3D", 0, 232);
-        drawString(bottom_fb, "Select a ROM:", 0, 0);
-        drawString(bottom_fb, ">", 0, pos * 8);
+        consoleClear();
+        printf("Select a ROM:\n");
+
         for(i = 0; i < romc; i++) {
-            drawString(bottom_fb, romv[i], 8, (i + 1) * 8);
+            char line[40];
+            line[0] = '\0';
+            snprintf(line, 40, "%c%s", (i+1) == pos ? '>' : ' ', romv[i]);
+            if(strlen(romv[i]) >= 40){
+                line[35] = '.';
+                line[36] = '.';
+                line[37] = '.';
+                line[38] = '\0';
+            }
+            printf(line);
+            printf("\n");
         }
 
         gfxFlushBuffers();
@@ -253,7 +257,6 @@ int main() {
     int err = 0;
     static int Left = 0;
     int skip = 0;
-    uint8_t* bottom_fb;
 
     srvInit();
     aptInit();
@@ -261,6 +264,7 @@ int main() {
     gfxInit();
     fsInit();
     sdmcInit();
+    consoleInit(GFX_BOTTOM, NULL);
 
     sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
     FSUSER_OpenArchive(NULL, &sdmcArchive);
@@ -285,15 +289,9 @@ int main() {
     v810_reset();
     v810_trc();
 
-    char info[50];
-    char debug_info[50];
-
     clearCache();
 
     while(aptMainLoop()) {
-        bottom_fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-        clrScreen(GFX_BOTTOM);
-
         hidScanInput();
         int keys = hidKeysHeld();
 
@@ -322,10 +320,8 @@ int main() {
             V810_Dsp_Frame(Left); //Temporary...
         }
 
-        sprintf(info, "Frame: %i\nPC: %i", frame, (unsigned int) PC);
-        sprintf(debug_info, "\n\x1b[34;1mFrame: %i\nPC: %i\x1b[0m", frame, (unsigned int) PC);
-        drawString(bottom_fb, info, 0, 0);
-        svcOutputDebugString(debug_info, strlen(debug_info));
+        consoleClear();
+        printf("Frame: %i\nPC: %i", frame, (unsigned int) PC);
 
         gfxFlushBuffers();
         gfxSwapBuffers();
