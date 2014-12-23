@@ -42,8 +42,6 @@ void setDefaults(void) {
 
     vbkey[12] = KEY_L;      // L Trigger
     vbkey[13] = KEY_R;      // R Trigger
-
-    vbkey[14] = 1<<12;      // Low Battery
 }
 
 // TODO: Read options from file

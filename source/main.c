@@ -292,6 +292,8 @@ int main() {
     clearCache();
 
     while(aptMainLoop()) {
+        uint64_t startTime = osGetTime();
+
         hidScanInput();
         int keys = hidKeysHeld();
 
@@ -321,7 +323,7 @@ int main() {
         }
 
         consoleClear();
-        printf("Frame: %i\nPC: %i", frame, (unsigned int) PC);
+        printf("FPS: %.2f\nFrame: %i\nPC: %i", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, (unsigned int) PC);
 
         gfxFlushBuffers();
         gfxSwapBuffers();

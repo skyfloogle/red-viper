@@ -56,8 +56,12 @@ HWORD V810_RControll() {
     else if (key & vbkey[2])    ret_keys |= VB_LPAD_L;      // Left Pad, Left
     if (key & vbkey[1])         ret_keys |= VB_LPAD_D;      // Left Pad, Down
     else if (key & vbkey[0])    ret_keys |= VB_LPAD_U;      // Left Pad, Up
-    ret_keys = ret_keys|0x0002; // Always set bit1, ctrl ID
 
+    uint8_t battery_level;
+    PTMU_GetBatteryLevel(NULL, &battery_level);
+    if (battery_level <= 1)     ret_keys |= VB_BATERY_LOW;
+
+    ret_keys = ret_keys|0x0002; // Always set bit1, ctrl ID
     return ret_keys;
 }
 
@@ -593,7 +597,7 @@ void updateBGMPalette() {
 void BGMap2World(HWORD num, BITMAP *wPlane) {
     int i;
     // Temporary workaround for the 3dsx crash
-    VB_BGMAP* BGMap_Buff = malloc(4096*sizeof(VB_BGMAP*));
+    VB_BGMAP* BGMap_Buff = linearAlloc(4096*sizeof(VB_BGMAP*));
     HWORD thword;
 
     //setup palette
@@ -618,7 +622,7 @@ void BGMap2World(HWORD num, BITMAP *wPlane) {
         vRenderCharacter(BGMap_Buff[i].BCA, *wPlane->line, ((i&63)<<3), ((i>>6)<<3),
                          wPlane->w, BGMap_Buff[i].HFLP, BGMap_Buff[i].VFLP, tDSPCACHE.BgmPAL[(BGMap_Buff[i].BPLTS&0x3)]);
     }
-    free(BGMap_Buff);
+    linearFree(BGMap_Buff);
 }
 
 ////////////////////////////////////////////////////////////////////
