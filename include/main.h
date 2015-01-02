@@ -18,4 +18,6 @@ int v810_init(char * rom_name);
 
 //~ void save_sram(void);
 
+void system_checkPolls();
+
 #endif
