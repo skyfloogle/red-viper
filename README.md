@@ -3,6 +3,12 @@ r3Ddragon
 
 A WIP Virtual Boy emulator for the 3DS. You can see the current progress [here](https://github.com/mrdanielps/r3Ddragon/wiki/Current-progress). Still needs optimizing.
 
+Notes from NOP90
+=========
+In this fork at the moment I'm only fixing little things to test the code.
+
+IMHO there is a lot of possibility for code optimization
+
 License
 =======
 
