@@ -69,7 +69,7 @@ static operation optable[80] = {
     { AM_II,      "cmp  ", /*&(ins_cmp_i)*/ &(ins_err) },           // 0x13
     { AM_II,      "shl  ", /*&(ins_shl_i)*/ &(ins_err) },           // 0x14
     { AM_II,      "shr  ", /*&(ins_shr_i)*/ &(ins_err) },           // 0x15
-    { AM_II,      "ei   ", /*&(ins_ei)   */ &(ins_err) },           // 0x16
+    { AM_II,      "cli  ", /*&(ins_ei)   */ &(ins_err) },           // 0x16
     { AM_II,      "sar  ", /*&(ins_sar_i)*/ &(ins_err) },           // 0x17
     { AM_II,      "trap ", /*&(ins_trap) */ &(ins_err) },           // 0x18
 
@@ -79,12 +79,12 @@ static operation optable[80] = {
     {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x1B  // Unknown
     { AM_II,      "ldsr ", /*&(ins_ldsr) */ &(ins_err) },           // 0x1C
     { AM_II,      "stsr ", /*&(ins_stsr) */ &(ins_err) },           // 0x1D
-    { AM_II,      "di   ", /*&(ins_di)   */ &(ins_err) },           // 0x1E
+    { AM_II,      "sei  ", /*&(ins_di)   */ &(ins_err) },           // 0x1E
     {AM_BSTR,     "BSTR ", /*&(ins_bstr) */ &(ins_err) },           // 0x1F  // Special Bit String Instructions
 
     {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x20  // Unknown   // This is a fudg on our part
     {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x21  // Unknown   // We have 6 and 7 bit instructions
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x22  // Unknown   // this is filld in by the Conditional Branch Instructions
+    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x22  // Unknown   // this is filled in by the Conditional Branch Instructions
     {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x23  // Unknown
     {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x24  // Unknown
     {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x25  // Unknown
@@ -134,7 +134,7 @@ static operation optable[80] = {
     { AM_III,     "bge  ", /*&(ins_bge)  */ &(ins_err) },           // 0x4E
     { AM_III,     "bgt  ", /*&(ins_bgt)  */ &(ins_err) },           // 0x4F
 };
-// All instructions greater than 0x50 are undefined (this should not be posible of course)
+// All instructions greater than 0x50 are undefined (this should not be possible of course)
 
 
 // Structure for holding the SubOpcodes, Same as above, without the InsType.
@@ -184,6 +184,9 @@ static suboperation fpsuboptable[16] = {
     { "FErrorF", &(ins_err )    },           // 0x0F  // Unknown
 };
 
+// All instructions greater than 0x50 are undefined (this should not be posible of cource)
+
+
 ///////////////////////////////////////////////////////////////////
 // Opcodes for V810 Instruction set
 #define         MOV                             0x00
@@ -202,25 +205,23 @@ static suboperation fpsuboptable[16] = {
 #define         AND                             0x0D
 #define         XOR                             0x0E
 #define         NOT                             0x0F
-
 #define         MOV_I                           0x10
 #define         ADD_I                           0x11
 #define         SETF                            0x12
 #define         CMP_I                           0x13
 #define         SHL_I                           0x14
 #define         SHR_I                           0x15
-#define         EI                              0x16
+#define         CLI                             0x16
 #define         SAR_I                           0x17
 #define         TRAP                            0x18
 #define         RETI                            0x19
 #define         HALT                            0x1A
-//0x1B
+                                              //0x1B
 #define         LDSR                            0x1C
 #define         STSR                            0x1D
-#define         DI                              0x1E
+#define         SEI                             0x1E
 #define         BSTR                            0x1F  //Special Bit String Inst
-
-//0x20 - 0x27  // Lost to Branch Instructions
+                                              //0x20 - 0x27  // Lost to Branch Instructions
 #define         MOVEA                           0x28
 #define         ADDI                            0x29
 #define         JR                              0x2A
@@ -229,10 +230,9 @@ static suboperation fpsuboptable[16] = {
 #define         ANDI                            0x2D
 #define         XORI                            0x2E
 #define         MOVHI                           0x2F
-
 #define         LD_B                            0x30
 #define         LD_H                            0x31
-#define         MULI                            0x32
+#define         MULI                            0x32  // Unknown
 #define         LD_W                            0x33
 #define         ST_B                            0x34
 #define         ST_H                            0x35
@@ -248,8 +248,8 @@ static suboperation fpsuboptable[16] = {
 #define         OUT_W                           0x3F
 
 
-// Branch Instructions ( Extended opcode only for Branch command)
-// Common instrcutions commented out
+//      Branch Instructions ( Extended opcode only for Branch command)
+//  Common instrcutions commented out
 
 #define         BV                              0x40
 #define         BL                              0x41
@@ -273,7 +273,7 @@ static suboperation fpsuboptable[16] = {
 //#define       BNC                             0x49
 //#define       BNZ                             0x4A
 
-// Bit String Subopcodes
+//  Bit String Subopcodes
 #define         SCH0BSU                         0x00
 #define         SCH0BSD                         0x01
 #define         SCH1BSU                         0x02
@@ -289,7 +289,7 @@ static suboperation fpsuboptable[16] = {
 #define         NOTBSU                          0x0F
 
 
-// Floating Point Subopcodes
+//  Floating Point Subopcodes
 #define         CMPF_S                          0x00
 
 #define         CVT_WS                          0x02
@@ -298,7 +298,10 @@ static suboperation fpsuboptable[16] = {
 #define         SUBF_S                          0x05
 #define         MULF_S                          0x06
 #define         DIVF_S                          0x07
-
+#define         XB                              0x08
+#define         XH                              0x09
+#define         REV                             0x0A
 #define         TRNC_SW                         0x0B
+#define         MPYHW                           0x0C
 
 #endif //DEFINE_H
