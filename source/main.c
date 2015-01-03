@@ -44,32 +44,30 @@ void toggle3D() {
 int romSelect(char* path) {
     int pos = 1;
     int keys;
-    char romv[27][256];
+    char romv[27][100];
     int romc = 0;
     int i;
 	u8* tlfb;
 	u8* trfb;
-	char buf[256];
-	u32 sl;
 
     // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
     Handle dirHandle;
     uint32_t entries_read = 1;
-    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb"));
+    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
     static FS_dirent entry;
-	// Scrolling isn't implemented yet
-		for(i = 0; (i < 29) && entries_read; i++) {
-			memset(&entry, 0, sizeof(FS_dirent));
-			FSDIR_Read(dirHandle, &entries_read, 1, &entry);
-			if((entries_read>0) && !entry.isDirectory) {
-			unicodeToChar(buf, entry.name, 256);
-			sl=strlen(buf);
-				if(((buf[sl-2]=='v')||(buf[sl-2]=='V')) && ((buf[sl-1]=='b')||(buf[sl-1]=='B'))) {
-					unicodeToChar(romv[romc], entry.name, 256);
-					romc++;
-				}
-			}
-		}
+
+    // Scrolling isn't implemented yet
+    for(i = 0; i < 29 && entries_read; i++) {
+        memset(&entry, 0, sizeof(FS_dirent));
+        FSDIR_Read(dirHandle, &entries_read, 1, &entry);
+        if(entries_read && entry.isArchive) {
+            if(!strncmp("VB", (char*) entry.shortExt, 2)) {
+                unicodeToChar(romv[romc], entry.name, 100);
+                romc++;
+            }
+        }
+    }
+
 	u8 fileSelected =0;	
     while(aptMainLoop() && ! fileSelected) {
         // Draw splash screen
@@ -78,7 +76,7 @@ int romSelect(char* path) {
 		
 		memset(tlfb, 0, 400*240*3);
 		memset(trfb, 0,400*240*3);
-		if (tVBOpt.PALMODE == PAL_RED){ // strange offset to fix
+		if (tVBOpt.PALMODE == PAL_RED){ 
 			for(i=2;i<400*240*3;i+=3) {
 				tlfb[i]= lsplash_bin[i];
 				trfb[i]= rsplash_bin[i];
@@ -96,7 +94,7 @@ int romSelect(char* path) {
         } else if ((keys & KEY_START) || (keys & KEY_A)) {
             fileSelected=1;
         } else if (keys & KEY_R) {
-            // The splash screen should change to red
+            // The splash screen changes to red
             tVBOpt.PALMODE = PAL_RED;
         } else if (keys & KEY_L) {
             tVBOpt.PALMODE = PAL_NORMAL;
@@ -142,30 +140,26 @@ int romSelect(char* path) {
 }
 
 int v810_init(char * rom_name) {
-//    char ram_name[32];
+    char ram_name[32];
     unsigned int rom_size = 0;
     unsigned int ram_size = 0;
 
-    char full_path[256] = "/vb/";
+    // Open VB Rom
+    char full_path[46] = "sdmc:/vb/";
     strcat(full_path, rom_name);
 
-	Handle file;
-	FS_path filePath;
-	filePath.type = PATH_CHAR;
-	filePath.size = strlen(full_path) + 1;
-	filePath.data = (u8*)full_path;
+    FILE* f = fopen(full_path, "r");
+    if (f) {
+        fseek(f , 0 , SEEK_END);
+        rom_size = ftell(f);
+        rewind(f);
 
-    // Open VB Rom
+        V810_ROM1.pmemory = malloc(rom_size);
+        fread(V810_ROM1.pmemory, 1, rom_size, f);
 
-	Result res = FSUSER_OpenFile(NULL, &file, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-	if (!res) {
-	  u32 bytesread;
-	  FSFILE_GetSize(file, &rom_size);
-      V810_ROM1.pmemory = (unsigned char *) memalign(0x10, rom_size);
-	  FSFILE_Read(file, &bytesread, 0x36, V810_ROM1.pmemory, rom_size);
-	  FSFILE_Close(file);
+        fclose(f);
     } else {
-      return 0; // file not found
+        return 0;
     }
 
     // CRC32 Calculations
@@ -182,7 +176,7 @@ int v810_init(char * rom_name) {
     V810_DISPLAY_RAM.lowaddr  = 0x00000000;
     V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
     // Alocate space for it in memory
-    V810_DISPLAY_RAM.pmemory = (unsigned char *)memalign(0x10, (V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr); // * sizeof(BYTE));
+    V810_DISPLAY_RAM.pmemory = (unsigned char *)malloc(((V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr) * sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_DISPLAY_RAM.off = (unsigned)V810_DISPLAY_RAM.pmemory - V810_DISPLAY_RAM.lowaddr;
 
@@ -201,7 +195,7 @@ int v810_init(char * rom_name) {
     V810_SOUND_RAM.lowaddr  = 0x01000000;
     V810_SOUND_RAM.highaddr = 0x010005FF; //0x010002FF
     // Alocate space for it in memory
-    V810_SOUND_RAM.pmemory = (unsigned char *)memalign(0x10, ((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr));// * sizeof(BYTE));
+    V810_SOUND_RAM.pmemory = (unsigned char *)malloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr) * sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_SOUND_RAM.off = (unsigned)V810_SOUND_RAM.pmemory - V810_SOUND_RAM.lowaddr;
 
@@ -209,35 +203,29 @@ int v810_init(char * rom_name) {
     V810_VB_RAM.lowaddr  = 0x05000000;
     V810_VB_RAM.highaddr = 0x0500FFFF;
     // Alocate space for it in memory
-    V810_VB_RAM.pmemory = (unsigned char *)memalign(0x10,((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr));// * sizeof(BYTE));
+    V810_VB_RAM.pmemory = (unsigned char *)malloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr) * sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_VB_RAM.off = (unsigned)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
 
     // Try to load up the saveRam file...
-    // concatenate .ram to the rom path
-    strcat(full_path, ".ram");
+    // First, copy the rom path and concatenate .ram to it
+//    strcpy(ram_name, rom_name);
+//    strcat(ram_name, ".ram");
 
-	res = FSUSER_OpenFile(NULL, &file, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
-	if (!res) {
-	  u32 bytesread;
-	  FSFILE_GetSize(file, &ram_size);
-      V810_ROM1.pmemory = (unsigned char *) memalign(0x10, ram_size);
-	  FSFILE_Read(file, &bytesread, 0x36, V810_GAME_RAM.pmemory, ram_size);
-	  FSFILE_Close(file);
-    }
+//    V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
 
     if (!ram_size) {
         is_sram = 0;
     } else {
         is_sram = 1;
     }
-	
+
     // Initialize our GameRam tables.... (Cartrige Ram)
     V810_GAME_RAM.lowaddr  = 0x06000000;
     V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
     // Alocate space for it in memory
     if(!is_sram) {
-        V810_GAME_RAM.pmemory = (unsigned char *)memalign(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr));//, sizeof(BYTE));
+        V810_GAME_RAM.pmemory = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
     }
     // Offset + Lowaddr = pmemory
     V810_GAME_RAM.off = (unsigned)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
@@ -293,7 +281,7 @@ int main() {
     sdmcInit();
     consoleInit(GFX_BOTTOM, NULL);
 
-    sdmcArchive = (FS_archive){0x9, FS_makePath(PATH_EMPTY, "")};
+    sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
     FSUSER_OpenArchive(NULL, &sdmcArchive);
 
     setDefaults();
@@ -305,7 +293,7 @@ int main() {
         gfxSet3D(false);
     }
 
-    char path[256] = "";
+    char path[64] = "";
     if (!romSelect(path)) {
         goto exit;
     }
@@ -313,7 +301,8 @@ int main() {
         goto exit;
     }
 
-    v810_reset();
+    clrScreen(GFX_TOP);
+	v810_reset();
     v810_trc();
 
     clearCache();
@@ -326,6 +315,11 @@ int main() {
 
         if ((keys & KEY_START) && (keys & KEY_SELECT))
             break;
+        if ((CONFIG_3D_SLIDERSTATE > 0.0f) && !tVBOpt.DSPMODE) {
+            toggle3D();
+        } else if ((CONFIG_3D_SLIDERSTATE == 0.0f) && tVBOpt.DSPMODE) {
+            toggle3D();
+        }
 
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             // Trace
@@ -350,8 +344,7 @@ int main() {
         }
 
         consoleClear();
-        printf("FPS: %.2f\nFrame: %i\nPC: %i\n", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, (unsigned int) PC);
-//        printf("Rom size: %i\n", (u32)V810_ROM1.pmemory);
+        printf("FPS: %.2f\nFrame: %i\nPC: %i", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, (unsigned int) PC);
 
         gfxFlushBuffers();
         gfxSwapBuffers();
