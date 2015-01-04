@@ -12,14 +12,14 @@ Now I'll check mednafen to grab some fixes/improvement of V810 emulation
 
 Compatibility
 =======
-Flappy chip chip (Homebrew) : works fine Crashes if the bird fly out of top screen
-VUESnake (Homebrew): Nor personally tested, but reported working (I'll test it shortly)
-Wario land: works fine till the first enemy object fly out of top screen, than crashes
-Galactic Pinball: seems to work fine, but I don't know how te keys to play :-P , so only partially tested.
-Mario's Tennis: loads and swows initial splash screens, than crashes
-Mario Clash: loads and swows initial splash screens, than crashes
-3-D Tetris: crashes on boot
-Red Alarm: crashes on boot
+- Flappy chip chip (Homebrew) : works fine but crashes if the bird fly out of top screen
+- VUESnake (Homebrew): Nor personally tested, but reported working (I'll test it shortly)
+- Wario land: works fine till the first enemy object fly out of top screen, than crashes
+- Galactic Pinball: seems to work fine, but I don't know how te keys to play :-P , so only partially tested.
+- Mario's Tennis: loads and swows initial splash screens, than crashes
+- Mario Clash: loads and swows initial splash screens, than crashes
+- 3-D Tetris: crashes on boot
+- Red Alarm: crashes on boot
 
 License
 =======
