@@ -16,7 +16,7 @@
 #define NEG(n) ((n) >> 31)
 #define POS(n) ((~(n)) >> 31)
 
-//could be done a lot better, later maby!
+//could be done a lot better, later maybe!
 int v810_trc() {
     int lowB, highB, lowB2, highB2; // Up to 4 bytes for instruction (either 16 or 32 bits)
     static int opcode;
