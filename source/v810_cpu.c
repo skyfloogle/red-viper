@@ -138,9 +138,9 @@ int serviceint(unsigned long long cycles) {
     */
 
     //Controller Int
-    if ((!(tHReg.SCR & 0x80)) && (V810_RControll()&0xFFFC)) {
-        v810_int(0);
-    }
+//    if ((!(tHReg.SCR & 0x80)) && (V810_RControll()&0xFFFC)) {
+//        v810_int(0);
+//    }
 
     if (tHReg.TCR & 0x01) { // Timer Enabled
         if ((cycles-lasttime) > tHReg.tTRC) {
@@ -174,10 +174,12 @@ int serviceint(unsigned long long cycles) {
             if (tVIPREG.INTENB&(0x0010|gamestart)) v810_int(4); //FRAMESTART | GAMESTART
             tVIPREG.INTPND |= (0x0010|gamestart); //(tVIPREG.INTENB&0x0018);
             //break; //time to display screen
-#ifndef FBHACK
+//#ifndef FBHACK
             return 1;
-#endif //FBHACK
+//#endif //FBHACK
         }
+
+/* 		
         if (((cycles-lastfb) > 0x0500) && (!(tVIPREG.XPSTTS&0x8000))) tVIPREG.XPSTTS |= 0x8000;
         if ((cycles-lastfb) > 0x0A00) {
             tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
@@ -190,6 +192,15 @@ int serviceint(unsigned long long cycles) {
             }
 #endif //FBHACK
         }
+*/  //Aligned to last version of Virtual Boy
+		if ((cycles-lastfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000))) 
+			tVIPREG.XPSTTS |= 0x8000;
+		if (cycles-lastfb > 0x0A00) {
+			tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
+			rowcount++;
+			lastfb=cycles;
+		}
+
         if ((rowcount == 0x12) && ((cycles-lastfb) > 0x670)) tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0xD0:0xC4));
     }
     else {
@@ -221,7 +232,8 @@ int serviceint(unsigned long long cycles) {
             rowcount++;
         }
         else if ((rowcount == 0x1F) && ((cycles-lastfb) > 0x28000)) { //0x1FAD8
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0x48:0x60));
+//            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0x48:0x60)); // NOP90 in last version of reality Boy there is next row 
+	    tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
             if (tVIPREG.INTENB&0x2000) v810_int(4); //SBHIT
             tVIPREG.INTPND |= 0x2000;
             rowcount++;
@@ -233,11 +245,11 @@ int serviceint(unsigned long long cycles) {
         else if ((rowcount == 0x21) && ((cycles-lastfb) > 0x42000)) {
             tmp1=0;
             rowcount=0;
-#ifdef FBHACK
-            if (tVIPREG.XPCTRL & 0x0002) tVIPREG.tFrame++;
-#else
+//#ifdef FBHACK
+//            if (tVIPREG.XPCTRL & 0x0002) tVIPREG.tFrame++;
+//#else
             tVIPREG.tFrame++;
-#endif //FBHACK
+//#endif //FBHACK
             if ((tVIPREG.tFrame < 1) || (tVIPREG.tFrame > 2)) tVIPREG.tFrame = 1;
             //dtprintf(10,ferr, "\ntVIPREG.tFrame = %d",tVIPREG.tFrame);
             tVIPREG.XPSTTS = (0x1B00|(tVIPREG.tFrame<<2)|(tVIPREG.XPCTRL & 0x02));
@@ -298,7 +310,8 @@ void v810_exp(WORD iNum, WORD eCode) {
         PC = 0xFFFFFFD0;
         return;
     } else {		// Regular Exception
-        S_REG[EIPC] = PC;
+
+	S_REG[EIPC] = PC;
         S_REG[EIPSW] = S_REG[PSW];
         S_REG[ECR] = eCode; //Exception Code, dont get it???
         S_REG[PSW] = S_REG[PSW] | PSW_EP;
