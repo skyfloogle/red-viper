@@ -17,6 +17,7 @@ ROM Compatibility
 - Wario land: works fine but some sprites don't show
 - Galactic Pinball: seems to work fine, but I don't know the keys to play :-P , so only partially tested.
 - Mario Clash: seems to work fine
+- Panic bomber: works fine
 - Mario's Tennis: seems to work fine, but doesn't show opponent sprite
 - Red Alarm: crashes after spash screens
 - Golf: crashes on load 
