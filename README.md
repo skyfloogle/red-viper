@@ -10,19 +10,18 @@ In this fork at the moment I'm only fixing little things to test the code.
 Completed alignment of opcodes implementation to the last version of Reality Boy.
 Now I'll check mednafen to grab some fixes/improvement of V810 emulation
 
-Compatibility
+ROM Compatibility
 =======
 - Flappy chip chip (Homebrew) : works fine 
 - VUESnake (Homebrew): works fine
 - Blox (Homebrew): works fine (some graphic glitches to be solved)
 - Wario land: works fine but some sprites don't show
-- Galactic Pinball: seems to work fine, but I don't know how te keys to play :-P , so only partially tested.
-- Mario Clash: seems to work fine,
-
-Reported in previous version, now to be testeg again after fixing DSP problems:
-- Mario's Tennis: loads and swows initial splash screens, than crashes
+- Galactic Pinball: seems to work fine, but I don't know the keys to play :-P , so only partially tested.
+- Mario Clash: seems to work fine
+- Mario's Tennis: seems to work fine, but doesn't show opponent sprite
+- Red Alarm: crashes after spash screens
+- Golf: crashes on load 
 - 3-D Tetris: crashes on boot
-- Red Alarm: crashes on boot
 
 License
 =======
