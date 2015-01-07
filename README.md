@@ -7,8 +7,7 @@ Notes from NOP90
 =========
 In this fork at the moment I'm only fixing little things to test the code.
 
-Completed alignment of opcodes implementation to the last version of Reality Boy.
-Now I'll check mednafen to grab some fixes/improvement of V810 emulation
+Completed alignment of code to the last version of Reality Boy.
 
 ROM Compatibility
 =======
