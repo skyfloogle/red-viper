@@ -170,7 +170,7 @@ void affine_blit(BITMAP *source[], BITMAP *dest, int source_x, int source_y, int
     int sign=1,width_x;
     int i;
 
-    // Handle rotations over the end of the screen, wrap to the begining. //mod by this...
+    // Handle rotations over the end of the screen, wrap to the beginning. //mod by this...
     SX = (1<<source_width)<<9;
     SY = (1<<source_height)<<9;
 
@@ -221,40 +221,6 @@ void affine_blit(BITMAP *source[], BITMAP *dest, int source_x, int source_y, int
     }
 }
 
-////////////////////////////////////////////////////////////////////
-// Retreaves a character(Sprite) from the character table, Only used for DisplayRom()
-// Now directly acesses the video ram (Scary)
-/*
-void getChr(HWORD num, HWORD chr[]) {
-    // Strip the first 2 bits to decode what chr table to use, use the remaning bits to index into the table...
-    WORD offset =ChrOff[(num>>9)&0x03] + (CHR_SIZE * (num & 0x01FF));
-    if((offset < V810_DISPLAY_RAM.lowaddr)||(offset+CHR_SIZE > V810_DISPLAY_RAM.highaddr))
-        offset = ChrOff[0]; // Set to a known value (Chr0)
-    offset += V810_DISPLAY_RAM.off; // Offset in Phisical Ram
-
-    ((WORD *)chr)[0] = ((WORD *)(offset))[0];
-    ((WORD *)chr)[1] = ((WORD *)(offset))[1];
-    ((WORD *)chr)[2] = ((WORD *)(offset))[2];
-    ((WORD *)chr)[3] = ((WORD *)(offset))[3];
-}
-*/
-// Translates a chr to a sprite, Only used for DisplayRom()
-/*
-void chr2sprite(HWORD chr[],BITMAP *sprt) {
-    int i;
-    for (i = 0; i < 8; i++) {// We want words not bytes
-        sprt->line[i][0] = ((chr[i] >>  0) & 3)+1;
-        sprt->line[i][1] = ((chr[i] >>  2) & 3)+1;
-        sprt->line[i][2] = ((chr[i] >>  4) & 3)+1;
-        sprt->line[i][3] = ((chr[i] >>  6) & 3)+1;
-        sprt->line[i][4] = ((chr[i] >>  8) & 3)+1;
-        sprt->line[i][5] = ((chr[i] >> 10) & 3)+1;
-        sprt->line[i][6] = ((chr[i] >> 12) & 3)+1;
-        sprt->line[i][7] = ((chr[i] >> 14) & 3)+1;
-    }
-}
-*/
-// Replaces the two Fn's Above (Faster?)
 void fchr2sprite(HWORD num, BITMAP *sprt, bool hflp, bool vflp,BYTE pal[]) {
     int i;
 
@@ -569,7 +535,7 @@ void getBGmap(HWORD num, VB_BGMAP BGMap_Buff[]) {
     WORD offset = BGMAP_OFFSET + (BGMAP_SIZE*(num & 0xF));// Only 14 posible bg's, this is 16 but whos counting?
     offset += V810_DISPLAY_RAM.off; // Offset in Phisical Ram
 
-/*
+
     for(i = 0; i < (BGMAP_SIZE>>1); i++) {
         // Make sure we only grab num's from 0-4095...
         thword = ((HWORD *)(offset))[i];
@@ -578,19 +544,6 @@ void getBGmap(HWORD num, VB_BGMAP BGMap_Buff[]) {
         BGMap_Buff[i].HFLP  = (thword >> 13) & 0x1;
         BGMap_Buff[i].BPLTS = (thword >> 14) & 0x3;
     }
-*/ //NOP90
-	i = (BGMAP_SIZE>>1)-1;
-	do {
-        // Make sure we only grab num's from 0-4095... 
-        thword = ((HWORD *)(offset))[i]; 
-        BGMap_Buff[i].BCA   = thword & 0x7FF;
-        BGMap_Buff[i].VFLP  = (thword >> 12) & 0x1;
-        BGMap_Buff[i].HFLP  = (thword >> 13) & 0x1;
-        BGMap_Buff[i].BPLTS = (thword >> 14) & 0x3;
-        BGMap_Buff[i].UNDEF = (thword >> 11) & 0x1;
-    } while(i--);
-
-
 }
 
 void updateBGMPalette() {
@@ -818,7 +771,7 @@ void getWorld(HWORD num, VB_WORLD WORLD_Buff[]) {
     WORLD_Buff[num].Dont_Write[4] = ((HWORD *)(offset))[15];
 }
 
-void getAffine(int y, int pBase, AFFINE_MAP AFN_MP) {
+void getAffine(int y, int pBase, AFFINE_MAP* AFN_MP) {
     WORD offset;
     int t_int[4];
 
@@ -827,20 +780,20 @@ void getAffine(int y, int pBase, AFFINE_MAP AFN_MP) {
 
 	//grab the afine entrys
 	t_int[0]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off  ))[0])&0xFFFF);
-	AFN_MP.paralax  = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+2))[0])&0xFFFF);
+	AFN_MP[0].paralax  = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+2))[0])&0xFFFF);
 	t_int[1]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+4))[0])&0xFFFF);
 	t_int[2]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+6))[0])&0xFFFF);
 	t_int[3]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+8))[0])&0xFFFF);
 	//unknown (overplain character?)
-	AFN_MP.u1    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+10))[0])&0xFFFF);
-	AFN_MP.u2    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+12))[0])&0xFFFF);
-	AFN_MP.u3    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+14))[0])&0xFFFF);
+	AFN_MP[0].u1    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+10))[0])&0xFFFF);
+	AFN_MP[0].u2    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+12))[0])&0xFFFF);
+	AFN_MP[0].u3    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+14))[0])&0xFFFF);
 	//convert to float, avoiding divide by zero errors
 	//*****Fixme, convert this to fixed point math
-	AFN_MP.pb_y  = (float)(t_int[0]/8.0);
-	AFN_MP.pd_y  = (float)(t_int[1]/8.0);
-	AFN_MP.pa    = (float)(t_int[2]/512.0);
-	AFN_MP.pc    = (float)(t_int[3]/512.0);
+	AFN_MP[0].pb_y  = (float)(t_int[0]/8.0);
+	AFN_MP[0].pd_y  = (float)(t_int[1]/8.0);
+	AFN_MP[0].pa    = (float)(t_int[2]/512.0);
+	AFN_MP[0].pc    = (float)(t_int[3]/512.0);
 }
 
 //Return H-Bias offset for current line
@@ -897,6 +850,7 @@ void drawNormalBGMap(VB_WORLD *WBuff, BITMAP *wPlane,
 
     nx = (1<<WBuff->SCX);
     ny = (1<<WBuff->SCY);
+
 	
 	//only 8 bgmaps at a time.
 	if((nx*ny)>8)
@@ -924,7 +878,7 @@ void drawNormalBGMap(VB_WORLD *WBuff, BITMAP *wPlane,
 		getOverChar(WBuff->OVERP_CHR, ovrChr);
 	}
 
-	//height is fixed to a minimum of 8 pixles and maximum of 1024
+	//height is fixed to a minimum of 8 pixels and maximum of 1024
 	h = WBuff->H;
 	if(h<7) h=7;
 	if(h>1024) h=1024;
@@ -936,7 +890,7 @@ void drawNormalBGMap(VB_WORLD *WBuff, BITMAP *wPlane,
 	if(w<-1024) w=-1024;
 	if(w>1023)  w=1023;
 
-	//for every pixle on the display
+	//for every pixel on the display
 	for(scr_y=0;scr_y<224;scr_y++) {
 
 		//Handle GY
@@ -951,7 +905,7 @@ void drawNormalBGMap(VB_WORLD *WBuff, BITMAP *wPlane,
 			h_off = getHBiasOffset(bgc_y,WBuff->PARAM_BASE,img_n);
 		} else if(WBuff->BGM==2) {  //Affine mode, grab affine struct
 			//grab the afine entry
-			getAffine(bgc_y, WBuff->PARAM_BASE, tAFN_MP);
+			getAffine(bgc_y, WBuff->PARAM_BASE, &tAFN_MP);
 			
 			//if no scale, do nothing.
 			if(!tAFN_MP.pa) 
@@ -1019,11 +973,11 @@ void drawNormalBGMap(VB_WORLD *WBuff, BITMAP *wPlane,
 				bgm_x &=511;
 				bgm_y &=511;
 
-				//draw our pixle
+				//draw our pixel
 				tPix = tDSPCACHE.BGCacheBMP[bgm]->line[bgm_y][bgm_x];
 			}
 		
-			//dont draw if transparnet
+			//dont draw if transparent
 			if(!tPix) continue;
 		
 			//and place on dest bitmap
@@ -1056,8 +1010,9 @@ void World2Display(int wNum, VB_WORLD WORLD_Buff[], BITMAP *wPlane, int img_n) {
     if(img_n==2) {
         GPX = WORLD_Buff[wNum].GP;//Global Paralax setings...
         MPX = WORLD_Buff[wNum].MP;
-    }else {//if(img_n==1) { -Pat (2D mode should still have Parallax on eye shown, right?)
-        GPX = -WORLD_Buff[wNum].GP;//Global Paralax setings...
+//    }else {//if(img_n==1) { -Pat (2D mode should still have Parallax on eye shown, right?)
+    }else if(img_n==1) { // NOP90
+        GPX = -WORLD_Buff[wNum].GP;//Global Paralax settings...
         MPX = -WORLD_Buff[wNum].MP;
     }
 
@@ -1068,12 +1023,11 @@ void World2Display(int wNum, VB_WORLD WORLD_Buff[], BITMAP *wPlane, int img_n) {
         }
         //Dont mess around with sub bitmaps, just blast it to the world plane
         Obj2World(tDSPCACHE.ObjDataCache, wPlane,CurObj,img_n);
-        CurObj = (CurObj-1)&3; //(CurObj-1)%4;
+        CurObj = (CurObj-1)&3; //(CurObj-1)%4;   
     } else {
         drawNormalBGMap( &WORLD_Buff[wNum], wPlane, img_n, GPX, MPX);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////
 //Initialize the display, and get the video mode (from wherever)
@@ -1085,7 +1039,7 @@ bool V810_DSP_Init() {
     }
     world_bmp = create_bitmap(512+8,512+8); // Make them a bit bigger for the Obj's
     world_bmp2 = create_bitmap(384+8, 224+8);
-    dsp_bmp = create_bitmap(512+384*2, 512+224*2); //NOP90 - Not correct, but quick
+    dsp_bmp = create_bitmap(384*2, 224*2);
     for(i = 0; i < 4; i++) {
         tDSPCACHE.ObjCacheBMP[i] = create_bitmap(512,512); // Create our temp Bitmap...
     }
@@ -1110,13 +1064,13 @@ void V810_SetPal(int BRTA, int BRTB, int BRTC) {
         if (tPal[2] > 63) tPal[2]=63;
     }
 
-    if (tVBOpt.PALMODE == PAL_RED) { // Red Pallet
+    if (tVBOpt.PALMODE == PAL_RED) { // Red Palette
         for(i = 0; i < 5; i++) {
             palette[i].r = tPal[i];
             palette[i].g = 0;
             palette[i].b = 0;
         }
-    } else { // Standard Pallet
+    } else { // Standard Palette
         for (i = 0; i < 5; i++) {
             palette[i].r = tPal[i];
             palette[i].g = tPal[i];
@@ -1208,9 +1162,9 @@ void V810_Dsp_Frame(int dNum) {
 
 void clearCache() {
     int i;
-    tDSPCACHE.BgmPALMod = 1;                // World Pallet Changed
-    tDSPCACHE.ObjPALMod = 1;                // Obj Pallet Changed
-    tDSPCACHE.BrtPALMod = 1;                // Britness for Pallet Changed
+    tDSPCACHE.BgmPALMod = 1;                // World Palette Changed
+    tDSPCACHE.ObjPALMod = 1;                // Obj Palette Changed
+    tDSPCACHE.BrtPALMod = 1;                // Britness for Palette Changed
     tDSPCACHE.ObjDataCacheInvalid = 1;      // Object Cache Is invalid
     tDSPCACHE.ObjCacheInvalid = 1;          // Object Cache Is invalid
     for(i = 0; i < 14; i++)
