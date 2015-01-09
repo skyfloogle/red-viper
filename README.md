@@ -14,11 +14,11 @@ ROM Compatibility
 - Flappy chip chip (Homebrew) : works fine 
 - VUESnake (Homebrew): works fine
 - Blox (Homebrew): works fine (some graphic glitches to be solved)
-- Wario land: works fine but some sprites don't show
+- Wario land: works fine 
 - Galactic Pinball: seems to work fine, but I don't know the keys to play :-P , so only partially tested.
 - Mario Clash: seems to work fine
 - Panic bomber: works fine
-- Mario's Tennis: seems to work fine, but doesn't show opponent sprite
+- Mario's Tennis: seems to work fine
 - Red Alarm: crashes after spash screens
 - Golf: crashes on load 
 - 3-D Tetris: crashes on boot
