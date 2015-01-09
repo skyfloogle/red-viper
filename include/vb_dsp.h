@@ -107,7 +107,7 @@ typedef struct {
 
 //grab one entry from the affine param table based ont the
 //current y offset
-void getAffine(int y, int pBase,AFFINE_MAP AFN_MP);
+void getAffine(int y, int pBase,AFFINE_MAP* AFN_MP);
 
 
 // Struct to encapsulate all the Cache Stuff... I know its not necesary
