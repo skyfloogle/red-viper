@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 #include <3ds.h>
 
 #include "lsplash_bin.h"
@@ -68,16 +69,17 @@ u32 ctrkey2pos(u32 key){
 }
 
 void setKeys() {
-int keys;
+u32 keys;
 u8 * bfb;
 u32 x,y,i;
 u8 pos=0;
 u8 select=0;
 
-char strKeys[23][6] = 
+char strKeys[32][6] = 
 	{"  A  ","  B  "," SEL ","START","RIGHT","LEFT "," UP  ","DOWN ",
-	 "  R  ","  L  ","  X  ","  Y  "," ZL  "," ZR  ","     ",
-	 "S RIG","S LEF","S UP ","S DOWN","P RIG","P LEF","P UP ","P DOWN"};
+	 "  R  ","  L  ","  X  ","  Y  ","     ","     "," ZL  "," ZR  ",
+	 "     ","     ","     ","     "," TAP ","     ","     ","     ",
+	 "S RGT","S LFT","S UP ","S DWN","P RGT","P LFT","P UP ","P DWN"};
 	
     while(aptMainLoop()) {
         hidScanInput();
@@ -115,16 +117,12 @@ char strKeys[23][6] =
 		gspWaitForVBlank();
 		system_checkPolls();
 		if (select){
-			while(keys){ //wait for key released
+			do { //wait for key pressed
 				hidScanInput(); 
 				keys = hidKeysDown(); 
+				gspWaitForVBlank();
 				system_checkPolls();
-			}
-			while(!keys){ //wait for key pressed
-				hidScanInput(); 
-				keys = hidKeysDown(); 
-				system_checkPolls();
-			}
+			} while(!keys);
 			vbkey[pos2vbkey(pos)]= 1<<ctrkey2pos(keys); // if more than 1 key pressed, catch only the first
 			select=0;
 		}
@@ -135,7 +133,7 @@ char strKeys[23][6] =
 int romSelect(char* path) {
     u8 pos = 1;
 	u8 slot = 1;
-    int keys;
+    u32 keys;
     char romv[50][100];
     u8* romicons;
     int romc = 0;
@@ -217,7 +215,7 @@ int romSelect(char* path) {
 int showMenu(char* path) {
 	int i;
     u8 pos = 1;
-    int keys;
+    u32 keys;
 	u8 fileSelected = 0;	
 	u8 resumeRom = 0;
 	u8* tlfb;
