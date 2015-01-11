@@ -5,22 +5,28 @@ A WIP Virtual Boy emulator for the 3DS. You can see the current progress [here](
 
 Notes from NOP90
 =========
-In this fork at the moment I'm only fixing little things to test the code.
+In this fork I'm working on:
+- fixing some emu code that I push to the main repository of mrdanielps
+- making a GUI for setting emu otions
 
 Completed alignment of code to the last version of Reality Boy.
+Created a basic GUI to load roms (with custom icons), pausing games and setting options
 
 ROM Compatibility
 =======
+
+At the moment the emulation is very slow (about 5-6 fps) but most of homebrews and some retail roms work perfectly.
+
 - Flappy chip chip (Homebrew) : works fine 
 - VUESnake (Homebrew): works fine
 - Blox (Homebrew): works fine (some graphic glitches to be solved)
-- Wario land: works fine 
-- Galactic Pinball: seems to work fine, but I don't know the keys to play :-P , so only partially tested.
-- Mario Clash: seems to work fine
+- Wario land: works fine, some sprites not correclty rendered, sometimes crashes with 3D activated during intro 
+- Galactic Pinball: seems to work fine, only partially tested.
+- Mario Clash: Intro works fine, crashes when game begin.
 - Panic bomber: works fine
 - Mario's Tennis: seems to work fine
 - Red Alarm: crashes after spash screens
-- Golf: crashes on load 
+- Golf: crashes on boot 
 - 3-D Tetris: crashes on boot
 
 License
