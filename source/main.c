@@ -14,17 +14,15 @@
 #include "vb_dsp.h"
 #include "vb_set.h"
 #include "rom_db.h"
+#include "draw.h"
+#include "icon.h"
+#include "keybmp.h"
 
+u8 border=0;
+u8 is_running=0;
 int is_sram = 0; //Flag if writes to sram...
 
 FS_archive sdmcArchive;
-
-void clrScreen(int screen) {
-    if ((screen != GFX_TOP) && (screen != GFX_BOTTOM))
-        return;
-    memset(gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL), 0,
-           (GFX_BOTTOM ? 320 : 400) * 240 * 3);
-}
 
 static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
     if(!src || !dst) return;
@@ -41,28 +39,130 @@ void toggle3D() {
     gfxSet3D(tVBOpt.DSPMODE);
 }
 
-int romSelect(char* path) {
-    int pos = 1;
-    int keys;
-    char romv[27][100];
-    int romc = 0;
-    int i;
-	u8* tlfb;
-	u8* trfb;
+u32 pos2vbkey(u32 pos){
+  switch (pos) {
+    case 0: return 13;
+    case 1: return 3;
+    case 2: return 0;
+    case 3: return 2;
+    case 4: return 1;
+    case 5: return 10;
+    case 6: return 11;
+    case 7: return 12;
+    case 8: return 7;
+    case 9: return 4;
+    case 10: return 6;
+    case 11: return 5;
+    case 12: return 8;
+    case 13: return 9;
+  }
+  return 0;
+}
 
-    // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
+u32 ctrkey2pos(u32 key){
+  u8 i=0;
+   while(!(key&0x1)) {
+     key=key>>1;
+	 i++;
+  }
+  return i;
+}
+
+void setKeys() {
+int keys;
+u8 * bfb;
+u32 x,y,i;
+u8 pos=0;
+u8 select=0;
+
+char strKeys[23][6] = 
+	{"  A  ","  B  "," SEL ","START","RIGHT","LEFT "," UP  ","DOWN ",
+	 "  R  ","  L  ","  X  ","  Y  "," ZL  "," ZR  ","     ",
+	 "S RIG","S LEF","S UP ","S DOWN","P RIG","P LEF","P UP ","P DOWN"};
+	
+    while(aptMainLoop()) {
+        hidScanInput();
+        keys = hidKeysDown();
+        if(keys & KEY_DUP) {
+            pos = (pos+13)%14;
+        } else if (keys & KEY_DDOWN) {
+            pos = (pos+1)%14;
+        } else if (keys & KEY_A) {
+			select=1;
+        } else if (keys & KEY_B) {
+            return;
+        } 
+		bfb=gfxGetFramebuffer(GFX_BOTTOM, GFX_BOTTOM, NULL, NULL);
+		for(x=0;x<320;x++)
+			for(y=0;y<240;y++){
+				bfb[(y+240*x)*3]=keybmp[0x36+(y*320+x)*3];
+				bfb[(y+240*x)*3+1]=keybmp[0x36+(y*320+x)*3+1];
+				bfb[(y+240*x)*3+2]=keybmp[0x36+(y*320+x)*3+2];
+			}
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,0, 0, 320, 38, 0x00002f<<(border*8));
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,0, 37, 320, 2, 0xffffff);
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,(pos<7)?5:272, 46 +23 * (pos%7), 43, 21, 0x0000ff<<(border*8));
+		paint_word(bfb,"[UP]/[DOWN] Move  [A] Change  [B] Back", 8, 15, 255, 255, 255);
+
+		for (i=0;i<14;i++)
+			paint_word(bfb,strKeys[ctrkey2pos(vbkey[pos2vbkey(i)])], (i<7)?8:274, 53 +23 * (i%7), (i==pos)?255:0, (i==pos)?255:0, (i==pos)?255:0);
+
+		if (select){
+			paint_word(bfb,"Press the key to map in this position", 8, 220, 0, 0, 0);
+			drawBox(GFX_BOTTOM,GFX_BOTTOM,(pos<7)?5:272, 46 +23 * (pos%7), 43, 21, 0x0000ff<<(border*8));
+		}
+		gfxFlushBuffers();
+		gfxSwapBuffers();
+		gspWaitForVBlank();
+		system_checkPolls();
+		if (select){
+			while(keys){ //wait for key released
+				hidScanInput(); 
+				keys = hidKeysDown(); 
+				system_checkPolls();
+			}
+			while(!keys){ //wait for key pressed
+				hidScanInput(); 
+				keys = hidKeysDown(); 
+				system_checkPolls();
+			}
+			vbkey[pos2vbkey(pos)]= 1<<ctrkey2pos(keys); // if more than 1 key pressed, catch only the first
+			select=0;
+		}
+	}
+}
+
+
+int romSelect(char* path) {
+    u8 pos = 1;
+	u8 slot = 1;
+    int keys;
+    char romv[50][100];
+    u8* romicons;
+    int romc = 0;
+    int i,x,y;
+	u8* bfb;
+
     Handle dirHandle;
     uint32_t entries_read = 1;
     FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
     static FS_dirent entry;
+    romicons=malloc(50*32*32*3);
 
-    // Scrolling isn't implemented yet
     for(i = 0; i < 29 && entries_read; i++) {
         memset(&entry, 0, sizeof(FS_dirent));
         FSDIR_Read(dirHandle, &entries_read, 1, &entry);
-        if(entries_read && entry.isArchive) {
-            if(!strncmp("VB", (char*) entry.shortExt, 2)) {
-                unicodeToChar(romv[romc], entry.name, 100);
+        if(entries_read && !entry.isDirectory) {
+//            if(!strncmp("VB", (char*) entry.shortExt, 2)) { // NOP90 - 3dmoo doesn't get entry.shortExt
+            unicodeToChar(romv[romc], entry.name, 100);
+			u8 sl = strlen(romv[romc]);  
+			if((romv[romc][sl-2]=='V' || romv[romc][sl-2]=='v') && (romv[romc][sl-1]=='B' || romv[romc][sl-1]=='b')) {
+				char full_path[256] = "/vb/";
+				strcat(full_path, romv[romc]);
+				strcat(full_path, ".bmp");
+				if (!LoadBitmap(full_path,32, 32, romicons+(romc*32*32*3), 0xFF, 0, 64, 0x1)) {
+					memcpy(romicons+(romc*32*32*3),icon+0x36,32*32*3);
+				}
                 romc++;
             }
         }
@@ -70,35 +170,18 @@ int romSelect(char* path) {
 
 	u8 fileSelected =0;	
     while(aptMainLoop() && ! fileSelected) {
-        // Draw splash screen
-		tlfb=gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-		trfb=gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
-		
-		memset(tlfb, 0, 400*240*3);
-		memset(trfb, 0,400*240*3);
-		if (tVBOpt.PALMODE == PAL_RED){ 
-			for(i=2;i<400*240*3;i+=3) {
-				tlfb[i]= lsplash_bin[i];
-				trfb[i]= rsplash_bin[i];
-			}
-        } else {
-			memcpy(tlfb, lsplash_bin, lsplash_bin_size);
-			memcpy(trfb, rsplash_bin, rsplash_bin_size);
-        }
         hidScanInput();
         keys = hidKeysDown();
-        if(keys & KEY_DUP) {
+        if((keys & KEY_DUP)&&(pos>1)) {
             pos--;
-        } else if (keys & KEY_DDOWN) {
+			if(slot>1) slot--;
+        } else if ((keys & KEY_DDOWN)&&(pos<romc)) {
             pos++;
+			if (slot<5) slot++;
         } else if ((keys & KEY_START) || (keys & KEY_A)) {
             fileSelected=1;
-        } else if (keys & KEY_R) {
-            // The splash screen changes to red
-            tVBOpt.PALMODE = PAL_RED;
-        } else if (keys & KEY_L) {
-            tVBOpt.PALMODE = PAL_NORMAL;
-        } else if (keys & KEY_SELECT) {
+        } else if (keys & KEY_B) {
+			free(romicons);
             return 0;
         } else if ((CONFIG_3D_SLIDERSTATE > 0.0f) && !tVBOpt.DSPMODE) {
             toggle3D();
@@ -106,46 +189,160 @@ int romSelect(char* path) {
             toggle3D();
         }
 
-        if (pos > romc) {
-            pos = 1;
-        } else if (pos <= 0) {
-            pos = romc;
-        }
+		bfb=gfxGetFramebuffer(GFX_BOTTOM, GFX_BOTTOM, NULL, NULL);
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,0, 0, 320, 240, 0x00002f<<(border*8));
 
-        consoleClear();
-        printf("Select a ROM:\n");
+		paint_word(bfb,"[A] Select Rom   [B] Back", 60, 15, 255, 255, 255);
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,0, 38, 320, 2, 0xffffff);
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,0,40*slot, 320, 40, 0x0000ff<<(border*8));
+		for(i=0;(i<5)&&(i<romc);i++ ) {
+			for(x=0;x<32;x++)
+				for(y=0;y<32;y++){
+					bfb[(165-40*i+y+240*(x+4))*3]=romicons[((pos-slot+i)*32*32+(y*32)+x)*3];
+					bfb[(165-40*i+y+240*(x+4))*3+1]=romicons[((pos-slot+i)*32*32+(y*32)+x)*3+1];
+					bfb[(165-40*i+y+240*(x+4))*3+2]=romicons[((pos-slot+i)*32*32+(y*32)+x)*3+2];
+				}
+				paint_word(bfb,romv[pos-slot+i], 40, 55+40*i, 255, 255, 255);
+			}
 
-        for(i = 0; i < romc; i++) {
-            char line[40];
-            line[0] = '\0';
-            snprintf(line, 40, "%c%s", (i+1) == pos ? '>' : ' ', romv[i]);
-            if(strlen(romv[i]) >= 40){
-                line[35] = '.';
-                line[36] = '.';
-                line[37] = '.';
-                line[38] = '\0';
-            }
-            printf(line);
-            printf("\n");
-        }
-
-        gfxFlushBuffers();
+		gfxFlushBuffers();
         gfxSwapBuffers();
         gspWaitForVBlank();
 		system_checkPolls();
     }
-
-    strcpy(path, romv[pos-1]);
+	strcpy(path, romv[pos-1]);
+	free(romicons);
     return 1;
 }
 
-int v810_init(char * rom_name) {
+int showMenu(char* path) {
+	int i;
+    u8 pos = 1;
+    int keys;
+	u8 fileSelected = 0;	
+	u8 resumeRom = 0;
+	u8* tlfb;
+	u8* trfb;
+	u8* bfb;
+	char strBuf[16];
+	char strMenu[6][12]=
+		{"Load Rom   ","Scr Color  ","Frame Color","Frameskip  ","Map Keys   ","Exit       "};
+	
+	// Draw splash screen
+    while(aptMainLoop() && !fileSelected && !resumeRom) {
+		tlfb=gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+		trfb=gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
+		bfb=gfxGetFramebuffer(GFX_BOTTOM, GFX_BOTTOM, NULL, NULL);
+		
+		if (tVBOpt.PALMODE == PAL_RED){ 
+			memset(tlfb, 0, 400*240*3);
+			memset(trfb, 0,400*240*3);
+			for(i=2;i<400*240*3;i+=3) {
+				tlfb[i]= lsplash_bin[i];
+				trfb[i]= rsplash_bin[i];
+			}
+		} else {
+			memcpy(tlfb, lsplash_bin, lsplash_bin_size);
+			memcpy(trfb, rsplash_bin, rsplash_bin_size);
+		}
+
+        hidScanInput();
+        keys = hidKeysDown();
+        if((keys & KEY_DUP)&&(pos>1)) {
+            pos--;
+        } else if ((keys & KEY_DDOWN)&&(pos<6)) {
+            pos++;
+        } else if ((keys & KEY_START) || (keys & KEY_A)) {
+            if (pos==1)
+				fileSelected=romSelect(path);
+            else if (pos==2) {
+				if (tVBOpt.PALMODE == PAL_NORMAL) 
+					tVBOpt.PALMODE = PAL_RED;
+				else 
+					tVBOpt.PALMODE = PAL_NORMAL;
+			} else if (pos==3) 
+				border = (border+1)&0x3; // %4
+			else if (pos==4) 
+				tVBOpt.FRMSKIP  = (tVBOpt.FRMSKIP +1)%10;
+			else if (pos==5) 
+				setKeys(); // Keymap settings
+			else if (pos==6) 
+				return 0;
+        } else if ((keys & KEY_B)&&is_running) {
+			resumeRom=1;
+        } else if (keys & KEY_R) {
+            // The splash screen changes to red
+            tVBOpt.PALMODE = PAL_RED;
+        } else if (keys & KEY_L) {
+            tVBOpt.PALMODE = PAL_NORMAL;
+        } else if ((CONFIG_3D_SLIDERSTATE > 0.0f) && !tVBOpt.DSPMODE) {
+            toggle3D();
+        } else if ((CONFIG_3D_SLIDERSTATE == 0.0f) && tVBOpt.DSPMODE) {
+            toggle3D();
+        }
+
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,0, 0, 320, 240, 0x00002f<<(border*8));
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,0, 37, 320, 2, 0xffffff);
+		paint_word(bfb,"[UP]/[DOWN] Move   [A] Select/Change", 16, 15, 255, 255, 255);
+		for (i=1;i<=6;i++) {
+			drawBox(GFX_BOTTOM,GFX_BOTTOM,5, 30*i+25, 90, 20, (i==pos)?0x0000ff<<(border*8):0x888888);
+			paint_word(bfb,strMenu[i-1], 6, 30*i+31, 255, 255, 255);
+		}
+		if (is_running)	paint_word(bfb,"[B] Back to running rom", 110, 61, 255, 255, 255);
+		if (tVBOpt.PALMODE == PAL_NORMAL) 
+			paint_word(bfb,">> WHITE", 110, 91, 255, 255, 255);
+		else 
+			paint_word(bfb,">> RED", 110, 91, 255, 255, 255);
+
+		switch (border){
+			case 0:
+				paint_word(bfb,">> BLUE", 110, 121, 255, 255, 255);
+				break;
+			case 1:
+				paint_word(bfb,">> GREEN", 110, 121, 255, 255, 255);
+				break;
+			case 2:
+				paint_word(bfb,">> RED", 110, 121, 255, 255, 255);
+				break;
+			case 3:
+				paint_word(bfb,">> BLACK", 110, 121, 255, 255, 255);
+				break;
+		}
+		
+		itoa(tVBOpt.FRMSKIP,strBuf);
+		paint_word(bfb,strBuf, 110, 151, 255, 255, 255);
+
+		gfxFlushBuffers();
+        gfxSwapBuffers();
+        gspWaitForVBlank();
+		system_checkPolls();
+	}
+	// Clean both fb groups
+	for(i=0;i<2;i++) {
+		bfb=gfxGetFramebuffer(GFX_BOTTOM, GFX_BOTTOM, NULL, NULL);
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,0, 0, 320, 240, 0x00002f<<(border*8));
+		drawBox(GFX_TOP,GFX_LEFT,0, 0, 400, 240, 0x00002f<<(border*8));
+		drawBox(GFX_TOP,GFX_RIGHT,0, 0, 400, 240, 0x00002f<<(border*8));
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,0, 37, 320, 2, 0xffffff);
+		paint_word(bfb,"Tap touchscreen to pause/change settings", 0, 15, 255, 255, 255);
+		paint_word(bfb,"FPS  :", 10, 50, 255, 255, 255);
+		paint_word(bfb,"Frame:", 10, 58, 255, 255, 255);
+		paint_word(bfb,"PC:", 10, 66, 255, 255, 255);
+		gfxFlushBuffers();
+		gfxSwapBuffers();
+		gspWaitForVBlank();
+	}
+	if(resumeRom) return 2;
+	return 1;
+}
+
+int v810_loadRom(char * rom_name) {
     char ram_name[32];
     unsigned int rom_size = 0;
     unsigned int ram_size = 0;
 
-    // Open VB Rom
-    char full_path[46] = "sdmc:/vb/";
+// Open VB Rom
+    char full_path[46] = "/vb/";
     strcat(full_path, rom_name);
 
     FILE* f = fopen(full_path, "r");
@@ -154,6 +351,7 @@ int v810_init(char * rom_name) {
         rom_size = ftell(f);
         rewind(f);
 
+		if(V810_ROM1.pmemory) free(V810_ROM1.pmemory);
         V810_ROM1.pmemory = malloc(rom_size);
         fread(V810_ROM1.pmemory, 1, rom_size, f);
 
@@ -171,6 +369,40 @@ int v810_init(char * rom_name) {
     V810_ROM1.lowaddr  = 0x07000000;
     V810_ROM1.off = (unsigned)V810_ROM1.pmemory - V810_ROM1.lowaddr;
     // Offset + Lowaddr = pmemory
+
+    // Try to load up the saveRam file...
+    // First, copy the rom path and concatenate .ram to it
+//    strcpy(ram_name, rom_name);
+//    strcat(ram_name, ".ram");
+
+//    V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
+
+    if (!ram_size) {
+        is_sram = 0;
+    } else {
+        is_sram = 1;
+    }
+
+    // Initialize our GameRam tables.... (Cartrige Ram)
+    V810_GAME_RAM.lowaddr  = 0x06000000;
+    V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
+    // Alocate space for it in memory
+    if(!is_sram) {
+		if(V810_GAME_RAM.pmemory) free(V810_GAME_RAM.pmemory);
+		V810_GAME_RAM.pmemory = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
+    }
+    // Offset + Lowaddr = pmemory
+    V810_GAME_RAM.off = (unsigned)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
+
+    if(ram_size > (V810_GAME_RAM.highaddr+1) - V810_GAME_RAM.lowaddr) {
+        ram_size = (V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr;
+    }
+	
+	return 1;
+}
+
+
+int v810_init() {
 
     // Initialize our ram1 tables....
     V810_DISPLAY_RAM.lowaddr  = 0x00000000;
@@ -206,33 +438,6 @@ int v810_init(char * rom_name) {
     V810_VB_RAM.pmemory = (unsigned char *)malloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr) * sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_VB_RAM.off = (unsigned)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
-
-    // Try to load up the saveRam file...
-    // First, copy the rom path and concatenate .ram to it
-//    strcpy(ram_name, rom_name);
-//    strcat(ram_name, ".ram");
-
-//    V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
-
-    if (!ram_size) {
-        is_sram = 0;
-    } else {
-        is_sram = 1;
-    }
-
-    // Initialize our GameRam tables.... (Cartrige Ram)
-    V810_GAME_RAM.lowaddr  = 0x06000000;
-    V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
-    // Alocate space for it in memory
-    if(!is_sram) {
-        V810_GAME_RAM.pmemory = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
-    }
-    // Offset + Lowaddr = pmemory
-    V810_GAME_RAM.off = (unsigned)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
-
-    if(ram_size > (V810_GAME_RAM.highaddr+1) - V810_GAME_RAM.lowaddr) {
-        ram_size = (V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr;
-    }
 
     // Initialize our HCREG tables.... // realy reg01
     V810_HCREG.lowaddr  = 0x02000000;
@@ -272,14 +477,16 @@ int main() {
     int err = 0;
     static int Left = 0;
     int skip = 0;
-
+	u8* bfb;
+    touchPosition touchpos;
+	char buf[16];
+	
     srvInit();
     aptInit();
     hidInit(NULL);
     gfxInit();
     fsInit();
     sdmcInit();
-    consoleInit(GFX_BOTTOM, NULL);
 
     sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
     FSUSER_OpenArchive(NULL, &sdmcArchive);
@@ -293,24 +500,27 @@ int main() {
         gfxSet3D(false);
     }
 
-    char path[64] = "";
-    if (!romSelect(path)) {
-        goto exit;
-    }
-    if (!v810_init(path)) {
+    if (!v810_init()) {
         goto exit;
     }
 
-    clrScreen(GFX_TOP);
+    char path[64] = "";
+    if (!showMenu(path)) {
+        goto exit;
+    }
+    if (!v810_loadRom(path)) {
+        goto exit;
+    }
 	v810_reset();
     v810_trc();
-
     clearCache();
+	is_running=1;
 
     while(aptMainLoop()) {
         uint64_t startTime = osGetTime();
 
         hidScanInput();
+		hidTouchRead(&touchpos);
         int keys = hidKeysHeld();
 
         if ((keys & KEY_START) && (keys & KEY_SELECT))
@@ -321,7 +531,25 @@ int main() {
             toggle3D();
         }
 
-        for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
+		if (touchpos.px>0) {
+			int res = showMenu(path);
+			switch (res) {
+			case 0: 
+				goto exit;
+				break;
+			case 1: 
+				if (!v810_loadRom(path)) 
+					goto exit;
+					v810_reset();
+					v810_trc();
+					clearCache();
+				break;
+			case 2: ;
+			}
+    
+        }
+ 
+		for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             // Trace
             err = v810_trc();
             if (err)
@@ -343,8 +571,14 @@ int main() {
             V810_Dsp_Frame(Left); //Temporary...
         }
 
-        consoleClear();
-        printf("FPS: %.2f\nFrame: %i\nPC: %i", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, (unsigned int) PC);
+		bfb=gfxGetFramebuffer(GFX_BOTTOM, GFX_BOTTOM, NULL, NULL);
+		drawBox(GFX_BOTTOM,GFX_BOTTOM,66, 50, 88, 23, 0x00002f<<(border*8));
+		ftoa((tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)),buf,3);
+		paint_word(bfb,buf, 66, 50, 255, 255, 255);
+		itoa(frame,buf);
+		paint_word(bfb,buf, 66, 58, 255, 255, 255);
+		itoa(PC,buf);
+		paint_word(bfb,buf, 66, 66, 255, 255, 255);
 
         gfxFlushBuffers();
         gfxSwapBuffers();
@@ -381,17 +615,78 @@ void system_checkPolls() {
         else if (status == APP_SLEEPMODE) {
         }
         else if (status == APP_EXITING) {
-
-    V810_DSP_Quit();
-
-    sdmcExit();
-    fsExit();
-    hidExit();
-    gfxExit();
-    aptExit();
-    srvExit();
+			V810_DSP_Quit();
+			sdmcExit();
+			fsExit();
+			hidExit();
+			gfxExit();
+			aptExit();
+			srvExit();
         }
 
     }
+}
 
+int LoadBitmap(char* path, u32 width, u32 height, void* buf, u32 alpha, u32 startx, u32 stride, u32 flags)
+{
+	Handle file;
+	FS_path filePath;
+	filePath.type = PATH_CHAR;
+	filePath.size = strlen(path) + 1;
+	filePath.data = (u8*)path;
+	
+	Result res = FSUSER_OpenFile(NULL, &file, sdmcArchive, filePath, FS_OPEN_READ, FS_ATTRIBUTE_NONE);
+	if (res) 
+		return 0;
+		
+	u32 bytesread;
+	u32 temp;
+	
+	// magic
+	FSFILE_Read(file, &bytesread, 0, (u32*)&temp, 2);
+	if ((u16)temp != 0x4D42)
+	{
+		FSFILE_Close(file);
+		return 0;
+	}
+	
+	// width
+	FSFILE_Read(file, &bytesread, 0x12, (u32*)&temp, 4);
+	if (temp != width)
+	{
+		FSFILE_Close(file);
+		return false;
+	}
+	
+	// height
+	FSFILE_Read(file, &bytesread, 0x16, (u32*)&temp, 4);
+	if (temp != height)
+	{
+		FSFILE_Close(file);
+		return false;
+	}
+	
+	// bitplanes
+	FSFILE_Read(file, &bytesread, 0x1A, (u32*)&temp, 2);
+	if ((u16)temp != 1)
+	{
+		FSFILE_Close(file);
+		return 0;
+	}
+	
+	// bit depth
+	FSFILE_Read(file, &bytesread, 0x1C, (u32*)&temp, 2);
+	if ((u16)temp != 24)
+	{
+		FSFILE_Close(file);
+		return 0;
+	}
+	
+	
+	u32 bufsize = width*height*3;
+	
+	FSFILE_Read(file, &bytesread, 0x36, buf, bufsize);
+	FSFILE_Close(file);
+	
+	return 1;
 }
