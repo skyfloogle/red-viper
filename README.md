@@ -5,12 +5,12 @@ A WIP Virtual Boy emulator for the 3DS. You can see the current progress [here](
 
 Notes from NOP90
 =========
-In this fork I'm working on:
+In this fork (main branch) I'm working on:
 - fixing some emu code that I push to the main repository of mrdanielps
-- making a GUI for setting emu otions
 
 Completed alignment of code to the last version of Reality Boy.
-Created a basic GUI to load roms (with custom icons), pausing games and setting options
+
+NB: There is a branch with a new GUI.
 
 ROM Compatibility
 =======
