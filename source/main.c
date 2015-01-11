@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
 #include <3ds.h>
 
 #include "lsplash_bin.h"
