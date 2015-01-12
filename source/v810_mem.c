@@ -221,6 +221,7 @@ void mem_wbyte(WORD addr, BYTE data) {
         if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
             //~ dtprintf(0,ferr,"\nWrite BYTE  [%08x]:%02x  //SoundRam",addr,data);
             ((BYTE *)(V810_SOUND_RAM.off + addr))[0] = data;
+//			sound_update(addr);
         }
         break;
     case 0x5000000:
@@ -291,6 +292,7 @@ void mem_whword(WORD addr, HWORD data) {
         if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
             //~ dtprintf(0,ferr,"\nWrite HWORD [%08x]:%04x  //SoundRam",addr,data);
             ((HWORD *)(V810_SOUND_RAM.off + addr))[0] = data;
+//			sound_update(addr);
         }
         break;
     case 0x5000000:
@@ -361,6 +363,7 @@ void mem_wword(WORD addr, WORD data) {
         if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
             //~ dtprintf(0,ferr,"\nWrite WORD  [%08x]:%08x  //SoundRam",addr,data);
             ((WORD *)(V810_SOUND_RAM.off + addr))[0] = data;
+//			sound_update(addr);
         }
         break;
     case 0x5000000:
@@ -567,7 +570,7 @@ void vipcreg_wbyte(WORD addr, BYTE data) {
 
 HWORD vipcreg_rhword(WORD addr) {
     addr=(addr&0x0005007E); //Bring it into line
-    addr=(addr|0x0005F800); //make shure all the right bits are on
+    addr=(addr|0x0005F800); //make sure all the right bits are on
     switch(addr) {
     case 0x0005F800:    //INTPND
         //~ dtprintf(4,ferr,"\nRead   HWORD VIP INTPND [%08x]:%04x ",addr,tVIPREG.INTPND);
@@ -714,8 +717,14 @@ void vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F822:    //DPCTRL
         //~ dtprintf(6,ferr,"\nWrite  HWORD VIP DPCTRL [%08x]:%04x ",addr,data);
-        tVIPREG.DPCTRL = data;
+//        tVIPREG.DPCTRL = data; // NOP90
         //tVIPREG.DPSTTS = data;
+            tVIPREG.DPCTRL = data & 0x0703;
+            tVIPREG.DPSTTS = (data & 0x0702) | (tVIPREG.DPSTTS & 0x00FC);
+			if(data & 0x0001) {
+				tVIPREG.INTPND &= 0x6000;
+				tVIPREG.INTENB &= 0x6000;
+			}
         break;
     case 0x0005F824:    //BRTA
         //if (debuglog) dbg_addtrc("\nWrite  HWORD VIP BRTA [%08x]:%04x ",addr,data);
@@ -753,7 +762,7 @@ void vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F842:    //XPCTRL
         //~ dtprintf(6,ferr,"\nWrite  HWORD VIP XPCTRL [%08x]:%04x ",addr,data);
-        tVIPREG.XPCTRL = data;
+
         //#ifdef FBHACK
         //			if (data & 2) tDSPCACHE.DDSPDataWrite = 1;
         //			else {
@@ -762,6 +771,12 @@ void vipcreg_whword(WORD addr, HWORD data) {
         //				if ((tVIPREG.tFrame < 1) || (tVIPREG.tFrame > 2)) tVIPREG.tFrame = 1;
         //			}
         //#endif //FBHACK
+            tVIPREG.XPCTRL = data & 0x1F03;
+			tVIPREG.XPSTTS  = (tVIPREG.XPSTTS & 0x9F1C) | (data & 0x0002);
+			if(data & 0x0001) {
+				tVIPREG.INTPND &= 0x001F;
+				tVIPREG.INTENB &= 0x001F;
+			}
         break;
     case 0x0005F844:    //VER
         //~ dtprintf(8,ferr,"\nWrite  HWORD VIP VER [%08x]:%04x ",addr,data);

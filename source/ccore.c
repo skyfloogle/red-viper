@@ -16,14 +16,14 @@
 #define NEG(n) ((n) >> 31)
 #define POS(n) ((~(n)) >> 31)
 
-//could be done a lot better, later maby!
+//could be done a lot better, later maybe!
 int v810_trc() {
     int lowB, highB, lowB2, highB2; // Up to 4 bytes for instruction (either 16 or 32 bits)
     static int opcode;
     int arg1 = 0;
     int arg2 = 0;
     int arg3 = 0;
-    int i;
+    int tmp2;
     int flags = 0;
     INT64 temp = 0;
     INT64U tempu = 0;
@@ -31,6 +31,9 @@ int v810_trc() {
     WORD msb = 0;
     static unsigned long long clocks;
     static int lastop,lastclock;
+	WORD addr;
+	HWORD h_data;
+	BYTE b_data;
 
     while (1) {
         if (serviceint(clocks)) return 0; //serviceint() returns with 1 when the screen needs to be redrawn
@@ -140,24 +143,20 @@ int v810_trc() {
             }
             break;
 
-        case CMP:
+        case CMP: 
             //bug in CY flag generation
             flags = 0;
-            //temp = P_REG[arg2]-P_REG[arg1];
             temp = (INT64)((INT64U)(P_REG[arg2])-(INT64U)(P_REG[arg1]));
-
             // Set Flags
             if ((long)temp == 0) flags = flags | PSW_Z;
             if ((long)temp & 0x80000000)  flags = flags | PSW_S;
             if(((P_REG[arg2]^P_REG[arg1])&(P_REG[arg2]^temp))&0x80000000) flags = flags | PSW_OV;
-            //if(temp != ((long)temp)) flags = flags | PSW_CY;
-            //if (P_REG[arg2] < P_REG[arg1]) flags = flags | PSW_CY; //FIXES WARIO! Breaks other games
             if ((INT64U)(temp) >> 32) flags = flags | PSW_CY;
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
 
             break;
 
-        case BE:
+        case BE: 
             if(S_REG[PSW]&PSW_Z) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -165,17 +164,16 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case MOVHI:
+        case MOVHI: 
             P_REG[arg3] = (arg1 << 16) + P_REG[arg2];
             break;
 
-        case ADD:
+        case ADD: 
             flags = 0;
             temp = P_REG[arg2] + P_REG[arg1];
             // Set Flags
             if ((long)temp == 0) flags = flags | PSW_Z;
             if ((long)temp & 0x80000000)  flags = flags | PSW_S;
-            //if(temp != ((long)temp)) flags = flags | PSW_CY; // Old
             if (temp < P_REG[arg2]) flags = flags | PSW_CY;
             if(((P_REG[arg2]^(~P_REG[arg1]))&(P_REG[arg2]^temp))&0x80000000) flags = flags | PSW_OV;
 
@@ -183,37 +181,49 @@ int v810_trc() {
             P_REG[arg2] = (long)temp;
             break;
 
-        case BNE:
-            if((S_REG[PSW]&PSW_Z) == PSW_Z) PC += 2;
-            else {
+        case BNE: //same as BNZ  
+            if(!(S_REG[PSW] & PSW_Z)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
-                clocks += 2;
+				clocks += 2;
+            } else {
+                PC +=2;
             }
             break;
 
-        case LD_B:
-            P_REG[arg3] = sign_8(mem_rbyte(sign_16(arg1)+P_REG[arg2]));
-            // Should be 3 clocks when executed alone, 2 when precedes another LD, or 1
-            // when precedes an instruction with many clocks (I'm guessing FP, MUL, DIV, etc)
-            if (lastclock < 6) {
-                if ((lastop == LD_B) || (lastop == LD_H) || (lastop == LD_W)) clocks += 1;
-                else clocks += 2;
-            }
+        case LD_B:  
+			tmp2 = (sign_16(arg1)+P_REG[arg2])&0x07FFFFFF;
+			
+				P_REG[arg3] = sign_8(mem_rbyte(tmp2));
+			
+			//should be 3 clocks when executed alone, 2 when precedes another LD, or 1
+			//when precedes an instruction with many clocks (I'm guessing FP, MUL, DIV, etc)
+			if (lastclock < 6) {
+				if ((lastop == LD_B) || (lastop == LD_H) || (lastop == LD_W)) clocks += 1;
+				else clocks += 2;
+			}
             break;
 
-        case LD_W:
-            P_REG[arg3] = mem_rword((sign_16(arg1)+P_REG[arg2]) & 0xFFFFFFFC);
-            if (lastclock < 6) {
-                if ((lastop == LD_B) || (lastop == LD_H) || (lastop == LD_W)) clocks += 3;
-                else clocks += 4;
-            }
+          case LD_W: 
+			tmp2 = (sign_16(arg1)+P_REG[arg2]) & 0x07FFFFFC;
+			//avoid calling rword for most frequent cases
+			if((tmp2 & 0x7000000) == 0x5000000) {
+				P_REG[arg3] = ((WORD *)(V810_VB_RAM.off + (tmp2 & V810_VB_RAM.highaddr)))[0];
+			} else if((tmp2 & 0x7000000) == 0x7000000) {
+        		P_REG[arg3] = ((WORD *)(V810_ROM1.off + (tmp2 & V810_ROM1.highaddr)))[0];
+			} else 
+				P_REG[arg3] = mem_rword(tmp2);
+			if (lastclock < 6) {
+				if ((lastop == LD_B) || (lastop == LD_H) || (lastop == LD_W)) clocks += 3;
+				else clocks += 4;
+			}
             break;
-
-        case MOV:
+			
+			
+        case MOV: 
             P_REG[arg2] = P_REG[arg1];
             break;
 
-        case SUB:
+        case SUB: 
             flags = 0;
             temp = (INT64)((INT64U)(P_REG[arg2])-(INT64U)(P_REG[arg1]));
 
@@ -228,9 +238,7 @@ int v810_trc() {
             P_REG[arg2] = (long)temp;
             break;
 
-
-
-        case SHL:
+        case SHL: 
             flags = 0;
             val = P_REG[arg1] & 0x1F;
             // Set CY before we destroy the regisrer info....
@@ -242,7 +250,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case SHR:
+        case SHR: 
             flags = 0;
             val = P_REG[arg1] & 0x1F;
             // Set CY before we destroy the regisrer info....
@@ -254,29 +262,29 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case JMP:
+        case JMP: 
             PC = (P_REG[arg1] & 0xFFFFFFFE);
             break;
 
-        case SAR:
-            // Tweaked by frostgiant
-            // Further tweaked by parasyte :)
+          case SAR:  
             flags = 0;
-            val = P_REG[arg1] & 0x1F;	// Lower 5 bits
+            val = P_REG[arg1] & 0x1F;
             msb = P_REG[arg2] & 0x80000000; // Grab the MSB
 
-            // Carry is last bit shifted out
-            if( (val) && ((P_REG[arg2]>>(val-1))&0x01) )
-                flags = flags | PSW_CY;
+			//carry is last bit shifted out
+			//(this should be checked if compiled with a different compiler, as a right shift of a signed number in C isn't explicitly required to be the same as an arithmetic shift)
+			if( (val) && ((((long)P_REG[arg2])>>(val-1))&0x01) ) //needs to be arithmetic shift, so cast as signed
+				flags = flags | PSW_CY;
 
-            for(i = 0; i < val; i++) P_REG[arg2] = (P_REG[arg2] >> 1)|msb; // Append the MSB to the end
-            if (P_REG[arg2] & 0x80000000) flags = flags | PSW_S;
-
+			P_REG[arg2] = ((long)P_REG[arg2]) >> val;
+            
+            // Set Flags
+            if (P_REG[arg2] & 0x80000000)  flags = flags | PSW_S;
             if (!P_REG[arg2]) flags = flags | PSW_Z;
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case MUL:
+        case MUL: 
             flags=0;
             temp = (INT64)P_REG[arg1] * (INT64)P_REG[arg2];
             P_REG[30]   = temp >> 32;
@@ -288,7 +296,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case DIV:
+        case DIV:  
             flags = 0;
             if ((long)P_REG[arg1] == 0) { // Div by zero error
                 // Generate exception!
@@ -298,10 +306,9 @@ int v810_trc() {
                 if ((P_REG[arg2] == 0x80000000) && (P_REG[arg1] == 0xFFFFFFFF)) {
                     flags = flags |PSW_OV;
                     P_REG[30]   = 0;
-                    P_REG[arg2] = 0x80000000;
+                    P_REG[arg2] = 0x7FFFFFFF;//0x80000000;  
                 }
                 else {
-                    //P_REG[30]   = (long)P_REG[arg2] % (long)P_REG[arg1];
                     temp        = (long)P_REG[arg2] % (long)P_REG[arg1];
                     P_REG[arg2] = (long)P_REG[arg2] / (long)P_REG[arg1];
                     if (arg2 != 30) P_REG[30] = temp;
@@ -313,7 +320,7 @@ int v810_trc() {
             }
             break;
 
-        case MULU:
+        case MULU: 
             flags = 0;
             tempu = (INT64U)P_REG[arg1] * (INT64U)P_REG[arg2];
             P_REG[30]   = tempu >> 32;
@@ -325,7 +332,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case DIVU:
+        case DIVU: 
             flags = 0;
             if((WORD)P_REG[arg1] == 0) { // Div by zero error
                 // Generate exception!
@@ -342,7 +349,7 @@ int v810_trc() {
             }
             break;
 
-        case OR:
+        case OR: 
             flags = 0;
             P_REG[arg2] = P_REG[arg1] | P_REG[arg2];
             // Set Flags
@@ -351,7 +358,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case AND:
+        case AND: 
             flags = 0;
             P_REG[arg2] = P_REG[arg1] & P_REG[arg2];
             // Set Flags
@@ -360,7 +367,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case XOR:
+        case XOR: 
             flags = 0;
             P_REG[arg2] = P_REG[arg1] ^ P_REG[arg2];
             // Set Flags
@@ -369,7 +376,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case NOT:
+        case NOT: 
             flags = 0;
             P_REG[arg2] = ~P_REG[arg1];
             // Set Flags
@@ -378,11 +385,11 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case MOV_I:
+        case MOV_I: 
             P_REG[arg2] = sign_5(arg1);
             break;
 
-        case ADD_I:
+        case ADD_I: 
             flags = 0;
             temp = P_REG[arg2] + sign_5(arg1);
             // Set Flags
@@ -395,9 +402,7 @@ int v810_trc() {
             P_REG[arg2] = (WORD)temp;
             break;
 
-
-
-        case CMP_I:
+        case CMP_I:  
             flags = 0;
             temp = (INT64)((INT64U)(P_REG[arg2])-(INT64U)(sign_5(arg1)));
 
@@ -409,7 +414,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case SHL_I:
+        case SHL_I:  
             flags = 0;
             if((arg1)&&(P_REG[arg2] >> (32 - arg1))&0x01) flags = flags | PSW_CY;
             // Set CY before we destroy the register info....
@@ -420,7 +425,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case SHR_I:
+        case SHR_I: 
             flags = 0;
             if ((arg1) && ((P_REG[arg2] >> (arg1-1))&0x01)) flags = flags | PSW_CY;
             // Set CY before we destroy the register info....
@@ -431,40 +436,39 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case EI:
-            S_REG[PSW] = S_REG[PSW] & (0xFFFFFFFF - PSW_ID);
+		  case CLI:
+            S_REG[PSW] = S_REG[PSW] & (0xFFFFEFFF);
             break;
 
-        case SAR_I:
-            // Tweaked by frostgiant
-            // Further tweaks by parasyte :)
+          case SAR_I:
             flags = 0;
             msb = P_REG[arg2] & 0x80000000; // Grab the MSB
 
-            // Carry is last bit shifted out
-            if( (arg1) && ((P_REG[arg2]>>(arg1-1))&0x01) )
-                flags = flags | PSW_CY;
+			//(this should be checked if compiled with a different compiler, as a right shift of a signed number in C isn't explicitly required to be the same as an arithmetic shift)
+			if( (arg1) && ((((long)P_REG[arg2])>>(arg1-1))&0x01) )
+				flags = flags | PSW_CY;
 
-            for(i = 0; i < arg1; i++) P_REG[arg2] = (P_REG[arg2] >> 1) | msb;
-            if (P_REG[arg2] & 0x80000000) flags = flags | PSW_S;
+			P_REG[arg2] = ((long)P_REG[arg2]) >> arg1;
 
+            // Set Flags
+            if (P_REG[arg2] & 0x80000000)  flags = flags | PSW_S;
             if (!P_REG[arg2]) flags = flags | PSW_Z;
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case LDSR:
+        case LDSR: 
             S_REG[(arg1 & 0x1F)] = P_REG[(arg2 & 0x1F)];
             break;
 
-        case STSR:
+        case STSR:  
             P_REG[(arg2 & 0x1F)] = S_REG[(arg1 & 0x1F)];
             break;
 
-        case DI:
-            S_REG[PSW] = S_REG[PSW] | PSW_ID;
+          case SEI:
+            S_REG[PSW] = S_REG[PSW] | 0x00001000;
             break;
 
-        case BV:
+        case BV: 
             if(S_REG[PSW]&PSW_OV) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -472,7 +476,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BL:
+        case BL: 
             if(S_REG[PSW]&PSW_CY) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -480,9 +484,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-
-
-        case BNH:
+        case BNH: 
             if((S_REG[PSW]&PSW_Z)||(S_REG[PSW]&PSW_CY)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -490,7 +492,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BN:
+        case BN: 
             if(S_REG[PSW]&PSW_S) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -498,12 +500,12 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BR:
+        case BR: 
             PC += (sign_9(arg1) & 0xFFFFFFFE);
             clocks += 2;
             break;
 
-        case BLT:
+        case BLT: 
             if((!!(S_REG[PSW]&PSW_S))^(!!(S_REG[PSW]&PSW_OV))) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -511,7 +513,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BLE:
+        case BLE: 
             if(((!!(S_REG[PSW]&PSW_S))^(!!(S_REG[PSW]&PSW_OV)))||(S_REG[PSW]&PSW_Z)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -519,7 +521,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BNV:
+        case BNV: 
             if(!(S_REG[PSW]&PSW_OV)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -527,7 +529,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BNL:
+        case BNL: 
             if(!(S_REG[PSW]&PSW_CY)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -535,7 +537,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BH:
+        case BH: 
             if(!((S_REG[PSW]&PSW_Z)||(S_REG[PSW]&PSW_CY))) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -543,7 +545,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BP:
+        case BP:  
             if(!(S_REG[PSW] & PSW_S)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -551,12 +553,12 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case NOP:
+        case NOP:  
             //Its a NOP do nothing =)
             PC += 2;
             break;
 
-        case BGE:
+        case BGE:  
             if(!((!!(S_REG[PSW]&PSW_S))^(!!(S_REG[PSW]&PSW_OV)))) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -564,7 +566,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BGT:
+        case BGT:  
             if(!(((!!(S_REG[PSW]&PSW_S))^(!!(S_REG[PSW]&PSW_OV)))||(S_REG[PSW]&PSW_Z))) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -572,35 +574,33 @@ int v810_trc() {
             else PC +=2;
             break;
 
-        case JR:
-            //if(arg1 & 0x02000000) arg1 +=0xFC000000;
+        case JR:  
             PC += (sign_26(arg1) & 0xFFFFFFFE);
             break;
 
-        case JAL:
+        case JAL:  
             P_REG[31]=PC+4;
             PC += (sign_26(arg1) & 0xFFFFFFFE);
             break;
 
-        case MOVEA:
+        case MOVEA:  
             P_REG[arg3] = P_REG[arg2] + sign_16(arg1);
             break;
 
-        case ADDI:
+        case ADDI:  
             flags = 0;
             temp = P_REG[arg2] + sign_16(arg1);
             // Set Flags
             if ((long)temp == 0) flags = flags | PSW_Z;
             if ((long)temp & 0x80000000)  flags = flags | PSW_S;
             if (((P_REG[arg2]^(~sign_16(arg1)))&(P_REG[arg2]^temp))&0x80000000) flags = flags | PSW_OV;
-            //if (temp != ((long)temp)) flags = flags | PSW_CY;
             if (temp < P_REG[arg2]) flags = flags | PSW_CY;
 
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             P_REG[arg3] = (long)temp;
             break;
 
-        case ORI:
+        case ORI:  
             flags = 0;
             P_REG[arg3] = arg1 | P_REG[arg2];
             // Set Flags
@@ -609,7 +609,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case ANDI:
+        case ANDI:  
             flags = 0;
             P_REG[arg3] = (arg1 & P_REG[arg2]);
             // Set Flags
@@ -617,7 +617,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case XORI:
+        case XORI:  
             flags = 0;
             P_REG[arg3] = arg1 ^ P_REG[arg2];
             // Set Flags
@@ -626,7 +626,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case RETI:
+        case RETI:  
             //Return from Trap/Interupt
             if(S_REG[PSW] & PSW_NP) { // Read the FE Reg
                 PC = S_REG[FEPC];
@@ -638,7 +638,7 @@ int v810_trc() {
             }
             break;
 
-        case MULI:
+        case MULI:  
             temp = (INT64)P_REG[arg1] * (INT64)sign_16(arg3);
             P_REG[arg2] = (long)temp;
             // Set Flags
@@ -649,27 +649,36 @@ int v810_trc() {
             }
             break;
 
-        case ST_B:
-            mem_wbyte(sign_16(arg2)+P_REG[arg3],P_REG[arg1]&0xFF);
-            // Clocks should be 2 clocks when follows another ST
-            if (lastop == ST_B) clocks += 1;
+          case ST_B:  
+            addr=sign_16(arg2)+P_REG[arg3];
+			b_data=P_REG[arg1]&0xFF;
+			mem_wbyte(addr,b_data);
+
+			//clocks should be 2 clocks when follows another ST
+			if (lastop == ST_B) clocks += 1;
             break;
 
-        case ST_H:
-            mem_whword((sign_16(arg2)+P_REG[arg3])&0xFFFFFFFE,P_REG[arg1]&0xFFFF);
-            if (lastop == ST_H) clocks += 1;
+          case ST_H:  
+            addr=(sign_16(arg2)+P_REG[arg3])&0xFFFFFFFE;
+			h_data=P_REG[arg1]&0xFFFF;
+			mem_whword(addr,h_data);
+			if (lastop == ST_H) clocks += 1;
             break;
 
-        case ST_W:
-            mem_wword((sign_16(arg2)+P_REG[arg3])&0xFFFFFFFC,P_REG[arg1]);
-            if (lastop == ST_W) clocks += 3;
+          case ST_W:  
+			tmp2 = (sign_16(arg2)+P_REG[arg3]) & 0x07FFFFFC;
+			if((tmp2 & 0x7000000) == 0x5000000) {
+		        ((WORD *)(V810_VB_RAM.off + (tmp2 & V810_VB_RAM.highaddr)))[0] = P_REG[arg1];
+			} else 
+	            mem_wword(tmp2,P_REG[arg1]);
+			if (lastop == ST_W) clocks += 3;
             break;
 
-        case IN_B:
+        case IN_B:  
             P_REG[arg3] = port_rbyte(sign_16(arg1)+P_REG[arg2]);
             break;
 
-        case IN_H:
+        case IN_H:  
             P_REG[arg3] = port_rhword((sign_16(arg1)+P_REG[arg2]) & 0xFFFFFFFE);
             break;
 
@@ -677,30 +686,30 @@ int v810_trc() {
             P_REG[arg3] = port_rword((sign_16(arg1)+P_REG[arg2]) & 0xFFFFFFFC);
             break;
 
-        case OUT_B:
+        case OUT_B:  
             port_wbyte(sign_16(arg2)+P_REG[arg3],P_REG[arg1]&0xFF);
             //clocks should be 2 when follows another OUT
             if (lastop == OUT_B) clocks += 1;
             break;
 
-        case OUT_H:
+        case OUT_H:  
             port_whword((sign_16(arg2)+P_REG[arg3])&0xFFFFFFFE,P_REG[arg1]&0xFFFF);
             if (lastop == OUT_H) clocks += 1;
             break;
 
-        case OUT_W:
+        case OUT_W: 
             port_wword((sign_16(arg2)+P_REG[arg3])&0xFFFFFFFC,P_REG[arg1]);
             if (lastop == OUT_W) clocks += 3;
             break;
 
-        case FPP:
+        case FPP: 
             if(arg3 > 15) {
             } else {
                (*fpsuboptable[arg3].func)(arg1, arg2, 0);
             }
             break;
 
-        case BSTR:
+        case BSTR: 
             if(arg2 > 15) {
             } else {
                 //dtprintf(6,ferr,"\n%08lx\t%s, $%d", PC, bssuboptable[arg2].opname,arg1);
@@ -710,7 +719,7 @@ int v810_trc() {
 
             //The never-to-rarely used instructions
 
-        case SETF:
+        case SETF: 
             //SETF may contain bugs
             P_REG[arg2] = 0;
             switch (arg1 & 0x0F) {

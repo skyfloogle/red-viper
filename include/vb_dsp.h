@@ -44,10 +44,11 @@
 typedef RGB PALETTE[PAL_SIZE];
 
 typedef struct {
+    char            BPLTS;  // Pallete to be used (0-3)
     bool            HFLP;   // Horizontal flip
     bool            VFLP;   // Vertical flip
+	bool			UNDEF;
     unsigned short  BCA;    // Chr# to be displayed 0-2047
-    char            BPLTS;  // Pallete to be used (0-3)
 } VB_BGMAP;
 
 // Structure defining one Obj from the Obj Table
@@ -61,6 +62,7 @@ typedef struct {
     int             JY;     // Vertical Offset (-7-223)
     bool            JHFLP;  // Horizontal Flip
     bool            JVFLP;  // Vertical Flip
+	bool			UNDEF;
     unsigned short  JCA;    // Chr# to be displayd 0-2047
     char            JPLTS;  // Palet to be Used (0-3)
 } VB_OBJ;
@@ -75,6 +77,8 @@ typedef struct {
     BYTE    SCY;        // V-Size of BG Map(0-3)
     bool    OVER;       // Whatever???
     bool    END;        // End of Worlds (Dont bother going any further...)
+	bool	Unknown1;	//Whatever???
+	bool	Unknown2;	//Whatever???
     BYTE    BGMAP_BASE; // Determins the segment that SCX and SCY are based in (0-15)
 
     int     GX;         // H-Ofset Screen (0-383)
@@ -87,8 +91,23 @@ typedef struct {
     HWORD   H;          // Height of BG to be cut out
     HWORD   PARAM_BASE; // base of paramater table
     HWORD   OVERP_CHR;  // Whatever???
-    //HWORD	Dont_Write[5]; // Unused 5 HWORDS of data
+    HWORD	Dont_Write[5]; // Unused 5 HWORDS of data
 } VB_WORLD;
+
+typedef struct {
+	float pb_y;
+	int paralax;
+	float pd_y;
+	float pa;
+	float pc;
+	int u1;
+	int u2;
+	int u3;
+} AFFINE_MAP;
+
+//grab one entry from the affine param table based ont the
+//current y offset
+void getAffine(int y, int pBase,AFFINE_MAP* AFN_MP);
 
 
 // Struct to encapsulate all the Cache Stuff... I know its not necesary
@@ -107,6 +126,8 @@ typedef struct {
     BITMAP  *ObjCacheBMP[4];        // Obj Cache Bitmaps
     bool    BGCacheInvalid[14];     // Object Cache Is invalid
     BITMAP  *BGCacheBMP[14];        // BGMap Cache Bitmaps
+	bool		CharCacheInvalid;
+	BITMAP	*CharacterCache;		//Character chace
     bool    DDSPDataWrite;          // Direct DisplayDraws True
 } VB_DSPCACHE;
 

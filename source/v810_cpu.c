@@ -100,7 +100,7 @@ const BYTE opcycle[0x50] = {
     0x01,0x01,0x01,0x01,0x01,0x01,0x03,0x01,0x0F,0x0A,0x05,0x00,0x01,0x01,0x03,0x00, //EI, HALT, LDSR, STSR, DI, BSTR -- Unknown clocks
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x01,0x03,0x03,0x01,0x01,0x01,0x01,
     0x01,0x01,0x0D,0x01,0x01,0x01,0x00,0x01,0x03,0x03,0x1A,0x05,0x01,0x01,0x00,0x01, //these are based on 16-bit bus!! (should be 32-bit?)
-    0x01,0x01,0x01,0x01,0x01,0x03,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01
+	0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01 
 };
 
 // Reinitialize the defaults in the CPU
@@ -137,9 +137,9 @@ int serviceint(unsigned long long cycles) {
     */
 
     //Controller Int
-    if ((!(tHReg.SCR & 0x80)) && (V810_RControll()&0xFFFC)) {
-        v810_int(0);
-    }
+//    if ((!(tHReg.SCR & 0x80)) && (V810_RControll()&0xFFFC)) {
+//        v810_int(0);
+//    }
 
     if (tHReg.TCR & 0x01) { // Timer Enabled
         if ((cycles-lasttime) > tHReg.tTRC) {
@@ -152,7 +152,6 @@ int serviceint(unsigned long long cycles) {
                 tHReg.TCR |= 0x02; //Zero Status
                 if (tHReg.TCR & 0x08) {
                     v810_int(1);
-                    //tVIPREG.INTPND |= 0x8000; //(tVIPREG.INTENB&0x8000);
                 }
             }
         }
@@ -172,29 +171,22 @@ int serviceint(unsigned long long cycles) {
             else gamestart = 0;
             if (tVIPREG.INTENB&(0x0010|gamestart)) v810_int(4); //FRAMESTART | GAMESTART
             tVIPREG.INTPND |= (0x0010|gamestart); //(tVIPREG.INTENB&0x0018);
-            //break; //time to display screen
-#ifndef FBHACK
             return 1;
-#endif //FBHACK
         }
-        if (((cycles-lastfb) > 0x0500) && (!(tVIPREG.XPSTTS&0x8000))) tVIPREG.XPSTTS |= 0x8000;
-        if ((cycles-lastfb) > 0x0A00) {
-            tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
-            rowcount++;
-            lastfb=cycles;
-#ifdef FBHACK
-            if (rowcount == 1) {
-                if (tVIPREG.XPCTRL & 0x0002) tDSPCACHE.DDSPDataWrite = 1;
-                return 1; //here? or earlier?
-            }
-#endif //FBHACK
-        }
+
+		if ((cycles-lastfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000))) 
+			tVIPREG.XPSTTS |= 0x8000;
+		if (cycles-lastfb > 0x0A00) {
+			tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
+			rowcount++;
+			lastfb=cycles;
+		}
+
         if ((rowcount == 0x12) && ((cycles-lastfb) > 0x670)) tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0xD0:0xC4));
     }
     else {
         if ((rowcount == 0x1C) && ((cycles-lastfb) > 0x10000)) { //0x100000
             tVIPREG.XPSTTS = (0x1B00|(tVIPREG.XPCTRL & 0x02));
-            //tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0xD0:0xC4));
 
             //Vertical Force hack!
             if ((tVBOpt.CRC32 == 0x9E9B8B92) || //(J) Good
@@ -220,7 +212,7 @@ int serviceint(unsigned long long cycles) {
             rowcount++;
         }
         else if ((rowcount == 0x1F) && ((cycles-lastfb) > 0x28000)) { //0x1FAD8
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0x48:0x60));
+	    tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
             if (tVIPREG.INTENB&0x2000) v810_int(4); //SBHIT
             tVIPREG.INTPND |= 0x2000;
             rowcount++;
@@ -232,13 +224,9 @@ int serviceint(unsigned long long cycles) {
         else if ((rowcount == 0x21) && ((cycles-lastfb) > 0x42000)) {
             tmp1=0;
             rowcount=0;
-#ifdef FBHACK
-            if (tVIPREG.XPCTRL & 0x0002) tVIPREG.tFrame++;
-#else
             tVIPREG.tFrame++;
-#endif //FBHACK
+
             if ((tVIPREG.tFrame < 1) || (tVIPREG.tFrame > 2)) tVIPREG.tFrame = 1;
-            //dtprintf(10,ferr, "\ntVIPREG.tFrame = %d",tVIPREG.tFrame);
             tVIPREG.XPSTTS = (0x1B00|(tVIPREG.tFrame<<2)|(tVIPREG.XPCTRL & 0x02));
             lastfb=cycles;
         }
@@ -256,9 +244,6 @@ void v810_int(WORD iNum) {
     if((S_REG[PSW] & PSW_EP)) return; // Exception pending?
     if((S_REG[PSW] & PSW_ID)) return; // Interupt disabled
     if(iNum < ((S_REG[PSW] & PSW_IA)>>16)) return; // Interupt to low on the chain
-
-    //dtprintf(6,ferr,"\nInt %x",iNum);
-    //~ if (debuglog) dbg_intlog(iNum);
 
     //Ready to Generate the Interupts
     S_REG[EIPC] = PC;
@@ -280,8 +265,6 @@ void v810_int(WORD iNum) {
 void v810_exp(WORD iNum, WORD eCode) {
     if (iNum > 0x0F) return;  // Invalid Exception number...
 
-    //if(!S_REG[PSW]&PSW_ID) return;
-    //if(iNum < ((S_REG[PSW] & PSW_IA)>>16)) return; // Interupt to low on the mask level....
     if ((S_REG[PSW] & PSW_IA)>>16) return; //Interrupt Pending
 
     eCode &= 0xFFFF;
@@ -292,17 +275,16 @@ void v810_exp(WORD iNum, WORD eCode) {
         S_REG[ECR] = (eCode << 16); //Exception Code, dont get it???
         S_REG[PSW] = S_REG[PSW] | PSW_NP;
         S_REG[PSW] = S_REG[PSW] | PSW_ID;
-        //S_REG[PSW] = S_REG[PSW] | (((iNum+1) & 0x0f) << 16); //Set the Interupt status
 
         PC = 0xFFFFFFD0;
         return;
     } else {		// Regular Exception
-        S_REG[EIPC] = PC;
+
+	S_REG[EIPC] = PC;
         S_REG[EIPSW] = S_REG[PSW];
         S_REG[ECR] = eCode; //Exception Code, dont get it???
         S_REG[PSW] = S_REG[PSW] | PSW_EP;
         S_REG[PSW] = S_REG[PSW] | PSW_ID;
-        //S_REG[PSW] = S_REG[PSW] | (((iNum+1) & 0x0f) << 16); //Set the Interupt status
 
         PC = 0xFFFFFF00 | (iNum << 4);
         return;
