@@ -717,8 +717,6 @@ void vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F822:    //DPCTRL
         //~ dtprintf(6,ferr,"\nWrite  HWORD VIP DPCTRL [%08x]:%04x ",addr,data);
-        //        tVIPREG.DPCTRL = data; // NOP90
-        //tVIPREG.DPSTTS = data;
         tVIPREG.DPCTRL = data & 0x0703;
         tVIPREG.DPSTTS = (data & 0x0702) | (tVIPREG.DPSTTS & 0x00FC);
         if(data & 0x0001) {
@@ -758,19 +756,9 @@ void vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F840:    //XPSTTS
         //~ dtprintf(6,ferr,"\nWrite  HWORD VIP XPSTTS [%08x]:%04x ",addr,data);
-        //tVIPREG.XPSTTS = data; //******************************************************************
         break;
     case 0x0005F842:    //XPCTRL
         //~ dtprintf(6,ferr,"\nWrite  HWORD VIP XPCTRL [%08x]:%04x ",addr,data);
-
-        //#ifdef FBHACK
-        //			if (data & 2) tDSPCACHE.DDSPDataWrite = 1;
-        //			else {
-        //				tDSPCACHE.DDSPDataWrite = 0;
-        //				tVIPREG.tFrame++;
-        //				if ((tVIPREG.tFrame < 1) || (tVIPREG.tFrame > 2)) tVIPREG.tFrame = 1;
-        //			}
-        //#endif //FBHACK
         tVIPREG.XPCTRL = data & 0x1F03;
         tVIPREG.XPSTTS  = (tVIPREG.XPSTTS & 0x9F1C) | (data & 0x0002);
         if(data & 0x0001) {
