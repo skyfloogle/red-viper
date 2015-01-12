@@ -206,7 +206,7 @@ void ins_notbsu  (int arg1, int arg2, int arg3) {
     set_bitstr(tmp,dst,dstoff,len);
 }
 
-//FPU SubOpcodes  // Updated - NOP90
+//FPU SubOpcodes  
 void ins_cmpf_s  (int arg1, int arg2, int arg3) {  
     int flags = 0; // Set Flags, OV set to Zero
 	float fTemp=(*((float *)&P_REG[arg1])) - (*((float *)&P_REG[arg2]));
