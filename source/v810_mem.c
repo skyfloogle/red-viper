@@ -762,7 +762,7 @@ void vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F842:    //XPCTRL
         //~ dtprintf(6,ferr,"\nWrite  HWORD VIP XPCTRL [%08x]:%04x ",addr,data);
-//        tVIPREG.XPCTRL = data;  // NOP90
+
         //#ifdef FBHACK
         //			if (data & 2) tDSPCACHE.DDSPDataWrite = 1;
         //			else {
