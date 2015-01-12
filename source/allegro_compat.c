@@ -33,7 +33,7 @@ void masked_stretch_blit(BITMAP *src, BITMAP *dst, int src_x, int src_y, int src
 
 
 BITMAP *create_bitmap(int w, int h) {
-// From Allegro - NOP90
+// From Allegro
    int nr_pointers;
    int padding;
    int i;
@@ -48,8 +48,6 @@ BITMAP *create_bitmap(int w, int h) {
     * read 4 bytes instead of 3.
     */
    padding = 1;
-
-// End of part added from Allegto - NOP90
 
    BITMAP *bm = (BITMAP*)malloc(sizeof(BITMAP) + (sizeof(char *) * nr_pointers)); // Mod by NOP90 according to Allegro source
 
