@@ -24,7 +24,6 @@ int v810_trc() {
     int arg2 = 0;
     int arg3 = 0;
     int tmp2;
-//    int i;  // not used after updates - NOP90
     int flags = 0;
     INT64 temp = 0;
     INT64U tempu = 0;
@@ -144,7 +143,7 @@ int v810_trc() {
             }
             break;
 
-        case CMP:  //OK - NOP90
+        case CMP: 
             //bug in CY flag generation
             flags = 0;
             temp = (INT64)((INT64U)(P_REG[arg2])-(INT64U)(P_REG[arg1]));
@@ -157,7 +156,7 @@ int v810_trc() {
 
             break;
 
-        case BE: //OK - NOP90
+        case BE: 
             if(S_REG[PSW]&PSW_Z) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -165,11 +164,11 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case MOVHI: //OK - NOP90
+        case MOVHI: 
             P_REG[arg3] = (arg1 << 16) + P_REG[arg2];
             break;
 
-        case ADD:  // OK - NOP90
+        case ADD: 
             flags = 0;
             temp = P_REG[arg2] + P_REG[arg1];
             // Set Flags
@@ -181,16 +180,8 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             P_REG[arg2] = (long)temp;
             break;
-/* Updated from Reality Boy - NOP90
-        case BNE:
-            if((S_REG[PSW]&PSW_Z) == PSW_Z) PC += 2;
-            else {
-                PC += (sign_9(arg1) & 0xFFFFFFFE);
-                clocks += 2;
-            }
-            break;
-*/ 
-          case BNE: //same as BNZ  // tested OK - NOP90
+
+        case BNE: //same as BNZ  
             if(!(S_REG[PSW] & PSW_Z)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
 				clocks += 2;
@@ -199,18 +190,7 @@ int v810_trc() {
             }
             break;
 
-/* Updated from Reality Boy - NOP90
-        case LD_B:
-            P_REG[arg3] = sign_8(mem_rbyte(sign_16(arg1)+P_REG[arg2]));
-            // Should be 3 clocks when executed alone, 2 when precedes another LD, or 1
-            // when precedes an instruction with many clocks (I'm guessing FP, MUL, DIV, etc)
-            if (lastclock < 6) {
-                if ((lastop == LD_B) || (lastop == LD_H) || (lastop == LD_W)) clocks += 1;
-                else clocks += 2;
-            }
-            break;
-*/
-        case LD_B:  // tested OK - NOP90
+        case LD_B:  
 			tmp2 = (sign_16(arg1)+P_REG[arg2])&0x07FFFFFF;
 			
 				P_REG[arg3] = sign_8(mem_rbyte(tmp2));
@@ -223,16 +203,7 @@ int v810_trc() {
 			}
             break;
 
-/* Updated from Reality Boy - NOP90			
-        case LD_W: 
-            P_REG[arg3] = mem_rword((sign_16(arg1)+P_REG[arg2]) & 0xFFFFFFFC);
-            if (lastclock < 6) {
-                if ((lastop == LD_B) || (lastop == LD_H) || (lastop == LD_W)) clocks += 3;
-                else clocks += 4;
-            }
-            break;
-*/
-          case LD_W: // tested OK - NOP90
+          case LD_W: 
 			tmp2 = (sign_16(arg1)+P_REG[arg2]) & 0x07FFFFFC;
 			//avoid calling rword for most frequent cases
 			if((tmp2 & 0x7000000) == 0x5000000) {
@@ -248,11 +219,11 @@ int v810_trc() {
             break;
 			
 			
-        case MOV: //OK - NOP90
+        case MOV: 
             P_REG[arg2] = P_REG[arg1];
             break;
 
-        case SUB: //OK - NOP90
+        case SUB: 
             flags = 0;
             temp = (INT64)((INT64U)(P_REG[arg2])-(INT64U)(P_REG[arg1]));
 
@@ -267,7 +238,7 @@ int v810_trc() {
             P_REG[arg2] = (long)temp;
             break;
 
-        case SHL: //OK - NOP90
+        case SHL: 
             flags = 0;
             val = P_REG[arg1] & 0x1F;
             // Set CY before we destroy the regisrer info....
@@ -279,7 +250,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case SHR: //OK - NOP90
+        case SHR: 
             flags = 0;
             val = P_REG[arg1] & 0x1F;
             // Set CY before we destroy the regisrer info....
@@ -291,30 +262,11 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case JMP: //OK - NOP90
+        case JMP: 
             PC = (P_REG[arg1] & 0xFFFFFFFE);
             break;
 
-/* Updated from Reality Boy - NOP90
-			case SAR:  // To be checked and updated - NOP90
-            // Tweaked by frostgiant
-            // Further tweaked by parasyte :)
-            flags = 0;
-            val = P_REG[arg1] & 0x1F;	// Lower 5 bits
-            msb = P_REG[arg2] & 0x80000000; // Grab the MSB
-
-            // Carry is last bit shifted out
-            if( (val) && ((P_REG[arg2]>>(val-1))&0x01) )
-                flags = flags | PSW_CY;
-
-            for(i = 0; i < val; i++) P_REG[arg2] = (P_REG[arg2] >> 1)|msb; // Append the MSB to the end
-            if (P_REG[arg2] & 0x80000000) flags = flags | PSW_S;
-
-            if (!P_REG[arg2]) flags = flags | PSW_Z;
-            S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
-            break;
-*/
-          case SAR:  // tested OK - NOP90
+          case SAR:  
             flags = 0;
             val = P_REG[arg1] & 0x1F;
             msb = P_REG[arg2] & 0x80000000; // Grab the MSB
@@ -332,7 +284,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case MUL: //OK - NOP90
+        case MUL: 
             flags=0;
             temp = (INT64)P_REG[arg1] * (INT64)P_REG[arg2];
             P_REG[30]   = temp >> 32;
@@ -344,7 +296,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case DIV:  // tested OK - NOP90
+        case DIV:  
             flags = 0;
             if ((long)P_REG[arg1] == 0) { // Div by zero error
                 // Generate exception!
@@ -354,7 +306,7 @@ int v810_trc() {
                 if ((P_REG[arg2] == 0x80000000) && (P_REG[arg1] == 0xFFFFFFFF)) {
                     flags = flags |PSW_OV;
                     P_REG[30]   = 0;
-                    P_REG[arg2] = 0x7FFFFFFF;//0x80000000;  //From Reality Boy - NOP90
+                    P_REG[arg2] = 0x7FFFFFFF;//0x80000000;  
                 }
                 else {
                     temp        = (long)P_REG[arg2] % (long)P_REG[arg1];
@@ -368,7 +320,7 @@ int v810_trc() {
             }
             break;
 
-        case MULU: // OK - NOP90
+        case MULU: 
             flags = 0;
             tempu = (INT64U)P_REG[arg1] * (INT64U)P_REG[arg2];
             P_REG[30]   = tempu >> 32;
@@ -380,7 +332,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case DIVU: // OK - NOP90
+        case DIVU: 
             flags = 0;
             if((WORD)P_REG[arg1] == 0) { // Div by zero error
                 // Generate exception!
@@ -397,7 +349,7 @@ int v810_trc() {
             }
             break;
 
-        case OR: // OK - NOP90
+        case OR: 
             flags = 0;
             P_REG[arg2] = P_REG[arg1] | P_REG[arg2];
             // Set Flags
@@ -406,7 +358,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case AND: // OK - NOP90
+        case AND: 
             flags = 0;
             P_REG[arg2] = P_REG[arg1] & P_REG[arg2];
             // Set Flags
@@ -415,7 +367,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case XOR: // OK - NOP90
+        case XOR: 
             flags = 0;
             P_REG[arg2] = P_REG[arg1] ^ P_REG[arg2];
             // Set Flags
@@ -424,7 +376,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case NOT: // OK - NOP90
+        case NOT: 
             flags = 0;
             P_REG[arg2] = ~P_REG[arg1];
             // Set Flags
@@ -433,11 +385,11 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case MOV_I: // OK - NOP90
+        case MOV_I: 
             P_REG[arg2] = sign_5(arg1);
             break;
 
-        case ADD_I: // OK - NOP90
+        case ADD_I: 
             flags = 0;
             temp = P_REG[arg2] + sign_5(arg1);
             // Set Flags
@@ -450,7 +402,7 @@ int v810_trc() {
             P_REG[arg2] = (WORD)temp;
             break;
 
-        case CMP_I:  // OK - NOP90
+        case CMP_I:  
             flags = 0;
             temp = (INT64)((INT64U)(P_REG[arg2])-(INT64U)(sign_5(arg1)));
 
@@ -462,7 +414,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case SHL_I:  // OK - NOP90
+        case SHL_I:  
             flags = 0;
             if((arg1)&&(P_REG[arg2] >> (32 - arg1))&0x01) flags = flags | PSW_CY;
             // Set CY before we destroy the register info....
@@ -473,7 +425,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case SHR_I: // OK - NOP90
+        case SHR_I: 
             flags = 0;
             if ((arg1) && ((P_REG[arg2] >> (arg1-1))&0x01)) flags = flags | PSW_CY;
             // Set CY before we destroy the register info....
@@ -484,33 +436,10 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-/* Updated from Reality Boy - NOP90
-			case CLI:  
-            S_REG[PSW] = S_REG[PSW] & (0xFFFFFFFF - PSW_ID);
-            break;
-*/
 		  case CLI:
             S_REG[PSW] = S_REG[PSW] & (0xFFFFEFFF);
             break;
 
-/* Updated from Reality Boy - NOP90
-			case SAR_I:  
-            // Tweaked by frostgiant
-            // Further tweaks by parasyte :)
-            flags = 0;
-            msb = P_REG[arg2] & 0x80000000; // Grab the MSB
-
-            // Carry is last bit shifted out
-            if( (arg1) && ((P_REG[arg2]>>(arg1-1))&0x01) )
-                flags = flags | PSW_CY;
-
-            for(i = 0; i < arg1; i++) P_REG[arg2] = (P_REG[arg2] >> 1) | msb;
-            if (P_REG[arg2] & 0x80000000) flags = flags | PSW_S;
-
-            if (!P_REG[arg2]) flags = flags | PSW_Z;
-            S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
-            break;
-*/
           case SAR_I:
             flags = 0;
             msb = P_REG[arg2] & 0x80000000; // Grab the MSB
@@ -527,24 +456,19 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
             break;
 
-        case LDSR: // OK - NOP90
+        case LDSR: 
             S_REG[(arg1 & 0x1F)] = P_REG[(arg2 & 0x1F)];
             break;
 
-        case STSR:  // OK - NOP90
+        case STSR:  
             P_REG[(arg2 & 0x1F)] = S_REG[(arg1 & 0x1F)];
             break;
 
-/* Updated from Reality Boy - NOP90
-			case SEI:  // To be checked and updated - NOP90
-            S_REG[PSW] = S_REG[PSW] | PSW_ID;
-            break;
-*/
           case SEI:
             S_REG[PSW] = S_REG[PSW] | 0x00001000;
             break;
 
-        case BV: // OK - NOP90
+        case BV: 
             if(S_REG[PSW]&PSW_OV) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -552,7 +476,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BL: // OK - NOP90
+        case BL: 
             if(S_REG[PSW]&PSW_CY) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -560,7 +484,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BNH: // OK - NOP90
+        case BNH: 
             if((S_REG[PSW]&PSW_Z)||(S_REG[PSW]&PSW_CY)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -568,7 +492,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BN: // OK - NOP90
+        case BN: 
             if(S_REG[PSW]&PSW_S) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -576,12 +500,12 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BR: // OK - NOP90
+        case BR: 
             PC += (sign_9(arg1) & 0xFFFFFFFE);
             clocks += 2;
             break;
 
-        case BLT: // OK - NOP90
+        case BLT: 
             if((!!(S_REG[PSW]&PSW_S))^(!!(S_REG[PSW]&PSW_OV))) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -589,7 +513,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BLE: // OK - NOP90
+        case BLE: 
             if(((!!(S_REG[PSW]&PSW_S))^(!!(S_REG[PSW]&PSW_OV)))||(S_REG[PSW]&PSW_Z)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -597,7 +521,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BNV: // OK - NOP90
+        case BNV: 
             if(!(S_REG[PSW]&PSW_OV)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -605,7 +529,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BNL: // OK - NOP90
+        case BNL: 
             if(!(S_REG[PSW]&PSW_CY)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -613,7 +537,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BH: // OK - NOP90
+        case BH: 
             if(!((S_REG[PSW]&PSW_Z)||(S_REG[PSW]&PSW_CY))) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -621,7 +545,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BP:  // OK - NOP90
+        case BP:  
             if(!(S_REG[PSW] & PSW_S)) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -629,12 +553,12 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case NOP:  // OK - NOP90
+        case NOP:  
             //Its a NOP do nothing =)
             PC += 2;
             break;
 
-        case BGE:  // OK - NOP90
+        case BGE:  
             if(!((!!(S_REG[PSW]&PSW_S))^(!!(S_REG[PSW]&PSW_OV)))) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -642,7 +566,7 @@ int v810_trc() {
             else PC += 2;
             break;
 
-        case BGT:  // OK - NOP90
+        case BGT:  
             if(!(((!!(S_REG[PSW]&PSW_S))^(!!(S_REG[PSW]&PSW_OV)))||(S_REG[PSW]&PSW_Z))) {
                 PC += (sign_9(arg1) & 0xFFFFFFFE);
                 clocks += 2;
@@ -650,21 +574,20 @@ int v810_trc() {
             else PC +=2;
             break;
 
-        case JR:  // OK - NOP90
-            //if(arg1 & 0x02000000) arg1 +=0xFC000000;
+        case JR:  
             PC += (sign_26(arg1) & 0xFFFFFFFE);
             break;
 
-        case JAL:  // OK - NOP90
+        case JAL:  
             P_REG[31]=PC+4;
             PC += (sign_26(arg1) & 0xFFFFFFFE);
             break;
 
-        case MOVEA:  // OK - NOP90
+        case MOVEA:  
             P_REG[arg3] = P_REG[arg2] + sign_16(arg1);
             break;
 
-        case ADDI:  // OK - NOP90
+        case ADDI:  
             flags = 0;
             temp = P_REG[arg2] + sign_16(arg1);
             // Set Flags
@@ -677,7 +600,7 @@ int v810_trc() {
             P_REG[arg3] = (long)temp;
             break;
 
-        case ORI:  // OK - NOP90
+        case ORI:  
             flags = 0;
             P_REG[arg3] = arg1 | P_REG[arg2];
             // Set Flags
@@ -686,7 +609,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case ANDI:  // OK - NOP90
+        case ANDI:  
             flags = 0;
             P_REG[arg3] = (arg1 & P_REG[arg2]);
             // Set Flags
@@ -694,7 +617,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case XORI:  // OK - NOP90
+        case XORI:  
             flags = 0;
             P_REG[arg3] = arg1 ^ P_REG[arg2];
             // Set Flags
@@ -703,7 +626,7 @@ int v810_trc() {
             S_REG[PSW] = (S_REG[PSW] & (0xFFFFFFF0|PSW_CY))|flags;
             break;
 
-        case RETI:  // OK - NOP90
+        case RETI:  
             //Return from Trap/Interupt
             if(S_REG[PSW] & PSW_NP) { // Read the FE Reg
                 PC = S_REG[FEPC];
@@ -715,7 +638,7 @@ int v810_trc() {
             }
             break;
 
-        case MULI:  // To be checked - NOP90
+        case MULI:  
             temp = (INT64)P_REG[arg1] * (INT64)sign_16(arg3);
             P_REG[arg2] = (long)temp;
             // Set Flags
@@ -726,14 +649,7 @@ int v810_trc() {
             }
             break;
 
-/* Updated from Reality Boy - NOP90
-			case ST_B:
-            mem_wbyte(sign_16(arg2)+P_REG[arg3],P_REG[arg1]&0xFF);
-            // Clocks should be 2 clocks when follows another ST
-            if (lastop == ST_B) clocks += 1;
-            break;
-*/
-          case ST_B:  // tested OK - NOP90
+          case ST_B:  
             addr=sign_16(arg2)+P_REG[arg3];
 			b_data=P_REG[arg1]&0xFF;
 			mem_wbyte(addr,b_data);
@@ -742,26 +658,14 @@ int v810_trc() {
 			if (lastop == ST_B) clocks += 1;
             break;
 
-/* Updated from Reality Boy - NOP90
-        case ST_H:
-            mem_whword((sign_16(arg2)+P_REG[arg3])&0xFFFFFFFE,P_REG[arg1]&0xFFFF);
-            if (lastop == ST_H) clocks += 1;
-            break;
-*/
-          case ST_H:  // tested OK - NOP90
+          case ST_H:  
             addr=(sign_16(arg2)+P_REG[arg3])&0xFFFFFFFE;
 			h_data=P_REG[arg1]&0xFFFF;
 			mem_whword(addr,h_data);
 			if (lastop == ST_H) clocks += 1;
             break;
 
-/* Updated from Reality Boy - NOP90
-        case ST_W:
-            mem_wword((sign_16(arg2)+P_REG[arg3])&0xFFFFFFFC,P_REG[arg1]);
-            if (lastop == ST_W) clocks += 3;
-            break;
-*/
-          case ST_W:  // tested OK - NOP90
+          case ST_W:  
 			tmp2 = (sign_16(arg2)+P_REG[arg3]) & 0x07FFFFFC;
 			if((tmp2 & 0x7000000) == 0x5000000) {
 		        ((WORD *)(V810_VB_RAM.off + (tmp2 & V810_VB_RAM.highaddr)))[0] = P_REG[arg1];
@@ -770,11 +674,11 @@ int v810_trc() {
 			if (lastop == ST_W) clocks += 3;
             break;
 
-        case IN_B:  // OK - NOP90
+        case IN_B:  
             P_REG[arg3] = port_rbyte(sign_16(arg1)+P_REG[arg2]);
             break;
 
-        case IN_H:  // OK - NOP90
+        case IN_H:  
             P_REG[arg3] = port_rhword((sign_16(arg1)+P_REG[arg2]) & 0xFFFFFFFE);
             break;
 
@@ -782,30 +686,30 @@ int v810_trc() {
             P_REG[arg3] = port_rword((sign_16(arg1)+P_REG[arg2]) & 0xFFFFFFFC);
             break;
 
-        case OUT_B:  // OK - NOP90
+        case OUT_B:  
             port_wbyte(sign_16(arg2)+P_REG[arg3],P_REG[arg1]&0xFF);
             //clocks should be 2 when follows another OUT
             if (lastop == OUT_B) clocks += 1;
             break;
 
-        case OUT_H:  // OK - NOP90
+        case OUT_H:  
             port_whword((sign_16(arg2)+P_REG[arg3])&0xFFFFFFFE,P_REG[arg1]&0xFFFF);
             if (lastop == OUT_H) clocks += 1;
             break;
 
-        case OUT_W:  // OK - NOP90
+        case OUT_W: 
             port_wword((sign_16(arg2)+P_REG[arg3])&0xFFFFFFFC,P_REG[arg1]);
             if (lastop == OUT_W) clocks += 3;
             break;
 
-        case FPP:  // To be checked and updated - NOP90
+        case FPP: 
             if(arg3 > 15) {
             } else {
                (*fpsuboptable[arg3].func)(arg1, arg2, 0);
             }
             break;
 
-        case BSTR:  // To be checked and updated - NOP90
+        case BSTR: 
             if(arg2 > 15) {
             } else {
                 //dtprintf(6,ferr,"\n%08lx\t%s, $%d", PC, bssuboptable[arg2].opname,arg1);
@@ -815,7 +719,7 @@ int v810_trc() {
 
             //The never-to-rarely used instructions
 
-        case SETF:  // Ok - NOP90
+        case SETF: 
             //SETF may contain bugs
             P_REG[arg2] = 0;
             switch (arg1 & 0x0F) {
