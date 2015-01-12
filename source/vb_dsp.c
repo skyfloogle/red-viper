@@ -654,17 +654,17 @@ void Obj2World(VB_OBJ OBJ_Buff[], BITMAP *wPlane, int spt_num, int img_n) {
         }
     }
 
-        if (tDSPCACHE.ObjPALMod > 0) { // If cache is invalid
-//            for (i = 0; i < 4; i++) { //NOP90
-            for (i = 3; i >=0; i--) {
-                tDSPCACHE.ObjPAL[i][0]=((tVIPREG.JPLT[i]   )&3)+1; // First color is transparent, offset by 1
-                tDSPCACHE.ObjPAL[i][1]=((tVIPREG.JPLT[i]>>2)&3)+1;
-                tDSPCACHE.ObjPAL[i][2]=((tVIPREG.JPLT[i]>>4)&3)+1;
-                tDSPCACHE.ObjPAL[i][3]=((tVIPREG.JPLT[i]>>6)&3)+1;
-                tDSPCACHE.ObjPAL[i][0]=0; // Fill in the transparent char
-            }
-            tDSPCACHE.ObjPALMod=0;
+    if (tDSPCACHE.ObjPALMod > 0) { // If cache is invalid
+        //            for (i = 0; i < 4; i++) { //NOP90
+        for (i = 3; i >=0; i--) {
+            tDSPCACHE.ObjPAL[i][0]=((tVIPREG.JPLT[i]   )&3)+1; // First color is transparent, offset by 1
+            tDSPCACHE.ObjPAL[i][1]=((tVIPREG.JPLT[i]>>2)&3)+1;
+            tDSPCACHE.ObjPAL[i][2]=((tVIPREG.JPLT[i]>>4)&3)+1;
+            tDSPCACHE.ObjPAL[i][3]=((tVIPREG.JPLT[i]>>6)&3)+1;
+            tDSPCACHE.ObjPAL[i][0]=0; // Fill in the transparent char
         }
+        tDSPCACHE.ObjPALMod=0;
+    }
     for (i = tVIPREG.SPT[spt_num]&0x3FF; i >= end; i--) { // No!!!
         if ((img_n == 0) && (OBJ_Buff[i].JLON)) { // Default, no paralax
             fchr2sprite(OBJ_Buff[i].JCA, tSprt,OBJ_Buff[i].JHFLP,OBJ_Buff[i].JVFLP,tDSPCACHE.ObjPAL[(OBJ_Buff[i].JPLTS&0x3)]); //Pass in the palet...
@@ -705,22 +705,9 @@ void DSP2World(int num, BITMAP *wPlane) {
             if ((chr >> 12) & 3) wPlane->line[y+6][x] = ((chr >> 12) & 3)+1;
             if ((chr >> 14) & 3) wPlane->line[y+7][x] = ((chr >> 14) & 3)+1;
 
-/* NOP90
-#ifdef FBHACK
-            if (tDSPCACHE.DDSPDataWrite) ((HWORD *)(offset))[0] = 0;
-#else
-            // Clear it, if needed
-//            if (tVIPREG.XPCTRL&2) ((HWORD *)(offset))[0] = 0;  //nop90 - From reality boy
-#endif //FBHACK
-*/
             offset+=2;
         }
     }
-/* NOP90
-#ifdef FBHACK
-    tDSPCACHE.DDSPDataWrite = 0;
-#endif //FBHACK
-*/
 }
 
 // Returns a WORLD_buf Buffer VB_WORLD WORLD_Buff[32]
@@ -755,8 +742,8 @@ void getWorld(HWORD num, VB_WORLD WORLD_Buff[]) {
     WORLD_Buff[num].MP = (int)sign_16(((HWORD *)(offset))[5]);
     WORLD_Buff[num].MY = (int)sign_16(((HWORD *)(offset))[6]);
 
-    WORLD_Buff[num].W = (int)sign_16(((HWORD *)(offset))[7]); 
-    WORLD_Buff[num].H = (int)sign_16(((HWORD *)(offset))[8]); 
+    WORLD_Buff[num].W = (int)sign_16(((HWORD *)(offset))[7]);
+    WORLD_Buff[num].H = (int)sign_16(((HWORD *)(offset))[8]);
 
     WORLD_Buff[num].PARAM_BASE = (((HWORD *)(offset))[9]);
     WORLD_Buff[num].OVERP_CHR = ((HWORD *)(offset))[10];
@@ -772,36 +759,36 @@ void getAffine(int y, int pBase, AFFINE_MAP* AFN_MP) {
     WORD offset;
     int t_int[4];
 
-	offset = ((pBase*2)+BGMAP_OFFSET)&0xFFFFFFFE;
-	offset += y<<4; //(y*16)
+    offset = ((pBase*2)+BGMAP_OFFSET)&0xFFFFFFFE;
+    offset += y<<4; //(y*16)
 
-	//grab the afine entrys
-	t_int[0]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off  ))[0])&0xFFFF);
-	AFN_MP[0].paralax  = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+2))[0])&0xFFFF);
-	t_int[1]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+4))[0])&0xFFFF);
-	t_int[2]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+6))[0])&0xFFFF);
-	t_int[3]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+8))[0])&0xFFFF);
-	//unknown (overplain character?)
-	AFN_MP[0].u1    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+10))[0])&0xFFFF);
-	AFN_MP[0].u2    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+12))[0])&0xFFFF);
-	AFN_MP[0].u3    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+14))[0])&0xFFFF);
-	//convert to float, avoiding divide by zero errors
-	//*****Fixme, convert this to fixed point math
-	AFN_MP[0].pb_y  = (float)(t_int[0]/8.0);
-	AFN_MP[0].pd_y  = (float)(t_int[1]/8.0);
-	AFN_MP[0].pa    = (float)(t_int[2]/512.0);
-	AFN_MP[0].pc    = (float)(t_int[3]/512.0);
+    //grab the afine entrys
+    t_int[0]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off  ))[0])&0xFFFF);
+    AFN_MP[0].paralax  = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+2))[0])&0xFFFF);
+    t_int[1]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+4))[0])&0xFFFF);
+    t_int[2]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+6))[0])&0xFFFF);
+    t_int[3]     = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+8))[0])&0xFFFF);
+    //unknown (overplain character?)
+    AFN_MP[0].u1    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+10))[0])&0xFFFF);
+    AFN_MP[0].u2    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+12))[0])&0xFFFF);
+    AFN_MP[0].u3    = (int) sign_16((((HWORD *)(offset+V810_DISPLAY_RAM.off+14))[0])&0xFFFF);
+    //convert to float, avoiding divide by zero errors
+    //*****Fixme, convert this to fixed point math
+    AFN_MP[0].pb_y  = (float)(t_int[0]/8.0);
+    AFN_MP[0].pd_y  = (float)(t_int[1]/8.0);
+    AFN_MP[0].pa    = (float)(t_int[2]/512.0);
+    AFN_MP[0].pc    = (float)(t_int[3]/512.0);
 }
 
 //Return H-Bias offset for current line
 int getHBiasOffset(int line, int base, int dsp) {
     WORD offset;
-	if(line<0) return 0;
+    if(line<0) return 0;
 
     offset = (base*2)+BGMAP_OFFSET+V810_DISPLAY_RAM.off;
-    if(dsp==2) offset += 2; // Shift by 2 if right screen 
+    if(dsp==2) offset += 2; // Shift by 2 if right screen
 
-	return (((short *)(offset))[(line<<1)]);
+    return (((short *)(offset))[(line<<1)]);
 }
 
 // Grab the overplane char from the defined BGMap buffers
@@ -809,57 +796,57 @@ void getOverChar(int index, BITMAP *wPlane) {
     VB_BGMAP BGMap_Buff;
     HWORD thword;
 
-	//setup palette
-	updateBGMPalette();
+    //setup palette
+    updateBGMPalette();
 
-	WORD offset = BGMAP_OFFSET+(index<<1)+V810_DISPLAY_RAM.off;
+    WORD offset = BGMAP_OFFSET+(index<<1)+V810_DISPLAY_RAM.off;
 
-	//grab bgmap entry at offset
-    thword = ((HWORD *)(offset))[0]; 
+    //grab bgmap entry at offset
+    thword = ((HWORD *)(offset))[0];
     BGMap_Buff.BCA   = thword & 0x7FF;
     BGMap_Buff.VFLP  = (thword >> 12) & 0x1;
     BGMap_Buff.HFLP  = (thword >> 13) & 0x1;
     BGMap_Buff.BPLTS = (thword >> 14) & 0x3;
 
-	//grab our character
+    //grab our character
     vRenderCharacter(BGMap_Buff.BCA, *wPlane->line,0,0,
-			wPlane->w, BGMap_Buff.HFLP, BGMap_Buff.VFLP, tDSPCACHE.BgmPAL[(BGMap_Buff.BPLTS&0x3)]);
+                     wPlane->w, BGMap_Buff.HFLP, BGMap_Buff.VFLP, tDSPCACHE.BgmPAL[(BGMap_Buff.BPLTS&0x3)]);
 
 }
 
 #define ROUND_F(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
 
 void drawNormalBGMap(VB_WORLD *WBuff, BITMAP *wPlane, 
-							  int img_n, int GPX, int MPX) {
-	int scr_x, scr_y;
-	int w,h;
-	int bgc_x, bgc_y;
-	int bgm_x, bgm_y;
+                     int img_n, int GPX, int MPX) {
+    int scr_x, scr_y;
+    int w,h;
+    int bgc_x, bgc_y;
+    int bgm_x, bgm_y;
     int bgm, bgm_base;
     int curscr,max;
     int ny, nx;
-	int tPix;
-	int h_off = 0;
-	AFFINE_MAP tAFN_MP;
-	BITMAP *ovrChr = NULL;
+    int tPix;
+    int h_off = 0;
+    AFFINE_MAP tAFN_MP;
+    BITMAP *ovrChr = NULL;
 
     bgm_base = WBuff->BGMAP_BASE;
 
     nx = (1<<WBuff->SCX);
     ny = (1<<WBuff->SCY);
 
-	
-	//only 8 bgmaps at a time.
-	if((nx*ny)>8)
-		nx =8/ny;
 
-	//force bgm_base to align properly
-	bgm_base &=~(nx*ny-1);
+    //only 8 bgmaps at a time.
+    if((nx*ny)>8)
+        nx =8/ny;
 
-	//refresh any invalidated bgmaps
-	max = nx*ny+bgm_base;
-	//only 14 bgmaps avalaible
-	if(max>14) max = 14;
+    //force bgm_base to align properly
+    bgm_base &=~(nx*ny-1);
+
+    //refresh any invalidated bgmaps
+    max = nx*ny+bgm_base;
+    //only 14 bgmaps avalaible
+    if(max>14) max = 14;
 
     //Grab the BGMaps, we can have several so grab them all...
     for(curscr = bgm_base; curscr<max; curscr++) {
@@ -869,121 +856,121 @@ void drawNormalBGMap(VB_WORLD *WBuff, BITMAP *wPlane,
         }
     }
 
-	//grab our overplane char if needed
-	if(WBuff->OVER) {
-		ovrChr = create_bitmap(8,8);
-		getOverChar(WBuff->OVERP_CHR, ovrChr);
-	}
+    //grab our overplane char if needed
+    if(WBuff->OVER) {
+        ovrChr = create_bitmap(8,8);
+        getOverChar(WBuff->OVERP_CHR, ovrChr);
+    }
 
-	//height is fixed to a minimum of 8 pixels and maximum of 1024
-	h = WBuff->H;
-	if(h<7) h=7;
-	if(h>1024) h=1024;
+    //height is fixed to a minimum of 8 pixels and maximum of 1024
+    h = WBuff->H;
+    if(h<7) h=7;
+    if(h>1024) h=1024;
 
-	//widths in the negative direction grow in increments of 8
-	//clip to +/- 1024 pixles
-	w = WBuff->W;
-	if(w<0) w &=~7;
-	if(w<-1024) w=-1024;
-	if(w>1023)  w=1023;
+    //widths in the negative direction grow in increments of 8
+    //clip to +/- 1024 pixles
+    w = WBuff->W;
+    if(w<0) w &=~7;
+    if(w<-1024) w=-1024;
+    if(w>1023)  w=1023;
 
-	//for every pixel on the display
-	for(scr_y=0;scr_y<224;scr_y++) {
+    //for every pixel on the display
+    for(scr_y=0;scr_y<224;scr_y++) {
 
-		//Handle GY
-		//GY does not wrap in the positive
-		if(scr_y < WBuff->GY) continue;
-		bgc_y = (scr_y - WBuff->GY)&0x03FF;
+        //Handle GY
+        //GY does not wrap in the positive
+        if(scr_y < WBuff->GY) continue;
+        bgc_y = (scr_y - WBuff->GY)&0x03FF;
 
-		//don't draw outside of the box
-		if(bgc_y>h) continue;
+        //don't draw outside of the box
+        if(bgc_y>h) continue;
 
-		if(WBuff->BGM==1) {  //H-Bias
-			h_off = getHBiasOffset(bgc_y,WBuff->PARAM_BASE,img_n);
-		} else if(WBuff->BGM==2) {  //Affine mode, grab affine struct
-			//grab the afine entry
-			getAffine(bgc_y, WBuff->PARAM_BASE, &tAFN_MP);
-			
-			//if no scale, do nothing.
-			if(!tAFN_MP.pa) 
-				continue;
+        if(WBuff->BGM==1) {  //H-Bias
+            h_off = getHBiasOffset(bgc_y,WBuff->PARAM_BASE,img_n);
+        } else if(WBuff->BGM==2) {  //Affine mode, grab affine struct
+            //grab the afine entry
+            getAffine(bgc_y, WBuff->PARAM_BASE, &tAFN_MP);
 
-			//take care of paralax
-			//MPX = 0;
-			if(img_n==2)
-				MPX = tAFN_MP.paralax;
-			else //if(img_n==1) //-Pat (fixes alignment when running 2D)
-				MPX = -tAFN_MP.paralax;
-		}
+            //if no scale, do nothing.
+            if(!tAFN_MP.pa)
+                continue;
 
-		for(scr_x=0;scr_x<384;scr_x++) {
-			
-			//Handle GX
-			//mask to 1024 pixles
-			bgc_x = (scr_x - (WBuff->GX+GPX)) & 0x3FF; //tAFN_MP.paralax
+            //take care of paralax
+            //MPX = 0;
+            if(img_n==2)
+                MPX = tAFN_MP.paralax;
+            else //if(img_n==1) //-Pat (fixes alignment when running 2D)
+                MPX = -tAFN_MP.paralax;
+        }
 
-			//handle negative widths
-			if(w<0) {
-				if(bgc_x<(w & 0x03FF)) continue;
-			} else {
-				if(bgc_x>w) continue;
-			}
-		
-			if(WBuff->BGM==2) {  //Affine mode
-				//*****FixMe, convert this to fixed point math
-				//bgm_x  = ROUND_F(tAFN_MP.pb_y+((bgc_x+MPX)*tAFN_MP.pa));
-				//bgm_y  = ROUND_F(tAFN_MP.pd_y+((bgc_x+MPX)*tAFN_MP.pc));
-				//-Pat (Affine MP Parallax handled funny - Dev Manual 27.2)
-				if (MPX>=0)
-				{
-					bgm_x  = ROUND_F(tAFN_MP.pb_y+((bgc_x+MPX)*tAFN_MP.pa));
-					bgm_y  = ROUND_F(tAFN_MP.pd_y+((bgc_x+MPX)*tAFN_MP.pc));
-				}
-				else
-				{
-					bgm_x  = ROUND_F(tAFN_MP.pb_y+((bgc_x)*tAFN_MP.pa));
-					bgm_y  = ROUND_F(tAFN_MP.pd_y+((bgc_x)*tAFN_MP.pc));
-				}
-			} else {
-				//Handle MX/MY
-				bgm_x = WBuff->MX + bgc_x + MPX + h_off;
-				bgm_y = WBuff->MY + bgc_y;
-			}
+        for(scr_x=0;scr_x<384;scr_x++) {
 
-			//time for over_plane char?
-			if(WBuff->OVER && ((bgm_x & ~((nx<<9)-1))||(bgm_y & ~((ny<<9)-1)))) {
-				bgm_x &= 7;
-				bgm_y &= 7;
+            //Handle GX
+            //mask to 1024 pixles
+            bgc_x = (scr_x - (WBuff->GX+GPX)) & 0x3FF; //tAFN_MP.paralax
 
-				tPix = ovrChr->line[bgm_y][bgm_x];
-			} else {
-				//mask x and y
-				bgm_x &= ((nx<<9)-1);
-				bgm_y &= ((ny<<9)-1);
+            //handle negative widths
+            if(w<0) {
+                if(bgc_x<(w & 0x03FF)) continue;
+            } else {
+                if(bgc_x>w) continue;
+            }
 
-				//find BGMap to cut out of
-				bgm = bgm_base+(bgm_x>>9)+(bgm_y>>9)*nx;
+            if(WBuff->BGM==2) {  //Affine mode
+                //*****FixMe, convert this to fixed point math
+                //bgm_x  = ROUND_F(tAFN_MP.pb_y+((bgc_x+MPX)*tAFN_MP.pa));
+                //bgm_y  = ROUND_F(tAFN_MP.pd_y+((bgc_x+MPX)*tAFN_MP.pc));
+                //-Pat (Affine MP Parallax handled funny - Dev Manual 27.2)
+                if (MPX>=0)
+                {
+                    bgm_x  = ROUND_F(tAFN_MP.pb_y+((bgc_x+MPX)*tAFN_MP.pa));
+                    bgm_y  = ROUND_F(tAFN_MP.pd_y+((bgc_x+MPX)*tAFN_MP.pc));
+                }
+                else
+                {
+                    bgm_x  = ROUND_F(tAFN_MP.pb_y+((bgc_x)*tAFN_MP.pa));
+                    bgm_y  = ROUND_F(tAFN_MP.pd_y+((bgc_x)*tAFN_MP.pc));
+                }
+            } else {
+                //Handle MX/MY
+                bgm_x = WBuff->MX + bgc_x + MPX + h_off;
+                bgm_y = WBuff->MY + bgc_y;
+            }
 
-				//if past last BGMap, drop it.
-				if(bgm>=14) continue;
+            //time for over_plane char?
+            if(WBuff->OVER && ((bgm_x & ~((nx<<9)-1))||(bgm_y & ~((ny<<9)-1)))) {
+                bgm_x &= 7;
+                bgm_y &= 7;
 
-				bgm_x &=511;
-				bgm_y &=511;
+                tPix = ovrChr->line[bgm_y][bgm_x];
+            } else {
+                //mask x and y
+                bgm_x &= ((nx<<9)-1);
+                bgm_y &= ((ny<<9)-1);
 
-				//draw our pixel
-				tPix = tDSPCACHE.BGCacheBMP[bgm]->line[bgm_y][bgm_x];
-			}
-		
-			//dont draw if transparent
-			if(!tPix) continue;
-		
-			//and place on dest bitmap
-			wPlane->line[scr_y+7][scr_x+7] = tPix;
-		}
-	}
+                //find BGMap to cut out of
+                bgm = bgm_base+(bgm_x>>9)+(bgm_y>>9)*nx;
 
-	if(ovrChr)
-		destroy_bitmap(ovrChr);
+                //if past last BGMap, drop it.
+                if(bgm>=14) continue;
+
+                bgm_x &=511;
+                bgm_y &=511;
+
+                //draw our pixel
+                tPix = tDSPCACHE.BGCacheBMP[bgm]->line[bgm_y][bgm_x];
+            }
+
+            //dont draw if transparent
+            if(!tPix) continue;
+
+            //and place on dest bitmap
+            wPlane->line[scr_y+7][scr_x+7] = tPix;
+        }
+    }
+
+    if(ovrChr)
+        destroy_bitmap(ovrChr);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -994,9 +981,9 @@ void drawNormalBGMap(VB_WORLD *WBuff, BITMAP *wPlane,
 //img_n = 0   - left display, no paralax
 //img_n = 1,2 - left or right displays with paralax
 void World2Display(int wNum, VB_WORLD WORLD_Buff[], BITMAP *wPlane, int img_n) {
-//    int bgm;
-//    int curscr,max;
-//    int ny, nx;
+    //    int bgm;
+    //    int curscr,max;
+    //    int ny, nx;
     int GPX = 0;//Global Paralax setings...
     int MPX = 0;
 
@@ -1007,7 +994,7 @@ void World2Display(int wNum, VB_WORLD WORLD_Buff[], BITMAP *wPlane, int img_n) {
     if(img_n==2) {
         GPX = WORLD_Buff[wNum].GP;//Global Paralax setings...
         MPX = WORLD_Buff[wNum].MP;
-//    }else {//if(img_n==1) { -Pat (2D mode should still have Parallax on eye shown, right?)
+        //    }else {//if(img_n==1) { -Pat (2D mode should still have Parallax on eye shown, right?)
     }else if(img_n==1) { // NOP90
         GPX = -WORLD_Buff[wNum].GP;//Global Paralax settings...
         MPX = -WORLD_Buff[wNum].MP;
@@ -1015,12 +1002,12 @@ void World2Display(int wNum, VB_WORLD WORLD_Buff[], BITMAP *wPlane, int img_n) {
 
     if(WORLD_Buff[wNum].BGM==3) {  //Obj
         if(tDSPCACHE.ObjDataCacheInvalid==1) { //Cash the Obj Info...
-            vGetAllObjects(tDSPCACHE.ObjDataCache); 
+            vGetAllObjects(tDSPCACHE.ObjDataCache);
             tDSPCACHE.ObjDataCacheInvalid=0;
         }
         //Dont mess around with sub bitmaps, just blast it to the world plane
         Obj2World(tDSPCACHE.ObjDataCache, wPlane,CurObj,img_n);
-        CurObj = (CurObj-1)&3; //(CurObj-1)%4;   
+        CurObj = (CurObj-1)&3; //(CurObj-1)%4;
     } else {
         drawNormalBGMap( &WORLD_Buff[wNum], wPlane, img_n, GPX, MPX);
     }

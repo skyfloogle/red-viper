@@ -68,8 +68,8 @@ int romSelect(char* path) {
 
     while(aptMainLoop()) {
         // Draw splash screen
-//        memcpy(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL), lsplash_bin, lsplash_bin_size);
-//        memcpy(gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL), rsplash_bin, rsplash_bin_size);
+        // memcpy(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL), lsplash_bin, lsplash_bin_size);
+        // memcpy(gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL), rsplash_bin, rsplash_bin_size);
 
         hidScanInput();
         keys = hidKeysDown();
@@ -194,10 +194,10 @@ int v810_init(char * rom_name) {
 
     // Try to load up the saveRam file...
     // First, copy the rom path and concatenate .ram to it
-//    strcpy(ram_name, rom_name);
-//    strcat(ram_name, ".ram");
+    // strcpy(ram_name, rom_name);
+    // strcat(ram_name, ".ram");
 
-//    V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
+    // V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
 
     if (!ram_size) {
         is_sram = 0;
@@ -261,7 +261,7 @@ int main() {
     srvInit();
     aptInit();
     hidInit(NULL);
-    gfxInit();
+    gfxInitDefault();
     fsInit();
     sdmcInit();
     consoleInit(GFX_BOTTOM, NULL);
@@ -323,7 +323,7 @@ int main() {
         }
 
         consoleClear();
-        printf("FPS: %.2f\nFrame: %i\nPC: %i", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, (unsigned int) PC);
+        printf("FPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, (unsigned int) PC);
 
         gfxFlushBuffers();
         gfxSwapBuffers();

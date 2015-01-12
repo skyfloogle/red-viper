@@ -100,7 +100,7 @@ const BYTE opcycle[0x50] = {
     0x01,0x01,0x01,0x01,0x01,0x01,0x03,0x01,0x0F,0x0A,0x05,0x00,0x01,0x01,0x03,0x00, //EI, HALT, LDSR, STSR, DI, BSTR -- Unknown clocks
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x01,0x03,0x03,0x01,0x01,0x01,0x01,
     0x01,0x01,0x0D,0x01,0x01,0x01,0x00,0x01,0x03,0x03,0x1A,0x05,0x01,0x01,0x00,0x01, //these are based on 16-bit bus!! (should be 32-bit?)
-	0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01 
+    0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01
 };
 
 // Reinitialize the defaults in the CPU
@@ -137,9 +137,9 @@ int serviceint(unsigned long long cycles) {
     */
 
     //Controller Int
-//    if ((!(tHReg.SCR & 0x80)) && (V810_RControll()&0xFFFC)) {
-//        v810_int(0);
-//    }
+    //    if ((!(tHReg.SCR & 0x80)) && (V810_RControll()&0xFFFC)) {
+    //        v810_int(0);
+    //    }
 
     if (tHReg.TCR & 0x01) { // Timer Enabled
         if ((cycles-lasttime) > tHReg.tTRC) {
@@ -174,13 +174,13 @@ int serviceint(unsigned long long cycles) {
             return 1;
         }
 
-		if ((cycles-lastfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000))) 
-			tVIPREG.XPSTTS |= 0x8000;
-		if (cycles-lastfb > 0x0A00) {
-			tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
-			rowcount++;
-			lastfb=cycles;
-		}
+        if ((cycles-lastfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000)))
+            tVIPREG.XPSTTS |= 0x8000;
+        if (cycles-lastfb > 0x0A00) {
+            tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
+            rowcount++;
+            lastfb=cycles;
+        }
 
         if ((rowcount == 0x12) && ((cycles-lastfb) > 0x670)) tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0xD0:0xC4));
     }
@@ -212,7 +212,7 @@ int serviceint(unsigned long long cycles) {
             rowcount++;
         }
         else if ((rowcount == 0x1F) && ((cycles-lastfb) > 0x28000)) { //0x1FAD8
-	    tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
+            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
             if (tVIPREG.INTENB&0x2000) v810_int(4); //SBHIT
             tVIPREG.INTPND |= 0x2000;
             rowcount++;
@@ -280,7 +280,7 @@ void v810_exp(WORD iNum, WORD eCode) {
         return;
     } else {		// Regular Exception
 
-	S_REG[EIPC] = PC;
+        S_REG[EIPC] = PC;
         S_REG[EIPSW] = S_REG[PSW];
         S_REG[ECR] = eCode; //Exception Code, dont get it???
         S_REG[PSW] = S_REG[PSW] | PSW_EP;
