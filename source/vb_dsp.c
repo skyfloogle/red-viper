@@ -755,12 +755,9 @@ void getWorld(HWORD num, VB_WORLD WORLD_Buff[]) {
     WORLD_Buff[num].MP = (int)sign_16(((HWORD *)(offset))[5]);
     WORLD_Buff[num].MY = (int)sign_16(((HWORD *)(offset))[6]);
 
-    WORLD_Buff[num].W = (int)sign_16(((HWORD *)(offset))[7]); //NOP90
-    WORLD_Buff[num].H = (int)sign_16(((HWORD *)(offset))[8]); //NOP90
+    WORLD_Buff[num].W = (int)sign_16(((HWORD *)(offset))[7]); 
+    WORLD_Buff[num].H = (int)sign_16(((HWORD *)(offset))[8]); 
 
-//    WORLD_Buff[num].W = (int)sign_16(((HWORD *)(offset))[7]+1);
-//    WORLD_Buff[num].H = (int)sign_16(((HWORD *)(offset))[8]+1);
-	
     WORLD_Buff[num].PARAM_BASE = (((HWORD *)(offset))[9]);
     WORLD_Buff[num].OVERP_CHR = ((HWORD *)(offset))[10];
 
@@ -861,7 +858,7 @@ void drawNormalBGMap(VB_WORLD *WBuff, BITMAP *wPlane,
 
 	//refresh any invalidated bgmaps
 	max = nx*ny+bgm_base;
-	//only 14 bgmaps avalible
+	//only 14 bgmaps avalaible
 	if(max>14) max = 14;
 
     //Grab the BGMaps, we can have several so grab them all...
