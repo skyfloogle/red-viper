@@ -62,6 +62,41 @@
 #define COND_GE 14
 #define COND_GT 15
 
+typedef struct {
+    WORD* phys_loc;
+    WORD virt_loc;
+    WORD size;
+    WORD cycles;
+    BYTE jmp_reg;
+    // We can use 7 registers at a time, r4-r10, and r11 will have the address
+    // of v810_state
+    // reg_map[0] would have the VB register that is mapped to r4
+    BYTE reg_map[7];
+    WORD end_pc; // The address of the last instruction in the block
+} exec_block;
+
+typedef struct {
+    WORD* location;
+    BYTE opcode;
+    WORD arg1, arg2, arg3;
+} inst;
+
+typedef struct {
+    WORD P_REG[32]; // Main program reg pr0-pr31
+    // When reading and writing the registers before and after executing a
+    // block we need a place to store crap (the "33rd" register)
+    WORD TMP_REG;
+    WORD PC;
+    WORD flags;
+    WORD S_REG[32]; // System registers sr0-sr31
+} cpu_state;
+
+cpu_state* v810_state;
+
+void v810_executeBlock(exec_block* block);
+
+void drc_dumpCache(char* filename);
+
 ///////////////////////////////////////////////////////////////////
 // Defines for memory and IO acces
 // Grabed From StarScream Source
@@ -112,6 +147,7 @@ void v810_int(WORD iNum);
 // Generate Exception #n
 void v810_exp(WORD iNum, WORD eCode);
 
-int serviceint(unsigned long long cycles);
+void serviceInt(unsigned int cycles);
+int serviceDisplayInt(unsigned int cycles);
 
 #endif

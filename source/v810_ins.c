@@ -58,43 +58,43 @@ void set_bitstr(WORD *str, WORD dst, WORD dstoff, WORD len) {
 
 //Bitstring SubOpcodes
 void ins_sch0bsu (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 }
 
 void ins_sch0bsd (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 }
 
 void ins_sch1bsu (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 }
 
 void ins_sch1bsd (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 }
 
 void ins_orbsu   (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -105,11 +105,11 @@ void ins_orbsu   (int arg1, int arg2, int arg3) {
 }
 
 void ins_andbsu  (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -120,11 +120,11 @@ void ins_andbsu  (int arg1, int arg2, int arg3) {
 }
 
 void ins_xorbsu  (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -135,11 +135,11 @@ void ins_xorbsu  (int arg1, int arg2, int arg3) {
 }
 
 void ins_movbsu  (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 
     WORD tmp[8192];
 
@@ -148,11 +148,11 @@ void ins_movbsu  (int arg1, int arg2, int arg3) {
 }
 
 void ins_ornbsu  (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -163,11 +163,11 @@ void ins_ornbsu  (int arg1, int arg2, int arg3) {
 }
 
 void ins_andnbsu (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -178,11 +178,11 @@ void ins_andnbsu (int arg1, int arg2, int arg3) {
 }
 
 void ins_xornbsu (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -193,11 +193,11 @@ void ins_xornbsu (int arg1, int arg2, int arg3) {
 }
 
 void ins_notbsu  (int arg1, int arg2, int arg3) {
-    WORD dstoff = (P_REG[26] & 0x1F);
-    WORD srcoff = (P_REG[27] & 0x1F);
-    WORD len =     P_REG[28];
-    WORD dst =    (P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (P_REG[30] & 0xFFFFFFFC);
+    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
+    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
+    WORD len =     v810_state->P_REG[28];
+    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
+    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
 
     WORD i,tmp[8192];
 
@@ -209,106 +209,106 @@ void ins_notbsu  (int arg1, int arg2, int arg3) {
 //FPU SubOpcodes  
 void ins_cmpf_s  (int arg1, int arg2, int arg3) {  
     int flags = 0; // Set Flags, OV set to Zero
-    float fTemp=(*((float *)&P_REG[arg1])) - (*((float *)&P_REG[arg2]));
+    float fTemp=(*((float *)&(v810_state->P_REG[arg1]))) - (*((float *)&(v810_state->P_REG[arg2])));
     if (fTemp == 0.0F) flags = flags | PSW_Z;
     if (fTemp < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
     //	clocks+=7;
 }
 
 void ins_cvt_ws  (int arg1, int arg2, int arg3) {   //Int to Float
     int flags = 0; // Set Flags, OV set to Zero
-    float fTemp = (float)((long)P_REG[arg2]);
+    float fTemp = (float)((long)v810_state->P_REG[arg2]);
     if (fTemp == 0) flags = flags | PSW_Z;
     if (fTemp < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
-    P_REG[arg1] = *((WORD *)&fTemp);
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
+    v810_state->P_REG[arg1] = *((WORD *)&fTemp);
     //	clocks+=5; //5 to 16
 }
 
 void ins_cvt_sw  (int arg1, int arg2, int arg3) {  //Float To Int
     int flags = 0; // Set Flags, CY unchanged, OV set to Zero
-    if ((*((float *)&P_REG[arg2]))>=0.0) //round
-        P_REG[arg1] = (long)floorf(*((float *)&P_REG[arg2])+0.5F);
+    if ((*((float *)&(v810_state->P_REG[arg2])))>=0.0) //round
+        v810_state->P_REG[arg1] = (long)floorf(*((float *)&(v810_state->P_REG[arg2]))+0.5F);
     else
-        P_REG[arg1] = (long)ceilf(*((float *)&P_REG[arg2])-0.5F);
-    if (P_REG[arg1] == 0) flags = flags | PSW_Z;
-    if (P_REG[arg1] & 0x80000000)  flags = flags | PSW_S;
-    S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF8)|flags;
+        v810_state->P_REG[arg1] = (long)ceilf(*((float *)&(v810_state->P_REG[arg2]))-0.5F);
+    if (v810_state->P_REG[arg1] == 0) flags = flags | PSW_Z;
+    if (v810_state->P_REG[arg1] & 0x80000000)  flags = flags | PSW_S;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF8)|flags;
     //	clocks+=9; //9 to 14
 }
 
 void ins_addf_s  (int arg1, int arg2, int arg3) {
     int flags = 0; // Set Flags, OV set to Zero
-    float fTemp = (*((float *)&P_REG[arg1])) + (*((float *)&P_REG[arg2]));
+    float fTemp = (*((float *)&(v810_state->P_REG[arg1]))) + (*((float *)&(v810_state->P_REG[arg2])));
     if (fTemp == 0.0F) flags = flags | PSW_Z;
     if (fTemp < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
-    P_REG[arg1] = *((WORD *)&fTemp);
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
+    v810_state->P_REG[arg1] = *((WORD *)&fTemp);
     //	clocks+=9; //9 to 28
 }
 
 void ins_subf_s  (int arg1, int arg2, int arg3) {
     int flags = 0; // Set Flags, OV set to Zero
-    float fTemp = (*((float *)&P_REG[arg1])) - (*((float *)&P_REG[arg2]));
+    float fTemp = (*((float *)&(v810_state->P_REG[arg1]))) - (*((float *)&(v810_state->P_REG[arg2])));
     if (fTemp == 0.0F) flags = flags | PSW_Z;
     if (fTemp < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
-    P_REG[arg1] = *((WORD *)&fTemp);
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
+    v810_state->P_REG[arg1] = *((WORD *)&fTemp);
     //	clocks+=12; //12 to 28
 }
 
 void ins_mulf_s  (int arg1, int arg2, int arg3) {
     int flags = 0; // Set Flags, OV set to Zero
-    float fTemp = (*((float *)&P_REG[arg1])) * (*((float *)&P_REG[arg2]));
+    float fTemp = (*((float *)&(v810_state->P_REG[arg1]))) * (*((float *)&(v810_state->P_REG[arg2])));
     if (fTemp == 0.0F) flags = flags | PSW_Z;
     if (fTemp < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
-    P_REG[arg1] = *((WORD *)&fTemp);
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
+    v810_state->P_REG[arg1] = *((WORD *)&fTemp);
     //	clocks+=8; //8 to 30
 }
 
 void ins_divf_s  (int arg1, int arg2, int arg3) {
     int flags = 0; // Set Flags, OV set to Zero
-    float fTemp = (*((float *)&P_REG[arg1])) / (*((float *)&P_REG[arg2]));
+    float fTemp = (*((float *)&(v810_state->P_REG[arg1]))) / (*((float *)&(v810_state->P_REG[arg2])));
     if (fTemp == 0.0F) flags = flags | PSW_Z;
     if (fTemp < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF0)|flags;
-    P_REG[arg1] = *((WORD *)&fTemp);
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
+    v810_state->P_REG[arg1] = *((WORD *)&fTemp);
     //	clocks+=44; //always 44
 }
 
 void ins_trnc_sw (int arg1, int arg2, int arg3) {
     int flags = 0; // Set Flags, CY unchanged, OV set to Zero
-    if ((*((float *)&P_REG[arg2]))>=0.0) //truncate, round toward 0
-        P_REG[arg1] = (long)floorf(*((float *)&P_REG[arg2]));
+    if ((*((float *)&(v810_state->P_REG[arg2])))>=0.0) //truncate, round toward 0
+        v810_state->P_REG[arg1] = (long)floorf(*((float *)&(v810_state->P_REG[arg2])));
     else
-        P_REG[arg1] = (long)ceilf(*((float *)&P_REG[arg2]));
-    if (P_REG[arg1] == 0) flags = flags | PSW_Z;
-    if (P_REG[arg1] & 0x80000000)  flags = flags | PSW_S;
-    S_REG[PSW] = (S_REG[PSW] & 0xFFFFFFF8)|flags;
+        v810_state->P_REG[arg1] = (long)ceilf(*((float *)&(v810_state->P_REG[arg2])));
+    if (v810_state->P_REG[arg1] == 0) flags = flags | PSW_Z;
+    if (v810_state->P_REG[arg1] & 0x80000000)  flags = flags | PSW_S;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF8)|flags;
     //	clocks+=8; //8 to 14
 }
 
 void ins_xb       (int arg1, int arg2, int arg3) {
-    P_REG[arg1] = ((P_REG[arg1]&0xFFFF0000) | (((P_REG[arg1]<<8)&0xFF00) | ((P_REG[arg1]>>8)&0xFF)));
+    v810_state->P_REG[arg1] = ((v810_state->P_REG[arg1]&0xFFFF0000) | (((v810_state->P_REG[arg1]<<8)&0xFF00) | ((v810_state->P_REG[arg1]>>8)&0xFF)));
     //	clocks+=1; //just a guess
 }
 
 void ins_xh       (int arg1, int arg2, int arg3) {
-    P_REG[arg1] = (P_REG[arg1]<<16)|(P_REG[arg1]>>16);
+    v810_state->P_REG[arg1] = (v810_state->P_REG[arg1]<<16)|(v810_state->P_REG[arg1]>>16);
     //	clocks+=1; //just a guess
 }
 
 void ins_rev      (int arg1, int arg2, int arg3) {
     WORD temp = 0;
     int i;
-    for (i = 0; i < 32; i++) temp = ((temp << 1) | ((P_REG[arg2] >> i) & 1));
-    P_REG[arg1] = temp;
+    for (i = 0; i < 32; i++) temp = ((temp << 1) | ((v810_state->P_REG[arg2] >> i) & 1));
+    v810_state->P_REG[arg1] = temp;
     //	clocks+=1; //just a guess
 }
 
 void ins_mpyhw    (int arg1, int arg2, int arg3) {
-    P_REG[arg1 & 0x1F] = (long)P_REG[arg1 & 0x1F] * (long)P_REG[arg2 & 0x1F]; //signed multiplication
+    v810_state->P_REG[arg1 & 0x1F] = (long)v810_state->P_REG[arg1 & 0x1F] * (long)v810_state->P_REG[arg2 & 0x1F]; //signed multiplication
     //	clocks+=9; //always 9
 }

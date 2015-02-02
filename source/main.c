@@ -58,11 +58,11 @@ int romSelect(char* path) {
     for(i = 0; i < 29 && entries_read; i++) {
         memset(&entry, 0, sizeof(FS_dirent));
         FSDIR_Read(dirHandle, &entries_read, 1, &entry);
-        if(entries_read && entry.isArchive) {
-            if(!strncmp("VB", (char*) entry.shortExt, 2)) {
+        if(entries_read && !entry.isDirectory) {
+            //if(!strncmp("VB", (char*) entry.shortExt, 2)) {
                 unicodeToChar(romv[romc], entry.name, 100);
                 romc++;
-            }
+            //}
         }
     }
 
@@ -263,6 +263,7 @@ int main() {
     hidInit(NULL);
     gfxInitDefault();
     fsInit();
+    hbInit();
     sdmcInit();
     consoleInit(GFX_BOTTOM, NULL);
 
@@ -300,6 +301,10 @@ int main() {
         if ((keys & KEY_START) && (keys & KEY_SELECT))
             break;
 
+//        keys = hidKeysDown();
+//        if (keys & KEY_A)
+//            drc_dumpCache("sdmc:/cache_dump.bin");
+
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             // Trace
             err = v810_trc();
@@ -335,6 +340,7 @@ exit:
 
     sdmcExit();
     fsExit();
+    hbExit();
     hidExit();
     gfxExit();
     aptExit();

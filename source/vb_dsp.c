@@ -58,7 +58,7 @@ HWORD V810_RControll() {
     else if (key & vbkey[0])    ret_keys |= VB_LPAD_U;      // Left Pad, Up
 
     uint8_t battery_level;
-    PTMU_GetBatteryLevel(NULL, &battery_level);
+    //PTMU_GetBatteryLevel(NULL, &battery_level);
     if (battery_level <= 1)     ret_keys |= VB_BATERY_LOW;
 
     ret_keys = ret_keys|0x0002; // Always set bit1, ctrl ID
