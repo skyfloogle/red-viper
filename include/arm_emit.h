@@ -517,6 +517,11 @@ enum {
 #define ASRS(Rd, Rm, Rs) \
     gen_data_proc_reg_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, Rd, Rs, ARM_SHIFT_ASR, Rm)
 
+// smulls RdLo, RdHi, Rn, Rm
+// Signed multiply long
+#define SMULLS(RdLo, RdHi, Rn, Rm) \
+    gen_multiply_long(ARM_COND_AL, 1, 0, 1, RdHi, RdLo, Rn, Rm)
+
 // nop
 #define NOP() \
     MOV(0, 0)

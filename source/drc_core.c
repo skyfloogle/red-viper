@@ -333,6 +333,16 @@ void v810_translateBlock(exec_block* block) {
                 // asr reg2, reg2, reg1
                 w(ASRS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
                 break;
+            case V810_OP_MUL: // mul reg1, reg2
+                // smulls RdLo, RdHi, Rm, Rs
+                w(SMULLS(phys_regs[inst_cache[i].arg2], phys_regs[30], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
+                // If the 30th register isn't being used in the block, the high
+                // word of the multiplication will be in r0 (because
+                // phys_regs[30] == 0) and we'll have to save it manually
+                if (!phys_regs[30]) {
+                    w(STR_IO(0, 11, 30*4));
+                }
+                break;
             case V810_OP_OR: // or reg1, reg2
                 w(ORRS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
                 break;
