@@ -428,6 +428,11 @@ enum {
 #define ADDS_IS(Rd, Rn, Rm, shift, shift_imm) \
     gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_ADD, 1, Rn, Rd, shift_imm, shift, Rm)
 
+// subs Rd, Rn, Rm, shift #shift_imm
+// Substract immediate shift
+#define SUBS_IS(Rd, Rn, Rm, shift, shift_imm) \
+    gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_SUB, 1, Rn, Rd, shift_imm, shift, Rm)
+
 // movs Rs, Rm, shift #shift_imm
 // Mov immediate shift
 #define MOVS_IS(Rd, Rm, shift, shift_imm) \
@@ -475,6 +480,10 @@ enum {
 #define ADDS(Rd, Rn, Rm) \
     ADDS_IS(Rd, Rn, Rm, 0, 0)
 
+// subs Rd, Rn, Rm
+#define SUBS(Rd, Rn, Rm) \
+    SUBS_IS(Rd, Rn, Rm, 0, 0)
+
 // movs Rd, Rm
 #define MOVS(Rd, Rm) \
     MOVS_IS(Rd, Rm, 0, 0)
@@ -494,6 +503,10 @@ enum {
 // lsrs Rd, Rn, Rm
 #define LSRS(Rd, Rm, Rs) \
     gen_data_proc_reg_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, Rd, Rs, ARM_SHIFT_LSR, Rm)
+
+// asrs Rd, Rn, Rm
+#define ASRS(Rd, Rm, Rs) \
+    gen_data_proc_reg_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, Rd, Rs, ARM_SHIFT_ASR, Rm)
 
 // nop
 #define NOP() \

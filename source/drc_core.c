@@ -232,6 +232,20 @@ void v810_translateBlock(exec_block* block) {
                 // Save the address of the new PC at the end of the block
                 data(PC + sign_26(inst_cache[i].arg1));
                 break;
+            case V810_OP_JAL:
+                w(LDR_IO(0, 15, 4));
+                w(LDR_IO(1, 15, 4));
+                // Save the new PC
+                w(STR_IO(0, 11, 33*4));
+                // Link the return address
+                w(STR_IO(1, 11, 31*4));
+                w(POP(1 << 15));
+
+                // Save the address of the new PC and the linked PC at the end
+                // of the block
+                data(PC + sign_26(inst_cache[i].arg1));
+                data(PC + 4);
+                break;
             case V810_OP_BV:
             case V810_OP_BL:
             case V810_OP_BE:
@@ -297,6 +311,9 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_ADD: // add reg1, reg2
                 w(ADDS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
                 break;
+            case V810_OP_SUB: // sub reg1, reg2
+                w(SUBS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
+                break;
             case V810_OP_CMP: // cmp reg1, reg2
                 w(CMP(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
                 break;
@@ -307,6 +324,10 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_SHR: // shr reg1, reg2
                 // lsr reg2, reg2, reg1
                 w(LSRS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
+                break;
+            case V810_OP_SAR: // sar reg1, reg2
+                // asr reg2, reg2, reg1
+                w(ASRS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
                 break;
             case V810_OP_OR: // or reg1, reg2
                 w(ORRS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
@@ -333,6 +354,10 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_SHR_I: // shr imm5, reg2
                 // lsr reg2, reg2, #imm5
                 w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, phys_regs[inst_cache[i].arg2], inst_cache[i].arg1, ARM_SHIFT_LSR, phys_regs[inst_cache[i].arg2]));
+                break;
+            case V810_OP_SAR_I: // sar imm5, reg2
+                // asr reg2, reg2, #imm5
+                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, phys_regs[inst_cache[i].arg2], inst_cache[i].arg1, ARM_SHIFT_ASR, phys_regs[inst_cache[i].arg2]));
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
