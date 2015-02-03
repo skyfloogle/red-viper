@@ -143,8 +143,12 @@ void v810_translateBlock(exec_block* block) {
                 break;
             case AM_III: // Branch instructions
                 inst_cache[num_inst].arg1 = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
-                // Exit the block
-                finished = true;
+                if (inst_cache[num_inst].opcode != V810_OP_NOP) {
+                    // Exit the block
+                    finished = true;
+                } else {
+                    PC += 2;
+                }
                 break;
             case AM_IV: // Middle distance jump
                 inst_cache[num_inst].arg1 = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
