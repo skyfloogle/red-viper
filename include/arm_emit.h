@@ -428,6 +428,11 @@ enum {
 #define ADDS_IS(Rd, Rn, Rm, shift, shift_imm) \
     gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_ADD, 1, Rn, Rd, shift_imm, shift, Rm)
 
+// ands Rd, Rn, Rm, shift #shift_imm
+// And immediate shift
+#define ANDS_IS(Rd, Rn, Rm, shift, shift_imm) \
+    gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_AND, 1, Rn, Rd, shift_imm, shift, Rm)
+
 // subs Rd, Rn, Rm, shift #shift_imm
 // Substract immediate shift
 #define SUBS_IS(Rd, Rn, Rm, shift, shift_imm) \
@@ -462,11 +467,11 @@ enum {
 
 // orr Rd, Rn, Rm
 #define ORR(Rd, Rn, Rm) \
-    ORRS_IS(Rd, Rn, Rm, 0, 0)
+    ORR_IS(Rd, Rn, Rm, 0, 0)
 
 // eor Rd, Rn, Rm
 #define EOR(Rd, Rn, Rm) \
-    EORS_IS(Rd, Rn, Rm, 0, 0)
+    EOR_IS(Rd, Rn, Rm, 0, 0)
 
 // lsl Rd, Rn, Rm
 #define LSL(Rd, Rm, Rs) \
@@ -479,6 +484,10 @@ enum {
 // adds Rd, Rn, Rm
 #define ADDS(Rd, Rn, Rm) \
     ADDS_IS(Rd, Rn, Rm, 0, 0)
+
+// ands Rd, Rn, Rm
+#define ANDS(Rd, Rn, Rm) \
+    ANDS_IS(Rd, Rn, Rm, 0, 0)
 
 // subs Rd, Rn, Rm
 #define SUBS(Rd, Rn, Rm) \

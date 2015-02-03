@@ -332,6 +332,9 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_OR: // or reg1, reg2
                 w(ORRS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
                 break;
+            case V810_OP_AND: // and reg1, reg2
+                w(ANDS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
+                break;
             case V810_OP_XOR: // xor reg1, reg2
                 w(EORS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
                 break;
@@ -543,8 +546,14 @@ void v810_translateBlock(exec_block* block) {
                 data(&mem_wword);
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
-                // str reg2, [r11, #(35*4)] ; Stores reg2 in v810_state->S_REG[regID]
+                // str reg2, [r11, #((35+regID)*4)] ; Stores reg2 in v810_state->S_REG[regID]
                 w(STR_IO(phys_regs[inst_cache[i].arg1], 11, (35+phys_regs[inst_cache[i].arg2])*4));
+                break;
+            case V810_OP_SEI: // sei
+                // Sets the 12th bit in v810_state->S_REG[PSW]
+                w(LDR_IO(0, 11, (35+PSW)*4));
+                w(ORR_I(0, 1, 20));
+                w(STR_IO(0, 11, (35+PSW)*4));
                 break;
             case V810_OP_NOP:
                 w(NOP());
