@@ -552,6 +552,8 @@ void v810_drc() {
         cache_pos = cache_start;
 
         u32 pages;
+        HB_ReprotectMemory(0x00108000, 10, 0x7, &pages);
+        *((u32*)0x00108000) = 0xDEADBABE;
         HB_ReprotectMemory(cache_start, 10, 0x7, &pages);
         HB_FlushInvalidateCache();
     }
