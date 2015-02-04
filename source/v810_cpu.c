@@ -116,8 +116,8 @@ int serviceDisplayInt(unsigned int cycles) {
 
             // if(tVBOpt.VFHACK)                   //vertical force hack
             //     v810_int(4);
-            // else if (tVIPREG.INTENB&0x4000)
-            //     v810_int(4);                    //XPEND
+            /* else*/ if (tVIPREG.INTENB&0x4000)
+                 v810_int(4);                    //XPEND
 
             tVIPREG.INTPND |= 0x4000;               //(tVIPREG.INTENB&0x4000);
             rowcount++;

@@ -242,7 +242,10 @@ void v810_translateBlock(exec_block* block) {
                 // Save the new PC
                 w(STR_IO(0, 11, 33*4));
                 // Link the return address
-                w(STR_IO(1, 11, 31*4));
+                if (phys_regs[31])
+                    w(MOV(phys_regs[31], 1));
+                else
+                    w(STR_IO(1, 11, 31*4));
                 w(POP(1 << 15));
 
                 // Save the address of the new PC and the linked PC at the end
