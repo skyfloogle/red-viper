@@ -237,8 +237,8 @@ void v810_translateBlock(exec_block* block) {
                 data(PC + sign_26(inst_cache[i].arg1));
                 break;
             case V810_OP_JAL:
-                w(LDR_IO(0, 15, 4));
-                w(LDR_IO(1, 15, 4));
+                w(LDR_IO(0, 15, 12));
+                w(LDR_IO(1, 15, 12));
                 // Save the new PC
                 w(STR_IO(0, 11, 33*4));
                 // Link the return address
