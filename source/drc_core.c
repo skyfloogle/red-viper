@@ -272,8 +272,11 @@ void v810_translateBlock(exec_block* block) {
                 BYTE arm_cond = cond_map[inst_cache[i].opcode & 0xF];
                 // add<cond> r0, r0, r1, asr #23
                 w(gen_data_proc_imm_shift(arm_cond, ARM_OP_ADD, 0, 0, 0, 23, ARM_SHIFT_ASR, 1));
-                // add<inv_cond> r0, r0, #2
-                w(gen_data_proc_imm((arm_cond + (arm_cond%2 ? -1 : 1)), ARM_OP_ADD, 0, 0, 0, 0, 2));
+                // There's no inverse condition for BR
+                if (inst_cache[i].opcode != V810_OP_BR) {
+                    // add<inv_cond> r0, r0, #2
+                    w(gen_data_proc_imm((arm_cond + (arm_cond % 2 ? -1 : 1)), ARM_OP_ADD, 0, 0, 0, 0, 2));
+                }
                 // str r0, [r11, #(33*4)] ; Save the new PC
                 w(STR_IO(0, 11, 33*4));
                 // pop {pc} (or "ldmfd sp!, {pc}")
