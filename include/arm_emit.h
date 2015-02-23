@@ -386,6 +386,12 @@ enum {
 #define ORR_I(Rd, imm8, rot) \
     gen_data_proc_imm(ARM_COND_AL, ARM_OP_ORR, 0, Rd, Rd, rot>>1, imm8)
 
+// bic Rd, imm, ror #rot
+// Bit clear immediate
+// imm8 can be rotated an even number of times
+#define BIC_I(Rd, imm8, rot) \
+    gen_data_proc_imm(ARM_COND_AL, ARM_OP_BIC, 0, Rd, Rd, rot>>1, imm8)
+
 // add Rd, Rn, Rm, shift #shift_imm
 // Add immediate shift
 #define ADD_IS(Rd, Rn, Rm, shift, shift_imm) \

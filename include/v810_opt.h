@@ -35,6 +35,23 @@
 #define AM_FPP  0x0C  // Floating Point Instructions
 #define AM_UDEF 0x0D  // Unknown/Undefined Instructions
 
+static BYTE am_size_table[] = {
+    0, // Undefined
+    2, // AM_I
+    2, // AM_II
+    0, // AM_III
+    0, // AM_IV
+    4, // AM_V
+    4, // AM_VIa
+    4, // AM_VII
+    4, // AM_VIII
+    2, // AM_IX
+    4, // AM_VIb
+    2, // AM_BSTR
+    4, // AM_FPP
+    2, // AM_UDEF
+};
+
 
 ///////////////////////////////////////////////////////////////////
 // Table of Instructions and Address Modes

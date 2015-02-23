@@ -31,10 +31,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
-#include <v810_cpu.h>
 
 #include <3ds.h>
 
+#include "v810_cpu.h"
 #include "v810_mem.h"
 #include "v810_opt.h"
 
@@ -88,6 +88,16 @@ BYTE getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
     return 0;
 }
 
+int numRegsUsed() {
+    int i;
+    int regs = 0;
+    for (i = 1; i < 32; i++) {
+        if (reg_usage[i])
+            regs++;
+    }
+    return regs;
+}
+
 void v810_translateBlock(exec_block* block) {
     unsigned int num_inst, i, block_pos = 0;
     bool finished = false;
@@ -125,21 +135,17 @@ void v810_translateBlock(exec_block* block) {
         if((inst_cache[num_inst].opcode > 0x4F) || (inst_cache[num_inst].opcode < 0))
             return;
 
-        block->cycles += opcycle[inst_cache[num_inst].opcode];
-
         switch(optable[inst_cache[num_inst].opcode].addr_mode) {
             case AM_I:
                 inst_cache[num_inst].arg1 = (unsigned)((lowB & 0x1F));
                 inst_cache[num_inst].arg2 = (unsigned)((lowB >> 5) + ((highB & 0x3) << 3));
                 reg_usage[inst_cache[num_inst].arg1]++;
                 reg_usage[inst_cache[num_inst].arg2]++;
-                PC += 2; // 16 bit instruction
                 break;
             case AM_II:
                 inst_cache[num_inst].arg1 = (unsigned)((lowB & 0x1F));
                 inst_cache[num_inst].arg2 = (unsigned)((lowB >> 5) + ((highB & 0x3) << 3));
                 reg_usage[inst_cache[num_inst].arg2]++;
-                PC += 2; // 16 bit instruction
                 break;
             case AM_III: // Branch instructions
                 inst_cache[num_inst].arg1 = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
@@ -161,7 +167,6 @@ void v810_translateBlock(exec_block* block) {
                 inst_cache[num_inst].arg1 = (highB2 << 8) + lowB2;
                 reg_usage[inst_cache[num_inst].arg2]++;
                 reg_usage[inst_cache[num_inst].arg3]++;
-                PC += 4; // 32 bit instruction
                 break;
             case AM_VIa: // Mode6 form1
                 inst_cache[num_inst].arg1 = (highB2 << 8) + lowB2;
@@ -169,7 +174,6 @@ void v810_translateBlock(exec_block* block) {
                 inst_cache[num_inst].arg3 = (unsigned)((lowB >> 5) + ((highB & 0x3) << 3));
                 reg_usage[inst_cache[num_inst].arg2]++;
                 reg_usage[inst_cache[num_inst].arg3]++;
-                PC += 4; // 32 bit instruction
                 break;
             case AM_VIb: // Mode6 form2
                 inst_cache[num_inst].arg1 = (unsigned)((lowB >> 5) + ((highB & 0x3) << 3));
@@ -177,37 +181,40 @@ void v810_translateBlock(exec_block* block) {
                 inst_cache[num_inst].arg3 = (unsigned)((lowB & 0x1F));
                 reg_usage[inst_cache[num_inst].arg1]++;
                 reg_usage[inst_cache[num_inst].arg3]++;
-                PC += 4; // 32 bit instruction
                 break;
             case AM_VII: // Unhandled
-                PC +=4; // 32 bit instruction
                 break;
             case AM_VIII: // Unhandled
-                PC += 4; // 32 bit instruction
                 break;
             case AM_IX:
                 inst_cache[num_inst].arg1 = (unsigned)((lowB & 0x1)); // Mode ID, Ignore for now
-                PC += 2; // 16 bit instruction
                 break;
             case AM_BSTR: // Bit String Subopcodes
                 inst_cache[num_inst].arg1 = (unsigned)((lowB >> 5) + ((highB & 0x3) << 3));
                 inst_cache[num_inst].arg2 = (unsigned)((lowB & 0x1F));
-                PC += 2; // 16 bit instruction
                 break;
             case AM_FPP: // Floating Point Subcode
                 inst_cache[num_inst].arg1 = (unsigned)((lowB >> 5) + ((highB & 0x3) << 3));
                 inst_cache[num_inst].arg2 = (unsigned)((lowB & 0x1F));
                 inst_cache[num_inst].arg3 = (unsigned)(((highB2 >> 2)&0x3F));
-                PC += 4; // 32 bit instruction
                 break;
             case AM_UDEF: // Invalid opcode.
+                break;
             default: // Invalid opcode.
                 PC += 2;
                 break;
         }
 
         if (inst_cache[num_inst].opcode == V810_OP_JMP) {
-                finished = true;
+            finished = true;
+        }
+
+        if (numRegsUsed() > 7) {
+            finished = true;
+            inst_cache[num_inst].opcode = END_BLOCK;
+        } else {
+            PC += am_size_table[optable[inst_cache[num_inst].opcode].addr_mode];
+            block->cycles += opcycle[inst_cache[num_inst].opcode];
         }
     }
 
@@ -569,18 +576,31 @@ void v810_translateBlock(exec_block* block) {
                 // str reg2, [r11, #((35+regID)*4)] ; Stores reg2 in v810_state->S_REG[regID]
                 w(STR_IO(phys_regs[inst_cache[i].arg1], 11, (35+phys_regs[inst_cache[i].arg2])*4));
                 break;
+            case V810_OP_STSR: // stsr regID, reg2
+                // ldr reg2, [r11, #((35+regID)*4)] ; Loads v810_state->S_REG[regID] into reg2
+                w(LDR_IO(phys_regs[inst_cache[i].arg2], 11, (35+phys_regs[inst_cache[i].arg1])*4));
+                break;
             case V810_OP_SEI: // sei
                 // Sets the 12th bit in v810_state->S_REG[PSW]
                 w(LDR_IO(0, 11, (35+PSW)*4));
                 w(ORR_I(0, 1, 20));
                 w(STR_IO(0, 11, (35+PSW)*4));
                 break;
+            case V810_OP_CLI: // cli
+                // Sets the 12th bit in v810_state->S_REG[PSW]
+                w(LDR_IO(0, 11, (35+PSW)*4));
+                w(BIC_I(0, 1, 20));
+                w(STR_IO(0, 11, (35+PSW)*4));
+                break;
             case V810_OP_NOP:
                 w(NOP());
                 break;
+            case END_BLOCK:
+                w(POP(1 << 15));
+                break;
             default:
                 sprintf(str, "Unimplemented instruction: 0x%x", inst_cache[i].opcode);
-                svcOutputDebugString(str, strlen(str));
+                svcOutputDebugString(str, (int) strlen(str));
                 // Fill unimplemented instructions with a nop and hope the game still runs
                 w(NOP());
                 break;

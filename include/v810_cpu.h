@@ -62,6 +62,8 @@
 #define COND_GE 14
 #define COND_GT 15
 
+#define END_BLOCK 0xFF
+
 typedef struct {
     WORD* phys_loc;
     WORD virt_loc;
