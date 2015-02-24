@@ -104,15 +104,16 @@ int romSelect(char* path) {
         for(i = 0; i < romc; i++) {
             char line[40];
             line[0] = '\0';
-            snprintf(line, 40, "%c%s", (i+1) == pos ? '>' : ' ', romv[i]);
-            if(strlen(romv[i]) >= 40){
-                line[35] = '.';
-                line[36] = '.';
-                line[37] = '.';
-                line[38] = '\0';
-            }
+
+            snprintf(line, 39, "%s", romv[i]);
+
+            if ((i+1) == pos)
+                printf("\x1b[1m>");
+            else
+                printf(" ");
+
             printf(line);
-            printf("\n");
+            printf("\x1b[0m\n");
         }
 
         gfxFlushBuffers();
