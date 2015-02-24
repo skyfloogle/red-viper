@@ -369,6 +369,12 @@ enum {
 #define LDR_IO(Rd, Rn, off) \
     gen_ldst_imm_off(ARM_COND_AL, 1, 1, 0, 0, 1, Rn, Rd, off)
 
+// cmp Rn, imm8, ror #rot
+// Compare immediate
+// imm8 can be rotated an even number of times
+#define CMP_I(Rn, imm8, rot) \
+    gen_data_proc_imm(ARM_COND_AL, ARM_OP_CMP, 1, Rn, 0, rot>>1, imm8)
+
 // mov Rd, imm8, ror #rot
 // Mov immediate
 // imm8 can be rotated an even number of times
@@ -428,6 +434,12 @@ enum {
 // imm8 can be rotated an even number of times
 #define ORRS_I(Rd, imm8, rot) \
     gen_data_proc_imm(ARM_COND_AL, ARM_OP_ORR, 1, Rd, Rd, rot>>1, imm8)
+
+// rsbs Rd, Rn, imm8, ror #rot
+// Reverse substract immediate
+// imm8 can be rotated an even number of times
+#define RSBS_I(Rd, Rn, imm8, rot) \
+    gen_data_proc_imm(ARM_COND_AL, ARM_OP_RSB, 1, Rn, Rd, rot>>1, imm8)
 
 // adds Rd, Rn, Rm, shift #shift_imm
 // Add immediate shift

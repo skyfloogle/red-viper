@@ -332,7 +332,12 @@ void v810_translateBlock(exec_block* block) {
                 w(SUBS(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
                 break;
             case V810_OP_CMP: // cmp reg1, reg2
-                w(CMP(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
+                if (inst_cache[i].arg1 == 0)
+                    w(CMP_I(phys_regs[inst_cache[i].arg2], 0, 0));
+                else if (inst_cache[i].arg2 == 0)
+                    w(RSBS_I(0, phys_regs[inst_cache[i].arg1], 0, 0));
+                else
+                    w(CMP(phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg1]));
                 break;
             case V810_OP_SHL: // shl reg1, reg2
                 // lsl reg2, reg2, reg1
@@ -396,8 +401,8 @@ void v810_translateBlock(exec_block* block) {
                 w(ORR_I(0, (inst_cache[i].arg1 & 0xFF), 16));
                 // asr r0, r0, #16
                 w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0));
-                // and reg2, reg1, r0
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_AND, 1, phys_regs[inst_cache[i].arg2], phys_regs[inst_cache[i].arg3], 0, 0, 0));
+                // ands reg2, reg1, r0
+                w(ANDS(phys_regs[inst_cache[i].arg3], phys_regs[inst_cache[i].arg2], 0));
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
@@ -657,8 +662,11 @@ void v810_drc() {
             block_num++;
         }
 
-        //sprintf(str, "PC - 0x%x", cur_block->end_pc);
-        //svcOutputDebugString(str, strlen(str));
+        //hidScanInput();
+        //if (hidKeysHeld() & KEY_START) {
+        //    sprintf(str, "PC - 0x%x", cur_block->end_pc);
+        //    svcOutputDebugString(str, strlen(str));
+        //}
 
         v810_state->PC = cur_block->end_pc;
         v810_executeBlock(cur_block);

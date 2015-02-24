@@ -318,4 +318,4 @@ static suboperation fpsuboptable[16] = {
 #define V810_OP_TRNC_SW 0x0B
 #define V810_OP_MPYHW   0x0C
 
-#endif //DEFINE_H
+#endif // V810_OPT_H_
