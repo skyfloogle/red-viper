@@ -86,6 +86,15 @@ int serviceDisplayInt(unsigned int cycles) {
 
     //Handle DPSTTS, XPSTTS, and Frame interrupts
     if (rowcount < 0x1C) {
+        if (tfb > 0x0A00) {
+            tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
+            rowcount++;
+            lastfb=cycles;
+        }
+        if ((rowcount == 0x12) && (tfb > 0x670))
+            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0xD0:0xC4));
+        if ((tfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000)))
+            tVIPREG.XPSTTS |= 0x8000;
         if ((rowcount == 0) && (tfb > 0x0210) && (!tmp1)) {
             tmp1=1;
             tVIPREG.XPSTTS &= 0x000F;
@@ -101,17 +110,8 @@ int serviceDisplayInt(unsigned int cycles) {
             tVIPREG.INTPND |= (0x0010|gamestart);
             return 1;
         }
-        if ((tfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000)))
-            tVIPREG.XPSTTS |= 0x8000;
-        if (tfb > 0x0A00) {
-            tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
-            rowcount++;
-            lastfb=cycles;
-        }
-        if ((rowcount == 0x12) && (tfb > 0x670))
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0xD0:0xC4));
     } else {
-        if ((rowcount == 0x1C) && (tfb > 0x10000)) {            //0x100000
+        if ((rowcount >= 0x1C) && (tfb > 0x10000)) {            //0x100000
             tVIPREG.XPSTTS = (0x1B00|(tVIPREG.XPCTRL & 0x02));
 
             // if(tVBOpt.VFHACK)                   //vertical force hack
@@ -121,29 +121,34 @@ int serviceDisplayInt(unsigned int cycles) {
 
             tVIPREG.INTPND |= 0x4000;               //(tVIPREG.INTENB&0x4000);
             rowcount++;
-        } else if ((rowcount == 0x1D) && (tfb > 0x18000)) {     //0xE690
+        }
+        if ((rowcount >= 0x1D) && (tfb > 0x18000)) {     //0xE690
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
             if (tVIPREG.INTENB&0x0002)
                 v810_int(4);                    //LFBEND
             tVIPREG.INTPND |= 0x0002;               //(tVIPREG.INTENB&0x0002);
             rowcount++;
-        } else if ((rowcount == 0x1E) && (tfb > 0x20000)) {     //0x15E70
+        }
+        if ((rowcount >= 0x1E) && (tfb > 0x20000)) {     //0x15E70
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0x40);
             if (tVIPREG.INTENB&0x0004)
                 v810_int(4);                    //RFBEND
             tVIPREG.INTPND |= 0x0004;               //(tVIPREG.INTENB&0x0004);
             rowcount++;
-        } else if ((rowcount == 0x1F) && (tfb > 0x28000)) {     //0x1FAD8
+        }
+        if ((rowcount >= 0x1F) && (tfb > 0x28000)) {     //0x1FAD8
             //tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x48:0x60));
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
             if (tVIPREG.INTENB&0x2000)
                 v810_int(4);                    //SBHIT
             tVIPREG.INTPND |= 0x2000;
             rowcount++;
-        } else if ((rowcount == 0x20) && (tfb > 0x38000)) {     //0x33FD8
+        }
+        if ((rowcount >= 0x20) && (tfb > 0x38000)) {     //0x33FD8
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0x40);
             rowcount++;
-        } else if ((rowcount == 0x21) && (tfb > 0x42000)) {
+        }
+        if ((rowcount >= 0x21) && (tfb > 0x42000)) {
             tmp1=0;
             rowcount=0;
             tVIPREG.tFrame++;

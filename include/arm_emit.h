@@ -456,10 +456,15 @@ enum {
 #define SUBS_IS(Rd, Rn, Rm, shift, shift_imm) \
     gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_SUB, 1, Rn, Rd, shift_imm, shift, Rm)
 
-// movs Rs, Rm, shift #shift_imm
+// movs Rd, Rm, shift #shift_imm
 // Mov immediate shift
 #define MOVS_IS(Rd, Rm, shift, shift_imm) \
     gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, Rd, shift_imm, shift, Rm)
+
+// mvns Rd, Rm, shift #shift_imm
+// Move and NOT immediate shift
+#define MVNS_IS(Rd, Rm, shift, shift_imm) \
+    gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MVN, 1, 0, Rd, shift_imm, shift, Rm)
 
 // orrs Rd, Rn, Rm, shift #shift_imm
 // Or immediate shift
@@ -514,6 +519,10 @@ enum {
 // movs Rd, Rm
 #define MOVS(Rd, Rm) \
     MOVS_IS(Rd, Rm, 0, 0)
+
+// mvn Rd, Rm
+#define MVNS(Rd, Rm) \
+    MVNS_IS(Rd, Rm, 0, 0)
 
 // orrs Rd, Rn, Rm
 #define ORRS(Rd, Rn, Rm) \

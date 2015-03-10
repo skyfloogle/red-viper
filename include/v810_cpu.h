@@ -80,8 +80,9 @@ typedef struct {
 typedef struct {
     WORD* location;
     BYTE opcode;
-    WORD arg1, arg2, arg3;
-} inst;
+    BYTE reg1, reg2;
+    WORD imm;
+} v810_instruction;
 
 typedef struct {
     WORD P_REG[32]; // Main program reg pr0-pr31
