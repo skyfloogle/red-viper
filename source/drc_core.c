@@ -43,11 +43,6 @@
 #define CACHE_SIZE  0x10000
 #define MAX_INST    1024
 
-// Write instruction to block
-#define w(inst) block->phys_loc[block_pos++] = inst
-// Write data to block
-#define data(word) w((unsigned int)(word))
-
 BYTE reg_usage[32];
 WORD* cache_start = NULL;
 
@@ -109,6 +104,7 @@ void v810_translateBlock(exec_block* block) {
     v810_instruction inst_cache[MAX_INST];
     BYTE lowB, highB, lowB2, highB2; // Up to 4 bytes for instruction (either 16 or 32 bits)
     BYTE phys_regs[32];
+    BYTE arm_reg1, arm_reg2;
 
     // Clear previous block register stats
     memset(reg_usage, 0, 32);
@@ -235,36 +231,39 @@ void v810_translateBlock(exec_block* block) {
 
     // Second pass: map registers and memory addresses
     for (i = 0; i < num_inst; i++) {
+        arm_reg1 = phys_regs[inst_cache[i].reg1];
+        arm_reg2 = phys_regs[inst_cache[i].reg2];
+
         switch (inst_cache[i].opcode) {
             case V810_OP_JMP: // jmp [reg1]
                 // str reg1, [r11, #(33*4)] ; r11 has v810_state
-                w(STR_IO(phys_regs[inst_cache[i].reg1], 11, 33*4));
+                STR_IO(arm_reg1, 11, 33*4);
                 // pop {pc} (or "ldmfd sp!, {pc}")
-                w(POP(1 << 15));
+                POP(1 << 15);
                 break;
             case V810_OP_JR: // jr imm26
                 // ldr r0, [pc, #4] ; Loads the value of (PC+8)+4 (because when it executes an instruction, pc is
                 // already 2 instructions ahead), which will have the new PC
-                w(LDR_IO(0, 15, 4));
+                LDR_IO(0, 15, 4);
                 // str r0, [r11, #(33*4)] ; Save the new PC
-                w(STR_IO(0, 11, 33*4));
+                STR_IO(0, 11, 33*4);
                 // pop {pc} (or "ldmfd sp!, {pc}")
-                w(POP(1 << 15));
+                POP(1 << 15);
 
                 // Save the address of the new PC at the end of the block
                 data(PC + sign_26(inst_cache[i].imm));
                 break;
             case V810_OP_JAL: // jal disp26
-                w(LDR_IO(0, 15, 12));
-                w(LDR_IO(1, 15, 12));
+                LDR_IO(0, 15, 12);
+                LDR_IO(1, 15, 12);
                 // Save the new PC
-                w(STR_IO(0, 11, 33*4));
+                STR_IO(0, 11, 33*4);
                 // Link the return address
                 if (phys_regs[31])
-                    w(MOV(phys_regs[31], 1));
+                    MOV(phys_regs[31], 1);
                 else
-                    w(STR_IO(1, 11, 31*4));
-                w(POP(1 << 15));
+                    STR_IO(1, 11, 31*4);
+                POP(1 << 15);
 
                 // Save the address of the new PC and the linked PC at the end
                 // of the block
@@ -272,20 +271,20 @@ void v810_translateBlock(exec_block* block) {
                 data(PC + 4);
                 break;
             case V810_OP_RETI:
-                w(LDR_IO(0, 11, (35+PSW)*4));
-                w(TST_I(0, PSW_NP>>8, 24));
+                LDR_IO(0, 11, (35+PSW)*4);
+                TST_I(0, PSW_NP>>8, 24);
                 // ldrne r1, S_REG[FEPC]
-                w(gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 1, (35+FEPC)*4));
+                gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 1, (35+FEPC)*4);
                 // ldrne r2, S_REG[FEPSW]
-                w(gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 2, (35+FEPSW)*4));
+                gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 2, (35+FEPSW)*4);
                 // ldreq r1, S_REG[EIPC]
-                w(gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 1, (35+EIPC)*4));
+                gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 1, (35+EIPC)*4);
                 // ldreq r2, S_REG[FEPSW]
-                w(gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 2, (35+EIPSW)*4));
+                gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 2, (35+EIPSW)*4);
 
-                w(STR_IO(1, 11, 33*4));
-                w(STR_IO(2, 11, (35+PSW)*4));
-                w(POP(1 << 15));
+                STR_IO(1, 11, 33*4);
+                STR_IO(2, 11, (35+PSW)*4);
+                POP(1 << 15);
                 break;
             case V810_OP_BV:
             case V810_OP_BL:
@@ -303,315 +302,315 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_BGE:
             case V810_OP_BGT:
                 // ldr r0, [r11, #(33*4)] ; load the current PC
-                w(LDR_IO(0, 11, 33*4));
+                LDR_IO(0, 11, 33*4);
                 // mov r1, #(disp9 ror 9)
-                w(MOV_I(1, inst_cache[i].imm>>1, 8));
+                MOV_I(1, inst_cache[i].imm>>1, 8);
                 BYTE arm_cond = cond_map[inst_cache[i].opcode & 0xF];
                 // add<cond> r0, r0, r1, asr #23
-                w(gen_data_proc_imm_shift(arm_cond, ARM_OP_ADD, 0, 0, 0, 23, ARM_SHIFT_ASR, 1));
+                gen_data_proc_imm_shift(arm_cond, ARM_OP_ADD, 0, 0, 0, 23, ARM_SHIFT_ASR, 1);
                 // There's no inverse condition for BR
                 if (inst_cache[i].opcode != V810_OP_BR) {
                     // add<inv_cond> r0, r0, #2
-                    w(gen_data_proc_imm((arm_cond + (arm_cond % 2 ? -1 : 1)), ARM_OP_ADD, 0, 0, 0, 0, 2));
+                    gen_data_proc_imm((arm_cond + (arm_cond % 2 ? -1 : 1)), ARM_OP_ADD, 0, 0, 0, 0, 2);
                 }
                 // str r0, [r11, #(33*4)] ; Save the new PC
-                w(STR_IO(0, 11, 33*4));
+                STR_IO(0, 11, 33*4);
                 // pop {pc} (or "ldmfd sp!, {pc}")
-                w(POP(1 << 15));
+                POP(1 << 15);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
                 // mov r0, #(imm16_hi ror 8)
-                w(MOV_I(0, (inst_cache[i].imm >> 8), 8));
+                MOV_I(0, (inst_cache[i].imm >> 8), 8);
                 // orr r0, #(imm16_lo ror 16)
-                w(ORR_I(0, (inst_cache[i].imm & 0xFF), 16));
+                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // The zero-register will always be zero, so don't add it
                 if (inst_cache[i].reg1 == 0) {
                     // mov reg2, r0
-                    w(MOV(phys_regs[inst_cache[i].reg2], 0));
+                    MOV(arm_reg2, 0);
                 } else {
                     // add reg2, r0, reg1
-                    w(ADD(phys_regs[inst_cache[i].reg2], 0, phys_regs[inst_cache[i].reg1]));
+                    ADD(arm_reg2, 0, arm_reg1);
                 }
                 break;
             case V810_OP_MOVEA: // movea imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
-                w(MOV_I(0, (inst_cache[i].imm >> 8), 8));
+                MOV_I(0, (inst_cache[i].imm >> 8), 8);
                 // orr r0, #(imm16_lo ror 16)
-                w(ORR_I(0, (inst_cache[i].imm & 0xFF), 16));
+                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // The zero-register will always be zero, so don't add it
                 if (inst_cache[i].reg1 == 0)
                     // mov reg2, r0, asr #16
-                    w(MOV_IS(phys_regs[inst_cache[i].reg2], 0, ARM_SHIFT_ASR, 16));
+                    MOV_IS(arm_reg2, 0, ARM_SHIFT_ASR, 16);
                 else
                     // add reg2, reg1, r0, asr #16
-                    w(ADD_IS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1], 0, ARM_SHIFT_ASR, 16));
+                    ADD_IS(arm_reg2, arm_reg1, 0, ARM_SHIFT_ASR, 16);
                 break;
             case V810_OP_MOV: // mov reg1, reg2
                 if (inst_cache[i].reg1 != 0)
-                    w(MOV(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                    MOV(arm_reg2, arm_reg1);
                 else
-                    w(MOV_I(phys_regs[inst_cache[i].reg2], 0, 0));
+                    MOV_I(arm_reg2, 0, 0);
                 break;
             case V810_OP_ADD: // add reg1, reg2
-                w(ADDS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                ADDS(arm_reg2, arm_reg2, arm_reg1);
                 break;
             case V810_OP_SUB: // sub reg1, reg2
-                w(SUBS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                SUBS(arm_reg2, arm_reg2, arm_reg1);
                 break;
             case V810_OP_CMP: // cmp reg1, reg2
                 if (inst_cache[i].reg1 == 0)
-                    w(CMP_I(phys_regs[inst_cache[i].reg2], 0, 0));
+                    CMP_I(arm_reg2, 0, 0);
                 else if (inst_cache[i].reg2 == 0)
-                    w(RSBS_I(0, phys_regs[inst_cache[i].reg1], 0, 0));
+                    RSBS_I(0, arm_reg1, 0, 0);
                 else
-                    w(CMP(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                    CMP(arm_reg2, arm_reg1);
                 break;
             case V810_OP_SHL: // shl reg1, reg2
                 // lsl reg2, reg2, reg1
-                w(LSLS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                LSLS(arm_reg2, arm_reg2, arm_reg1);
                 break;
             case V810_OP_SHR: // shr reg1, reg2
                 // lsr reg2, reg2, reg1
-                w(LSRS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                LSRS(arm_reg2, arm_reg2, arm_reg1);
                 break;
             case V810_OP_SAR: // sar reg1, reg2
                 // asr reg2, reg2, reg1
-                w(ASRS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                ASRS(arm_reg2, arm_reg2, arm_reg1);
                 break;
             case V810_OP_MUL: // mul reg1, reg2
                 // smulls RdLo, RdHi, Rm, Rs
-                w(SMULLS(phys_regs[inst_cache[i].reg2], phys_regs[30], phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                SMULLS(arm_reg2, phys_regs[30], arm_reg2, arm_reg1);
                 // If the 30th register isn't being used in the block, the high
                 // word of the multiplication will be in r0 (because
                 // phys_regs[30] == 0) and we'll have to save it manually
                 if (!phys_regs[30]) {
-                    w(STR_IO(0, 11, 30*4));
+                    STR_IO(0, 11, 30*4);
                 }
                 break;
             case V810_OP_DIV: // div reg1, reg2
                 // reg2/reg1 -> reg2 (__divsi3)
                 // reg2%reg1 -> r30 (__modsi3)
-                w(MOV(0, phys_regs[inst_cache[i].reg2]));
-                w(MOV(1, phys_regs[inst_cache[i].reg1]));
-                w(LDR_IO(2, 15, 4));
-                w(ADD_I(14, 15, 4, 0));
-                w(MOV(15, 2));
+                MOV(0, arm_reg2);
+                MOV(1, arm_reg1);
+                LDR_IO(2, 15, 4);
+                ADD_I(14, 15, 4, 0);
+                MOV(15, 2);
 
                 data(&__divsi3);
 
-                w(MOV(3, phys_regs[inst_cache[i].reg2]));
-                w(MOV(1, phys_regs[inst_cache[i].reg1]));
-                w(MOV(phys_regs[inst_cache[i].reg2], 0));
-                w(MOV(0, 3));
+                MOV(3, arm_reg2);
+                MOV(1, arm_reg1);
+                MOV(arm_reg2, 0);
+                MOV(0, 3);
 
-                w(LDR_IO(2, 15, 4));
-                w(ADD_I(14, 15, 4, 0));
-                w(MOV(15, 2));
+                LDR_IO(2, 15, 4);
+                ADD_I(14, 15, 4, 0);
+                MOV(15, 2);
 
                 data(&__modsi3);
 
                 if (!phys_regs[30])
-                    w(STR_IO(0, 11, 30*4));
+                    STR_IO(0, 11, 30*4);
                 else
-                    w(MOV(phys_regs[30], 0));
+                    MOV(phys_regs[30], 0);
             case V810_OP_DIVU: // divu reg1, reg2
-                w(MOV(0, phys_regs[inst_cache[i].reg2]));
-                w(MOV(1, phys_regs[inst_cache[i].reg1]));
-                w(LDR_IO(2, 15, 4));
-                w(ADD_I(14, 15, 4, 0));
-                w(MOV(15, 2));
+                MOV(0, arm_reg2);
+                MOV(1, arm_reg1);
+                LDR_IO(2, 15, 4);
+                ADD_I(14, 15, 4, 0);
+                MOV(15, 2);
 
                 data(&__udivsi3);
 
-                w(MOV(3, phys_regs[inst_cache[i].reg2]));
-                w(MOV(1, phys_regs[inst_cache[i].reg1]));
-                w(MOV(phys_regs[inst_cache[i].reg2], 0));
-                w(MOV(0, 3));
+                MOV(3, arm_reg2);
+                MOV(1, arm_reg1);
+                MOV(arm_reg2, 0);
+                MOV(0, 3);
 
-                w(LDR_IO(2, 15, 4));
-                w(ADD_I(14, 15, 4, 0));
-                w(MOV(15, 2));
+                LDR_IO(2, 15, 4);
+                ADD_I(14, 15, 4, 0);
+                MOV(15, 2);
 
                 data(&__umodsi3);
 
                 if (!phys_regs[30])
-                    w(STR_IO(0, 11, 30*4));
+                    STR_IO(0, 11, 30*4);
                 else
-                    w(MOV(phys_regs[30], 0));
+                    MOV(phys_regs[30], 0);
                 break;
             case V810_OP_OR: // or reg1, reg2
-                w(ORRS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                ORRS(arm_reg2, arm_reg2, arm_reg1);
                 break;
             case V810_OP_AND: // and reg1, reg2
-                w(ANDS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                ANDS(arm_reg2, arm_reg2, arm_reg1);
                 break;
             case V810_OP_XOR: // xor reg1, reg2
-                w(EORS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                EORS(arm_reg2, arm_reg2, arm_reg1);
                 break;
             case V810_OP_NOT: // not reg1, reg2
-                w(MVNS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1]));
+                MVNS(arm_reg2, arm_reg1);
                 break;
             case V810_OP_MOV_I: // mov imm5, reg2
-                w(MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8));
-                w(MOV_IS(phys_regs[inst_cache[i].reg2], 0, ARM_SHIFT_ASR, 24));
+                MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
+                MOV_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
                 break;
             case V810_OP_ADD_I: // add imm5, reg2
-                w(MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8));
-                w(ADDS_IS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg2], 0, ARM_SHIFT_ASR, 24));
+                MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
+                ADDS_IS(arm_reg2, arm_reg2, 0, ARM_SHIFT_ASR, 24);
                 break;
             case V810_OP_CMP_I: // cmp imm5, reg2
-                w(MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8));
-                w(CMP_IS(phys_regs[inst_cache[i].reg2], 0, ARM_SHIFT_ASR, 24));
+                MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
+                CMP_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
                 break;
             case V810_OP_SHL_I: // shl imm5, reg2
                 // lsl reg2, reg2, #imm5
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, phys_regs[inst_cache[i].reg2], inst_cache[i].imm, ARM_SHIFT_LSL, phys_regs[inst_cache[i].reg2]));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_LSL, arm_reg2);
                 break;
             case V810_OP_SHR_I: // shr imm5, reg2
                 // lsr reg2, reg2, #imm5
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, phys_regs[inst_cache[i].reg2], inst_cache[i].imm, ARM_SHIFT_LSR, phys_regs[inst_cache[i].reg2]));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_LSR, arm_reg2);
                 break;
             case V810_OP_SAR_I: // sar imm5, reg2
                 // asr reg2, reg2, #imm5
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, phys_regs[inst_cache[i].reg2], inst_cache[i].imm, ARM_SHIFT_ASR, phys_regs[inst_cache[i].reg2]));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_ASR, arm_reg2);
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
-                w(MOV_I(0, (inst_cache[i].imm >> 8), 8));
+                MOV_I(0, (inst_cache[i].imm >> 8), 8);
                 // orr r0, #(imm16_lo ror 16)
-                w(ORR_I(0, (inst_cache[i].imm & 0xFF), 16));
+                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
                 // ands reg2, reg1, r0
-                w(ANDS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1], 0));
+                ANDS(arm_reg2, arm_reg1, 0);
                 break;
             case V810_OP_XORI: // xori imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
-                w(MOV_I(0, (inst_cache[i].imm >> 8), 8));
+                MOV_I(0, (inst_cache[i].imm >> 8), 8);
                 // orr r0, #(imm16_lo ror 16)
-                w(ORR_I(0, (inst_cache[i].imm & 0xFF), 16));
+                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
                 // eors reg2, reg1, r0
-                w(EORS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1], 0));
+                EORS(arm_reg2, arm_reg1, 0);
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
-                w(MOV_I(0, (inst_cache[i].imm >> 8), 8));
+                MOV_I(0, (inst_cache[i].imm >> 8), 8);
                 // orr r0, #(imm16_lo ror 16)
-                w(ORR_I(0, (inst_cache[i].imm & 0xFF), 16));
+                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
                 // orr reg2, reg1, r0
-                w(ORRS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1], 0));
+                ORRS(arm_reg2, arm_reg1, 0);
                 break;
             case V810_OP_ADDI: // addi imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
-                w(MOV_I(0, (inst_cache[i].imm >> 8), 8));
+                MOV_I(0, (inst_cache[i].imm >> 8), 8);
                 // orr r0, #(imm16_lo ror 16)
-                w(ORR_I(0, (inst_cache[i].imm & 0xFF), 16));
+                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
                 // add reg2, reg1, r0
-                w(ADDS(phys_regs[inst_cache[i].reg2], phys_regs[inst_cache[i].reg1], 0));
+                ADDS(arm_reg2, arm_reg1, 0);
                 break;
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
                 if (inst_cache[i].reg1 != 0) {
                     // ldr r0, [pc, #12]
-                    w(LDR_IO(0, 15, 12));
+                    LDR_IO(0, 15, 12);
                     // add r0, r0, reg1
-                    w(ADD(0, 0, phys_regs[inst_cache[i].reg1]));
+                    ADD(0, 0, arm_reg1);
                 } else {
                     // ldr r0, [pc, #8]
-                    w(LDR_IO(0, 15, 8));
+                    LDR_IO(0, 15, 8);
                 }
                 // ldr r2, [pc, #8]
-                w(LDR_IO(2, 15, 8));
+                LDR_IO(2, 15, 8);
                 // add lr, pc, #8 ; link skipping the data at the end of the block
-                w(ADD_I(14, 15, 8, 0));
+                ADD_I(14, 15, 8, 0);
                 // mov pc, r2
-                w(MOV(15, 2));
+                MOV(15, 2);
 
                 data(sign_16(inst_cache[i].imm));
                 data(&mem_rbyte);
 
                 // TODO: Figure out the sxtb opcode
                 // lsl r0, r0, #8
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 8, ARM_SHIFT_LSL, 0));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 8, ARM_SHIFT_LSL, 0);
                 // asr reg2, r0, #8
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, phys_regs[inst_cache[i].reg2], 8, ARM_SHIFT_ASR, 0));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 8, ARM_SHIFT_ASR, 0);
                 break;
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
                 if (inst_cache[i].reg1 != 0) {
                     // ldr r0, [pc, #12]
-                    w(LDR_IO(0, 15, 12));
+                    LDR_IO(0, 15, 12);
                     // add r0, r0, reg1
-                    w(ADD(0, 0, phys_regs[inst_cache[i].reg1]));
+                    ADD(0, 0, arm_reg1);
                 } else {
                     // ldr r0, [pc, #8]
-                    w(LDR_IO(0, 15, 8));
+                    LDR_IO(0, 15, 8);
                 }
                 // ldr r2, [pc, #8]
-                w(LDR_IO(2, 15, 8));
+                LDR_IO(2, 15, 8);
                 // add lr, pc, #8 ; link skipping the data at the end of the block
-                w(ADD_I(14, 15, 8, 0));
+                ADD_I(14, 15, 8, 0);
                 // mov pc, r2
-                w(MOV(15, 2));
+                MOV(15, 2);
 
                 data(sign_16(inst_cache[i].imm));
                 data(&mem_rhword);
 
                 // TODO: Figure out the sxth opcode
                 // lsl r0, r0, #16
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_LSL, 0));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_LSL, 0);
                 // asr reg2, r0, #16
-                w(gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, phys_regs[inst_cache[i].reg2], 16, ARM_SHIFT_ASR, 0));
+                gen_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 16, ARM_SHIFT_ASR, 0);
                 break;
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
                 if (inst_cache[i].reg1 != 0) {
                     // ldr r0, [pc, #12]
-                    w(LDR_IO(0, 15, 12));
+                    LDR_IO(0, 15, 12);
                     // add r0, r0, reg1
-                    w(ADD(0, 0, phys_regs[inst_cache[i].reg1]));
+                    ADD(0, 0, arm_reg1);
                 } else {
                     // ldr r0, [pc, #8]
-                    w(LDR_IO(0, 15, 8));
+                    LDR_IO(0, 15, 8);
                 }
                 // ldr r2, [pc, #8]
-                w(LDR_IO(2, 15, 8));
+                LDR_IO(2, 15, 8);
                 // add lr, pc, #8 ; link skipping the data at the end of the block
-                w(ADD_I(14, 15, 8, 0));
+                ADD_I(14, 15, 8, 0);
                 // mov pc, r2
-                w(MOV(15, 2));
+                MOV(15, 2);
 
                 data(sign_16(inst_cache[i].imm));
                 data(&mem_rword);
 
                 // mov reg2, r0
-                w(MOV(phys_regs[inst_cache[i].reg2], 0));
+                MOV(arm_reg2, 0);
                 break;
             case V810_OP_ST_B: // st.h reg2, disp16 [reg1]
                 if (inst_cache[i].reg1 != 0) {
                     // ldr r0, [pc, #16]
-                    w(LDR_IO(0, 15, 16));
+                    LDR_IO(0, 15, 16);
                     // add r0, r0, reg1
-                    w(ADD(0, 0, phys_regs[inst_cache[i].reg1]));
+                    ADD(0, 0, arm_reg1);
                 } else {
                     // ldr r0, [pc, #12]
-                    w(LDR_IO(0, 15, 12));
+                    LDR_IO(0, 15, 12);
                 }
                 if (inst_cache[i].reg2 == 0)
                     // mov r1, #0
-                    w(MOV_I(1, 0, 0));
+                    MOV_I(1, 0, 0);
                 else
                     // mov r1, reg2
-                    w(MOV(1, phys_regs[inst_cache[i].reg2]));
+                    MOV(1, arm_reg2);
                 // ldr r2, [pc, #8]
-                w(LDR_IO(2, 15, 8));
+                LDR_IO(2, 15, 8);
                 // add lr, pc, #8 ; link skipping the data at the end of the block
-                w(ADD_I(14, 15, 8, 0));
+                ADD_I(14, 15, 8, 0);
                 // mov pc, r2
-                w(MOV(15, 2));
+                MOV(15, 2);
 
                 data(sign_16(inst_cache[i].imm));
                 data(&mem_wbyte);
@@ -619,91 +618,91 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_ST_H: // st.h reg2, disp16 [reg1]
                 if (inst_cache[i].reg1 != 0) {
                     // ldr r0, [pc, #16]
-                    w(LDR_IO(0, 15, 16));
+                    LDR_IO(0, 15, 16);
                     // add r0, r0, reg1
-                    w(ADD(0, 0, phys_regs[inst_cache[i].reg1]));
+                    ADD(0, 0, arm_reg1);
                 } else {
                     // ldr r0, [pc, #12]
-                    w(LDR_IO(0, 15, 12));
+                    LDR_IO(0, 15, 12);
                 }
                 if (inst_cache[i].reg2 == 0)
                     // mov r1, #0
-                    w(MOV_I(1, 0, 0));
+                    MOV_I(1, 0, 0);
                 else
                     // mov r1, reg2
-                    w(MOV(1, phys_regs[inst_cache[i].reg2]));
+                    MOV(1, arm_reg2);
                 // ldr r2, [pc, #8]
-                w(LDR_IO(2, 15, 8));
+                LDR_IO(2, 15, 8);
                 // add lr, pc, #8 ; link skipping the data at the end of the block
-                w(ADD_I(14, 15, 8, 0));
+                ADD_I(14, 15, 8, 0);
                 // mov pc, r2
-                w(MOV(15, 2));
+                MOV(15, 2);
 
                 data(sign_16(inst_cache[i].imm));
                 data(&mem_whword);
                 break;
             case V810_OP_ST_W: // st.h reg2, disp16 [reg1]
-                if (phys_regs[inst_cache[i].reg2] == 0)
-                    w(LDR_IO(1, 11, inst_cache[i].reg2*4));
+                if (arm_reg2 == 0)
+                    LDR_IO(1, 11, inst_cache[i].reg2*4);
 
                 if (inst_cache[i].reg1 != 0) {
                     // ldr r0, [pc, #16]
-                    w(LDR_IO(0, 15, 16));
+                    LDR_IO(0, 15, 16);
                     // add r0, r0, reg1
-                    w(ADD(0, 0, phys_regs[inst_cache[i].reg1]));
+                    ADD(0, 0, arm_reg1);
                 } else {
                     // ldr r0, [pc, #12]
-                    w(LDR_IO(0, 15, 12));
+                    LDR_IO(0, 15, 12);
                 }
                 if (inst_cache[i].reg2 == 0)
                     // mov r1, #0
-                    w(MOV_I(1, 0, 0));
-                else if (phys_regs[inst_cache[i].reg2] == 0)
-                    w(NOP());
+                    MOV_I(1, 0, 0);
+                else if (arm_reg2 == 0)
+                    NOP();
                 else
                     // mov r1, reg2
-                    w(MOV(1, phys_regs[inst_cache[i].reg2]));
+                    MOV(1, arm_reg2);
                 // ldr r2, [pc, #8]
-                w(LDR_IO(2, 15, 8));
+                LDR_IO(2, 15, 8);
                 // add lr, pc, #8 ; link skipping the data at the end of the block
-                w(ADD_I(14, 15, 8, 0));
+                ADD_I(14, 15, 8, 0);
                 // mov pc, r2
-                w(MOV(15, 2));
+                MOV(15, 2);
 
                 data(sign_16(inst_cache[i].imm));
                 data(&mem_wword);
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
                 // str reg2, [r11, #((35+regID)*4)] ; Stores reg2 in v810_state->S_REG[regID]
-                w(STR_IO(phys_regs[inst_cache[i].reg2], 11, (35+phys_regs[inst_cache[i].imm])*4));
+                STR_IO(arm_reg2, 11, (35+phys_regs[inst_cache[i].imm])*4);
                 break;
             case V810_OP_STSR: // stsr regID, reg2
                 // ldr reg2, [r11, #((35+regID)*4)] ; Loads v810_state->S_REG[regID] into reg2
-                w(LDR_IO(phys_regs[inst_cache[i].reg2], 11, (35+phys_regs[inst_cache[i].imm])*4));
+                LDR_IO(arm_reg2, 11, (35+phys_regs[inst_cache[i].imm])*4);
                 break;
             case V810_OP_SEI: // sei
                 // Sets the 12th bit in v810_state->S_REG[PSW]
-                w(LDR_IO(0, 11, (35+PSW)*4));
-                w(ORR_I(0, 1, 20));
-                w(STR_IO(0, 11, (35+PSW)*4));
+                LDR_IO(0, 11, (35+PSW)*4);
+                ORR_I(0, 1, 20);
+                STR_IO(0, 11, (35+PSW)*4);
                 break;
             case V810_OP_CLI: // cli
                 // Sets the 12th bit in v810_state->S_REG[PSW]
-                w(LDR_IO(0, 11, (35+PSW)*4));
-                w(BIC_I(0, 1, 20));
-                w(STR_IO(0, 11, (35+PSW)*4));
+                LDR_IO(0, 11, (35+PSW)*4);
+                BIC_I(0, 1, 20);
+                STR_IO(0, 11, (35+PSW)*4);
                 break;
             case V810_OP_NOP:
-                w(NOP());
+                NOP();
                 break;
             case END_BLOCK:
-                w(POP(1 << 15));
+                POP(1 << 15);
                 break;
             default:
                 sprintf(str, "Unimplemented instruction: 0x%x", inst_cache[i].opcode);
                 svcOutputDebugString(str, (int) strlen(str));
                 // Fill unimplemented instructions with a nop and hope the game still runs
-                w(NOP());
+                NOP();
                 break;
         }
     }
@@ -778,7 +777,7 @@ void drc_dumpCache(char* filename) {
     fclose(f);
 }
 
-void drc_dumpRAM() {
+void vb_dumpRAM() {
     FILE* f = fopen("vb_ram.in", "w");
     fwrite(V810_VB_RAM.pmemory, V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr,1, f);
     fclose(f);

@@ -27,6 +27,11 @@
 #ifndef ARM_EMIT_H
 #define ARM_EMIT_H
 
+// Write instruction to block
+#define emit(inst) block->phys_loc[block_pos++] = inst
+// Write data to block
+#define data(word) emit((unsigned int)(word))
+
 // Condition codes
 enum {
     ARM_COND_EQ, // Equal
@@ -98,7 +103,7 @@ enum {
 // +-------------------------------------------+
 // Data processing immediate
 #define gen_data_proc_imm(cond, op, s, Rn, Rd, rot, imm) \
-    (unsigned)      (\
+    emit            (\
     (cond)  <<28    |\
     (1)     <<25    |\
     (op)    <<21    |\
@@ -114,7 +119,7 @@ enum {
 // +------------------------------------------------------------+
 // Data processing immediate shift
 #define gen_data_proc_imm_shift(cond, opcode, s, Rn, Rd, shift_imm, shift, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (opcode)    <<21    |\
     (s)         <<20    |\
@@ -130,7 +135,7 @@ enum {
 // +---------------------------------------------------------+
 // Data processing register shift
 #define gen_data_proc_reg_shift(cond, opcode, s, Rn, Rd, Rs, shift, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (opcode)    <<21    |\
     (s)         <<20    |\
@@ -146,7 +151,7 @@ enum {
 // +--------------------------------------------------+
 // Multiply
 #define gen_multiply(cond, a, s, Rd, Rn, Rs, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (a)         <<21    |\
     (s)         <<20    |\
@@ -162,7 +167,7 @@ enum {
 // +---------------------------------------------------------+
 // Multiply long
 #define gen_multiply_long(cond, u, a, s, RdHi, RdLo, Rn, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (1)         <<23    |\
     (u)         <<22    |\
@@ -180,7 +185,7 @@ enum {
 // +-----------------------------------+
 // Move from status register
 #define gen_move_from_cpsr(cond, r, sbo, Rd, sbz) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (1)         <<24    |\
     (r)         <<22    |\
@@ -194,7 +199,7 @@ enum {
 // +------------------------------------------------+
 // Move immediate to status register
 #define gen_move_imm_to_cpsr(cond, r, mask, sbo, rot, imm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (0b11)      <<24    |\
     (r)         <<22    |\
@@ -210,7 +215,7 @@ enum {
 // +---------------------------------------------------+
 // Move register to status register
 #define gen_move_reg_to_cpsr(cond, r, mask, sbo, sbz, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (1)         <<24    |\
     (r)         <<22    |\
@@ -226,7 +231,7 @@ enum {
 // +-----------------------------------------------+
 // Branch/exchange instruction set
 #define gen_branch_exchange(cond, sbo1, sbo2, sbo3, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (0b1001)    <<21    |\
     (sbo1)      <<16    |\
@@ -241,7 +246,7 @@ enum {
 // +-------------------------------------------------+
 // Load/store multiple
 #define gen_ldst_imm_off(cond, p, u, b, w, l, Rn, Rd, imm) \
-    (unsigned)      (\
+    emit            (\
     (cond)  <<28    |\
     (1)     <<26    |\
     (p)     <<24    |\
@@ -259,7 +264,7 @@ enum {
 // +------------------------------------------------------------------------+
 // Load/store register offset
 #define gen_ldst_reg_off(cond, p, u, b, w, l, Rn, Rd, shift_imm, shift, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (0b011)     <<25    |\
     (p)         <<24    |\
@@ -279,7 +284,7 @@ enum {
 // +---------------------------------------------------------------------------+
 // Load/store halfword/signed byte
 #define gen_ldst_hb1(cond, p, u, w, l, Rn, Rd, high_off, s, h, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (p)         <<24    |\
     (u)         <<23    |\
@@ -300,7 +305,7 @@ enum {
 // +----------------------------------------------------------------------+
 // Load/store halfword/signed byte
 #define gen_ldst_hb2(cond, p, u, w, l, Rn, Rd, sbz, s, h, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (p)         <<24    |\
     (u)         <<23    |\
@@ -321,7 +326,7 @@ enum {
 // +---------------------------------------------------+
 // Swab/swap byte
 #define gen_swap_byte(cond, b, Rn, Rd, sbz, Rm) \
-    (unsigned)          (\
+    emit                (\
     (cond)      <<28    |\
     (1)         <<24    |\
     (b)         <<22    |\
@@ -337,7 +342,7 @@ enum {
 // +---------------------------------------------+
 // Load/store multiple
 #define gen_ldst_multiple(cond, p, u, s, w, l, Rn, regs) \
-    (unsigned)      (\
+    emit            (\
     (cond)  <<28    |\
     (1)     <<27    |\
     (p)     <<24    |\
