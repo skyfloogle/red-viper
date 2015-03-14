@@ -193,6 +193,8 @@ void v810_translateBlock(exec_block* block) {
                 break;
             case AM_IX:
                 inst_cache[num_inst].imm = (unsigned)((lowB & 0x1)); // Mode ID, Ignore for now
+                // Exit the block
+                finished = true;
                 break;
             case AM_BSTR: // Bit String Subopcodes
                 inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
@@ -268,6 +270,22 @@ void v810_translateBlock(exec_block* block) {
                 // of the block
                 data(PC + sign_26(inst_cache[i].imm));
                 data(PC + 4);
+                break;
+            case V810_OP_RETI:
+                w(LDR_IO(0, 11, (35+PSW)*4));
+                w(TST_I(0, PSW_NP>>8, 24));
+                // ldrne r1, S_REG[FEPC]
+                w(gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 1, (35+FEPC)*4));
+                // ldrne r2, S_REG[FEPSW]
+                w(gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 2, (35+FEPSW)*4));
+                // ldreq r1, S_REG[EIPC]
+                w(gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 1, (35+EIPC)*4));
+                // ldreq r2, S_REG[FEPSW]
+                w(gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 2, (35+EIPSW)*4));
+
+                w(STR_IO(1, 11, 33*4));
+                w(STR_IO(2, 11, (35+PSW)*4));
+                w(POP(1 << 15));
                 break;
             case V810_OP_BV:
             case V810_OP_BL:

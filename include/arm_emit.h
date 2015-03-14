@@ -375,6 +375,12 @@ enum {
 #define CMP_I(Rn, imm8, rot) \
     gen_data_proc_imm(ARM_COND_AL, ARM_OP_CMP, 1, Rn, 0, rot>>1, imm8)
 
+// tst Rn, imm8, ror #rot
+// Test immediate
+// imm8 can be rotated an even number of times
+#define TST_I(Rn, imm8, rot) \
+    gen_data_proc_imm(ARM_COND_AL, ARM_OP_TST, 1, Rn, 0, rot>>1, imm8)
+
 // mov Rd, imm8, ror #rot
 // Mov immediate
 // imm8 can be rotated an even number of times
