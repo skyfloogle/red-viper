@@ -46,6 +46,14 @@
 BYTE reg_usage[32];
 WORD* cache_start = NULL;
 
+#define saveRegs() \
+    if (unmapped_registers) { \
+        if (arm_reg1 < 4) \
+            STR_IO(arm_reg1, 11, inst_cache[i].reg1*4); \
+        if (arm_reg2 < 4) \
+            STR_IO(arm_reg2, 11, inst_cache[i].reg2*4); \
+}
+
 int __divsi3(int a, int b);
 int __modsi3(int a, int b);
 unsigned int __udivsi3(unsigned int a, unsigned int b);
@@ -53,7 +61,6 @@ unsigned int __umodsi3(unsigned int a, unsigned int b);
 
 char str[32];
 
-// There must be a better way to do it...
 // It maps the most used registers in the block to V810 registers
 void v810_mapRegs(exec_block* block) {
     int i, j, max;
@@ -86,16 +93,6 @@ BYTE getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
         }
     }
     return 0;
-}
-
-int numRegsUsed() {
-    int i;
-    int regs = 0;
-    for (i = 1; i < 32; i++) {
-        if (reg_usage[i])
-            regs++;
-    }
-    return regs;
 }
 
 void v810_translateBlock(exec_block* block) {
@@ -216,13 +213,8 @@ void v810_translateBlock(exec_block* block) {
             finished = true;
         }
 
-        if (numRegsUsed() > 7) {
-            finished = true;
-            inst_cache[num_inst].opcode = END_BLOCK;
-        } else {
-            PC += am_size_table[optable[inst_cache[num_inst].opcode].addr_mode];
-            block->cycles += opcycle[inst_cache[num_inst].opcode];
-        }
+        PC += am_size_table[optable[inst_cache[num_inst].opcode].addr_mode];
+        block->cycles += opcycle[inst_cache[num_inst].opcode];
     }
 
     v810_mapRegs(block);
@@ -233,6 +225,25 @@ void v810_translateBlock(exec_block* block) {
     for (i = 0; i < num_inst; i++) {
         arm_reg1 = phys_regs[inst_cache[i].reg1];
         arm_reg2 = phys_regs[inst_cache[i].reg2];
+
+        bool unmapped_registers = 0;
+
+        // Preload unmapped VB registers
+        if (!arm_reg1 && arm_reg2) {
+            LDR_IO(2, 11, inst_cache[i].reg1*4);
+            arm_reg1 = 2;
+            unmapped_registers = 1;
+        } else if (arm_reg1 && !arm_reg2) {
+            LDR_IO(2, 11, inst_cache[i].reg2*4);
+            arm_reg2 = 2;
+            unmapped_registers = 1;
+        } else if (!arm_reg1 && !arm_reg2) {
+            LDR_IO(2, 11, inst_cache[i].reg1*4);
+            LDR_IO(3, 11, inst_cache[i].reg2*4);
+            arm_reg1 = 2;
+            arm_reg2 = 3;
+            unmapped_registers = 1;
+        }
 
         switch (inst_cache[i].opcode) {
             case V810_OP_JMP: // jmp [reg1]
@@ -642,9 +653,6 @@ void v810_translateBlock(exec_block* block) {
                 data(&mem_whword);
                 break;
             case V810_OP_ST_W: // st.h reg2, disp16 [reg1]
-                if (arm_reg2 == 0)
-                    LDR_IO(1, 11, inst_cache[i].reg2*4);
-
                 if (inst_cache[i].reg1 != 0) {
                     // ldr r0, [pc, #16]
                     LDR_IO(0, 15, 16);
@@ -657,8 +665,6 @@ void v810_translateBlock(exec_block* block) {
                 if (inst_cache[i].reg2 == 0)
                     // mov r1, #0
                     MOV_I(1, 0, 0);
-                else if (arm_reg2 == 0)
-                    NOP();
                 else
                     // mov r1, reg2
                     MOV(1, arm_reg2);
@@ -705,6 +711,8 @@ void v810_translateBlock(exec_block* block) {
                 NOP();
                 break;
         }
+
+        saveRegs();
     }
 
     // In ARM mode, each instruction is 4 bytes
