@@ -46,14 +46,6 @@
 BYTE reg_usage[32];
 WORD* cache_start = NULL;
 
-#define saveRegs() \
-    if (unmapped_registers) { \
-        if (arm_reg1 < 4) \
-            STR_IO(arm_reg1, 11, inst_cache[i].reg1*4); \
-        if (arm_reg2 < 4) \
-            STR_IO(arm_reg2, 11, inst_cache[i].reg2*4); \
-}
-
 int __divsi3(int a, int b);
 int __modsi3(int a, int b);
 unsigned int __udivsi3(unsigned int a, unsigned int b);
@@ -144,6 +136,8 @@ void v810_translateBlock(exec_block* block) {
                 inst_cache[num_inst].imm = (unsigned)((lowB & 0x1F));
                 inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
                 reg_usage[inst_cache[num_inst].reg2]++;
+
+                inst_cache[num_inst].reg1 = (BYTE)(-1);
                 break;
             case AM_III: // Branch instructions
                 inst_cache[num_inst].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
@@ -153,11 +147,17 @@ void v810_translateBlock(exec_block* block) {
                 } else {
                     PC += 2;
                 }
+
+                inst_cache[num_inst].reg1 = (BYTE)(-1);
+                inst_cache[num_inst].reg2 = (BYTE)(-1);
                 break;
             case AM_IV: // Middle distance jump
                 inst_cache[num_inst].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
                 // Exit the block
                 finished = true;
+
+                inst_cache[num_inst].reg1 = (BYTE)(-1);
+                inst_cache[num_inst].reg2 = (BYTE)(-1);
                 break;
             case AM_V:
                 inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
@@ -186,6 +186,9 @@ void v810_translateBlock(exec_block* block) {
                 break;
             case AM_IX:
                 inst_cache[num_inst].imm = (unsigned)((lowB & 0x1)); // Mode ID, Ignore for now
+
+                inst_cache[num_inst].reg1 = (BYTE)(-1);
+                inst_cache[num_inst].reg2 = (BYTE)(-1);
                 // Exit the block
                 finished = true;
                 break;
@@ -203,8 +206,12 @@ void v810_translateBlock(exec_block* block) {
                 reg_usage[inst_cache[num_inst].reg2]++;
                 break;
             case AM_UDEF: // Invalid opcode.
+                inst_cache[num_inst].reg1 = (BYTE)(-1);
+                inst_cache[num_inst].reg2 = (BYTE)(-1);
                 break;
             default: // Invalid opcode.
+                inst_cache[num_inst].reg1 = (BYTE)(-1);
+                inst_cache[num_inst].reg2 = (BYTE)(-1);
                 PC += 2;
                 break;
         }
@@ -230,16 +237,22 @@ void v810_translateBlock(exec_block* block) {
 
         // Preload unmapped VB registers
         if (!arm_reg1 && arm_reg2) {
-            LDR_IO(2, 11, inst_cache[i].reg1*4);
+            if (inst_cache[i].reg1)
+                LDR_IO(2, 11, inst_cache[i].reg1 * 4);
+            else
+                MOV_I(2, 0, 0);
             arm_reg1 = 2;
             unmapped_registers = 1;
         } else if (arm_reg1 && !arm_reg2) {
-            LDR_IO(2, 11, inst_cache[i].reg2*4);
+            if (inst_cache[i].reg2)
+                LDR_IO(2, 11, inst_cache[i].reg2 * 4);
+            else
+                MOV_I(2, 0, 0);
             arm_reg2 = 2;
             unmapped_registers = 1;
         } else if (!arm_reg1 && !arm_reg2) {
-            LDR_IO(2, 11, inst_cache[i].reg1*4);
-            LDR_IO(3, 11, inst_cache[i].reg2*4);
+            LDR_IO(2, 11, inst_cache[i].reg1 * 4);
+            LDR_IO(3, 11, inst_cache[i].reg2 * 4);
             arm_reg1 = 2;
             arm_reg2 = 3;
             unmapped_registers = 1;
@@ -248,7 +261,7 @@ void v810_translateBlock(exec_block* block) {
         switch (inst_cache[i].opcode) {
             case V810_OP_JMP: // jmp [reg1]
                 // str reg1, [r11, #(33*4)] ; r11 has v810_state
-                STR_IO(arm_reg1, 11, 33*4);
+                STR_IO(arm_reg1, 11, 33 * 4);
                 // pop {pc} (or "ldmfd sp!, {pc}")
                 POP(1 << 15);
                 break;
@@ -257,7 +270,7 @@ void v810_translateBlock(exec_block* block) {
                 // already 2 instructions ahead), which will have the new PC
                 LDR_IO(0, 15, 4);
                 // str r0, [r11, #(33*4)] ; Save the new PC
-                STR_IO(0, 11, 33*4);
+                STR_IO(0, 11, 33 * 4);
                 // pop {pc} (or "ldmfd sp!, {pc}")
                 POP(1 << 15);
 
@@ -268,12 +281,12 @@ void v810_translateBlock(exec_block* block) {
                 LDR_IO(0, 15, 12);
                 LDR_IO(1, 15, 12);
                 // Save the new PC
-                STR_IO(0, 11, 33*4);
+                STR_IO(0, 11, 33 * 4);
                 // Link the return address
                 if (phys_regs[31])
                     MOV(phys_regs[31], 1);
                 else
-                    STR_IO(1, 11, 31*4);
+                    STR_IO(1, 11, 31 * 4);
                 POP(1 << 15);
 
                 // Save the address of the new PC and the linked PC at the end
@@ -282,19 +295,19 @@ void v810_translateBlock(exec_block* block) {
                 data(PC + 4);
                 break;
             case V810_OP_RETI:
-                LDR_IO(0, 11, (35+PSW)*4);
-                TST_I(0, PSW_NP>>8, 24);
+                LDR_IO(0, 11, (35 + PSW) * 4);
+                TST_I(0, PSW_NP >> 8, 24);
                 // ldrne r1, S_REG[FEPC]
-                gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 1, (35+FEPC)*4);
+                gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 1, (35 + FEPC) * 4);
                 // ldrne r2, S_REG[FEPSW]
-                gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 2, (35+FEPSW)*4);
+                gen_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 2, (35 + FEPSW) * 4);
                 // ldreq r1, S_REG[EIPC]
-                gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 1, (35+EIPC)*4);
+                gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 1, (35 + EIPC) * 4);
                 // ldreq r2, S_REG[FEPSW]
-                gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 2, (35+EIPSW)*4);
+                gen_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 2, (35 + EIPSW) * 4);
 
-                STR_IO(1, 11, 33*4);
-                STR_IO(2, 11, (35+PSW)*4);
+                STR_IO(1, 11, 33 * 4);
+                STR_IO(2, 11, (35 + PSW) * 4);
                 POP(1 << 15);
                 break;
             case V810_OP_BV:
@@ -313,9 +326,9 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_BGE:
             case V810_OP_BGT:
                 // ldr r0, [r11, #(33*4)] ; load the current PC
-                LDR_IO(0, 11, 33*4);
+                LDR_IO(0, 11, 33 * 4);
                 // mov r1, #(disp9 ror 9)
-                MOV_I(1, inst_cache[i].imm>>1, 8);
+                MOV_I(1, inst_cache[i].imm >> 1, 8);
                 BYTE arm_cond = cond_map[inst_cache[i].opcode & 0xF];
                 // add<cond> r0, r0, r1, asr #23
                 gen_data_proc_imm_shift(arm_cond, ARM_OP_ADD, 0, 0, 0, 23, ARM_SHIFT_ASR, 1);
@@ -325,7 +338,7 @@ void v810_translateBlock(exec_block* block) {
                     gen_data_proc_imm((arm_cond + (arm_cond % 2 ? -1 : 1)), ARM_OP_ADD, 0, 0, 0, 0, 2);
                 }
                 // str r0, [r11, #(33*4)] ; Save the new PC
-                STR_IO(0, 11, 33*4);
+                STR_IO(0, 11, 33 * 4);
                 // pop {pc} (or "ldmfd sp!, {pc}")
                 POP(1 << 15);
                 break;
@@ -395,7 +408,7 @@ void v810_translateBlock(exec_block* block) {
                 // word of the multiplication will be in r0 (because
                 // phys_regs[30] == 0) and we'll have to save it manually
                 if (!phys_regs[30]) {
-                    STR_IO(0, 11, 30*4);
+                    STR_IO(0, 11, 30 * 4);
                 }
                 break;
             case V810_OP_DIV: // div reg1, reg2
@@ -421,7 +434,7 @@ void v810_translateBlock(exec_block* block) {
                 data(&__modsi3);
 
                 if (!phys_regs[30])
-                    STR_IO(0, 11, 30*4);
+                    STR_IO(0, 11, 30 * 4);
                 else
                     MOV(phys_regs[30], 0);
             case V810_OP_DIVU: // divu reg1, reg2
@@ -445,7 +458,7 @@ void v810_translateBlock(exec_block* block) {
                 data(&__umodsi3);
 
                 if (!phys_regs[30])
-                    STR_IO(0, 11, 30*4);
+                    STR_IO(0, 11, 30 * 4);
                 else
                     MOV(phys_regs[30], 0);
                 break;
@@ -680,23 +693,23 @@ void v810_translateBlock(exec_block* block) {
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
                 // str reg2, [r11, #((35+regID)*4)] ; Stores reg2 in v810_state->S_REG[regID]
-                STR_IO(arm_reg2, 11, (35+phys_regs[inst_cache[i].imm])*4);
+                STR_IO(arm_reg2, 11, (35 + phys_regs[inst_cache[i].imm]) * 4);
                 break;
             case V810_OP_STSR: // stsr regID, reg2
                 // ldr reg2, [r11, #((35+regID)*4)] ; Loads v810_state->S_REG[regID] into reg2
-                LDR_IO(arm_reg2, 11, (35+phys_regs[inst_cache[i].imm])*4);
+                LDR_IO(arm_reg2, 11, (35 + phys_regs[inst_cache[i].imm]) * 4);
                 break;
             case V810_OP_SEI: // sei
                 // Sets the 12th bit in v810_state->S_REG[PSW]
-                LDR_IO(0, 11, (35+PSW)*4);
+                LDR_IO(0, 11, (35 + PSW) * 4);
                 ORR_I(0, 1, 20);
-                STR_IO(0, 11, (35+PSW)*4);
+                STR_IO(0, 11, (35 + PSW) * 4);
                 break;
             case V810_OP_CLI: // cli
                 // Sets the 12th bit in v810_state->S_REG[PSW]
-                LDR_IO(0, 11, (35+PSW)*4);
+                LDR_IO(0, 11, (35 + PSW) * 4);
                 BIC_I(0, 1, 20);
-                STR_IO(0, 11, (35+PSW)*4);
+                STR_IO(0, 11, (35 + PSW) * 4);
                 break;
             case V810_OP_NOP:
                 NOP();
@@ -712,7 +725,12 @@ void v810_translateBlock(exec_block* block) {
                 break;
         }
 
-        saveRegs();
+        if (unmapped_registers) {
+            if (arm_reg1 < 4)
+                STR_IO(arm_reg1, 11, inst_cache[i].reg1 * 4);
+            if (arm_reg2 < 4)
+                STR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4);
+        }
     }
 
     // In ARM mode, each instruction is 4 bytes
@@ -722,7 +740,6 @@ void v810_translateBlock(exec_block* block) {
 
 // V810 dynarec
 void v810_drc() {
-    static int block_num = 0;
     static exec_block** block_map = NULL;
     static WORD* cache_pos = NULL;
     static unsigned int clocks;
@@ -762,7 +779,6 @@ void v810_drc() {
 
             cache_pos += cur_block->size;
             block_map[map_pos] = cur_block;
-            block_num++;
         }
 
         //hidScanInput();
