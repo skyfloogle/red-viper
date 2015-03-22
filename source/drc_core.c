@@ -87,18 +87,11 @@ BYTE getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
     return 0;
 }
 
-void v810_translateBlock(exec_block* block) {
-    unsigned int num_inst, i, block_pos = 0;
-    bool finished = false;
-    v810_instruction inst_cache[MAX_INST];
+unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_cache) {
+    unsigned int num_inst;
     BYTE lowB, highB, lowB2, highB2; // Up to 4 bytes for instruction (either 16 or 32 bits)
-    BYTE phys_regs[32];
-    BYTE arm_reg1, arm_reg2;
+    bool finished;
 
-    // Clear previous block register stats
-    memset(reg_usage, 0, 32);
-
-    // First pass: decode instructions
     for (num_inst = 0; (num_inst < MAX_INST) && !finished; num_inst++) {
         PC = (PC&0x07FFFFFE);
 
@@ -115,7 +108,7 @@ void v810_translateBlock(exec_block* block) {
             lowB2  = ((BYTE *)(V810_ROM1.off + PC))[2];
             highB2 = ((BYTE *)(V810_ROM1.off + PC))[3];
         } else {
-            return;
+            return 0;
         }
 
         inst_cache[num_inst].opcode = highB >> 2;
@@ -123,7 +116,7 @@ void v810_translateBlock(exec_block* block) {
             inst_cache[num_inst].opcode = (highB >> 1); // type III instructions.
 
         if((inst_cache[num_inst].opcode > 0x4F) || (inst_cache[num_inst].opcode < 0))
-            return;
+            return 0;
 
         switch(optable[inst_cache[num_inst].opcode].addr_mode) {
             case AM_I:
@@ -223,6 +216,21 @@ void v810_translateBlock(exec_block* block) {
         PC += am_size_table[optable[inst_cache[num_inst].opcode].addr_mode];
         block->cycles += opcycle[inst_cache[num_inst].opcode];
     }
+
+    return num_inst;
+}
+
+void v810_translateBlock(exec_block* block) {
+    unsigned int num_inst, i, block_pos = 0;
+    bool finished = false;
+    v810_instruction inst_cache[MAX_INST];
+    BYTE phys_regs[32];
+    BYTE arm_reg1, arm_reg2;
+
+    // Clear previous block register stats
+    memset(reg_usage, 0, 32);
+
+    num_inst = v810_decodeInstructions(block, inst_cache);
 
     v810_mapRegs(block);
     for (i = 0; i < 32; i++)
