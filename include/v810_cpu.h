@@ -10,6 +10,7 @@
 #include <ctype.h>
 
 #include "vb_types.h"
+#include "arm_emit.h"
 
 //System Register Defines (these are the only valid system registers!)
 #define EIPC     0       //Exeption/Interupt PC
