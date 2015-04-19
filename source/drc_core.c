@@ -163,26 +163,26 @@ void v810_scanBlockBoundaries(WORD* start_PC, WORD* end_PC) {
     }
 }
 
-unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_cache) {
+unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_cache, WORD startPC, WORD endPC) {
     unsigned int num_inst;
     BYTE lowB, highB, lowB2, highB2; // Up to 4 bytes for instruction (either 16 or 32 bits)
-    bool finished = false;
+    WORD curPC = startPC;
 
-    for (num_inst = 0; (num_inst < MAX_INST) && !finished; num_inst++) {
-        PC = (PC&0x07FFFFFE);
+    for (num_inst = 0; (num_inst < MAX_INST) && (curPC <= endPC); num_inst++) {
+        curPC = (curPC&0x07FFFFFE);
 
-        if ((PC>>24) == 0x05) { // RAM
-            PC     = (PC & V810_VB_RAM.highaddr);
-            lowB   = ((BYTE *)(V810_VB_RAM.off + PC))[0];
-            highB  = ((BYTE *)(V810_VB_RAM.off + PC))[1];
-            lowB2  = ((BYTE *)(V810_VB_RAM.off + PC))[2];
-            highB2 = ((BYTE *)(V810_VB_RAM.off + PC))[3];
-        } else if ((PC>>24) >= 0x07) { // ROM
-            PC     = (PC & V810_ROM1.highaddr);
-            lowB   = ((BYTE *)(V810_ROM1.off + PC))[0];
-            highB  = ((BYTE *)(V810_ROM1.off + PC))[1];
-            lowB2  = ((BYTE *)(V810_ROM1.off + PC))[2];
-            highB2 = ((BYTE *)(V810_ROM1.off + PC))[3];
+        if ((curPC>>24) == 0x05) { // RAM
+            curPC     = (curPC & V810_VB_RAM.highaddr);
+            lowB   = ((BYTE *)(V810_VB_RAM.off + curPC))[0];
+            highB  = ((BYTE *)(V810_VB_RAM.off + curPC))[1];
+            lowB2  = ((BYTE *)(V810_VB_RAM.off + curPC))[2];
+            highB2 = ((BYTE *)(V810_VB_RAM.off + curPC))[3];
+        } else if ((curPC>>24) >= 0x07) { // ROM
+            curPC     = (curPC & V810_ROM1.highaddr);
+            lowB   = ((BYTE *)(V810_ROM1.off + curPC))[0];
+            highB  = ((BYTE *)(V810_ROM1.off + curPC))[1];
+            lowB2  = ((BYTE *)(V810_ROM1.off + curPC))[2];
+            highB2 = ((BYTE *)(V810_ROM1.off + curPC))[3];
         } else {
             return 0;
         }
@@ -210,20 +210,13 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
                 break;
             case AM_III: // Branch instructions
                 inst_cache[num_inst].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
-                if (inst_cache[num_inst].opcode != V810_OP_NOP) {
-                    // Exit the block
-                    finished = true;
-                } else {
-                    PC += 2;
-                }
+                curPC += 2;
 
                 inst_cache[num_inst].reg1 = (BYTE)(-1);
                 inst_cache[num_inst].reg2 = (BYTE)(-1);
                 break;
             case AM_IV: // Middle distance jump
                 inst_cache[num_inst].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                // Exit the block
-                finished = true;
 
                 inst_cache[num_inst].reg1 = (BYTE)(-1);
                 inst_cache[num_inst].reg2 = (BYTE)(-1);
@@ -258,8 +251,6 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
 
                 inst_cache[num_inst].reg1 = (BYTE)(-1);
                 inst_cache[num_inst].reg2 = (BYTE)(-1);
-                // Exit the block
-                finished = true;
                 break;
             case AM_BSTR: // Bit String Subopcodes
                 inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
@@ -281,42 +272,38 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
             default: // Invalid opcode.
                 inst_cache[num_inst].reg1 = (BYTE)(-1);
                 inst_cache[num_inst].reg2 = (BYTE)(-1);
-                PC += 2;
+                curPC += 2;
                 break;
         }
 
-        if (inst_cache[num_inst].opcode == V810_OP_JMP) {
-            finished = true;
-        }
-
-        PC += am_size_table[optable[inst_cache[num_inst].opcode].addr_mode];
+        curPC += am_size_table[optable[inst_cache[num_inst].opcode].addr_mode];
         block->cycles += opcycle[inst_cache[num_inst].opcode];
     }
 
-    return num_inst;
+    return num_inst-1;
 }
 
 void v810_translateBlock(exec_block* block) {
-    unsigned int num_inst, i, block_pos = 0;
+    unsigned int num_v810_inst = 0, num_arm_inst = 0, i, block_pos = 0;
     bool finished = false;
     v810_instruction inst_cache[MAX_INST];
-    arm_inst trans_cache[MAX_INST*4];
     BYTE phys_regs[32];
     BYTE arm_reg1, arm_reg2;
     WORD start_PC = PC;
     WORD end_PC, block_len;
 
-    WORD* pool_start = linearAlloc(MAX_INST);
+    arm_inst* trans_cache = linearAlloc(MAX_INST*4*sizeof(arm_inst));
+    WORD* pool_start = linearAlloc(256*4);
     WORD pool_pos = 0;
 
-    //v810_scanBlockBoundaries(&start_PC, &end_PC);
+    v810_scanBlockBoundaries(&start_PC, &end_PC);
     sprintf(str, "BLOCK: 0x%x -> 0x%x", start_PC, end_PC);
     svcOutputDebugString(str, strlen(str));
 
     // Clear previous block register stats
     memset(reg_usage, 0, 32);
 
-    num_inst = v810_decodeInstructions(block, inst_cache);
+    num_v810_inst = v810_decodeInstructions(block, inst_cache, start_PC, end_PC);
 
     v810_mapRegs(block);
     for (i = 0; i < 32; i++)
@@ -325,7 +312,7 @@ void v810_translateBlock(exec_block* block) {
     inst_ptr = &trans_cache[0];
     pool_ptr = pool_start;
     // Second pass: map registers and memory addresses
-    for (i = 0; i < num_inst; i++) {
+    for (i = 0; i < num_v810_inst; i++) {
         arm_reg1 = phys_regs[inst_cache[i].reg1];
         arm_reg2 = phys_regs[inst_cache[i].reg2];
 
@@ -827,11 +814,10 @@ void v810_translateBlock(exec_block* block) {
             if (arm_reg2 < 4)
                 STR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4);
         }
-
-        block_pos++;
     }
 
-    for (i = 0; i < block_pos; i++) {
+    num_arm_inst = (unsigned int)(((int)(inst_ptr)-(int)(&trans_cache[0]))/sizeof(arm_inst));
+    for (i = 0; i < num_arm_inst; i++) {
         if (trans_cache[i].needs_pool) {
             // TODO: Implement literal pool
         }
@@ -839,6 +825,7 @@ void v810_translateBlock(exec_block* block) {
     }
 
     linearFree(pool_start);
+    linearFree(trans_cache);
 
     // In ARM mode, each instruction is 4 bytes
     block->size = block_pos;
