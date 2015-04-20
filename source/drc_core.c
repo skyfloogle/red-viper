@@ -816,7 +816,7 @@ void v810_translateBlock(exec_block* block) {
         }
     }
 
-    num_arm_inst = (unsigned int)(((int)(inst_ptr)-(int)(&trans_cache[0]))/sizeof(arm_inst));
+    num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
     for (i = 0; i < num_arm_inst; i++) {
         if (trans_cache[i].needs_pool) {
             // TODO: Implement literal pool
