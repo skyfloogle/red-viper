@@ -61,19 +61,19 @@
     str     r10, [r11, r2, lsl #2]
 .endm
 
-@ void v810_executeBlock(exec_block* block);
+@ void v810_executeBlock(WORD* entrypoint, exec_block* block);
 
 .globl v810_executeBlock
 v810_executeBlock:
     push    {r4-r11, ip, lr}
-    push    {r0}
+    push    {r1}
 
     @ The last instruction on the block should be "pop {pc}"
     ldr     lr, =postexec
     push    {lr}
 
     ldRegs
-    ldr     pc, [r0]
+    mov     pc, r0
 
 postexec:
     pop     {r0}

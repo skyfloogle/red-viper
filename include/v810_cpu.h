@@ -10,7 +10,6 @@
 #include <ctype.h>
 
 #include "vb_types.h"
-#include "arm_emit.h"
 
 //System Register Defines (these are the only valid system registers!)
 #define EIPC     0       //Exeption/Interupt PC
@@ -63,44 +62,6 @@
 #define COND_GE 14
 #define COND_GT 15
 
-#define END_BLOCK 0xFF
-
-typedef struct {
-    WORD* phys_loc;
-    WORD virt_loc;
-    WORD size;
-    WORD cycles;
-    BYTE jmp_reg;
-    // We can use 7 registers at a time, r4-r10, and r11 will have the address
-    // of v810_state
-    // reg_map[0] would have the VB register that is mapped to r4
-    BYTE reg_map[7];
-    WORD end_pc; // The address of the last instruction in the block
-} exec_block;
-
-typedef struct {
-    WORD* location;
-    BYTE opcode;
-    BYTE reg1, reg2;
-    WORD imm;
-} v810_instruction;
-
-typedef struct {
-    WORD P_REG[32]; // Main program reg pr0-pr31
-    // When reading and writing the registers before and after executing a
-    // block we need a place to store crap (the "33rd" register)
-    WORD TMP_REG;
-    WORD PC;
-    WORD flags;
-    WORD S_REG[32]; // System registers sr0-sr31
-} cpu_state;
-
-cpu_state* v810_state;
-
-void v810_executeBlock(exec_block* block);
-
-void drc_dumpCache(char* filename);
-
 ///////////////////////////////////////////////////////////////////
 // Defines for memory and IO acces
 // Grabed From StarScream Source
@@ -122,6 +83,18 @@ typedef struct {
     WORD  (*rfuncw)(WORD);  // Pointer to the Register Read func
     void  (*wfuncw)(WORD, WORD);    // Pointer to the Register Write func
 } V810_REGFETCH;
+
+typedef struct {
+    WORD P_REG[32]; // Main program reg pr0-pr31
+    // When reading and writing the registers before and after executing a
+    // block we need a place to store crap (the "33rd" register)
+    WORD TMP_REG;
+    WORD PC;
+    WORD flags;
+    WORD S_REG[32]; // System registers sr0-sr31
+} cpu_state;
+
+cpu_state* v810_state;
 
 ///////////////////////////////////////////////////////////////////
 // Define CPU Globals

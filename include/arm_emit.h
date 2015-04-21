@@ -33,7 +33,7 @@ WORD* pool_ptr;
 arm_inst* inst_ptr;
 
 // Write data to block
-#define data(word) {*(pool_ptr++) = word; trans_cache[i].needs_pool = true;}
+#define data(word, reg) {*(pool_ptr++) = word; LDR_IO(reg, 15, 0); trans_cache[i-1].needs_pool = true;}
 
 // Conditional instructions
 
