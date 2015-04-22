@@ -791,14 +791,14 @@ void v810_translateBlock(exec_block* block) {
 }
 
 WORD* v810_getEntry(WORD loc, exec_block** block) {
-    unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
+    unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>2;
     if (block)
         block = &block_map[map_pos];
     return entry_map[map_pos];
 }
 
 void v810_setEntry(WORD loc, WORD* entry, exec_block* block) {
-    unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
+    unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>2;
     block_map[map_pos] = block;
     entry_map[map_pos] = entry;
 }
@@ -833,14 +833,14 @@ void v810_drc() {
 
         // Try to find a cached block
         entrypoint = v810_getEntry(PC, &cur_block);
-        if (!cur_block) {
+        if (!entrypoint) {
             cur_block = calloc(1, sizeof(exec_block));
 
             cur_block->phys_loc = cache_pos;
             WORD entry_PC = PC;
 
             v810_translateBlock(cur_block);
-            HB_FlushInvalidateCache();
+            //HB_FlushInvalidateCache();
 
             cache_pos += cur_block->size;
             entrypoint = v810_getEntry(entry_PC, NULL);
