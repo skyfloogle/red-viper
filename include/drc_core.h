@@ -24,6 +24,8 @@ typedef struct {
     BYTE opcode;
     BYTE reg1, reg2;
     WORD imm;
+    HWORD start_pos;
+    BYTE trans_size;
 } v810_instruction;
 
 exec_block** block_map = NULL;

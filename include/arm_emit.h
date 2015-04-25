@@ -32,18 +32,14 @@
 WORD* pool_ptr;
 arm_inst* inst_ptr;
 
-// Write data to block
-#define data(word, reg) {*(pool_ptr++) = word; LDR_IO(reg, 15, 0); trans_cache[i-1].needs_pool = true;}
-
 // Conditional instructions
 
 // Data processing immediate
 static inline void new_data_proc_imm(BYTE cond, BYTE op, BYTE s, BYTE Rn, BYTE Rd, BYTE rot, BYTE imm) {
-    arm_inst inst;
-    inst.type = ARM_DATA_PROC_IMM;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.dpi = (arm_inst_dpi) {
+    inst_ptr->type = ARM_DATA_PROC_IMM;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->dpi = (arm_inst_dpi) {
             op,
             s,
             Rn,
@@ -52,16 +48,15 @@ static inline void new_data_proc_imm(BYTE cond, BYTE op, BYTE s, BYTE Rn, BYTE R
             imm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Data processing immediate shift
 static inline void new_data_proc_imm_shift(BYTE cond, BYTE opcode, BYTE s, BYTE Rn, BYTE Rd, BYTE shift_imm, BYTE shift, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_DATA_PROC_IMM_SHIFT;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.dpis = (arm_inst_dpis) {
+    inst_ptr->type = ARM_DATA_PROC_IMM_SHIFT;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->dpis = (arm_inst_dpis) {
             opcode,
             s,
             Rn,
@@ -70,17 +65,16 @@ static inline void new_data_proc_imm_shift(BYTE cond, BYTE opcode, BYTE s, BYTE 
             shift,
             Rm
     };
-
-    *(inst_ptr++) = inst;
+    
+    inst_ptr++;
 }
 
 // Data processing register shift
 static inline void new_data_proc_reg_shift(BYTE cond, BYTE opcode, BYTE s, BYTE Rn, BYTE Rd, BYTE Rs, BYTE shift, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_DATA_PROC_REG_SHIFT;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.dprs = (arm_inst_dprs) {
+    inst_ptr->type = ARM_DATA_PROC_REG_SHIFT;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->dprs = (arm_inst_dprs) {
             opcode,
             s,
             Rn,
@@ -90,16 +84,15 @@ static inline void new_data_proc_reg_shift(BYTE cond, BYTE opcode, BYTE s, BYTE 
             Rm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Multiply
 static inline void new_multiply(BYTE cond, BYTE a, BYTE s, BYTE Rd, BYTE Rn, BYTE Rs, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_MUL;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.mul = (arm_inst_mul) {
+    inst_ptr->type = ARM_MUL;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->mul = (arm_inst_mul) {
             a,
             s,
             Rd,
@@ -108,16 +101,15 @@ static inline void new_multiply(BYTE cond, BYTE a, BYTE s, BYTE Rd, BYTE Rn, BYT
             Rm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Multiply long
 static inline void new_multiply_long(BYTE cond, BYTE u, BYTE a, BYTE s, BYTE RdHi, BYTE RdLo, BYTE Rn, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_MULL;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.mull = (arm_inst_mull) {
+    inst_ptr->type = ARM_MULL;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->mull = (arm_inst_mull) {
             u,
             a,
             s,
@@ -127,32 +119,30 @@ static inline void new_multiply_long(BYTE cond, BYTE u, BYTE a, BYTE s, BYTE RdH
             Rm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Move from status register
 static inline void new_move_from_cpsr(BYTE cond, BYTE r, BYTE sbo, BYTE Rd, HWORD sbz) {
-    arm_inst inst;
-    inst.type = ARM_MOV_FROM_CPSR;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.mfcpsr = (arm_inst_mfcpsr) {
+    inst_ptr->type = ARM_MOV_FROM_CPSR;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->mfcpsr = (arm_inst_mfcpsr) {
             r,
             sbo,
             Rd,
             sbz
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Move immediate to status register
 static inline void new_move_imm_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, BYTE rot, BYTE imm) {
-    arm_inst inst;
-    inst.type = ARM_MOV_IMM_CPSR;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.micpsr = (arm_inst_micpsr) {
+    inst_ptr->type = ARM_MOV_IMM_CPSR;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->micpsr = (arm_inst_micpsr) {
             r,
             mask,
             sbo,
@@ -160,16 +150,15 @@ static inline void new_move_imm_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, 
             imm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Move register to status register
 static inline void new_move_reg_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, BYTE sbz, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_MOV_REG_CPSR;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.mrcpsr = (arm_inst_mrcpsr) {
+    inst_ptr->type = ARM_MOV_REG_CPSR;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->mrcpsr = (arm_inst_mrcpsr) {
             r,
             mask,
             sbo,
@@ -177,32 +166,30 @@ static inline void new_move_reg_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, 
             Rm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Branch/exchange instruction set
 static inline void new_branch_exchange(BYTE cond, BYTE sbo1, BYTE sbo2, BYTE sbo3, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_BR;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.br = (arm_inst_br) {
+    inst_ptr->type = ARM_BR;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->br = (arm_inst_br) {
             sbo1,
             sbo2,
             sbo3,
             Rm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Load/store multiple
 static inline void new_ldst_imm_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, BYTE l, BYTE Rn, BYTE Rd, HWORD imm) {
-    arm_inst inst;
-    inst.type = ARM_LDST_IMM_OFF;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.ldst_io = (arm_inst_ldst_io) {
+    inst_ptr->type = ARM_LDST_IMM_OFF;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->ldst_io = (arm_inst_ldst_io) {
             p,
             u,
             b,
@@ -213,16 +200,15 @@ static inline void new_ldst_imm_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, B
             imm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Load/store register offset
 static inline void new_ldst_reg_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, BYTE l, BYTE Rn, BYTE Rd, BYTE shift_imm, BYTE shift, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_LDST_REG_OFF;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.ldst_ro = (arm_inst_ldst_ro) {
+    inst_ptr->type = ARM_LDST_REG_OFF;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->ldst_ro = (arm_inst_ldst_ro) {
             p,
             u,
             b,
@@ -235,16 +221,15 @@ static inline void new_ldst_reg_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, B
             Rm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Load/store halfword/signed byte
 static inline void new_ldst_hb1(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE Rn, BYTE Rd, BYTE high_off, BYTE s, BYTE h, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_LDST_HB1;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.ldst_hb1 = (arm_inst_ldst_hb1) {
+    inst_ptr->type = ARM_LDST_HB1;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->ldst_hb1 = (arm_inst_ldst_hb1) {
             p,
             u,
             w,
@@ -257,16 +242,15 @@ static inline void new_ldst_hb1(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE 
             Rm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Load/store halfword/signed byte
 static inline void new_ldst_hb2(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE Rn, BYTE Rd, BYTE sbz, BYTE s, BYTE h, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_LDST_HB2;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.ldst_hb2 = (arm_inst_ldst_hb2) {
+    inst_ptr->type = ARM_LDST_HB2;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->ldst_hb2 = (arm_inst_ldst_hb2) {
             p,
             u,
             w,
@@ -279,16 +263,15 @@ static inline void new_ldst_hb2(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE 
             Rm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Swab/swap byte
 static inline void new_swap_byte(BYTE cond, BYTE b, BYTE Rn, BYTE Rd, BYTE sbz, BYTE Rm) {
-    arm_inst inst;
-    inst.type = ARM_SWAP;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.swp = (arm_inst_swp) {
+    inst_ptr->type = ARM_SWAP;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->swp = (arm_inst_swp) {
             b,
             Rn,
             Rd,
@@ -296,16 +279,15 @@ static inline void new_swap_byte(BYTE cond, BYTE b, BYTE Rn, BYTE Rd, BYTE sbz, 
             Rm
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 // Load/store multiple
 static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, BYTE l, BYTE Rn, HWORD regs) {
-    arm_inst inst;
-    inst.type = ARM_LDST_MULT;
-    inst.cond = cond;
-    inst.needs_pool = false;
-    inst.ldstm = (arm_inst_ldstm) {
+    inst_ptr->type = ARM_LDST_MULT;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->ldstm = (arm_inst_ldstm) {
             p,
             u,
             s,
@@ -315,7 +297,7 @@ static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, 
             regs
     };
 
-    *(inst_ptr++) = inst;
+    inst_ptr++;
 }
 
 /**
@@ -525,5 +507,13 @@ static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, 
 // nop
 #define NOP() \
     MOV(0, 0)
+
+// Load word into register using a literal pool
+#define LDW_I(reg, word) { \
+    *(pool_ptr++) = word; \
+    LDR_IO(reg, 15, 0); \
+    trans_cache[i-1].needs_pool = true; \
+}
+
 
 #endif

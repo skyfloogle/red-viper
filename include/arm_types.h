@@ -219,6 +219,8 @@ typedef struct {
 typedef struct {
     arm_inst_type type;
     BYTE cond;
+    WORD PC;
+    bool needs_pool;
     union {
         arm_inst_dpi dpi;
         arm_inst_dpis dpis;
@@ -236,9 +238,6 @@ typedef struct {
         arm_inst_swp swp;
         arm_inst_ldstm ldstm;
     };
-
-    WORD PC;
-    bool needs_pool;
 } arm_inst;
 
 #endif //ARM_TYPES_H
