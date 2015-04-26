@@ -512,8 +512,7 @@ static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, 
 #define LDW_I(reg, word) { \
     *(pool_ptr++) = word; \
     LDR_IO(reg, 15, 0); \
-    trans_cache[i-1].needs_pool = true; \
+    (inst_ptr-1)->needs_pool = true; \
 }
-
 
 #endif

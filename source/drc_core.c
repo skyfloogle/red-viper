@@ -321,7 +321,8 @@ void v810_translateBlock(exec_block* block) {
         arm_reg2 = phys_regs[inst_cache[i].reg2];
 
         trans_cache[i].PC = inst_cache[i].PC;
-        inst_cache[i].start_pos = i;
+        inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache);
+        arm_inst* inst_ptr_start = inst_ptr;
 
         bool unmapped_registers = 0;
 
@@ -765,13 +766,13 @@ void v810_translateBlock(exec_block* block) {
                 STR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4);
         }
 
-        inst_cache[i].trans_size = (BYTE) (inst_ptr - &trans_cache[i] + 1);
+        inst_cache[i].trans_size = (BYTE) (inst_ptr - inst_ptr_start);
     }
 
     num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
-    pool_start = block->phys_loc + num_arm_inst;
+    pool_start = &block->phys_loc[num_arm_inst];
 
-    for (i = 0; i < num_v810_inst; i++) {
+    for (i = 0; i <= num_v810_inst; i++) {
         HWORD start_pos = inst_cache[i].start_pos;
         v810_setEntry(trans_cache[start_pos].PC, block->phys_loc + start_pos, block);
         for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
@@ -790,6 +791,7 @@ void v810_translateBlock(exec_block* block) {
 
     linearFree(pool_cache_start);
     linearFree(trans_cache);
+    linearFree(inst_cache);
 
     // In ARM mode, each instruction is 4 bytes
     block->size = num_arm_inst + pool_pos;
@@ -804,6 +806,9 @@ WORD* v810_getEntry(WORD loc, exec_block** block) {
 }
 
 void v810_setEntry(WORD loc, WORD* entry, exec_block* block) {
+    if (loc < V810_ROM1.lowaddr)
+        return;
+
     unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
     block_map[map_pos] = block;
     entry_map[map_pos] = entry;

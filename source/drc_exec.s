@@ -74,7 +74,7 @@ v810_executeBlock:
     push    {lr}
 
     ldRegs
-    mov     pc, r0
+    bx      r0
 
 postexec:
     pop     {r0}
