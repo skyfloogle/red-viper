@@ -180,6 +180,8 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
             return 0;
         }
 
+        inst_cache[num_inst].PC = curPC;
+
         inst_cache[num_inst].opcode = highB >> 2;
         if ((highB & 0xE0) == 0x80)                      // Special opcode format for
             inst_cache[num_inst].opcode = (highB >> 1); // type III instructions.
@@ -269,8 +271,6 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
                 break;
         }
 
-        inst_cache[num_inst].PC = curPC;
-
         curPC += am_size_table[optable[inst_cache[num_inst].opcode].addr_mode];
         block->cycles += opcycle[inst_cache[num_inst].opcode];
     }
@@ -315,7 +315,6 @@ void v810_translateBlock(exec_block* block) {
         arm_reg1 = phys_regs[inst_cache[i].reg1];
         arm_reg2 = phys_regs[inst_cache[i].reg2];
 
-        trans_cache[i].PC = inst_cache[i].PC;
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         arm_inst* inst_ptr_start = inst_ptr;
 
@@ -783,7 +782,7 @@ void v810_translateBlock(exec_block* block) {
 
     for (i = 0; i <= num_v810_inst; i++) {
         HWORD start_pos = inst_cache[i].start_pos;
-        v810_setEntry(trans_cache[start_pos].PC, block->phys_loc + start_pos, block);
+        v810_setEntry(inst_cache[i].PC, block->phys_loc + start_pos, block);
         for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
 #ifdef LITERAL_POOL
             if (trans_cache[j].needs_pool) {
@@ -868,8 +867,8 @@ void v810_drc() {
             cache_pos += cur_block->size;
             entrypoint = v810_getEntry(entry_PC, NULL);
         }
-        sprintf(str, "BLOCK ENTRY - %p", entrypoint);
-        svcOutputDebugString(str, strlen(str));
+        //sprintf(str, "BLOCK ENTRY - %p", entrypoint);
+        //svcOutputDebugString(str, strlen(str));
 
         //hidScanInput();
         //if (hidKeysHeld() & KEY_START) {
