@@ -42,16 +42,8 @@
 #include "arm_emit.h"
 #include "arm_codegen.h"
 
-#define CACHE_SIZE  0x10000
-#define MAX_INST    1024
-
 BYTE reg_usage[32];
 WORD* cache_start = NULL;
-
-int __divsi3(int a, int b);
-int __modsi3(int a, int b);
-unsigned int __udivsi3(unsigned int a, unsigned int b);
-unsigned int __umodsi3(unsigned int a, unsigned int b);
 
 char str[32];
 
