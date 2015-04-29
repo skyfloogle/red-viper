@@ -30,6 +30,7 @@
 #include "arm_types.h"
 
 WORD* pool_ptr;
+WORD* pool_start;
 arm_inst* inst_ptr;
 
 // Conditional instructions
@@ -509,10 +510,24 @@ static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, 
     MOV(0, 0)
 
 // Load word into register using a literal pool
+#ifdef LITERAL_POOL
 #define LDW_I(reg, word) { \
     *(pool_ptr++) = word; \
     LDR_IO(reg, 15, 0); \
     (inst_ptr-1)->needs_pool = true; \
+    (inst_ptr-1)->pool_start = pool_start; \
+    (inst_ptr-1)->pool_pos = pool_ptr - pool_start; \
 }
+#else
+#define LDW_I(reg, word) { \
+    MOV_I(reg, (WORD)(word) & 0x000000FF, 0); \
+    if ((WORD)(word) & 0x0000FF00) \
+        ORR_I(reg, ((WORD)(word) & 0x0000FF00)>>8, 24); \
+    if ((WORD)(word) & 0x00FF0000) \
+        ORR_I(reg, ((WORD)(word) & 0x00FF0000)>>16, 16); \
+    if ((WORD)(word) & 0xFF000000) \
+        ORR_I(reg, ((WORD)(word) & 0xFF000000)>>24, 8); \
+}
+#endif
 
 #endif

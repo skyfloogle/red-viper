@@ -296,9 +296,11 @@ void v810_translateBlock(exec_block* block) {
 
     v810_instruction *inst_cache = linearAlloc(MAX_INST*sizeof(v810_instruction));
     arm_inst* trans_cache = linearAlloc(MAX_INST*4*sizeof(arm_inst));
-    WORD* pool_cache_start = linearAlloc(256*4);
-    WORD pool_pos = 0;
-    WORD* pool_start;
+    WORD* pool_cache_start = NULL;
+#ifdef LITERAL_POOL
+    pool_cache_start = linearAlloc(256*4);
+#endif
+    WORD pool_offset = 0;
 
     v810_scanBlockBoundaries(&start_PC, &end_PC);
     sprintf(str, "BLOCK: 0x%x -> 0x%x", start_PC, end_PC);
@@ -315,13 +317,14 @@ void v810_translateBlock(exec_block* block) {
 
     inst_ptr = &trans_cache[0];
     pool_ptr = pool_cache_start;
+
     // Second pass: map registers and memory addresses
     for (i = 0; i < num_v810_inst; i++) {
         arm_reg1 = phys_regs[inst_cache[i].reg1];
         arm_reg2 = phys_regs[inst_cache[i].reg2];
 
         trans_cache[i].PC = inst_cache[i].PC;
-        inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache);
+        inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         arm_inst* inst_ptr_start = inst_ptr;
 
         bool unmapped_registers = 0;
@@ -767,34 +770,50 @@ void v810_translateBlock(exec_block* block) {
         }
 
         inst_cache[i].trans_size = (BYTE) (inst_ptr - inst_ptr_start);
+
+#ifdef LITERAL_POOL
+        if ((inst_ptr - trans_cache) >= (1<<10) || (i == num_v810_inst-1 && (pool_ptr != pool_start))) {
+            int pool_size = (int)(pool_ptr-pool_cache_start);
+            // FIXME: Implement branch instructions
+            ADD_I(15, 15, (BYTE)(pool_size-2), 30);
+
+            num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
+            pool_start = &block->phys_loc[num_arm_inst];
+            memcpy(pool_start, pool_cache_start, pool_size*sizeof(WORD));
+
+            pool_ptr = pool_cache_start;
+            pool_offset += pool_size;
+        }
+#endif
     }
 
     num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
-    pool_start = &block->phys_loc[num_arm_inst];
 
     for (i = 0; i <= num_v810_inst; i++) {
         HWORD start_pos = inst_cache[i].start_pos;
         v810_setEntry(trans_cache[start_pos].PC, block->phys_loc + start_pos, block);
         for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
+#ifdef LITERAL_POOL
             if (trans_cache[j].needs_pool) {
                 // The literal pool is located at the end of the current block
                 // Figure out the offset from the pc register, which points two
                 // instructions ahead of the current one
-                trans_cache[j].ldst_io.imm = (HWORD) ((pool_start + pool_pos) - (&block->phys_loc[j + 2]));
-                pool_start[pool_pos] = pool_cache_start[pool_pos];
-                pool_pos++;
+                trans_cache[j].ldst_io.imm = (HWORD) ((trans_cache[j].pool_start + trans_cache[j].pool_pos) - (&block->phys_loc[j + 2]));
             }
+#endif
 
             drc_assemble(&block->phys_loc[j], &trans_cache[j]);
         }
     }
 
+#ifdef LITERAL_POOL
     linearFree(pool_cache_start);
+#endif
     linearFree(trans_cache);
     linearFree(inst_cache);
 
     // In ARM mode, each instruction is 4 bytes
-    block->size = num_arm_inst + pool_pos;
+    block->size = num_arm_inst + pool_offset;
     block->end_pc = PC;
 }
 

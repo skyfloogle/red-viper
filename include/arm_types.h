@@ -221,6 +221,10 @@ typedef struct {
     BYTE cond;
     WORD PC;
     bool needs_pool;
+#ifdef LITERAL_POOL
+    WORD* pool_start;
+    HWORD pool_pos;
+#endif
     union {
         arm_inst_dpi dpi;
         arm_inst_dpis dpis;
