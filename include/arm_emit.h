@@ -301,6 +301,19 @@ static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, 
     inst_ptr++;
 }
 
+// Branch and branch with link
+static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
+    inst_ptr->type = ARM_BRANCH_LINK;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->b_bl = (arm_inst_b_bl) {
+            l,
+            imm
+    };
+
+    inst_ptr++;
+}
+
 /**
 * Higher level macros
 */
@@ -508,6 +521,16 @@ static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, 
 // nop
 #define NOP() \
     MOV(0, 0)
+
+// b<cond> imm
+// Branch
+#define B(cond, imm) \
+    new_branch_link(cond, 0, imm)
+
+// bl<cond> imm
+// Branch
+#define BL(cond, imm) \
+    new_branch_link(cond, 1, imm)
 
 // Load word into register using a literal pool
 #ifdef LITERAL_POOL
