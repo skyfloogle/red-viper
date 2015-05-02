@@ -205,6 +205,7 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
                 break;
             case AM_III: // Branch instructions
                 inst_cache[num_inst].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
+                inst_cache[num_inst].branch_offset = sign_9(inst_cache[num_inst].imm);
                 curPC += 2;
 
                 inst_cache[num_inst].reg1 = (BYTE)(-1);
@@ -212,6 +213,7 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
                 break;
             case AM_IV: // Middle distance jump
                 inst_cache[num_inst].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
+                inst_cache[num_inst].branch_offset = sign_26(inst_cache[num_inst].imm);
 
                 inst_cache[num_inst].reg1 = (BYTE)(-1);
                 inst_cache[num_inst].reg2 = (BYTE)(-1);
@@ -282,7 +284,7 @@ void v810_translateBlock(exec_block* block) {
     unsigned int num_v810_inst = 0, num_arm_inst = 0, i, j, block_pos = 0;
     bool finished = false;
     BYTE phys_regs[32];
-    BYTE arm_reg1, arm_reg2;
+    BYTE arm_reg1, arm_reg2, arm_cond;
     WORD start_PC = PC;
     WORD end_PC, block_len;
 
@@ -351,9 +353,7 @@ void v810_translateBlock(exec_block* block) {
                 POP(1 << 15);
                 break;
             case V810_OP_JR: // jr imm26
-                // ldr r0, [pc, #4] ; Loads the value of (PC+8)+4 (because when it executes an instruction, pc is
-                // already 2 instructions ahead), which will have the new PC
-                LDW_I(0, PC + sign_26(inst_cache[i].imm));
+                LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
                 // str r0, [r11, #(33*4)] ; Save the new PC
                 STR_IO(0, 11, 33 * 4);
                 // pop {pc} (or "ldmfd sp!, {pc}")
@@ -402,22 +402,8 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_BP:
             case V810_OP_BGE:
             case V810_OP_BGT:
-                // ldr r0, [r11, #(33*4)] ; load the current PC
-                LDR_IO(0, 11, 33 * 4);
-                // mov r1, #(disp9 ror 9)
-                MOV_I(1, inst_cache[i].imm >> 1, 8);
-                BYTE arm_cond = cond_map[inst_cache[i].opcode & 0xF];
-                // add<cond> r0, r0, r1, asr #23
-                new_data_proc_imm_shift(arm_cond, ARM_OP_ADD, 0, 0, 0, 23, ARM_SHIFT_ASR, 1);
-                // There's no inverse condition for BR
-                if (inst_cache[i].opcode != V810_OP_BR) {
-                    // add<inv_cond> r0, r0, #2
-                    new_data_proc_imm((arm_cond + (arm_cond % 2 ? -1 : 1)), ARM_OP_ADD, 0, 0, 0, 0, 2);
-                }
-                // str r0, [r11, #(33*4)] ; Save the new PC
-                STR_IO(0, 11, 33 * 4);
-                // pop {pc} (or "ldmfd sp!, {pc}")
-                POP(1 << 15);
+                arm_cond = cond_map[inst_cache[i].opcode & 0xF];
+                B(arm_cond, 0);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
                 // mov r0, #(imm16_hi ror 8)
@@ -614,11 +600,7 @@ void v810_translateBlock(exec_block* block) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                LDW_I(2, &mem_rbyte);
-                // add lr, pc, #8 ; link skipping the data at the end of the block
-                ADD_I(14, 15, 8, 0);
-                // mov pc, r2
-                MOV(15, 2);
+                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_rbyte)>>2);
 
                 // TODO: Figure out the sxtb opcode
                 // lsl r0, r0, #8
@@ -633,11 +615,7 @@ void v810_translateBlock(exec_block* block) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                LDW_I(2, &mem_rhword);
-                // add lr, pc, #8 ; link skipping the data at the end of the block
-                ADD_I(14, 15, 8, 0);
-                // mov pc, r2
-                MOV(15, 2);
+                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_rhword)>>2);
 
                 // TODO: Figure out the sxth opcode
                 // lsl r0, r0, #16
@@ -652,11 +630,7 @@ void v810_translateBlock(exec_block* block) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                LDW_I(2, &mem_rword);
-                // add lr, pc, #8 ; link skipping the data at the end of the block
-                ADD_I(14, 15, 8, 0);
-                // mov pc, r2
-                MOV(15, 2);
+                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_rword)>>2);
 
                 // mov reg2, r0
                 MOV(arm_reg2, 0);
@@ -674,11 +648,7 @@ void v810_translateBlock(exec_block* block) {
                     // mov r1, reg2
                     MOV(1, arm_reg2);
 
-                LDW_I(2, &mem_wbyte);
-                // add lr, pc, #8 ; link skipping the data at the end of the block
-                ADD_I(14, 15, 8, 0);
-                // mov pc, r2
-                MOV(15, 2);
+                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_wbyte)>>2);
                 break;
             case V810_OP_ST_H: // st.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
@@ -693,11 +663,7 @@ void v810_translateBlock(exec_block* block) {
                     // mov r1, reg2
                     MOV(1, arm_reg2);
 
-                LDW_I(2, &mem_whword);
-                // add lr, pc, #8 ; link skipping the data at the end of the block
-                ADD_I(14, 15, 8, 0);
-                // mov pc, r2
-                MOV(15, 2);
+                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_whword)>>2);
                 break;
             case V810_OP_ST_W: // st.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
@@ -713,11 +679,7 @@ void v810_translateBlock(exec_block* block) {
                     // mov r1, reg2
                     MOV(1, arm_reg2);
 
-                LDW_I(2, &mem_wword);
-                // add lr, pc, #8 ; link skipping the data at the end of the block
-                ADD_I(14, 15, 8, 0);
-                // mov pc, r2
-                MOV(15, 2);
+                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_wword)>>2);
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
                 // str reg2, [r11, #((35+regID)*4)] ; Stores reg2 in v810_state->S_REG[regID]
@@ -792,6 +754,11 @@ void v810_translateBlock(exec_block* block) {
                 trans_cache[j].ldst_io.imm = (HWORD) ((trans_cache[j].pool_start + trans_cache[j].pool_pos) - (&block->phys_loc[j + 2]));
             }
 #endif
+            if (trans_cache[j].needs_branch) {
+                int v810_offset = inst_cache[i].branch_offset;
+                int arm_offset = inst_cache[i + v810_offset].start_pos - start_pos;
+                trans_cache[j].b_bl.imm = arm_offset & 0xffffff;
+            }
 
             drc_assemble(&block->phys_loc[j], &trans_cache[j]);
         }

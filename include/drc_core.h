@@ -29,6 +29,7 @@ typedef struct {
     WORD imm;
     HWORD start_pos;
     BYTE trans_size;
+    int branch_offset;
 } v810_instruction;
 
 exec_block** block_map = NULL;

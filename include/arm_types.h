@@ -219,7 +219,7 @@ typedef struct {
 
 typedef struct {
     BYTE l;
-    WORD imm;
+    int imm;
 } arm_inst_b_bl;
 
 typedef struct {
@@ -227,6 +227,7 @@ typedef struct {
     BYTE cond;
     WORD PC;
     bool needs_pool;
+    bool needs_branch;
 #ifdef LITERAL_POOL
     WORD* pool_start;
     HWORD pool_pos;

@@ -374,7 +374,10 @@ static inline void drc_assemble(WORD* dst, arm_inst* src) {
         case ARM_LDST_MULT:
             *dst = gen_ldst_multiple(src->cond, src->ldstm.p, src->ldstm.u, src->ldstm.s, src->ldstm.w, src->ldstm.l, src->ldstm.Rn, src->ldstm.regs);
             break;
+        case ARM_BRANCH_LINK:
+            *dst = gen_branch_link(src->cond, src->b_bl.l, src->b_bl.imm);
+            break;
     }
 }
 
-#endif ARM_CODEGEN_H
+#endif //ARM_CODEGEN_H
