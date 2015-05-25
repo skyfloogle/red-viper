@@ -179,14 +179,15 @@
 // | COND | 00010010 | SBO | SBO | SBO | 0001 | Rm |
 // +-----------------------------------------------+
 // Branch/exchange instruction set
-#define gen_branch_exchange(cond, sbo1, sbo2, sbo3, Rm) \
+#define gen_branch_exchange(cond, l, Rm) \
                         (\
     (cond)      <<28    |\
     (0b1001)    <<21    |\
-    (sbo1)      <<16    |\
-    (sbo2)      <<12    |\
-    (sbo3)      <<8     |\
-    (0b0001)    <<8     |\
+    (0b1111)    <<16    |\
+    (0b1111)    <<12    |\
+    (0b1111)    <<8     |\
+    (l)         <<5     |\
+    (1)         <<4     |\
     (Rm)                )
 
 // 31   28    25  24   23  22  21  20   16   12     0
@@ -354,7 +355,7 @@ static inline void drc_assemble(WORD* dst, arm_inst* src) {
             *dst = gen_move_reg_to_cpsr(src->cond, src->mrcpsr.r, src->mrcpsr.mask, src->mrcpsr.sbo, src->mrcpsr.sbz, src->mrcpsr.Rm);
             break;
         case ARM_BR:
-            *dst = gen_branch_exchange(src->cond, src->br.sbo1, src->br.sbo2, src->br.sbo3, src->br.Rm);
+            *dst = gen_branch_exchange(src->cond, src->br.l, src->br.Rm);
             break;
         case ARM_LDST_IMM_OFF:
             *dst = gen_ldst_imm_off(src->cond, src->ldst_io.p, src->ldst_io.u, src->ldst_io.b, src->ldst_io.w, src->ldst_io.l, src->ldst_io.Rn, src->ldst_io.Rd, src->ldst_io.imm);

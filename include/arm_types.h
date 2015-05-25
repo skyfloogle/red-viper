@@ -143,9 +143,7 @@ typedef struct {
 } arm_inst_mrcpsr;
 
 typedef struct {
-    BYTE sbo1;
-    BYTE sbo2;
-    BYTE sbo3;
+    BYTE l;
     BYTE Rm;
 } arm_inst_br;
 

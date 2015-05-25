@@ -179,15 +179,13 @@ static inline void new_move_reg_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, 
 }
 
 // Branch/exchange instruction set
-static inline void new_branch_exchange(BYTE cond, BYTE sbo1, BYTE sbo2, BYTE sbo3, BYTE Rm) {
+static inline void new_branch_exchange(BYTE cond, BYTE l, BYTE Rm) {
     inst_ptr->type = ARM_BR;
     inst_ptr->cond = cond;
     inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->br = (arm_inst_br) {
-            sbo1,
-            sbo2,
-            sbo3,
+            l,
             Rm
     };
 
@@ -333,6 +331,10 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 /**
 * Higher level macros
 */
+
+// push {<regs>}
+#define PUSH(regs) \
+    new_ldst_multiple(ARM_COND_AL, 1, 0, 0, 1, 0, 13, regs)
 
 // pop {<regs>}
 #define POP(regs) \
@@ -547,12 +549,17 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 }
 
 // bl<cond> imm
-// Branch
+// Branch and link
 #define BL(cond, imm) {\
-    new_branch_link(cond, 1, imm); \
+    new_branch_link(cond, 1, imm & 0xFFFFFF); \
     if (!imm) \
         (inst_ptr-1)->needs_branch = true;\
 }
+
+// blx<cond> Rm
+// Branch and link (register)
+#define BLX(cond, Rm) \
+    new_branch_exchange(cond, 1, Rm)
 
 // Load word into register using a literal pool
 #ifdef LITERAL_POOL

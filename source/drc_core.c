@@ -319,6 +319,7 @@ void v810_translateBlock(exec_block* block) {
 
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         arm_inst* inst_ptr_start = inst_ptr;
+        v810_setEntry(inst_cache[i].PC, block->phys_loc + inst_cache[i].start_pos, block);
 
         bool unmapped_registers = 0;
 
@@ -360,8 +361,8 @@ void v810_translateBlock(exec_block* block) {
                 POP(1 << 15);
                 break;
             case V810_OP_JAL: // jal disp26
-                LDW_I(0, PC + sign_26(inst_cache[i].imm));
-                LDW_I(1, PC + 4);
+                LDW_I(0, inst_cache[i].PC + sign_26(inst_cache[i].imm));
+                LDW_I(1, inst_cache[i].PC + 4);
                 // Save the new PC
                 STR_IO(0, 11, 33 * 4);
                 // Link the return address
@@ -600,7 +601,8 @@ void v810_translateBlock(exec_block* block) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_rbyte)>>2);
+                LDW_I(1, &mem_rbyte);
+                BLX(ARM_COND_AL, 1);
 
                 // TODO: Figure out the sxtb opcode
                 // lsl r0, r0, #8
@@ -615,7 +617,8 @@ void v810_translateBlock(exec_block* block) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_rhword)>>2);
+                LDW_I(1, &mem_rhword);
+                BLX(ARM_COND_AL, 1);
 
                 // TODO: Figure out the sxth opcode
                 // lsl r0, r0, #16
@@ -630,7 +633,8 @@ void v810_translateBlock(exec_block* block) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_rword)>>2);
+                LDW_I(1, &mem_rword);
+                BLX(ARM_COND_AL, 1);
 
                 // mov reg2, r0
                 MOV(arm_reg2, 0);
@@ -648,7 +652,12 @@ void v810_translateBlock(exec_block* block) {
                     // mov r1, reg2
                     MOV(1, arm_reg2);
 
-                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_wbyte)>>2);
+                if (unmapped_registers)
+                    PUSH(1<<2);
+                LDW_I(2, &mem_wbyte);
+                BLX(ARM_COND_AL, 2);
+                if (unmapped_registers)
+                    POP(1<<2);
                 break;
             case V810_OP_ST_H: // st.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
@@ -663,7 +672,12 @@ void v810_translateBlock(exec_block* block) {
                     // mov r1, reg2
                     MOV(1, arm_reg2);
 
-                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_whword)>>2);
+                if (unmapped_registers)
+                    PUSH(1<<2);
+                LDW_I(2, &mem_whword);
+                BLX(ARM_COND_AL, 2);
+                if (unmapped_registers)
+                    POP(1<<2);
                 break;
             case V810_OP_ST_W: // st.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
@@ -679,7 +693,12 @@ void v810_translateBlock(exec_block* block) {
                     // mov r1, reg2
                     MOV(1, arm_reg2);
 
-                BL(ARM_COND_AL, (WORD)(block->phys_loc) + (WORD)(inst_ptr - trans_cache) - (WORD)(&mem_wword)>>2);
+                if (unmapped_registers)
+                    PUSH(1<<2);
+                LDW_I(2, &mem_wword);
+                BLX(ARM_COND_AL, 2);
+                if (unmapped_registers)
+                    POP(1<<2);
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
                 // str reg2, [r11, #((35+regID)*4)] ; Stores reg2 in v810_state->S_REG[regID]
@@ -744,7 +763,6 @@ void v810_translateBlock(exec_block* block) {
 
     for (i = 0; i <= num_v810_inst; i++) {
         HWORD start_pos = inst_cache[i].start_pos;
-        v810_setEntry(inst_cache[i].PC, block->phys_loc + start_pos, block);
         for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
 #ifdef LITERAL_POOL
             if (trans_cache[j].needs_pool) {
@@ -756,7 +774,7 @@ void v810_translateBlock(exec_block* block) {
 #endif
             if (trans_cache[j].needs_branch) {
                 int v810_offset = inst_cache[i].branch_offset;
-                int arm_offset = inst_cache[i + v810_offset].start_pos - start_pos;
+                int arm_offset = (int)(v810_getEntry(inst_cache[i].PC + v810_offset, NULL) - &block->phys_loc[j] - 2);
                 trans_cache[j].b_bl.imm = arm_offset & 0xffffff;
             }
 
@@ -778,7 +796,7 @@ void v810_translateBlock(exec_block* block) {
 WORD* v810_getEntry(WORD loc, exec_block** block) {
     unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
     if (block)
-        block = &block_map[map_pos];
+        *block = block_map[map_pos];
     return entry_map[map_pos];
 }
 
