@@ -206,7 +206,6 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
             case AM_III: // Branch instructions
                 inst_cache[num_inst].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
                 inst_cache[num_inst].branch_offset = sign_9(inst_cache[num_inst].imm);
-                curPC += 2;
 
                 inst_cache[num_inst].reg1 = (BYTE)(-1);
                 inst_cache[num_inst].reg2 = (BYTE)(-1);
@@ -281,12 +280,11 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
 }
 
 void v810_translateBlock(exec_block* block) {
-    unsigned int num_v810_inst = 0, num_arm_inst = 0, i, j, block_pos = 0;
-    bool finished = false;
+    unsigned int num_v810_inst = 0, num_arm_inst = 0, i, j;
     BYTE phys_regs[32];
     BYTE arm_reg1, arm_reg2, arm_cond;
     WORD start_PC = PC;
-    WORD end_PC, block_len;
+    WORD end_PC;
 
     v810_instruction *inst_cache = linearAlloc(MAX_INST*sizeof(v810_instruction));
     arm_inst* trans_cache = linearAlloc(MAX_INST*4*sizeof(arm_inst));
@@ -354,11 +352,15 @@ void v810_translateBlock(exec_block* block) {
                 POP(1 << 15);
                 break;
             case V810_OP_JR: // jr imm26
-                LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
-                // str r0, [r11, #(33*4)] ; Save the new PC
-                STR_IO(0, 11, 33 * 4);
-                // pop {pc} (or "ldmfd sp!, {pc}")
-                POP(1 << 15);
+                if (abs(inst_cache[i].branch_offset) < (1<<10)) {
+                    B(ARM_COND_AL, 0);
+                } else {
+                    LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
+                    // str r0, [r11, #(33*4)] ; Save the new PC
+                    STR_IO(0, 11, 33 * 4);
+                    // pop {pc} (or "ldmfd sp!, {pc}")
+                    POP(1 << 15);
+                }
                 break;
             case V810_OP_JAL: // jal disp26
                 LDW_I(0, inst_cache[i].PC + sign_26(inst_cache[i].imm));
@@ -846,8 +848,8 @@ void v810_drc() {
             WORD entry_PC = PC;
 
             v810_translateBlock(cur_block);
+            drc_dumpCache("cache_dump_rf.bin");
             //HB_FlushInvalidateCache();
-            //drc_dumpCache("cache_dump_rf.bin");
 
             cache_pos += cur_block->size;
             entrypoint = v810_getEntry(entry_PC, NULL);
@@ -864,6 +866,8 @@ void v810_drc() {
         v810_state->PC = cur_block->end_pc;
         v810_executeBlock(entrypoint, cur_block);
         PC = v810_state->PC & 0xFFFFFFFE;
+        //sprintf(str, "BLOCK END - 0x%x", PC);
+        //svcOutputDebugString(str, strlen(str));
 
         clocks += cur_block->cycles;
     }

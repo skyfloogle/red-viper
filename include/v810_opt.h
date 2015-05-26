@@ -39,8 +39,8 @@ static BYTE am_size_table[] = {
     0, // Undefined
     2, // AM_I
     2, // AM_II
-    0, // AM_III
-    0, // AM_IV
+    2, // AM_III
+    4, // AM_IV
     4, // AM_V
     4, // AM_VIa
     4, // AM_VII
