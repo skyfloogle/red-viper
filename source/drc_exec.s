@@ -3,7 +3,7 @@
 
 .data
 
-.extern v810_state
+.extern v810_state, serviceDisplayInt, serviceInt
 
 .text
 
@@ -80,3 +80,44 @@ postexec:
     pop     {r0}
     stRegs
     pop     {r4-r11, ip, pc}
+
+@ Checks for pending interrupts and exits the block if necessary
+.globl drc_handleInterrupts
+drc_handleInterrupts:
+    push    {r4, lr}
+
+    @ Move the return PC to r4
+    mov     r4, r0
+
+    @ Backup CPSR
+    mrs     r1, cpsr
+    push    {r1}
+
+    @ Load v810_state->cycles
+    ldr     r0, [r11, #67<<2]
+    bl      serviceDisplayInt
+    cmp     r0, #0
+    beq     ret_to_block
+
+exit_block:
+    @ Save the new PC
+    str     r4, [r11, #33<<2]
+
+    @ Store -1 in v810_state->cycles to indicate a frame interrupt
+    mov     r0, #-1
+    str     r0, [r11, #67<<2]
+    @ Restore CPSR
+    pop     {r1}
+    msr     cpsr, r1
+
+    @ Exit the block ignoring linked return address
+    pop     {r4}
+    pop     {r0, pc}
+
+ret_to_block:
+    bl      serviceInt
+
+    @ Restore CPSR and return to the block
+    pop     {r1}
+    msr     cpsr, r1
+    pop     {r4, pc}

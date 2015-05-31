@@ -135,7 +135,7 @@ void v810_scanBlockBoundaries(WORD* start_PC, WORD* end_PC) {
             case V810_OP_BP:
             case V810_OP_BGE:
             case V810_OP_BGT:
-                branch_addr = cur_PC + sign_9(((highB & 0x1) << 8) + (lowB & 0xFE));
+                branch_addr = cur_PC + sign_9(((highB & 0x1) << 8) + (lowB & 0xFE)) + 2;
 
                 if (branch_addr < *start_PC)
                     *start_PC = branch_addr;
@@ -146,11 +146,6 @@ void v810_scanBlockBoundaries(WORD* start_PC, WORD* end_PC) {
 
         cur_PC += am_size_table[optable[opcode].addr_mode];
 
-        // FIXME: Change the addressing mode
-        if (optable[opcode].addr_mode == 3)
-            cur_PC += 2;
-        else if (optable[opcode].addr_mode == 4)
-            cur_PC += 4;
         if (cur_PC > *end_PC)
             *end_PC = cur_PC;
     }
@@ -280,7 +275,7 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
 }
 
 void v810_translateBlock(exec_block* block) {
-    unsigned int num_v810_inst = 0, num_arm_inst = 0, i, j;
+    unsigned int num_v810_inst = 0, num_arm_inst = 0, i, j, cycles = 0;
     BYTE phys_regs[32];
     BYTE arm_reg1, arm_reg2, arm_cond;
     WORD start_PC = PC;
@@ -318,6 +313,7 @@ void v810_translateBlock(exec_block* block) {
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         arm_inst* inst_ptr_start = inst_ptr;
         v810_setEntry(inst_cache[i].PC, block->phys_loc + inst_cache[i].start_pos, block);
+        cycles += opcycle[inst_cache[i].opcode];
 
         bool unmapped_registers = 0;
 
@@ -349,10 +345,13 @@ void v810_translateBlock(exec_block* block) {
                 // str reg1, [r11, #(33*4)] ; r11 has v810_state
                 STR_IO(arm_reg1, 11, 33 * 4);
                 // pop {pc} (or "ldmfd sp!, {pc}")
+                ADDCYCLES();
                 POP(1 << 15);
                 break;
             case V810_OP_JR: // jr imm26
+                ADDCYCLES();
                 if (abs(inst_cache[i].branch_offset) < (1<<10)) {
+                    HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
                     B(ARM_COND_AL, 0);
                 } else {
                     LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
@@ -363,7 +362,7 @@ void v810_translateBlock(exec_block* block) {
                 }
                 break;
             case V810_OP_JAL: // jal disp26
-                LDW_I(0, inst_cache[i].PC + sign_26(inst_cache[i].imm));
+                LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
                 LDW_I(1, inst_cache[i].PC + 4);
                 // Save the new PC
                 STR_IO(0, 11, 33 * 4);
@@ -372,6 +371,7 @@ void v810_translateBlock(exec_block* block) {
                     MOV(phys_regs[31], 1);
                 else
                     STR_IO(1, 11, 31 * 4);
+                ADDCYCLES();
                 POP(1 << 15);
                 break;
             case V810_OP_RETI:
@@ -406,6 +406,8 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_BGE:
             case V810_OP_BGT:
                 arm_cond = cond_map[inst_cache[i].opcode & 0xF];
+                ADDCYCLES();
+                HANDLEINT(inst_cache[i].PC);
                 B(arm_cond, 0);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
@@ -777,6 +779,7 @@ void v810_translateBlock(exec_block* block) {
             if (trans_cache[j].needs_branch) {
                 int v810_offset = inst_cache[i].branch_offset;
                 int arm_offset = (int)(v810_getEntry(inst_cache[i].PC + v810_offset, NULL) - &block->phys_loc[j] - 2);
+
                 trans_cache[j].b_bl.imm = arm_offset & 0xffffff;
             }
 
@@ -857,19 +860,17 @@ void v810_drc() {
         //sprintf(str, "BLOCK ENTRY - %p", entrypoint);
         //svcOutputDebugString(str, strlen(str));
 
-        //hidScanInput();
-        //if (hidKeysHeld() & KEY_START) {
-        //    sprintf(str, "PC - 0x%x", cur_block->end_pc);
-        //    svcOutputDebugString(str, strlen(str));
-        //}
-
         v810_state->PC = cur_block->end_pc;
+        v810_state->cycles = clocks;
+
         v810_executeBlock(entrypoint, cur_block);
+
         PC = v810_state->PC & 0xFFFFFFFE;
+        if (v810_state->cycles == (WORD)(-1))
+            break;
+        clocks = v810_state->cycles;
         //sprintf(str, "BLOCK END - 0x%x", PC);
         //svcOutputDebugString(str, strlen(str));
-
-        clocks += cur_block->cycles;
     }
 }
 

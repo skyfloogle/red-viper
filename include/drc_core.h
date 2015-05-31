@@ -47,6 +47,7 @@ void v810_scanBlockBoundaries(WORD* start_PC, WORD* end_PC);
 unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_cache, WORD startPC, WORD endPC);
 void v810_translateBlock(exec_block* block);
 void v810_executeBlock(WORD* entrypoint, exec_block* block);
+int drc_handleInterrupts(WORD* PC);
 
 WORD* v810_getEntry(WORD loc, exec_block** block);
 void v810_setEntry(WORD loc, WORD* entry, exec_block* block);

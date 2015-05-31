@@ -92,6 +92,7 @@ typedef struct {
     WORD PC;
     WORD flags;
     WORD S_REG[32]; // System registers sr0-sr31
+    WORD cycles;
 } cpu_state;
 
 cpu_state* v810_state;

@@ -582,4 +582,17 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 }
 #endif
 
+#define ADDCYCLES() { \
+    LDR_IO(0, 11, 67 * 4); \
+    ADD_I(0, 0, cycles & 0xFF, 0); \
+    STR_IO(0, 11, 67 * 4); \
+    cycles = 0; \
+}
+
+#define HANDLEINT(ret_PC) { \
+    LDW_I(0, ret_PC); \
+    LDW_I(1, &drc_handleInterrupts); \
+    BLX(ARM_COND_AL, 1); \
+}
+
 #endif
