@@ -187,9 +187,15 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
         switch (optable[inst_cache[num_inst].opcode].addr_mode) {
             case AM_I:
                 inst_cache[num_inst].reg1 = (BYTE)((lowB & 0x1F));
-                inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
                 reg_usage[inst_cache[num_inst].reg1]++;
-                reg_usage[inst_cache[num_inst].reg2]++;
+
+                // jmp [reg1] doesn't use the second register
+                if (inst_cache[num_inst].opcode != V810_OP_JMP) {
+                    inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                    reg_usage[inst_cache[num_inst].reg1]++;
+                } else {
+                    inst_cache[num_inst].reg2 = (BYTE)(-1);
+                }
                 break;
             case AM_II:
                 inst_cache[num_inst].imm = (unsigned)((lowB & 0x1F));
@@ -307,8 +313,15 @@ void v810_translateBlock(exec_block* block) {
 
     // Second pass: map registers and memory addresses
     for (i = 0; i < num_v810_inst; i++) {
-        arm_reg1 = phys_regs[inst_cache[i].reg1];
-        arm_reg2 = phys_regs[inst_cache[i].reg2];
+        if (inst_cache[i].reg1 != -1)
+            arm_reg1 = phys_regs[inst_cache[i].reg1];
+        else
+            arm_reg1 = 0;
+
+        if (inst_cache[i].reg2 != -1)
+            arm_reg2 = phys_regs[inst_cache[i].reg2];
+        else
+            arm_reg1 = 0;
 
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         arm_inst* inst_ptr_start = inst_ptr;
