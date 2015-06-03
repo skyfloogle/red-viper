@@ -315,7 +315,9 @@ void v810_translateBlock(exec_block* block) {
         v810_setEntry(inst_cache[i].PC, block->phys_loc + inst_cache[i].start_pos, block);
         cycles += opcycle[inst_cache[i].opcode];
 
-        bool unmapped_registers = 0;
+        bool unmapped_registers = false;
+        bool reg1_modified = false;
+        bool reg2_modified = false;
 
         // Preload unmapped VB registers
         if (!arm_reg1 && arm_reg2) {
@@ -324,20 +326,26 @@ void v810_translateBlock(exec_block* block) {
             else
                 MOV_I(2, 0, 0);
             arm_reg1 = 2;
-            unmapped_registers = 1;
+            unmapped_registers = true;
         } else if (arm_reg1 && !arm_reg2) {
             if (inst_cache[i].reg2)
                 LDR_IO(2, 11, inst_cache[i].reg2 * 4);
             else
                 MOV_I(2, 0, 0);
             arm_reg2 = 2;
-            unmapped_registers = 1;
+            unmapped_registers = true;
         } else if (!arm_reg1 && !arm_reg2) {
-            LDR_IO(2, 11, inst_cache[i].reg1 * 4);
-            LDR_IO(3, 11, inst_cache[i].reg2 * 4);
+            if (inst_cache[i].reg2)
+                LDR_IO(2, 11, inst_cache[i].reg1 * 4);
+            else
+                MOV_I(2, 0, 0);
+            if (inst_cache[i].reg2)
+                LDR_IO(3, 11, inst_cache[i].reg2 * 4);
+            else
+                MOV_I(3, 0, 0);
             arm_reg1 = 2;
             arm_reg2 = 3;
-            unmapped_registers = 1;
+            unmapped_registers = true;
         }
 
         switch (inst_cache[i].opcode) {
@@ -423,6 +431,8 @@ void v810_translateBlock(exec_block* block) {
                     // add reg2, r0, reg1
                     ADD(arm_reg2, 0, arm_reg1);
                 }
+
+                reg2_modified = true;
                 break;
             case V810_OP_MOVEA: // movea imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
@@ -436,18 +446,24 @@ void v810_translateBlock(exec_block* block) {
                 else
                     // add reg2, reg1, r0, asr #16
                     ADD_IS(arm_reg2, arm_reg1, 0, ARM_SHIFT_ASR, 16);
+
+                reg2_modified = true;
                 break;
             case V810_OP_MOV: // mov reg1, reg2
                 if (inst_cache[i].reg1 != 0)
                     MOV(arm_reg2, arm_reg1);
                 else
                     MOV_I(arm_reg2, 0, 0);
+
+                reg2_modified = true;
                 break;
             case V810_OP_ADD: // add reg1, reg2
                 ADDS(arm_reg2, arm_reg2, arm_reg1);
+                reg2_modified = true;
                 break;
             case V810_OP_SUB: // sub reg1, reg2
                 SUBS(arm_reg2, arm_reg2, arm_reg1);
+                reg2_modified = true;
                 break;
             case V810_OP_CMP: // cmp reg1, reg2
                 if (inst_cache[i].reg1 == 0)
@@ -460,14 +476,17 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_SHL: // shl reg1, reg2
                 // lsl reg2, reg2, reg1
                 LSLS(arm_reg2, arm_reg2, arm_reg1);
+                reg2_modified = true;
                 break;
             case V810_OP_SHR: // shr reg1, reg2
                 // lsr reg2, reg2, reg1
                 LSRS(arm_reg2, arm_reg2, arm_reg1);
+                reg2_modified = true;
                 break;
             case V810_OP_SAR: // sar reg1, reg2
                 // asr reg2, reg2, reg1
                 ASRS(arm_reg2, arm_reg2, arm_reg1);
+                reg2_modified = true;
                 break;
             case V810_OP_MUL: // mul reg1, reg2
                 // smulls RdLo, RdHi, Rm, Rs
@@ -478,6 +497,7 @@ void v810_translateBlock(exec_block* block) {
                 if (!phys_regs[30]) {
                     STR_IO(0, 11, 30 * 4);
                 }
+                reg2_modified = true;
                 break;
             case V810_OP_DIV: // div reg1, reg2
                 // reg2/reg1 -> reg2 (__divsi3)
@@ -501,6 +521,9 @@ void v810_translateBlock(exec_block* block) {
                     STR_IO(0, 11, 30 * 4);
                 else
                     MOV(phys_regs[30], 0);
+
+                reg2_modified = true;
+                break;
             case V810_OP_DIVU: // divu reg1, reg2
                 MOV(0, arm_reg2);
                 MOV(1, arm_reg1);
@@ -524,39 +547,49 @@ void v810_translateBlock(exec_block* block) {
                 break;
             case V810_OP_OR: // or reg1, reg2
                 ORRS(arm_reg2, arm_reg2, arm_reg1);
+                reg2_modified = true;
                 break;
             case V810_OP_AND: // and reg1, reg2
                 ANDS(arm_reg2, arm_reg2, arm_reg1);
+                reg2_modified = true;
                 break;
             case V810_OP_XOR: // xor reg1, reg2
                 EORS(arm_reg2, arm_reg2, arm_reg1);
+                reg2_modified = true;
                 break;
             case V810_OP_NOT: // not reg1, reg2
                 MVNS(arm_reg2, arm_reg1);
+                reg2_modified = true;
                 break;
             case V810_OP_MOV_I: // mov imm5, reg2
                 MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
                 MOV_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
+                reg2_modified = true;
                 break;
             case V810_OP_ADD_I: // add imm5, reg2
                 MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
                 ADDS_IS(arm_reg2, arm_reg2, 0, ARM_SHIFT_ASR, 24);
+                reg2_modified = true;
                 break;
             case V810_OP_CMP_I: // cmp imm5, reg2
                 MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
                 CMP_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
+                reg2_modified = true;
                 break;
             case V810_OP_SHL_I: // shl imm5, reg2
                 // lsl reg2, reg2, #imm5
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_LSL, arm_reg2);
+                reg2_modified = true;
                 break;
             case V810_OP_SHR_I: // shr imm5, reg2
                 // lsr reg2, reg2, #imm5
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_LSR, arm_reg2);
+                reg2_modified = true;
                 break;
             case V810_OP_SAR_I: // sar imm5, reg2
                 // asr reg2, reg2, #imm5
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_ASR, arm_reg2);
+                reg2_modified = true;
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
@@ -567,6 +600,7 @@ void v810_translateBlock(exec_block* block) {
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
                 // ands reg2, reg1, r0
                 ANDS(arm_reg2, arm_reg1, 0);
+                reg2_modified = true;
                 break;
             case V810_OP_XORI: // xori imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
@@ -577,6 +611,7 @@ void v810_translateBlock(exec_block* block) {
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
                 // eors reg2, reg1, r0
                 EORS(arm_reg2, arm_reg1, 0);
+                reg2_modified = true;
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
@@ -587,6 +622,7 @@ void v810_translateBlock(exec_block* block) {
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
                 // orr reg2, reg1, r0
                 ORRS(arm_reg2, arm_reg1, 0);
+                reg2_modified = true;
                 break;
             case V810_OP_ADDI: // addi imm16, reg1, reg2
                 // mov r0, #(imm16_hi ror 8)
@@ -597,6 +633,7 @@ void v810_translateBlock(exec_block* block) {
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
                 // add reg2, reg1, r0
                 ADDS(arm_reg2, arm_reg1, 0);
+                reg2_modified = true;
                 break;
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
@@ -613,6 +650,7 @@ void v810_translateBlock(exec_block* block) {
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 8, ARM_SHIFT_LSL, 0);
                 // asr reg2, r0, #8
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 8, ARM_SHIFT_ASR, 0);
+                reg2_modified = true;
                 break;
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
@@ -629,6 +667,7 @@ void v810_translateBlock(exec_block* block) {
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_LSL, 0);
                 // asr reg2, r0, #16
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 16, ARM_SHIFT_ASR, 0);
+                reg2_modified = true;
                 break;
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
@@ -642,6 +681,7 @@ void v810_translateBlock(exec_block* block) {
 
                 // mov reg2, r0
                 MOV(arm_reg2, 0);
+                reg2_modified = true;
                 break;
             case V810_OP_ST_B: // st.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
@@ -711,6 +751,7 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_STSR: // stsr regID, reg2
                 // ldr reg2, [r11, #((35+regID)*4)] ; Loads v810_state->S_REG[regID] into reg2
                 LDR_IO(arm_reg2, 11, (35 + phys_regs[inst_cache[i].imm]) * 4);
+                reg2_modified = true;
                 break;
             case V810_OP_SEI: // sei
                 // Set the 12th bit in v810_state->S_REG[PSW]
@@ -739,9 +780,9 @@ void v810_translateBlock(exec_block* block) {
         }
 
         if (unmapped_registers) {
-            if (arm_reg1 < 4)
+            if (arm_reg1 < 4 && reg1_modified)
                 STR_IO(arm_reg1, 11, inst_cache[i].reg1 * 4);
-            if (arm_reg2 < 4)
+            if (arm_reg2 < 4 && reg2_modified)
                 STR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4);
         }
 
@@ -842,13 +883,14 @@ void v810_drc() {
     while (!serviceDisplayInt(clocks)) {
         serviceInt(clocks);
 
+        WORD entry_PC = PC;
+
         // Try to find a cached block
         entrypoint = v810_getEntry(PC, &cur_block);
         if (!entrypoint) {
             cur_block = calloc(1, sizeof(exec_block));
 
             cur_block->phys_loc = cache_pos;
-            WORD entry_PC = PC;
 
             v810_translateBlock(cur_block);
             drc_dumpCache("cache_dump_rf.bin");
@@ -857,7 +899,7 @@ void v810_drc() {
             cache_pos += cur_block->size;
             entrypoint = v810_getEntry(entry_PC, NULL);
         }
-        //sprintf(str, "BLOCK ENTRY - %p", entrypoint);
+        //sprintf(str, "BLOCK ENTRY - 0x%x (%p)", entry_PC, entrypoint);
         //svcOutputDebugString(str, strlen(str));
 
         v810_state->PC = cur_block->end_pc;
