@@ -819,7 +819,7 @@ void v810_translateBlock(exec_block* block) {
 
     num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
 
-    for (i = 0; i <= num_v810_inst; i++) {
+    for (i = 0; i < num_v810_inst; i++) {
         HWORD start_pos = inst_cache[i].start_pos;
         for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
 #ifdef LITERAL_POOL
@@ -906,7 +906,7 @@ void v810_drc() {
             cur_block->phys_loc = cache_pos;
 
             v810_translateBlock(cur_block);
-            drc_dumpCache("cache_dump_rf.bin");
+            //drc_dumpCache("cache_dump_rf.bin");
             //HB_FlushInvalidateCache();
 
             cache_pos += cur_block->size;
