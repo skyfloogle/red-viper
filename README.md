@@ -1,12 +1,16 @@
 r3Ddragon
 =========
 
-A WIP Virtual Boy emulator for the 3DS. You can see the current progress [here](https://github.com/mrdanielps/r3Ddragon/wiki/Current-progress). Still needs optimizing.
+A WIP Virtual Boy emulator for the 3DS. You can see the current progress [here](https://github.com/mrdanielps/r3Ddragon/wiki/Current-progress).
+
+There's an experimental dynarec
+implemented but it still needs optimizing.
 
 License
 =======
 
-Since this is a port of Red_Dragon (which was based on Reality Boy), here is (part of) the original readme:
+Some of the code is distributed under the MIT License (check source files for that) but, since
+this is a port of Red Dragon (which was based on Reality Boy), here is (part of) the original readme:
 
 ```
 This Reality Boy emulator is copyright (C) David Tucker 1997-2008, all rights
@@ -33,19 +37,19 @@ to the VB sceen in the last five years) - There work on Red_Dragon has been a
 real inspiration.  Its amazing how far they have gone with so little to start
 with.
 
-Bob VanderClay (vandercl@umich.edu) - most of the original code is based off
+Bob VanderClay - most of the original code is based off
 of his VB disassembler.
 
-Ben Haynor (bch132@psu.edu) - Provided me with a much better understanding of
+Ben Haynor - Provided me with a much better understanding of
 the VB Internals
 
 Joseph LoCicero, Dave Shadoff - I stole the jump table Ideas from there tg16
 disassembler, thanks guys
 
-Neill Corlett (corlett@elwha.nrrc.ncsu.edu) - took many ideas (and some code)
+Neill Corlett - took many ideas (and some code)
 from his Starscream CPU core
 
-Kevin Banks (kbanks@ro.com) - for donating a very nice pair of Frenzle 3D
+Kevin Banks - for donating a very nice pair of Frenzle 3D
 viewers, and being an all around great guy
 
 Megan Tucker - For putting up with my tinkering all night, and resisting the
@@ -59,6 +63,8 @@ Reality Boy is in no way affiliated with either of these parties
 Credits
 =======
 
-* Everyone mentioned in the license. without Reality Boy and Red Dragon it wouldn't have been possible.
-* smealum and contributors for ctrulib and everyone involved in the 3DS homebrew scene.
-* Vappy, Team Fail, HtheB, hippy dave and kane159 on GBAtemp for testing.
+* Everyone mentioned in the license. Without Reality Boy and Red Dragon it wouldn't have been possible.
+* smealum and contributors - ctrulib and everyone involved in the 3DS homebrew scene.
+* Vappy, Team Fail, HtheB, hippy dave and kane159 on GBAtemp - early testing.
+* nop90 - Reality Boy backports and fixes.
+* danielps - 3DS port and V810 dynarec.
