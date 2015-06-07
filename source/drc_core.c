@@ -47,8 +47,8 @@ WORD* cache_start = NULL;
 
 char str[32];
 
-// It maps the most used registers in the block to V810 registers
-void v810_mapRegs(exec_block* block) {
+// Maps the most used registers in the block to V810 registers
+void drc_mapRegs(exec_block* block) {
     int i, j, max;
 
     for (i = 0; i < 7; i++) {
@@ -70,7 +70,8 @@ void v810_mapRegs(exec_block* block) {
     }
 }
 
-BYTE getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
+// Gets the ARM register corresponding to a cached V810 register
+BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
     int i;
     for (i = 0; i < 7; i++) {
         if (reg_map[i] == vb_reg) {
@@ -81,9 +82,12 @@ BYTE getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
     return 0;
 }
 
-void v810_scanBlockBoundaries(WORD* start_PC, WORD* end_PC) {
-    *start_PC = *start_PC & V810_ROM1.highaddr;
-    WORD cur_PC = *end_PC = *start_PC;
+// Finds the starting and ending address of a V810 code block. It stops after a
+// jmp, jal, reti or a long jr unless it branches further.
+void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
+    WORD start_PC = *p_start_PC & V810_ROM1.highaddr;
+    WORD end_PC = start_PC;
+    WORD cur_PC = start_PC;
     WORD branch_addr;
     int branch_offset;
     BYTE opcode;
@@ -104,19 +108,19 @@ void v810_scanBlockBoundaries(WORD* start_PC, WORD* end_PC) {
         switch (opcode) {
             case V810_OP_JR:
                 branch_offset = (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                if (abs(branch_offset) < 1<<10) {
+                if (abs(branch_offset) < 1024) {
                     branch_addr = cur_PC + branch_offset;
-                    if (branch_addr < *start_PC)
-                        *start_PC = branch_addr;
-                    else if (branch_addr > *end_PC)
-                        *end_PC = branch_addr;
+                    if (branch_addr < start_PC)
+                        start_PC = branch_addr;
+                    else if (branch_addr > end_PC)
+                        end_PC = branch_addr;
                     break;
                 }
             case V810_OP_JMP:
             case V810_OP_JAL:
             case V810_OP_RETI:
-                if (cur_PC >= *end_PC) {
-                    *end_PC = cur_PC;
+                if (cur_PC >= end_PC) {
+                    end_PC = cur_PC;
                     finished = true;
                 }
                 break;
@@ -137,26 +141,32 @@ void v810_scanBlockBoundaries(WORD* start_PC, WORD* end_PC) {
             case V810_OP_BGT:
                 branch_addr = cur_PC + sign_9(((highB & 0x1) << 8) + (lowB & 0xFE)) + 2;
 
-                if (branch_addr < *start_PC)
-                    *start_PC = branch_addr;
-                else if (branch_addr > *end_PC)
-                    *end_PC = branch_addr;
+                if (branch_addr < start_PC)
+                    start_PC = branch_addr;
+                else if (branch_addr > end_PC)
+                    end_PC = branch_addr;
                 break;
         }
 
         cur_PC += am_size_table[optable[opcode].addr_mode];
 
-        if (cur_PC > *end_PC)
-            *end_PC = cur_PC;
+        if (cur_PC > end_PC)
+            end_PC = cur_PC;
     }
+
+    *p_start_PC = start_PC;
+    *p_end_PC = end_PC;
 }
 
-unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_cache, WORD startPC, WORD endPC) {
-    unsigned int num_inst;
+// Decodes the instructions from start_PC to end_PC and stores them in
+// inst_cache.
+// Returns the number of instructions decoded.
+unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_cache, WORD start_PC, WORD end_PC) {
+    unsigned int i;
     BYTE lowB, highB, lowB2, highB2; // Up to 4 bytes for instruction (either 16 or 32 bits)
-    WORD curPC = startPC;
+    WORD curPC = start_PC;
 
-    for (num_inst = 0; (num_inst < MAX_INST) && (curPC <= endPC); num_inst++) {
+    for (i = 0; (i < MAX_INST) && (curPC <= end_PC); i++) {
         curPC = (curPC&0x07FFFFFE);
 
         if ((curPC>>24) == 0x05) { // RAM
@@ -175,143 +185,149 @@ unsigned int v810_decodeInstructions(exec_block* block, v810_instruction *inst_c
             return 0;
         }
 
-        inst_cache[num_inst].PC = curPC;
+        inst_cache[i].PC = curPC;
 
-        inst_cache[num_inst].opcode = highB >> 2;
-        if ((highB & 0xE0) == 0x80)                      // Special opcode format for
-            inst_cache[num_inst].opcode = (highB >> 1); // type III instructions.
+        inst_cache[i].opcode = highB >> 2;
+        if ((highB & 0xE0) == 0x80)              // Special opcode format for
+            inst_cache[i].opcode = (highB >> 1); // type III instructions.
 
-        if ((inst_cache[num_inst].opcode > 0x4F) || (inst_cache[num_inst].opcode < 0))
+        if ((inst_cache[i].opcode > 0x4F) || (inst_cache[i].opcode < 0))
             return 0;
 
-        switch (optable[inst_cache[num_inst].opcode].addr_mode) {
+        switch (optable[inst_cache[i].opcode].addr_mode) {
             case AM_I:
-                inst_cache[num_inst].reg1 = (BYTE)((lowB & 0x1F));
-                reg_usage[inst_cache[num_inst].reg1]++;
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                reg_usage[inst_cache[i].reg1]++;
 
                 // jmp [reg1] doesn't use the second register
-                if (inst_cache[num_inst].opcode != V810_OP_JMP) {
-                    inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                    reg_usage[inst_cache[num_inst].reg1]++;
+                if (inst_cache[i].opcode != V810_OP_JMP) {
+                    inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                    reg_usage[inst_cache[i].reg1]++;
                 } else {
-                    inst_cache[num_inst].reg2 = (BYTE)(-1);
+                    inst_cache[i].reg2 = (BYTE)(-1);
                 }
                 break;
             case AM_II:
-                inst_cache[num_inst].imm = (unsigned)((lowB & 0x1F));
-                inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                reg_usage[inst_cache[num_inst].reg2]++;
+                inst_cache[i].imm = (unsigned)((lowB & 0x1F));
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                reg_usage[inst_cache[i].reg2]++;
 
-                inst_cache[num_inst].reg1 = (BYTE)(-1);
+                inst_cache[i].reg1 = (BYTE)(-1);
                 break;
             case AM_III: // Branch instructions
-                inst_cache[num_inst].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
-                inst_cache[num_inst].branch_offset = sign_9(inst_cache[num_inst].imm);
+                inst_cache[i].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
+                inst_cache[i].branch_offset = sign_9(inst_cache[i].imm);
 
-                inst_cache[num_inst].reg1 = (BYTE)(-1);
-                inst_cache[num_inst].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = (BYTE)(-1);
+                inst_cache[i].reg2 = (BYTE)(-1);
                 break;
             case AM_IV: // Middle distance jump
-                inst_cache[num_inst].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                inst_cache[num_inst].branch_offset = sign_26(inst_cache[num_inst].imm);
+                inst_cache[i].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
+                inst_cache[i].branch_offset = sign_26(inst_cache[i].imm);
 
-                inst_cache[num_inst].reg1 = (BYTE)(-1);
-                inst_cache[num_inst].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = (BYTE)(-1);
+                inst_cache[i].reg2 = (BYTE)(-1);
                 break;
             case AM_V:
-                inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                inst_cache[num_inst].reg1 = (BYTE)((lowB & 0x1F));
-                inst_cache[num_inst].imm = (highB2 << 8) + lowB2;
-                reg_usage[inst_cache[num_inst].reg1]++;
-                reg_usage[inst_cache[num_inst].reg2]++;
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                inst_cache[i].imm = (highB2 << 8) + lowB2;
+                reg_usage[inst_cache[i].reg1]++;
+                reg_usage[inst_cache[i].reg2]++;
                 break;
             case AM_VIa: // Mode6 form1
-                inst_cache[num_inst].imm = (highB2 << 8) + lowB2;
-                inst_cache[num_inst].reg1 = (BYTE)((lowB & 0x1F));
-                inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                reg_usage[inst_cache[num_inst].reg1]++;
-                reg_usage[inst_cache[num_inst].reg2]++;
+                inst_cache[i].imm = (highB2 << 8) + lowB2;
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                reg_usage[inst_cache[i].reg1]++;
+                reg_usage[inst_cache[i].reg2]++;
                 break;
             case AM_VIb: // Mode6 form2
-                inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                inst_cache[num_inst].imm = (highB2 << 8) + lowB2; // Whats the order??? 2,3,1 or 1,3,2
-                inst_cache[num_inst].reg1 = (BYTE)((lowB & 0x1F));
-                reg_usage[inst_cache[num_inst].reg1]++;
-                reg_usage[inst_cache[num_inst].reg2]++;
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                inst_cache[i].imm = (highB2 << 8) + lowB2; // Whats the order??? 2,3,1 or 1,3,2
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                reg_usage[inst_cache[i].reg1]++;
+                reg_usage[inst_cache[i].reg2]++;
                 break;
             case AM_VII: // Unhandled
                 break;
             case AM_VIII: // Unhandled
                 break;
             case AM_IX:
-                inst_cache[num_inst].imm = (unsigned)((lowB & 0x1)); // Mode ID, Ignore for now
+                inst_cache[i].imm = (unsigned)((lowB & 0x1)); // Mode ID, Ignore for now
 
-                inst_cache[num_inst].reg1 = (BYTE)(-1);
-                inst_cache[num_inst].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = (BYTE)(-1);
+                inst_cache[i].reg2 = (BYTE)(-1);
                 break;
             case AM_BSTR: // Bit String Subopcodes
-                inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                inst_cache[num_inst].reg1 = (BYTE)((lowB & 0x1F));
-                reg_usage[inst_cache[num_inst].reg1]++;
-                reg_usage[inst_cache[num_inst].reg2]++;
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                reg_usage[inst_cache[i].reg1]++;
+                reg_usage[inst_cache[i].reg2]++;
                 break;
             case AM_FPP: // Floating Point Subcode
-                inst_cache[num_inst].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                inst_cache[num_inst].reg1 = (BYTE)((lowB & 0x1F));
-                inst_cache[num_inst].imm = (unsigned)(((highB2 >> 2)&0x3F));
-                reg_usage[inst_cache[num_inst].reg1]++;
-                reg_usage[inst_cache[num_inst].reg2]++;
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                inst_cache[i].imm = (unsigned)(((highB2 >> 2)&0x3F));
+                reg_usage[inst_cache[i].reg1]++;
+                reg_usage[inst_cache[i].reg2]++;
                 break;
             case AM_UDEF: // Invalid opcode.
-                inst_cache[num_inst].reg1 = (BYTE)(-1);
-                inst_cache[num_inst].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = (BYTE)(-1);
+                inst_cache[i].reg2 = (BYTE)(-1);
                 break;
             default: // Invalid opcode.
-                inst_cache[num_inst].reg1 = (BYTE)(-1);
-                inst_cache[num_inst].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = (BYTE)(-1);
+                inst_cache[i].reg2 = (BYTE)(-1);
                 curPC += 2;
                 break;
         }
 
-        curPC += am_size_table[optable[inst_cache[num_inst].opcode].addr_mode];
-        block->cycles += opcycle[inst_cache[num_inst].opcode];
+        curPC += am_size_table[optable[inst_cache[i].opcode].addr_mode];
+        block->cycles += opcycle[inst_cache[i].opcode];
     }
 
-    return num_inst-1;
+    return i - 1;
 }
 
-void v810_translateBlock(exec_block* block) {
+// Translates a V810 block into ARM code
+void drc_translateBlock(exec_block *block) {
     unsigned int num_v810_inst = 0, num_arm_inst = 0, i, j, cycles = 0;
     BYTE phys_regs[32];
     BYTE arm_reg1, arm_reg2, arm_cond;
     WORD start_PC = PC;
     WORD end_PC;
+    bool unmapped_registers;
+    bool reg1_modified;
+    bool reg2_modified;
 
     v810_instruction *inst_cache = linearAlloc(MAX_INST*sizeof(v810_instruction));
-    arm_inst* trans_cache = linearAlloc(MAX_INST*4*sizeof(arm_inst));
+    arm_inst* trans_cache = linearAlloc(4*MAX_INST*sizeof(arm_inst));
     WORD* pool_cache_start = NULL;
 #ifdef LITERAL_POOL
     pool_cache_start = linearAlloc(256*4);
 #endif
     WORD pool_offset = 0;
 
-    v810_scanBlockBoundaries(&start_PC, &end_PC);
+    drc_scanBlockBounds(&start_PC, &end_PC);
     sprintf(str, "BLOCK: 0x%x -> 0x%x", start_PC, end_PC);
     svcOutputDebugString(str, strlen(str));
 
     // Clear previous block register stats
     memset(reg_usage, 0, 32);
 
-    num_v810_inst = v810_decodeInstructions(block, inst_cache, start_PC, end_PC);
+    // First pass: decode V810 instructions
+    num_v810_inst = drc_decodeInstructions(block, inst_cache, start_PC, end_PC);
 
-    v810_mapRegs(block);
+    // Second pass: map registers and memory addresses
+    drc_mapRegs(block);
     for (i = 0; i < 32; i++)
-        phys_regs[i] = getPhysReg(i, block->reg_map);
+        phys_regs[i] = drc_getPhysReg(i, block->reg_map);
 
     inst_ptr = &trans_cache[0];
     pool_ptr = pool_cache_start;
 
-    // Second pass: map registers and memory addresses
+    // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
         if (inst_cache[i].reg1 != -1)
             arm_reg1 = phys_regs[inst_cache[i].reg1];
@@ -325,12 +341,12 @@ void v810_translateBlock(exec_block* block) {
 
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         arm_inst* inst_ptr_start = inst_ptr;
-        v810_setEntry(inst_cache[i].PC, block->phys_loc + inst_cache[i].start_pos, block);
+        drc_setEntry(inst_cache[i].PC, block->phys_loc + inst_cache[i].start_pos, block);
         cycles += opcycle[inst_cache[i].opcode];
 
-        bool unmapped_registers = false;
-        bool reg1_modified = false;
-        bool reg2_modified = false;
+        unmapped_registers = false;
+        reg1_modified = false;
+        reg2_modified = false;
 
         // Preload unmapped VB registers
         if (!arm_reg1 && arm_reg2) {
@@ -363,22 +379,19 @@ void v810_translateBlock(exec_block* block) {
 
         switch (inst_cache[i].opcode) {
             case V810_OP_JMP: // jmp [reg1]
-                // str reg1, [r11, #(33*4)] ; r11 has v810_state
                 STR_IO(arm_reg1, 11, 33 * 4);
-                // pop {pc} (or "ldmfd sp!, {pc}")
                 ADDCYCLES();
                 POP(1 << 15);
                 break;
             case V810_OP_JR: // jr imm26
                 ADDCYCLES();
-                if (abs(inst_cache[i].branch_offset) < (1<<10)) {
+                if (abs(inst_cache[i].branch_offset) < 1024) {
                     HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
                     B(ARM_COND_AL, 0);
                 } else {
                     LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
-                    // str r0, [r11, #(33*4)] ; Save the new PC
+                    // Save the new PC
                     STR_IO(0, 11, 33 * 4);
-                    // pop {pc} (or "ldmfd sp!, {pc}")
                     POP(1 << 15);
                 }
                 break;
@@ -432,32 +445,24 @@ void v810_translateBlock(exec_block* block) {
                 B(arm_cond, 0);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
-                // mov r0, #(imm16_hi ror 8)
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                // orr r0, #(imm16_lo ror 16)
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // The zero-register will always be zero, so don't add it
                 if (inst_cache[i].reg1 == 0) {
-                    // mov reg2, r0
                     MOV(arm_reg2, 0);
                 } else {
-                    // add reg2, r0, reg1
                     ADD(arm_reg2, 0, arm_reg1);
                 }
 
                 reg2_modified = true;
                 break;
             case V810_OP_MOVEA: // movea imm16, reg1, reg2
-                // mov r0, #(imm16_hi ror 8)
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                // orr r0, #(imm16_lo ror 16)
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // The zero-register will always be zero, so don't add it
                 if (inst_cache[i].reg1 == 0)
-                    // mov reg2, r0, asr #16
                     MOV_IS(arm_reg2, 0, ARM_SHIFT_ASR, 16);
                 else
-                    // add reg2, reg1, r0, asr #16
                     ADD_IS(arm_reg2, arm_reg1, 0, ARM_SHIFT_ASR, 16);
 
                 reg2_modified = true;
@@ -487,22 +492,18 @@ void v810_translateBlock(exec_block* block) {
                     CMP(arm_reg2, arm_reg1);
                 break;
             case V810_OP_SHL: // shl reg1, reg2
-                // lsl reg2, reg2, reg1
                 LSLS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_SHR: // shr reg1, reg2
-                // lsr reg2, reg2, reg1
                 LSRS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_SAR: // sar reg1, reg2
-                // asr reg2, reg2, reg1
                 ASRS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_MUL: // mul reg1, reg2
-                // smulls RdLo, RdHi, Rm, Rs
                 SMULLS(arm_reg2, phys_regs[30], arm_reg2, arm_reg1);
                 // If the 30th register isn't being used in the block, the high
                 // word of the multiplication will be in r0 (because
@@ -605,60 +606,47 @@ void v810_translateBlock(exec_block* block) {
                 reg2_modified = true;
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
-                // mov r0, #(imm16_hi ror 8)
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                // orr r0, #(imm16_lo ror 16)
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
-                // ands reg2, reg1, r0
                 ANDS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_XORI: // xori imm16, reg1, reg2
-                // mov r0, #(imm16_hi ror 8)
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                // orr r0, #(imm16_lo ror 16)
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
-                // eors reg2, reg1, r0
                 EORS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
-                // mov r0, #(imm16_hi ror 8)
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                // orr r0, #(imm16_lo ror 16)
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
-                // orr reg2, reg1, r0
                 ORRS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_ADDI: // addi imm16, reg1, reg2
-                // mov r0, #(imm16_hi ror 8)
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                // orr r0, #(imm16_lo ror 16)
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
-                // add reg2, reg1, r0
                 ADDS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
-                    // add r0, r0, reg1
                     ADD(0, 0, arm_reg1);
                 }
 
                 LDW_I(1, &mem_rbyte);
                 BLX(ARM_COND_AL, 1);
 
-                // TODO: Figure out the sxtb opcode
+                // TODO: Implement sxtb
                 // lsl r0, r0, #8
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 8, ARM_SHIFT_LSL, 0);
                 // asr reg2, r0, #8
@@ -668,14 +656,13 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
-                    // add r0, r0, reg1
                     ADD(0, 0, arm_reg1);
                 }
 
                 LDW_I(1, &mem_rhword);
                 BLX(ARM_COND_AL, 1);
 
-                // TODO: Figure out the sxth opcode
+                // TODO: Implement sxth
                 // lsl r0, r0, #16
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_LSL, 0);
                 // asr reg2, r0, #16
@@ -685,14 +672,12 @@ void v810_translateBlock(exec_block* block) {
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
-                    // add r0, r0, reg1
                     ADD(0, 0, arm_reg1);
                 }
 
                 LDW_I(1, &mem_rword);
                 BLX(ARM_COND_AL, 1);
 
-                // mov reg2, r0
                 MOV(arm_reg2, 0);
                 reg2_modified = true;
                 break;
@@ -703,18 +688,12 @@ void v810_translateBlock(exec_block* block) {
                 }
 
                 if (inst_cache[i].reg2 == 0)
-                    // mov r1, #0
                     MOV_I(1, 0, 0);
                 else
-                    // mov r1, reg2
                     MOV(1, arm_reg2);
 
-                if (unmapped_registers)
-                    PUSH(1<<2);
                 LDW_I(2, &mem_wbyte);
                 BLX(ARM_COND_AL, 2);
-                if (unmapped_registers)
-                    POP(1<<2);
                 break;
             case V810_OP_ST_H: // st.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
@@ -723,46 +702,33 @@ void v810_translateBlock(exec_block* block) {
                 }
 
                 if (inst_cache[i].reg2 == 0)
-                    // mov r1, #0
                     MOV_I(1, 0, 0);
                 else
-                    // mov r1, reg2
                     MOV(1, arm_reg2);
 
-                if (unmapped_registers)
-                    PUSH(1<<2);
                 LDW_I(2, &mem_whword);
                 BLX(ARM_COND_AL, 2);
-                if (unmapped_registers)
-                    POP(1<<2);
                 break;
             case V810_OP_ST_W: // st.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
-                    // add r0, r0, reg1
                     ADD(0, 0, arm_reg1);
                 }
 
                 if (inst_cache[i].reg2 == 0)
-                    // mov r1, #0
                     MOV_I(1, 0, 0);
                 else
-                    // mov r1, reg2
                     MOV(1, arm_reg2);
 
-                if (unmapped_registers)
-                    PUSH(1<<2);
                 LDW_I(2, &mem_wword);
                 BLX(ARM_COND_AL, 2);
-                if (unmapped_registers)
-                    POP(1<<2);
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
-                // str reg2, [r11, #((35+regID)*4)] ; Stores reg2 in v810_state->S_REG[regID]
+                // Stores reg2 in v810_state->S_REG[regID]
                 STR_IO(arm_reg2, 11, (35 + phys_regs[inst_cache[i].imm]) * 4);
                 break;
             case V810_OP_STSR: // stsr regID, reg2
-                // ldr reg2, [r11, #((35+regID)*4)] ; Loads v810_state->S_REG[regID] into reg2
+                // Loads v810_state->S_REG[regID] into reg2
                 LDR_IO(arm_reg2, 11, (35 + phys_regs[inst_cache[i].imm]) * 4);
                 reg2_modified = true;
                 break;
@@ -819,6 +785,7 @@ void v810_translateBlock(exec_block* block) {
 
     num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
 
+    // Fourth pass: assemble and link
     for (i = 0; i < num_v810_inst; i++) {
         HWORD start_pos = inst_cache[i].start_pos;
         for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
@@ -832,7 +799,7 @@ void v810_translateBlock(exec_block* block) {
 #endif
             if (trans_cache[j].needs_branch) {
                 int v810_offset = inst_cache[i].branch_offset;
-                int arm_offset = (int)(v810_getEntry(inst_cache[i].PC + v810_offset, NULL) - &block->phys_loc[j] - 2);
+                int arm_offset = (int)(drc_getEntry(inst_cache[i].PC + v810_offset, NULL) - &block->phys_loc[j] - 2);
 
                 trans_cache[j].b_bl.imm = arm_offset & 0xffffff;
             }
@@ -847,19 +814,23 @@ void v810_translateBlock(exec_block* block) {
     linearFree(trans_cache);
     linearFree(inst_cache);
 
-    // In ARM mode, each instruction is 4 bytes
     block->size = num_arm_inst + pool_offset;
     block->end_pc = PC;
 }
 
-WORD* v810_getEntry(WORD loc, exec_block** block) {
+// Returns the entrypoint for the V810 instruction in location loc if it exists
+// and NULL if it needs to be translated. If p_block != NULL it will point to
+// the block structure.
+WORD* drc_getEntry(WORD loc, exec_block **p_block) {
     unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
-    if (block)
-        *block = block_map[map_pos];
+    if (p_block)
+        *p_block = block_map[map_pos];
     return entry_map[map_pos];
 }
 
-void v810_setEntry(WORD loc, WORD* entry, exec_block* block) {
+// Sets a new entrypoint for the V810 instruction in location loc and the
+// corresponding block
+void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
     if (loc < V810_ROM1.lowaddr)
         return;
 
@@ -875,6 +846,8 @@ void v810_drc() {
     exec_block* cur_block;
     WORD* entrypoint;
 
+    // Initialize the dynarec
+    // TODO: move this to drc_init and free it later (in drc_exit)
     if (!cache_start) {
         cache_start = memalign(0x1000, CACHE_SIZE);
         cache_pos = cache_start;
@@ -891,6 +864,7 @@ void v810_drc() {
         entry_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(WORD*));
     }
 
+    // TODO: implement reading from RAM
     PC = (PC&0x07FFFFFE);
 
     while (!serviceDisplayInt(clocks)) {
@@ -899,18 +873,19 @@ void v810_drc() {
         WORD entry_PC = PC;
 
         // Try to find a cached block
-        entrypoint = v810_getEntry(PC, &cur_block);
+        // TODO: make sure we have enough free space
+        entrypoint = drc_getEntry(PC, &cur_block);
         if (!entrypoint) {
             cur_block = calloc(1, sizeof(exec_block));
 
             cur_block->phys_loc = cache_pos;
 
-            v810_translateBlock(cur_block);
+            drc_translateBlock(cur_block);
             //drc_dumpCache("cache_dump_rf.bin");
             //HB_FlushInvalidateCache();
 
             cache_pos += cur_block->size;
-            entrypoint = v810_getEntry(entry_PC, NULL);
+            entrypoint = drc_getEntry(entry_PC, NULL);
         }
         //sprintf(str, "BLOCK ENTRY - 0x%x (%p)", entry_PC, entrypoint);
         //svcOutputDebugString(str, strlen(str));
@@ -918,7 +893,7 @@ void v810_drc() {
         v810_state->PC = cur_block->end_pc;
         v810_state->cycles = clocks;
 
-        v810_executeBlock(entrypoint, cur_block);
+        drc_executeBlock(entrypoint, cur_block);
 
         PC = v810_state->PC & 0xFFFFFFFE;
         if (v810_state->cycles == (WORD)(-1))
@@ -929,12 +904,14 @@ void v810_drc() {
     }
 }
 
+// Dumps the translation cache onto a file
 void drc_dumpCache(char* filename) {
     FILE* f = fopen(filename, "w");
     fwrite(cache_start, CACHE_SIZE, 1, f);
     fclose(f);
 }
 
+// Dumps the VB RAM and the game RAM onto vb_ram.bin and game_ram.bin
 void vb_dumpRAM() {
     FILE* f = fopen("vb_ram.bin", "w");
     fwrite(V810_VB_RAM.pmemory, V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr,1, f);
