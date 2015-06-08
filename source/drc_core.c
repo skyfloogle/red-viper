@@ -42,9 +42,6 @@
 #include "arm_emit.h"
 #include "arm_codegen.h"
 
-BYTE reg_usage[32];
-WORD* cache_start = NULL;
-
 char str[32];
 
 // Maps the most used registers in the block to V810 registers
@@ -94,6 +91,7 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     bool finished = false;
 
     while(!finished) {
+        // TODO: implement reading from RAM
         cur_PC = cur_PC & V810_ROM1.highaddr;
 
         BYTE lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
@@ -839,16 +837,8 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
     entry_map[map_pos] = entry;
 }
 
-// V810 dynarec
-void v810_drc() {
-    static WORD* cache_pos = NULL;
-    static unsigned int clocks;
-    exec_block* cur_block;
-    WORD* entrypoint;
-
-    // Initialize the dynarec
-    // TODO: move this to drc_init and free it later (in drc_exit)
-    if (!cache_start) {
+// Initialize the dynarec
+void drc_init() {
         cache_start = memalign(0x1000, CACHE_SIZE);
         cache_pos = cache_start;
 
@@ -857,14 +847,30 @@ void v810_drc() {
         *((u32*)0x00108000) = 0xDEADBABE;
         HB_ReprotectMemory(cache_start, 10, 0x7, &pages);
         HB_FlushInvalidateCache();
-    }
-    if (!block_map) {
+
         // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
         block_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(exec_block**));
         entry_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(WORD*));
+}
+
+void drc_exit() {
+    free(cache_start);
+
+    int i;
+    for (i = 0; i < ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1); i++) {
+        free(block_map[i]);
     }
 
-    // TODO: implement reading from RAM
+    free(block_map);
+    free(entry_map);
+}
+
+// Run V810 code until
+int drc_run() {
+    static unsigned int clocks;
+    exec_block* cur_block;
+    WORD* entrypoint;
+
     PC = (PC&0x07FFFFFE);
 
     while (!serviceDisplayInt(clocks)) {
@@ -902,6 +908,9 @@ void v810_drc() {
         //sprintf(str, "BLOCK END - 0x%x", PC);
         //svcOutputDebugString(str, strlen(str));
     }
+
+    // TODO: Handle errors
+    return 0;
 }
 
 // Dumps the translation cache onto a file
@@ -922,9 +931,3 @@ void vb_dumpRAM() {
     fclose(f);
 }
 
-int v810_trc() {
-    // Testing code
-    v810_drc();
-
-    return 0;
-}

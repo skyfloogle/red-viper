@@ -116,9 +116,6 @@ extern const BYTE opcycle[0x50]; //clock cycles
 // Reset the registers
 void v810_reset();
 
-// Trace num instructions
-int v810_trc();
-
 // Generate Interupt #n
 void v810_int(WORD iNum);
 

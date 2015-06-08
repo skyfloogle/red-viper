@@ -11,6 +11,7 @@
 #include "v810_mem.h"
 #include "vb_types.h"
 #include "v810_cpu.h"
+#include "drc_core.h"
 #include "vb_dsp.h"
 #include "vb_set.h"
 #include "rom_db.h"
@@ -259,9 +260,6 @@ int main() {
     static int Left = 0;
     int skip = 0;
 
-    srvInit();
-    aptInit();
-    hidInit(NULL);
     gfxInitDefault();
     fsInit();
     hbInit();
@@ -289,7 +287,7 @@ int main() {
     }
 
     v810_reset();
-    v810_trc();
+    drc_init();
 
     clearCache();
 
@@ -307,8 +305,7 @@ int main() {
 //            drc_dumpCache("sdmc:/cache_dump.bin");
 
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
-            // Trace
-            err = v810_trc();
+            err = drc_run();
             if (err)
                 break;
 
@@ -339,13 +336,11 @@ int main() {
 
 exit:
     V810_DSP_Quit();
+    drc_exit();
 
     sdmcExit();
     fsExit();
     hbExit();
-    hidExit();
     gfxExit();
-    aptExit();
-    srvExit();
     return 0;
 }

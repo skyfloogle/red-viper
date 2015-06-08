@@ -32,8 +32,11 @@ typedef struct {
     int branch_offset;
 } v810_instruction;
 
-exec_block** block_map = NULL;
-WORD** entry_map = NULL;
+exec_block** block_map;
+WORD** entry_map;
+BYTE reg_usage[32];
+WORD* cache_start;
+static WORD* cache_pos;
 
 int __divsi3(int a, int b);
 int __modsi3(int a, int b);
@@ -52,7 +55,9 @@ int drc_handleInterrupts(WORD* PC);
 WORD*drc_getEntry(WORD loc, exec_block **p_block);
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block);
 
-void v810_drc();
+void drc_init();
+void drc_exit();
+int drc_run();
 void drc_dumpCache(char* filename);
 void vb_dumpRAM();
 
