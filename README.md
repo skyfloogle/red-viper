@@ -64,7 +64,7 @@ Credits
 =======
 
 * Everyone mentioned in the license. Without Reality Boy and Red Dragon it wouldn't have been possible.
-* smealum and contributors - ctrulib and everyone involved in the 3DS homebrew scene.
+* smealum and contributors - ctrulib.
 * Vappy, Team Fail, HtheB, hippy dave and kane159 on GBAtemp - early testing.
 * nop90 - Reality Boy backports and fixes.
 * danielps - 3DS port and V810 dynarec.
