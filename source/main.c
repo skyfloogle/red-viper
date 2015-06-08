@@ -265,6 +265,7 @@ int main() {
     hbInit();
     sdmcInit();
     consoleInit(GFX_BOTTOM, NULL);
+    consoleDebugInit(debugDevice_3DMOO);
 
     sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
     FSUSER_OpenArchive(NULL, &sdmcArchive);

@@ -42,8 +42,6 @@
 #include "arm_emit.h"
 #include "arm_codegen.h"
 
-char str[32];
-
 // Maps the most used registers in the block to V810 registers
 void drc_mapRegs(exec_block* block) {
     int i, j, max;
@@ -308,8 +306,7 @@ void drc_translateBlock(exec_block *block) {
     WORD pool_offset = 0;
 
     drc_scanBlockBounds(&start_PC, &end_PC);
-    sprintf(str, "BLOCK: 0x%x -> 0x%x", start_PC, end_PC);
-    svcOutputDebugString(str, strlen(str));
+    fprintf(stderr, "BLOCK: 0x%x -> 0x%x\n", start_PC, end_PC);
 
     // Clear previous block register stats
     memset(reg_usage, 0, 32);
@@ -749,8 +746,7 @@ void drc_translateBlock(exec_block *block) {
                 POP(1 << 15);
                 break;
             default:
-                sprintf(str, "Unimplemented instruction: 0x%x", inst_cache[i].opcode);
-                svcOutputDebugString(str, (int) strlen(str));
+                fprintf(stderr, "Unimplemented instruction: 0x%x\n", inst_cache[i].opcode);
                 // Fill unimplemented instructions with a nop and hope the game still runs
                 NOP();
                 break;
@@ -893,8 +889,7 @@ int drc_run() {
             cache_pos += cur_block->size;
             entrypoint = drc_getEntry(entry_PC, NULL);
         }
-        //sprintf(str, "BLOCK ENTRY - 0x%x (%p)", entry_PC, entrypoint);
-        //svcOutputDebugString(str, strlen(str));
+        //fprintf(stderr, "BLOCK ENTRY - 0x%x (%p)\n", entry_PC, entrypoint);
 
         v810_state->PC = cur_block->end_pc;
         v810_state->cycles = clocks;
@@ -905,8 +900,7 @@ int drc_run() {
         if (v810_state->cycles == (WORD)(-1))
             break;
         clocks = v810_state->cycles;
-        //sprintf(str, "BLOCK END - 0x%x", PC);
-        //svcOutputDebugString(str, strlen(str));
+        //fprintf(stderr, "BLOCK END - 0x%x\n", PC);
     }
 
     // TODO: Handle errors
