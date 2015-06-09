@@ -159,29 +159,30 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
 // Returns the number of instructions decoded.
 unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_cache, WORD start_PC, WORD end_PC) {
     unsigned int i;
-    BYTE lowB, highB, lowB2, highB2; // Up to 4 bytes for instruction (either 16 or 32 bits)
-    WORD curPC = start_PC;
+    // Up to 4 bytes for instruction (either 16 or 32 bits)
+    BYTE lowB, highB, lowB2, highB2;
+    WORD cur_PC = start_PC;
 
-    for (i = 0; (i < MAX_INST) && (curPC <= end_PC); i++) {
-        curPC = (curPC&0x07FFFFFE);
+    for (i = 0; (i < MAX_INST) && (cur_PC <= end_PC); i++) {
+        cur_PC = (cur_PC &0x07FFFFFE);
 
-        if ((curPC>>24) == 0x05) { // RAM
-            curPC     = (curPC & V810_VB_RAM.highaddr);
-            lowB   = ((BYTE *)(V810_VB_RAM.off + curPC))[0];
-            highB  = ((BYTE *)(V810_VB_RAM.off + curPC))[1];
-            lowB2  = ((BYTE *)(V810_VB_RAM.off + curPC))[2];
-            highB2 = ((BYTE *)(V810_VB_RAM.off + curPC))[3];
-        } else if ((curPC>>24) >= 0x07) { // ROM
-            curPC     = (curPC & V810_ROM1.highaddr);
-            lowB   = ((BYTE *)(V810_ROM1.off + curPC))[0];
-            highB  = ((BYTE *)(V810_ROM1.off + curPC))[1];
-            lowB2  = ((BYTE *)(V810_ROM1.off + curPC))[2];
-            highB2 = ((BYTE *)(V810_ROM1.off + curPC))[3];
+        if ((cur_PC >>24) == 0x05) { // RAM
+            cur_PC = (cur_PC & V810_VB_RAM.highaddr);
+            lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
+            highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
+            lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
+            highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
+        } else if ((cur_PC >>24) >= 0x07) { // ROM
+            cur_PC = (cur_PC & V810_ROM1.highaddr);
+            lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
+            highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
+            lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
+            highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
         } else {
             return 0;
         }
 
-        inst_cache[i].PC = curPC;
+        inst_cache[i].PC = cur_PC;
 
         inst_cache[i].opcode = highB >> 2;
         if ((highB & 0xE0) == 0x80)              // Special opcode format for
@@ -275,11 +276,11 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
             default: // Invalid opcode.
                 inst_cache[i].reg1 = (BYTE)(-1);
                 inst_cache[i].reg2 = (BYTE)(-1);
-                curPC += 2;
+                cur_PC += 2;
                 break;
         }
 
-        curPC += am_size_table[optable[inst_cache[i].opcode].addr_mode];
+        cur_PC += am_size_table[optable[inst_cache[i].opcode].addr_mode];
         block->cycles += opcycle[inst_cache[i].opcode];
     }
 
@@ -288,14 +289,25 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
 
 // Translates a V810 block into ARM code
 void drc_translateBlock(exec_block *block) {
-    unsigned int num_v810_inst = 0, num_arm_inst = 0, i, j, cycles = 0;
+    int i, j;
+    // Stores the number of clock cycles since the last branch
+    unsigned int cycles = 0;
+    unsigned int num_v810_inst, num_arm_inst;
+    // Maps V810 registers to ARM registers
     BYTE phys_regs[32];
-    BYTE arm_reg1, arm_reg2, arm_cond;
+    // For each V810 instruction, the ARM registers mapped to reg1 and reg2. If
+    // they're not cached, they will be mapped to r2 and r3.
+    BYTE arm_reg1, arm_reg2;
+    BYTE arm_cond;
     WORD start_PC = PC;
     WORD end_PC;
+    // For each V810 instruction, tells if either reg1 or reg2 is cached
     bool unmapped_registers;
+    // Tells if reg1 or reg2 has been modified by the current V810 instruction
     bool reg1_modified;
     bool reg2_modified;
+    // The value of inst_ptr at the start of a V810 instruction
+    arm_inst* inst_ptr_start;
 
     v810_instruction *inst_cache = linearAlloc(MAX_INST*sizeof(v810_instruction));
     arm_inst* trans_cache = linearAlloc(4*MAX_INST*sizeof(arm_inst));
@@ -314,7 +326,7 @@ void drc_translateBlock(exec_block *block) {
     // First pass: decode V810 instructions
     num_v810_inst = drc_decodeInstructions(block, inst_cache, start_PC, end_PC);
 
-    // Second pass: map registers and memory addresses
+    // Second pass: map the most used V810 registers to ARM registers
     drc_mapRegs(block);
     for (i = 0; i < 32; i++)
         phys_regs[i] = drc_getPhysReg(i, block->reg_map);
@@ -335,7 +347,7 @@ void drc_translateBlock(exec_block *block) {
             arm_reg1 = 0;
 
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
-        arm_inst* inst_ptr_start = inst_ptr;
+        inst_ptr_start = inst_ptr;
         drc_setEntry(inst_cache[i].PC, block->phys_loc + inst_cache[i].start_pos, block);
         cycles += opcycle[inst_cache[i].opcode];
 
@@ -849,6 +861,7 @@ void drc_init() {
         entry_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(WORD*));
 }
 
+// Cleanup and exit
 void drc_exit() {
     free(cache_start);
 
