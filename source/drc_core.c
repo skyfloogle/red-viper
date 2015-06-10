@@ -135,7 +135,7 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
             case V810_OP_BP:
             case V810_OP_BGE:
             case V810_OP_BGT:
-                branch_addr = cur_PC + sign_9(((highB & 0x1) << 8) + (lowB & 0xFE)) + 2;
+                branch_addr = cur_PC + sign_9(((highB & 0x1) << 8) + (lowB & 0xFE));
 
                 if (branch_addr < start_PC)
                     start_PC = branch_addr;
