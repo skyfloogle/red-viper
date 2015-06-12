@@ -5,7 +5,7 @@
 #include "arm_emit.h"
 
 #define CACHE_SIZE  0x100000
-#define MAX_INST    1024
+#define MAX_INST    2048
 
 #define END_BLOCK 0xFF
 

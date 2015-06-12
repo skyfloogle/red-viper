@@ -310,7 +310,7 @@ void drc_translateBlock(exec_block *block) {
     arm_inst* inst_ptr_start;
 
     v810_instruction *inst_cache = linearAlloc(MAX_INST*sizeof(v810_instruction));
-    arm_inst* trans_cache = linearAlloc(4*MAX_INST*sizeof(arm_inst));
+    arm_inst* trans_cache = linearAlloc(8*MAX_INST*sizeof(arm_inst));
     WORD* pool_cache_start = NULL;
 #ifdef LITERAL_POOL
     pool_cache_start = linearAlloc(256*4);
@@ -847,28 +847,25 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 
 // Initialize the dynarec
 void drc_init() {
-        cache_start = memalign(0x1000, CACHE_SIZE);
-        cache_pos = cache_start;
+    cache_start = memalign(0x1000, CACHE_SIZE);
+    cache_pos = cache_start;
 
-        u32 pages;
-        HB_ReprotectMemory(0x00108000, 10, 0x7, &pages);
-        *((u32*)0x00108000) = 0xDEADBABE;
-        HB_ReprotectMemory(cache_start, 10, 0x7, &pages);
-        HB_FlushInvalidateCache();
+    u32 pages;
+    HB_ReprotectMemory(0x00108000, 10, 0x7, &pages);
+    *((u32*)0x00108000) = 0xDEADBABE;
+    HB_ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7, &pages);
+    HB_FlushInvalidateCache();
 
-        // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
-        block_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(exec_block**));
-        entry_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(WORD*));
+    // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
+    block_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(exec_block**));
+    entry_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(WORD*));
 }
 
 // Cleanup and exit
 void drc_exit() {
     free(cache_start);
 
-    int i;
-    for (i = 0; i < ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1); i++) {
-        free(block_map[i]);
-    }
+    // FIXME: Free exec_block structures
 
     free(block_map);
     free(entry_map);
@@ -897,7 +894,7 @@ int drc_run() {
 
             drc_translateBlock(cur_block);
             //drc_dumpCache("cache_dump_rf.bin");
-            //HB_FlushInvalidateCache();
+            HB_FlushInvalidateCache();
 
             cache_pos += cur_block->size;
             entrypoint = drc_getEntry(entry_PC, NULL);
