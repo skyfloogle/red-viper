@@ -67,6 +67,8 @@ int romSelect(char* path) {
         }
     }
 
+    FSDIR_Close(dirHandle);
+
     while(aptMainLoop()) {
         // Draw splash screen
         // memcpy(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL), lsplash_bin, lsplash_bin_size);
@@ -298,7 +300,7 @@ int main() {
         hidScanInput();
         int keys = hidKeysHeld();
 
-        if ((keys & KEY_START) && (keys & KEY_SELECT))
+        if ((keys & KEY_X) && (keys & KEY_Y))
             break;
 
 //        keys = hidKeysDown();
@@ -327,8 +329,8 @@ int main() {
         }
 
         consoleClear();
-        //printf("FPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, (unsigned int) PC);
-        printf("Frame: %i\nPC: 0x%x", frame, (unsigned int) PC);
+        printf("FPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, (unsigned int) PC);
+        //printf("Frame: %i\nPC: 0x%x", frame, (unsigned int) PC);
 
         gfxFlushBuffers();
         gfxSwapBuffers();
@@ -339,6 +341,7 @@ exit:
     V810_DSP_Quit();
     drc_exit();
 
+    FSUSER_CloseArchive(NULL, &sdmcArchive);
     sdmcExit();
     fsExit();
     hbExit();

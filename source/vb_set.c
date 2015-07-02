@@ -29,10 +29,10 @@ void setDefaults(void) {
     vbkey[2] = KEY_DLEFT;   // L Left
     vbkey[3] = KEY_DRIGHT;  // L Right
 
-    vbkey[4] = KEY_X;       // R Up
-    vbkey[5] = KEY_B;       // R Down
-    vbkey[6] = KEY_Y;       // R Left
-    vbkey[7] = KEY_A;       // R Right
+    vbkey[4] = KEY_CSTICK_UP;       // R Up
+    vbkey[5] = KEY_CSTICK_DOWN;     // R Down
+    vbkey[6] = KEY_CSTICK_LEFT;     // R Left
+    vbkey[7] = KEY_CSTICK_RIGHT;    // R Right
 
     vbkey[8] = KEY_A;       // A
     vbkey[9] = KEY_B;       // B

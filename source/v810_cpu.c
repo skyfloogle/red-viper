@@ -4,15 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 #include "vb_types.h"
 #include "v810_ins.h"
 #include "v810_opt.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"
-#include "vb_set.h"
-#include "vb_dsp.h"
+#include "drc_core.h"
 
 #define NEG(n) ((n) >> 31)
 #define POS(n) ((~(n)) >> 31)
@@ -35,6 +33,8 @@ void v810_reset() {
         free(v810_state);
 
     v810_state = malloc(sizeof(cpu_state));
+    v810_state->irq_handler = &drc_handleInterrupts;
+
     v810_state->P_REG[0]      =  0x00000000;
     PC            =  0xFFFFFFF0;
     v810_state->S_REG[ECR]    =  0x0000FFF0;

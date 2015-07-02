@@ -46,7 +46,7 @@
 void drc_mapRegs(exec_block* block) {
     int i, j, max;
 
-    for (i = 0; i < 7; i++) {
+    for (i = 0; i < ARM_NUM_CACHE_REGS; i++) {
         max = 0;
         // We don't care about P_REG[0] because it will always be 0 and it will
         // be optimized out
@@ -68,10 +68,10 @@ void drc_mapRegs(exec_block* block) {
 // Gets the ARM register corresponding to a cached V810 register
 BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
     int i;
-    for (i = 0; i < 7; i++) {
+    for (i = 0; i < ARM_NUM_CACHE_REGS; i++) {
         if (reg_map[i] == vb_reg) {
             // The first usable register will be r4
-            return (BYTE) (i + 4);
+            return (BYTE) (i + ARM_CACHE_REG_START);
         }
     }
     return 0;
@@ -391,11 +391,11 @@ void drc_translateBlock(exec_block *block) {
                 POP(1 << 15);
                 break;
             case V810_OP_JR: // jr imm26
-                ADDCYCLES();
                 if (abs(inst_cache[i].branch_offset) < 1024) {
                     HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
                     B(ARM_COND_AL, 0);
                 } else {
+                    ADDCYCLES();
                     LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
                     // Save the new PC
                     STR_IO(0, 11, 33 * 4);
@@ -447,7 +447,6 @@ void drc_translateBlock(exec_block *block) {
             case V810_OP_BGE:
             case V810_OP_BGT:
                 arm_cond = cond_map[inst_cache[i].opcode & 0xF];
-                ADDCYCLES();
                 HANDLEINT(inst_cache[i].PC);
                 B(arm_cond, 0);
                 break;
@@ -907,9 +906,12 @@ int drc_run() {
         drc_executeBlock(entrypoint, cur_block);
 
         PC = v810_state->PC & 0xFFFFFFFE;
-        if (v810_state->cycles == (WORD)(-1))
-            break;
         clocks = v810_state->cycles;
+
+        if (v810_state->ret) {
+            v810_state->ret = 0;
+            break;
+        }
         //fprintf(stderr, "BLOCK END - 0x%x\n", PC);
     }
 

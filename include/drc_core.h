@@ -6,6 +6,8 @@
 
 #define CACHE_SIZE  0x100000
 #define MAX_INST    2048
+#define ARM_CACHE_REG_START 4
+#define ARM_NUM_CACHE_REGS 6
 
 #define END_BLOCK 0xFF
 
@@ -15,8 +17,8 @@ typedef struct {
     WORD size;
     WORD cycles;
     BYTE jmp_reg;
-    // We can use 7 registers at a time, r4-r10, and r11 will have the address
-    // of v810_state
+    // We can use ARM_NUM_CACHE_REGS registers at a time, r4-r10, and r11 will
+    // have the address of v810_state
     // reg_map[0] would have the VB register that is mapped to r4
     BYTE reg_map[7];
     WORD end_pc; // The address of the last instruction in the block
@@ -50,7 +52,7 @@ void drc_scanBlockBounds(WORD *p_start_PC, WORD *p_end_PC);
 unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_cache, WORD start_PC, WORD end_PC);
 void drc_translateBlock(exec_block* block);
 void drc_executeBlock(WORD* entrypoint, exec_block* block);
-int drc_handleInterrupts(WORD* PC);
+int drc_handleInterrupts(WORD cpsr, WORD* PC);
 
 WORD*drc_getEntry(WORD loc, exec_block **p_block);
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block);

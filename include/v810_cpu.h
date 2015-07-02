@@ -93,6 +93,8 @@ typedef struct {
     WORD flags;
     WORD S_REG[32]; // System registers sr0-sr31
     WORD cycles;
+    int (*irq_handler)(WORD, WORD*);
+    BYTE ret;
 } cpu_state;
 
 cpu_state* v810_state;

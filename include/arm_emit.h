@@ -373,6 +373,10 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 #define ADD_I(Rd, Rn, imm8, rot) \
     new_data_proc_imm(ARM_COND_AL, ARM_OP_ADD, 0, Rn, Rd, rot, imm8)
 
+// adds Rd, Rn, imm8, ror #rot
+#define ADDS_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_ADD, 1, Rn, Rd, rot, imm8)
+
 // orr Rd, imm, ror #rot
 // Or immediate
 // imm8 can be rotated an even number of times
@@ -561,6 +565,16 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 #define BLX(cond, Rm) \
     new_branch_exchange(cond, 1, Rm)
 
+// mrs Rn, cpsr
+// Move from CPSR
+#define MRS(Rn) \
+    new_move_from_cpsr(ARM_COND_AL, 0, 0b1111, Rn, 0);
+
+// msr cpsr, Rn
+// Move from register to CPSR
+#define MSR(Rn) \
+    new_move_reg_to_cpsr(ARM_COND_AL, 0, 0b1111, 0b1111, 0, Rn);
+
 // Load word into register using a literal pool
 #ifdef LITERAL_POOL
 #define LDW_I(reg, word) { \
@@ -583,16 +597,18 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 #endif
 
 #define ADDCYCLES() { \
-    LDR_IO(0, 11, 67 * 4); \
-    ADD_I(0, 0, cycles & 0xFF, 0); \
-    STR_IO(0, 11, 67 * 4); \
+    ADD_I(10, 10, cycles & 0xFF, 0); \
     cycles = 0; \
 }
 
 #define HANDLEINT(ret_PC) { \
-    LDW_I(0, ret_PC); \
-    LDW_I(1, &drc_handleInterrupts); \
-    BLX(ARM_COND_AL, 1); \
+    MRS(0); \
+    LDW_I(1, ret_PC); \
+    ADDS_I(10, 10, cycles & 0xFF, 0); \
+    LDR_IO(2, 11, 68*4); \
+    BLX(ARM_COND_PL, 2); \
+    MSR(0); \
+    cycles = 0; \
 }
 
 #endif

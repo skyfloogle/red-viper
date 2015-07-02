@@ -5,6 +5,9 @@
 
 .extern v810_state, serviceDisplayInt, serviceInt
 
+@ The max number of cycles
+.set MAXCYCLES, 2048
+
 .text
 
 .macro ldRegs
@@ -18,7 +21,7 @@
     @ Load the address of the reg map (block+17)
     add     r3, r1, #17
 
-    @ Load regs
+    @ Load cached V810 registers
     ldrb    r2, [r3], #1
     ldr     r4, [r11, r2, lsl #2]
     ldrb    r2, [r3], #1
@@ -31,8 +34,8 @@
     ldr     r8, [r11, r2, lsl #2]
     ldrb    r2, [r3], #1
     ldr     r9, [r11, r2, lsl #2]
-    ldrb    r2, [r3], #1
-    ldr     r10, [r11, r2, lsl #2]
+    @ldrb    r2, [r3], #1
+    @ldr     r10, [r11, r2, lsl #2]
 .endm
 
 .macro stRegs
@@ -45,7 +48,7 @@
     mrs     r3, cpsr
     str     r3, [r11, #(34*4)]
 
-    @ Store regs
+    @ Store cached V810 registers
     ldrb    r2, [r1], #1
     str     r4, [r11, r2, lsl #2]
     ldrb    r2, [r1], #1
@@ -58,8 +61,8 @@
     str     r8, [r11, r2, lsl #2]
     ldrb    r2, [r1], #1
     str     r9, [r11, r2, lsl #2]
-    ldrb    r2, [r1], #1
-    str     r10, [r11, r2, lsl #2]
+    @ldrb    r2, [r1], #1
+    @str     r10, [r11, r2, lsl #2]
 .endm
 
 @ void drc_executeBlock(WORD* entrypoint, exec_block* block);
@@ -74,27 +77,32 @@ drc_executeBlock:
     push    {lr}
 
     ldRegs
+    mov     r10, #-MAXCYCLES-1
     bx      r0
 
 postexec:
     pop     {r0}
     stRegs
+    add     r10, #MAXCYCLES
+    ldr     r0, [r11, #67<<2]
+    add     r0, r10
+    str     r0, [r11, #67<<2]
     pop     {r4-r11, ip, pc}
 
 @ Checks for pending interrupts and exits the block if necessary
 .globl drc_handleInterrupts
 drc_handleInterrupts:
-    push    {r4, lr}
+    push    {r4, r5, lr}
 
     @ Move the return PC to r4
-    mov     r4, r0
-
-    @ Backup CPSR
-    mrs     r1, cpsr
-    push    {r1}
+    mov     r5, r0
+    mov     r4, r1
 
     @ Load v810_state->cycles
     ldr     r0, [r11, #67<<2]
+    add     r0, r10
+    add     r0, #MAXCYCLES
+    str     r0, [r11, #67<<2]
     bl      serviceDisplayInt
     cmp     r0, #0
     beq     ret_to_block
@@ -103,21 +111,20 @@ exit_block:
     @ Save the new PC
     str     r4, [r11, #33<<2]
 
-    @ Store -1 in v810_state->cycles to indicate a frame interrupt
-    mov     r0, #-1
-    str     r0, [r11, #67<<2]
+    @ Store -1 in v810_state->ret to indicate a frame interrupt
+    mov     r0, #1
+    strb    r0, [r11, #69<<2]
     @ Restore CPSR
-    pop     {r1}
-    msr     cpsr, r1
+    msr     cpsr, r5
 
     @ Exit the block ignoring linked return address
-    pop     {r4}
+    pop     {r4, r5}
     pop     {r0, pc}
 
 ret_to_block:
     bl      serviceInt
+    mov     r10, #-MAXCYCLES-1
 
-    @ Restore CPSR and return to the block
-    pop     {r1}
-    msr     cpsr, r1
-    pop     {r4, pc}
+    @ Return to the block
+    mov     r0, r5
+    pop     {r4, r5, pc}
