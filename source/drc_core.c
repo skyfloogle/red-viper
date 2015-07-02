@@ -87,15 +87,25 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     int branch_offset;
     BYTE opcode;
     bool finished = false;
+    BYTE lowB, highB, lowB2, highB2;
 
     while(!finished) {
         // TODO: implement reading from RAM
-        cur_PC = cur_PC & V810_ROM1.highaddr;
-
-        BYTE lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
-        BYTE highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
-        BYTE lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
-        BYTE highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
+        if ((cur_PC >>24) == 0x05) { // RAM
+            cur_PC = (cur_PC & V810_VB_RAM.highaddr);
+            lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
+            highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
+            lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
+            highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
+        } else if ((cur_PC >>24) >= 0x07) { // ROM
+            cur_PC = (cur_PC & V810_ROM1.highaddr);
+            lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
+            highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
+            lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
+            highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
+        } else {
+            return;
+        }
         if ((highB & 0xE0) == 0x80)
             opcode = highB>>1;
         else
@@ -827,21 +837,43 @@ void drc_translateBlock(exec_block *block) {
 // and NULL if it needs to be translated. If p_block != NULL it will point to
 // the block structure.
 WORD* drc_getEntry(WORD loc, exec_block **p_block) {
-    unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
-    if (p_block)
-        *p_block = block_map[map_pos];
-    return entry_map[map_pos];
+    unsigned int map_pos;
+
+    switch (loc>>24) {
+        case 5:
+            map_pos = ((loc-V810_VB_RAM.lowaddr)&V810_VB_RAM.highaddr)>>1;
+            if (p_block)
+                *p_block = ram_block_map[map_pos];
+            return ram_entry_map[map_pos];
+        case 7:
+            map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
+            if (p_block)
+                *p_block = rom_block_map[map_pos];
+            return rom_entry_map[map_pos];
+        default:
+            return NULL;
+    }
 }
 
 // Sets a new entrypoint for the V810 instruction in location loc and the
 // corresponding block
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
-    if (loc < V810_ROM1.lowaddr)
-        return;
+    unsigned int map_pos;
 
-    unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
-    block_map[map_pos] = block;
-    entry_map[map_pos] = entry;
+    switch (loc>>24) {
+        case 5:
+            map_pos = ((loc-V810_VB_RAM.lowaddr)&V810_VB_RAM.highaddr)>>1;
+            ram_block_map[map_pos] = block;
+            ram_entry_map[map_pos] = entry;
+            break;
+        case 7:
+            map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
+            rom_block_map[map_pos] = block;
+            rom_entry_map[map_pos] = entry;
+            break;
+        default:
+            return;
+    }
 }
 
 // Initialize the dynarec
@@ -856,8 +888,10 @@ void drc_init() {
     HB_FlushInvalidateCache();
 
     // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
-    block_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(exec_block**));
-    entry_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(WORD*));
+    rom_block_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(exec_block**));
+    rom_entry_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(WORD*));
+    ram_block_map = calloc(1, ((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1) * sizeof(exec_block**));
+    ram_entry_map = calloc(1, ((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1) * sizeof(WORD*));
 }
 
 // Cleanup and exit
@@ -866,11 +900,13 @@ void drc_exit() {
 
     // FIXME: Free exec_block structures
 
-    free(block_map);
-    free(entry_map);
+    free(rom_block_map);
+    free(rom_entry_map);
+    free(ram_block_map);
+    free(ram_entry_map);
 }
 
-// Run V810 code until
+// Run V810 code until the next frame interrupt
 int drc_run() {
     static unsigned int clocks;
     exec_block* cur_block;

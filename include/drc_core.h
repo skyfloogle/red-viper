@@ -34,8 +34,10 @@ typedef struct {
     int branch_offset;
 } v810_instruction;
 
-exec_block** block_map;
-WORD** entry_map;
+exec_block** rom_block_map;
+exec_block** ram_block_map;
+WORD** rom_entry_map;
+WORD** ram_entry_map;
 BYTE reg_usage[32];
 WORD* cache_start;
 static WORD* cache_pos;
