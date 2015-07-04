@@ -34,8 +34,6 @@
     ldr     r8, [r11, r2, lsl #2]
     ldrb    r2, [r3], #1
     ldr     r9, [r11, r2, lsl #2]
-    @ldrb    r2, [r3], #1
-    @ldr     r10, [r11, r2, lsl #2]
 .endm
 
 .macro stRegs
@@ -61,8 +59,6 @@
     str     r8, [r11, r2, lsl #2]
     ldrb    r2, [r1], #1
     str     r9, [r11, r2, lsl #2]
-    @ldrb    r2, [r1], #1
-    @str     r10, [r11, r2, lsl #2]
 .endm
 
 @ void drc_executeBlock(WORD* entrypoint, exec_block* block);
@@ -94,9 +90,8 @@ postexec:
 drc_handleInterrupts:
     push    {r4, r5, lr}
 
-    @ Move the return PC to r4
-    mov     r5, r0
-    mov     r4, r1
+    mov     r4, r0
+    mov     r5, r1
 
     @ Load v810_state->cycles
     ldr     r0, [r11, #67<<2]
@@ -109,13 +104,13 @@ drc_handleInterrupts:
 
 exit_block:
     @ Save the new PC
-    str     r4, [r11, #33<<2]
+    str     r5, [r11, #33<<2]
 
     @ Store -1 in v810_state->ret to indicate a frame interrupt
     mov     r0, #1
     strb    r0, [r11, #69<<2]
     @ Restore CPSR
-    msr     cpsr, r5
+    msr     cpsr, r4
 
     @ Exit the block ignoring linked return address
     pop     {r4, r5}
@@ -126,5 +121,5 @@ ret_to_block:
     mov     r10, #-MAXCYCLES-1
 
     @ Return to the block
-    mov     r0, r5
+    mov     r0, r4
     pop     {r4, r5, pc}
