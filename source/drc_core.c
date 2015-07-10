@@ -381,7 +381,7 @@ void drc_translateBlock(exec_block *block) {
             arm_reg2 = 2;
             unmapped_registers = true;
         } else if (!arm_reg1 && !arm_reg2) {
-            if (inst_cache[i].reg2)
+            if (inst_cache[i].reg1)
                 LDR_IO(2, 11, inst_cache[i].reg1 * 4);
             else
                 MOV_I(2, 0, 0);
@@ -911,13 +911,13 @@ int drc_run() {
     static unsigned int clocks;
     exec_block* cur_block;
     WORD* entrypoint;
-
-    PC = (PC&0x07FFFFFE);
+    WORD entry_PC;
 
     while (!serviceDisplayInt(clocks)) {
         serviceInt(clocks);
 
-        WORD entry_PC = PC;
+        PC = (PC & 0x07FFFFFE);
+        entry_PC = PC;
 
         // Try to find a cached block
         // TODO: make sure we have enough free space

@@ -573,7 +573,7 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 // msr cpsr, Rn
 // Move from register to CPSR
 #define MSR(Rn) \
-    new_move_reg_to_cpsr(ARM_COND_AL, 0, 0b1111, 0b1111, 0, Rn);
+    new_move_reg_to_cpsr(ARM_COND_AL, 0, 0b1001, 0b1111, 0, Rn);
 
 // Load word into register using a literal pool
 #ifdef LITERAL_POOL

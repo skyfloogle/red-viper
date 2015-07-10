@@ -329,7 +329,7 @@ int main() {
         }
 
         consoleClear();
-        printf("FPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, (unsigned int) PC);
+        printf("FPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, PC);
         //printf("Frame: %i\nPC: 0x%x", frame, (unsigned int) PC);
 
         gfxFlushBuffers();
