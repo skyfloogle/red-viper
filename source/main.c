@@ -262,7 +262,7 @@ int main() {
     static int Left = 0;
     int skip = 0;
 
-    gfxInitDefault();
+    gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
     fsInit();
     hbInit();
     sdmcInit();

@@ -67,14 +67,12 @@ HWORD V810_RControll() {
 
 void screen_blit(BITMAP *bitmap, int src_x, int src_y, int screen) {
     int x, y;
-    uint8_t* fb = gfxGetFramebuffer(GFX_TOP, screen, NULL, NULL);
+    uint16_t* fb = (uint16_t*)gfxGetFramebuffer(GFX_TOP, screen, NULL, NULL);
 
     for (y = src_y; y < 224+src_y; y++) {
         for (x = src_x; x < 384+src_x; x++) {
-            uint32_t v = ((224+src_y+8 - y - 1) + x * 240) * 3;
-            fb[v]     = palette[bitmap->line[y][x]].b << 2;
-            fb[v + 1] = palette[bitmap->line[y][x]].g << 2;
-            fb[v + 2] = palette[bitmap->line[y][x]].r << 2;
+            uint32_t v = (224+src_y+8 - y - 1) + x * 240;
+            fb[v] = RGB565(palette[bitmap->line[y][x]].r>>1, 0, 0);
         }
     }
 }
