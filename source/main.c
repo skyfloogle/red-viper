@@ -101,8 +101,7 @@ int romSelect(char* path) {
             pos = romc;
         }
 
-        consoleClear();
-        printf("Select a ROM:\n");
+        printf("\x1b[;H\x1b[7mSelect a ROM:\n\x1b[0m");
 
         for(i = 0; i < romc; i++) {
             char line[40];
@@ -293,6 +292,7 @@ int main() {
     drc_init();
 
     clearCache();
+    consoleClear();
 
     while(aptMainLoop()) {
         uint64_t startTime = osGetTime();
@@ -302,10 +302,6 @@ int main() {
 
         if ((keys & KEY_X) && (keys & KEY_Y))
             break;
-
-//        keys = hidKeysDown();
-//        if (keys & KEY_A)
-//            drc_dumpCache("sdmc:/cache_dump.bin");
 
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             err = drc_run();
@@ -328,8 +324,7 @@ int main() {
             V810_Dsp_Frame(Left); //Temporary...
         }
 
-        consoleClear();
-        printf("FPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, PC);
+        printf("\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, PC);
         //printf("Frame: %i\nPC: 0x%x", frame, (unsigned int) PC);
 
         gfxFlushBuffers();
