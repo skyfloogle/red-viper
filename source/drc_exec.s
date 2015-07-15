@@ -3,7 +3,7 @@
 
 .data
 
-.extern v810_state, serviceDisplayInt, serviceInt
+.extern v810_state, serviceDisplayInt, serviceInt, serviceint
 
 @ The max number of cycles
 .set MAXCYCLES, 2048
@@ -103,12 +103,6 @@ drc_handleInterrupts:
     beq     ret_to_block
 
 exit_block:
-    @ Save the new PC
-    str     r5, [r11, #33<<2]
-
-    @ Store -1 in v810_state->ret to indicate a frame interrupt
-    mov     r0, #1
-    strb    r0, [r11, #69<<2]
     @ Restore CPSR
     msr     cpsr, r4
 
@@ -117,6 +111,8 @@ exit_block:
     pop     {r0, pc}
 
 ret_to_block:
+    ldr     r0, [r11, #67<<2]
+    mov     r1, r5
     bl      serviceInt
     mov     r10, #-MAXCYCLES-1
 

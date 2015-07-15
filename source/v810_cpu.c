@@ -35,15 +35,15 @@ void v810_reset() {
     v810_state = malloc(sizeof(cpu_state));
     v810_state->irq_handler = &drc_handleInterrupts;
 
-    v810_state->P_REG[0]      =  0x00000000;
-    PC            =  0xFFFFFFF0;
-    v810_state->S_REG[ECR]    =  0x0000FFF0;
-    v810_state->S_REG[PSW]    =  0x00008000;
-    v810_state->S_REG[PIR]    =  0x00005346;
-    v810_state->S_REG[TKCW]   =  0x000000E0;
+    v810_state->P_REG[0]    =  0x00000000;
+    PC                      =  0xFFFFFFF0;
+    v810_state->S_REG[ECR]  =  0x0000FFF0;
+    v810_state->S_REG[PSW]  =  0x00008000;
+    v810_state->S_REG[PIR]  =  0x00005346;
+    v810_state->S_REG[TKCW] =  0x000000E0;
 }
 
-void serviceInt(unsigned int cycles) {
+void serviceInt(unsigned int cycles, WORD PC) {
     static unsigned int lasttime=0;
 
     //OK, this is a strange muck of code... basically it attempts to hit interrupts and
@@ -70,31 +70,22 @@ void serviceInt(unsigned int cycles) {
                 tHReg.tCount = tHReg.tTHW; //reset counter
                 tHReg.TCR |= 0x02; //Zero Status
                 if (tHReg.TCR & 0x08) {
-                    v810_int(1);
+                    v810_int(1, PC);
                 }
             }
         }
     }
 }
 
-int serviceDisplayInt(unsigned int cycles) {
+int serviceDisplayInt(unsigned int cycles, WORD PC) {
     static unsigned int lastfb=0;
     static int rowcount,tmp1,frames=0;
     int gamestart;
     unsigned int tfb = (cycles-lastfb);
-
+    bool pending_int = 0;
 
     //Handle DPSTTS, XPSTTS, and Frame interrupts
     if (rowcount < 0x1C) {
-        if (tfb > 0x0A00) {
-            tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
-            rowcount++;
-            lastfb=cycles;
-        }
-        if ((rowcount == 0x12) && (tfb > 0x670))
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0xD0:0xC4));
-        if ((tfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000)))
-            tVIPREG.XPSTTS |= 0x8000;
         if ((rowcount == 0) && (tfb > 0x0210) && (!tmp1)) {
             tmp1=1;
             tVIPREG.XPSTTS &= 0x000F;
@@ -105,50 +96,68 @@ int serviceDisplayInt(unsigned int cycles) {
             } else {
                 gamestart = 0;
             }
-            if (tVIPREG.INTENB&(0x0010|gamestart))
-                v810_int(4);
+            if (tVIPREG.INTENB&(0x0010|gamestart)) {
+                v810_int(4, PC);
+                pending_int = 1;
+            } else {
+                v810_state->PC = PC;
+                v810_state->ret = 1;
+            }
             tVIPREG.INTPND |= (0x0010|gamestart);
-            return 1;
-        }
-    } else {
-        if ((rowcount >= 0x1C) && (tfb > 0x10000)) {            //0x100000
-            tVIPREG.XPSTTS = (0x1B00|(tVIPREG.XPCTRL & 0x02));
 
-            // if(tVBOpt.VFHACK)                   //vertical force hack
-            //     v810_int(4);
-            /* else*/ if (tVIPREG.INTENB&0x4000)
-                 v810_int(4);                    //XPEND
+            return 1;
+        } else
+        if ((tfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000)))
+            tVIPREG.XPSTTS |= 0x8000;
+        else if (tfb > 0x0A00) {
+            tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
+            rowcount++;
+            lastfb=cycles;
+        } else
+        if ((rowcount == 0x12) && (tfb > 0x670))
+            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0xD0:0xC4));
+    } else {
+        if ((rowcount == 0x1C) && (tfb > 0x10000)) {            //0x100000
+            tVIPREG.XPSTTS = (0x1B00 | (tVIPREG.XPCTRL & 0x02));
+
+            /*if(tVBOpt.VFHACK)                   //vertical force hack
+                v810_int(4);
+            else */if (tVIPREG.INTENB & 0x4000) {
+                v810_int(4, PC);                    //XPEND
+                pending_int = 1;
+            }
 
             tVIPREG.INTPND |= 0x4000;               //(tVIPREG.INTENB&0x4000);
             rowcount++;
-        }
-        if ((rowcount >= 0x1D) && (tfb > 0x18000)) {     //0xE690
+        } else if ((rowcount == 0x1D) && (tfb > 0x18000)) {     //0xE690
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
-            if (tVIPREG.INTENB&0x0002)
-                v810_int(4);                    //LFBEND
+            if (tVIPREG.INTENB&0x0002) {
+                v810_int(4, PC);                    //LFBEND
+                pending_int = 1;
+            }
             tVIPREG.INTPND |= 0x0002;               //(tVIPREG.INTENB&0x0002);
             rowcount++;
-        }
-        if ((rowcount >= 0x1E) && (tfb > 0x20000)) {     //0x15E70
+        } else if ((rowcount == 0x1E) && (tfb > 0x20000)) {     //0x15E70
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0x40);
-            if (tVIPREG.INTENB&0x0004)
-                v810_int(4);                    //RFBEND
+            if (tVIPREG.INTENB&0x0004) {
+                v810_int(4, PC);                    //RFBEND
+                pending_int = 1;
+            }
             tVIPREG.INTPND |= 0x0004;               //(tVIPREG.INTENB&0x0004);
             rowcount++;
-        }
-        if ((rowcount >= 0x1F) && (tfb > 0x28000)) {     //0x1FAD8
+        } else if ((rowcount == 0x1F) && (tfb > 0x28000)) {     //0x1FAD8
             //tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x48:0x60));
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
-            if (tVIPREG.INTENB&0x2000)
-                v810_int(4);                    //SBHIT
+            if (tVIPREG.INTENB&0x2000) {
+                v810_int(4, PC);                    //SBHIT
+                pending_int = 1;
+            }
             tVIPREG.INTPND |= 0x2000;
             rowcount++;
-        }
-        if ((rowcount >= 0x20) && (tfb > 0x38000)) {     //0x33FD8
+        } else if ((rowcount == 0x20) && (tfb > 0x38000)) {     //0x33FD8
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0x40);
             rowcount++;
-        }
-        if ((rowcount >= 0x21) && (tfb > 0x42000)) {
+        } else if ((rowcount == 0x21) && (tfb > 0x42000)) {
             tmp1=0;
             rowcount=0;
             tVIPREG.tFrame++;
@@ -162,11 +171,15 @@ int serviceDisplayInt(unsigned int cycles) {
             lastfb=cycles;
         }
     }
-    return 0;
+
+    if (!pending_int)
+        v810_state->PC = PC;
+
+    return pending_int;
 }
 
 // Generate Interupt #n
-void v810_int(WORD iNum) {
+void v810_int(WORD iNum, WORD PC) {
     if (iNum > 0x0F) return;  // Invalid Interupt number...
     if((v810_state->S_REG[PSW] & PSW_NP)) return;
     if((v810_state->S_REG[PSW] & PSW_EP)) return; // Exception pending?
@@ -174,12 +187,13 @@ void v810_int(WORD iNum) {
     if(iNum < ((v810_state->S_REG[PSW] & PSW_IA)>>16)) return; // Interupt to low on the chain
 
     //vb_log_msg(6,"\nInt %x",iNum);
+    fprintf(stderr, "BLOCK INT - 0x%x\n", iNum);
 
     //Ready to Generate the Interupts
     v810_state->S_REG[EIPC]  = PC;
     v810_state->S_REG[EIPSW] = v810_state->S_REG[PSW];
 
-    PC = 0xFFFFFE00 | (iNum << 4);
+    v810_state->PC = 0xFFFFFE00 | (iNum << 4);
 
     v810_state->S_REG[ECR] = 0xFE00 | (iNum << 4);
     v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_EP;
@@ -187,7 +201,6 @@ void v810_int(WORD iNum) {
     if((iNum+=1) > 0x0F)
         (iNum = 0x0F);
     v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | (iNum << 16); //Set the Interupt
-
 }
 
 // Generate exception #n

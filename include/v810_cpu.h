@@ -119,12 +119,12 @@ extern const BYTE opcycle[0x50]; //clock cycles
 void v810_reset();
 
 // Generate Interupt #n
-void v810_int(WORD iNum);
+void v810_int(WORD iNum, WORD PC);
 
 // Generate Exception #n
 void v810_exp(WORD iNum, WORD eCode);
 
-void serviceInt(unsigned int cycles);
-int serviceDisplayInt(unsigned int cycles);
+void serviceInt(unsigned int cycles, WORD PC);
+int serviceDisplayInt(unsigned int cycles, WORD PC);
 
 #endif

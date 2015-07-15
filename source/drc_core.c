@@ -913,10 +913,10 @@ int drc_run() {
     WORD* entrypoint;
     WORD entry_PC;
 
-    while (!serviceDisplayInt(clocks)) {
-        serviceInt(clocks);
+    while (!serviceDisplayInt(clocks, PC)) {
+        serviceInt(clocks, PC);
 
-        PC = (PC & 0x07FFFFFE);
+        PC = (PC & V810_ROM1.highaddr);
         entry_PC = PC;
 
         // Try to find a cached block
