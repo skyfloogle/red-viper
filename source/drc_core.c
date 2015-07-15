@@ -434,7 +434,7 @@ void drc_translateBlock(exec_block *block) {
                 new_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 2, (35 + FEPSW) * 4);
                 // ldreq r1, S_REG[EIPC]
                 new_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 1, (35 + EIPC) * 4);
-                // ldreq r2, S_REG[FEPSW]
+                // ldreq r2, S_REG[EIPSW]
                 new_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 2, (35 + EIPSW) * 4);
 
                 STR_IO(1, 11, 33 * 4);
@@ -741,11 +741,11 @@ void drc_translateBlock(exec_block *block) {
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
                 // Stores reg2 in v810_state->S_REG[regID]
-                STR_IO(arm_reg2, 11, (35 + phys_regs[inst_cache[i].imm]) * 4);
+                STR_IO(arm_reg2, 11, (35 + inst_cache[i].imm) * 4);
                 break;
             case V810_OP_STSR: // stsr regID, reg2
                 // Loads v810_state->S_REG[regID] into reg2
-                LDR_IO(arm_reg2, 11, (35 + phys_regs[inst_cache[i].imm]) * 4);
+                LDR_IO(arm_reg2, 11, (35 + inst_cache[i].imm) * 4);
                 reg2_modified = true;
                 break;
             case V810_OP_SEI: // sei
