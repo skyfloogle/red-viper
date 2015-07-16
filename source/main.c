@@ -325,7 +325,7 @@ int main() {
         }
 
         printf("\x1b[1J\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, PC);
-        //printf("Frame: %i\nPC: 0x%x", frame, (unsigned int) PC);
+//        printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) PC);
 
         gfxFlushBuffers();
         gfxSwapBuffers();

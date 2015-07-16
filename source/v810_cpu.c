@@ -84,6 +84,8 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
     unsigned int tfb = (cycles-lastfb);
     bool pending_int = 0;
 
+    serviceInt(cycles, PC);
+
     //Handle DPSTTS, XPSTTS, and Frame interrupts
     if (rowcount < 0x1C) {
         if ((rowcount == 0) && (tfb > 0x0210) && (!tmp1)) {
@@ -99,23 +101,20 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             if (tVIPREG.INTENB&(0x0010|gamestart)) {
                 v810_int(4, PC);
                 pending_int = 1;
-            } else {
-                v810_state->PC = PC;
-                v810_state->ret = 1;
             }
             tVIPREG.INTPND |= (0x0010|gamestart);
 
+            v810_state->ret = 1;
             return 1;
-        } else
-        if ((tfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000)))
+        } else if ((tfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000))) {
             tVIPREG.XPSTTS |= 0x8000;
-        else if (tfb > 0x0A00) {
+        } else if (tfb > 0x0A00) {
             tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
             rowcount++;
             lastfb=cycles;
-        } else
-        if ((rowcount == 0x12) && (tfb > 0x670))
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|(tVIPREG.tFrame&1?0xD0:0xC4));
+        } else if ((rowcount == 0x12) && (tfb > 0x670)) {
+            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL & 0x0302) | (tVIPREG.tFrame & 1 ? 0xD0 : 0xC4));
+        }
     } else {
         if ((rowcount == 0x1C) && (tfb > 0x10000)) {            //0x100000
             tVIPREG.XPSTTS = (0x1B00 | (tVIPREG.XPCTRL & 0x02));

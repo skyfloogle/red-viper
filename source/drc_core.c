@@ -937,9 +937,7 @@ int drc_run() {
     WORD* entrypoint;
     WORD entry_PC;
 
-    while (!serviceDisplayInt(clocks, PC)) {
-        serviceInt(clocks, PC);
-
+    while (!v810_state->ret) {
         PC = (PC & V810_ROM1.highaddr);
         entry_PC = PC;
 
@@ -967,13 +965,10 @@ int drc_run() {
 
         PC = v810_state->PC & 0xFFFFFFFE;
         clocks = v810_state->cycles;
-
-        if (v810_state->ret) {
-            v810_state->ret = 0;
-            break;
-        }
         //fprintf(stderr, "BLOCK END - 0x%x\n", PC);
     }
+
+    v810_state->ret = 0;
 
     // TODO: Handle errors
     return 0;
