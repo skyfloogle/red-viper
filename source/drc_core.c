@@ -230,7 +230,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                 break;
             case AM_IV: // Middle distance jump
                 inst_cache[i].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                inst_cache[i].branch_offset = sign_26(inst_cache[i].imm);
+                inst_cache[i].branch_offset = (signed)sign_26(inst_cache[i].imm);
 
                 inst_cache[i].reg1 = (BYTE)(-1);
                 inst_cache[i].reg2 = (BYTE)(-1);
@@ -402,7 +402,7 @@ void drc_translateBlock(exec_block *block) {
                 break;
             case V810_OP_JR: // jr imm26
                 if (abs(inst_cache[i].branch_offset) < 1024) {
-                    HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
+                    ADDCYCLES();
                     B(ARM_COND_AL, 0);
                 } else {
                     ADDCYCLES();
@@ -698,6 +698,10 @@ void drc_translateBlock(exec_block *block) {
                 reg2_modified = true;
                 break;
             case V810_OP_ST_B: // st.h reg2, disp16 [reg1]
+                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
+                    MRS(0);
+                    PUSH(1<<0);
+                }
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -710,8 +714,16 @@ void drc_translateBlock(exec_block *block) {
 
                 LDW_I(2, &mem_wbyte);
                 BLX(ARM_COND_AL, 2);
+                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
+                    POP(1<<0);
+                    MSR(0);
+                }
                 break;
             case V810_OP_ST_H: // st.h reg2, disp16 [reg1]
+                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
+                    MRS(0);
+                    PUSH(1<<0);
+                }
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -724,8 +736,16 @@ void drc_translateBlock(exec_block *block) {
 
                 LDW_I(2, &mem_whword);
                 BLX(ARM_COND_AL, 2);
+                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
+                    POP(1<<0);
+                    MSR(0);
+                }
                 break;
             case V810_OP_ST_W: // st.h reg2, disp16 [reg1]
+                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
+                    MRS(0);
+                    PUSH(1<<0);
+                }
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -738,6 +758,10 @@ void drc_translateBlock(exec_block *block) {
 
                 LDW_I(2, &mem_wword);
                 BLX(ARM_COND_AL, 2);
+                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
+                    POP(1<<0);
+                    MSR(0);
+                }
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
                 // Stores reg2 in v810_state->S_REG[regID]
