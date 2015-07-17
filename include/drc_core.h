@@ -32,6 +32,7 @@ typedef struct {
     HWORD start_pos;
     BYTE trans_size;
     int branch_offset;
+    bool save_flags;
 } v810_instruction;
 
 exec_block** rom_block_map;

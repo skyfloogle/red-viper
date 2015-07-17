@@ -164,6 +164,27 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     *p_end_PC = end_PC;
 }
 
+// Workaround for an issue where the CPSR is modified outside of the block
+// before a conditional branch.
+// Sets save_flags for all unconditional instructions prior to a branch.
+void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
+    int i;
+    for (i = pos - 1; i >= 0; i--) {
+        switch (inst_cache[i].opcode) {
+            case V810_OP_LD_B:
+            case V810_OP_LD_H:
+            case V810_OP_LD_W:
+            case V810_OP_ST_B:
+            case V810_OP_ST_H:
+            case V810_OP_ST_W:
+                inst_cache[i].save_flags = true;
+                break;
+            default:
+                return;
+        }
+    }
+}
+
 // Decodes the instructions from start_PC to end_PC and stores them in
 // inst_cache.
 // Returns the number of instructions decoded.
@@ -193,6 +214,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
         }
 
         inst_cache[i].PC = cur_PC;
+        inst_cache[i].save_flags = false;
 
         inst_cache[i].opcode = highB >> 2;
         if ((highB & 0xE0) == 0x80)              // Special opcode format for
@@ -227,6 +249,10 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
 
                 inst_cache[i].reg1 = (BYTE)(-1);
                 inst_cache[i].reg2 = (BYTE)(-1);
+
+                if (inst_cache[i].opcode != V810_OP_BR &&
+                    inst_cache[i].opcode != V810_OP_NOP)
+                    drc_findLastConditionalInst(inst_cache, i);
                 break;
             case AM_IV: // Middle distance jump
                 inst_cache[i].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
@@ -392,6 +418,11 @@ void drc_translateBlock(exec_block *block) {
             arm_reg1 = 2;
             arm_reg2 = 3;
             unmapped_registers = true;
+        }
+
+        if (inst_cache[i].save_flags) {
+            MRS(0);
+            PUSH(1<<0);
         }
 
         switch (inst_cache[i].opcode) {
@@ -698,10 +729,6 @@ void drc_translateBlock(exec_block *block) {
                 reg2_modified = true;
                 break;
             case V810_OP_ST_B: // st.h reg2, disp16 [reg1]
-                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
-                    MRS(0);
-                    PUSH(1<<0);
-                }
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -714,16 +741,8 @@ void drc_translateBlock(exec_block *block) {
 
                 LDW_I(2, &mem_wbyte);
                 BLX(ARM_COND_AL, 2);
-                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
-                    POP(1<<0);
-                    MSR(0);
-                }
                 break;
             case V810_OP_ST_H: // st.h reg2, disp16 [reg1]
-                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
-                    MRS(0);
-                    PUSH(1<<0);
-                }
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -736,16 +755,8 @@ void drc_translateBlock(exec_block *block) {
 
                 LDW_I(2, &mem_whword);
                 BLX(ARM_COND_AL, 2);
-                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
-                    POP(1<<0);
-                    MSR(0);
-                }
                 break;
             case V810_OP_ST_W: // st.h reg2, disp16 [reg1]
-                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
-                    MRS(0);
-                    PUSH(1<<0);
-                }
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -758,10 +769,6 @@ void drc_translateBlock(exec_block *block) {
 
                 LDW_I(2, &mem_wword);
                 BLX(ARM_COND_AL, 2);
-                if (optable[inst_cache[i+1].opcode].addr_mode == AM_III) {
-                    POP(1<<0);
-                    MSR(0);
-                }
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
                 // Stores reg2 in v810_state->S_REG[regID]
@@ -795,6 +802,11 @@ void drc_translateBlock(exec_block *block) {
                 // Fill unimplemented instructions with a nop and hope the game still runs
                 NOP();
                 break;
+        }
+
+        if (inst_cache[i].save_flags) {
+            POP(1<<0);
+            MSR(0);
         }
 
         if (unmapped_registers) {
