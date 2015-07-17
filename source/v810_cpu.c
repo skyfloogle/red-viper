@@ -84,8 +84,6 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
     unsigned int tfb = (cycles-lastfb);
     bool pending_int = 0;
 
-    serviceInt(cycles, PC);
-
     //Handle DPSTTS, XPSTTS, and Frame interrupts
     if (rowcount < 0x1C) {
         if ((rowcount == 0) && (tfb > 0x0210) && (!tmp1)) {

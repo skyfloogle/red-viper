@@ -111,6 +111,9 @@ exit_block:
     pop     {r0, pc}
 
 ret_to_block:
+    ldr     r0, [r11, #67<<2]
+    mov     r1, r5
+    bl      serviceInt
     mov     r10, #-MAXCYCLES-1
 
     @ Return to the block
