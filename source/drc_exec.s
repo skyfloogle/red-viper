@@ -93,14 +93,29 @@ drc_handleInterrupts:
     mov     r4, r0
     mov     r5, r1
 
-    @ Load v810_state->cycles
+    @ Load v810_state->cycles and add it to the total number of cycles
+    @ (MAXCYCLES + r10 excess)
     ldr     r0, [r11, #67<<2]
     add     r0, r10
     add     r0, #MAXCYCLES
     str     r0, [r11, #67<<2]
+
     bl      serviceDisplayInt
     cmp     r0, #0
-    beq     ret_to_block
+    bne     exit_block
+
+    ldr     r0, [r11, #67<<2]
+    mov     r1, r5
+    bl      serviceInt
+    cmp     r0, #0
+    bne     exit_block
+
+ret_to_block:
+    mov     r10, #-MAXCYCLES-1
+
+    @ Return to the block
+    mov     r0, r4
+    pop     {r4, r5, pc}
 
 exit_block:
     @ Restore CPSR
@@ -109,13 +124,3 @@ exit_block:
     @ Exit the block ignoring linked return address
     pop     {r4, r5}
     pop     {r0, pc}
-
-ret_to_block:
-    ldr     r0, [r11, #67<<2]
-    mov     r1, r5
-    bl      serviceInt
-    mov     r10, #-MAXCYCLES-1
-
-    @ Return to the block
-    mov     r0, r4
-    pop     {r4, r5, pc}

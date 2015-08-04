@@ -124,7 +124,7 @@ void v810_int(WORD iNum, WORD PC);
 // Generate Exception #n
 void v810_exp(WORD iNum, WORD eCode);
 
-void serviceInt(unsigned int cycles, WORD PC);
+int serviceInt(unsigned int cycles, WORD PC);
 int serviceDisplayInt(unsigned int cycles, WORD PC);
 
 #endif

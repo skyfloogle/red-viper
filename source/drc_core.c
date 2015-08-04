@@ -950,7 +950,7 @@ int drc_run() {
     WORD entry_PC;
 
     while (!serviceDisplayInt(clocks, PC)) {
-        serviceInt(clocks, PC);
+//        serviceInt(clocks, PC);
 
         PC = (PC & V810_ROM1.highaddr);
         entry_PC = PC;
@@ -964,13 +964,13 @@ int drc_run() {
             cur_block->phys_loc = cache_pos;
 
             drc_translateBlock(cur_block);
-            //drc_dumpCache("cache_dump_rf.bin");
+//            drc_dumpCache("cache_dump_rf.bin");
             HB_FlushInvalidateCache();
 
             cache_pos += cur_block->size;
             entrypoint = drc_getEntry(entry_PC, NULL);
         }
-        //fprintf(stderr, "BLOCK ENTRY - 0x%x (%p)\n", entry_PC, entrypoint);
+//        fprintf(stderr, "BLOCK ENTRY - 0x%x (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
 
         v810_state->PC = cur_block->end_pc;
         v810_state->cycles = clocks;
@@ -984,7 +984,7 @@ int drc_run() {
             v810_state->ret = 0;
             break;
         }
-        //fprintf(stderr, "BLOCK END - 0x%x\n", PC);
+//        fprintf(stderr, "BLOCK END - 0x%x\n", PC);
     }
 
     // TODO: Handle errors

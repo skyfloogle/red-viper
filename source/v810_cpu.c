@@ -43,7 +43,7 @@ void v810_reset() {
     v810_state->S_REG[TKCW] =  0x000000E0;
 }
 
-void serviceInt(unsigned int cycles, WORD PC) {
+int serviceInt(unsigned int cycles, WORD PC) {
     static unsigned int lasttime=0;
 
     //OK, this is a strange muck of code... basically it attempts to hit interrupts and
@@ -71,10 +71,13 @@ void serviceInt(unsigned int cycles, WORD PC) {
                 tHReg.TCR |= 0x02; //Zero Status
                 if (tHReg.TCR & 0x08) {
                     v810_int(1, PC);
+                    return 1;
                 }
             }
         }
     }
+
+    return 0;
 }
 
 int serviceDisplayInt(unsigned int cycles, WORD PC) {
