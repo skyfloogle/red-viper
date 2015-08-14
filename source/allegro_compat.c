@@ -1,6 +1,17 @@
 #include <malloc.h>
+#include <stdio.h>
 #include <string.h>
+#include <dirent.h>
 #include "allegro_compat.h"
+#include "vb_dsp.h"
+#include "vb_set.h"
+
+#include <3ds.h>
+
+// The max number of items that can fit in the screen
+#define MAX_ITEMS 28
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
 
 void masked_blit(BITMAP *src, BITMAP *dst, int src_x, int src_y, int dst_x, int dst_y, int w, int h) {
     int x, y;
@@ -75,4 +86,144 @@ void clear_to_color(BITMAP *bitmap, int color) {
     if (bitmap) {
         memset(bitmap->dat, color, (bitmap->w)*(bitmap->h));
     }
+}
+
+// The following is not exactly allegro stuff
+
+void toggle3D() {
+    tVBOpt.DSPMODE = !tVBOpt.DSPMODE;
+    gfxSet3D(tVBOpt.DSPMODE);
+}
+
+int openMenu(menu_t* menu) {
+    int i, numitems, pos, startpos;
+    menu_t* cur_menu = menu;
+    u32 keys;
+
+    while (1) {
+        pos = 0;
+        startpos = 0;
+        numitems = cur_menu->numitems;
+        consoleClear();
+
+        while (aptMainLoop()) {
+            hidScanInput();
+            keys = hidKeysDown();
+
+            if (keys & KEY_DUP) {
+                pos--;
+                if (pos < startpos) {
+                    if (pos >= 0) {
+                        startpos--;
+                    } else {
+                        pos = numitems - 1;
+                        startpos = MAX(0, numitems - MAX_ITEMS + 1);
+                    }
+                    consoleClear();
+                }
+            } else if (keys & KEY_DDOWN) {
+                pos++;
+                if (pos >= MIN(numitems, startpos + MAX_ITEMS - 1)) {
+                    if (pos >= numitems) {
+                        pos = 0;
+                        startpos = 0;
+                    } else {
+                        startpos++;
+                    }
+                    consoleClear();
+                }
+            } else if (keys & KEY_A) {
+                if (cur_menu->items[pos].proc) {
+                    int res = cur_menu->items[pos].proc();
+                    if (res == D_EXIT)
+                        return pos;
+                }
+                if (cur_menu->items[pos].child) {
+                    cur_menu = cur_menu->items[pos].child;
+                    break;
+                } else {
+                    return pos;
+                }
+            } else if (keys & KEY_B) {
+                if (cur_menu->parent)
+                    cur_menu = cur_menu->parent;
+                else
+                    return -1;
+                break;
+            } else if ((CONFIG_3D_SLIDERSTATE > 0.0f) && !tVBOpt.DSPMODE) {
+                toggle3D();
+            } else if ((CONFIG_3D_SLIDERSTATE == 0.0f) && tVBOpt.DSPMODE) {
+                toggle3D();
+            }
+
+            printf("\x1b[;H\x1b[7m%s:\n\x1b[0m", cur_menu->title);
+
+            for (i = startpos; i < MIN(numitems, startpos + MAX_ITEMS - 1); i++) {
+                char line[40];
+
+                strncpy(line, cur_menu->items[i].text, 38);
+
+                if (i == pos)
+                    printf("\x1b[1m>");
+                else
+                    printf(" ");
+
+                printf(line);
+                printf("\x1b[0m\n");
+            }
+
+            gfxFlushBuffers();
+            gfxSwapBuffers();
+            gspWaitForVBlank();
+        }
+    }
+}
+
+// Taken from github.com/smealum/3ds_hb_menu
+static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
+    if(!src || !dst) return;
+    int n = 0;
+    while (*src && n < max - 1) {
+        *(dst++) = (*(src++)) & 0xFF;
+        n++;
+    }
+    *dst = 0x00;
+}
+
+FS_archive sdmcArchive;
+// TODO: Only show files that match the extension
+int fileSelect(const char* message, char* path, const char* ext) {
+    int i, pos = 0, item;
+    menu_item_t files[64];
+    char filenames[64][128];
+    Handle dirHandle;
+    uint32_t entries_read = 1;
+    FS_dirent entry;
+
+    sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
+    FSUSER_OpenArchive(NULL, &sdmcArchive);
+
+    // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
+    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
+
+    for(i = 0; i < 32 && entries_read; i++) {
+        memset(&entry, 0, sizeof(FS_dirent));
+        FSDIR_Read(dirHandle, &entries_read, 1, &entry);
+        if(entries_read && !entry.isDirectory) {
+            //if(!strncmp("VB", (char*) entry.shortExt, 2)) {
+            unicodeToChar(filenames[i], entry.name, 128);
+            files[pos].text = filenames[i];
+            pos++;
+            //}
+        }
+    }
+
+    FSDIR_Close(dirHandle);
+    FSUSER_CloseArchive(NULL, &sdmcArchive);
+
+    item = openMenu(&(menu_t){message, NULL, pos, files});
+    if (item >= 0 && item < pos)
+        strncpy(path, files[item].text, 128);
+
+    return item;
 }

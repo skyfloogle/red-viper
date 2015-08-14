@@ -6,16 +6,9 @@
 #include <stdio.h>
 #include "v810_cpu.h"
 
-char errmsg[256];
+char rom_name[128];
 
-void clrScreen(int screen);
-static inline void unicodeToChar(char* dst, uint16_t* src, int max);
-int romSelect(char* path);
-
-// Opens up a VB rom (pased in) and initializes the rom
-// space, some day it will initialize ram as well
-int v810_init(char * rom_name);
-
-//~ void save_sram(void);
+// Opens up a VB rom (passed in) and initializes the rom space
+int v810_init(char* rom_name);
 
 #endif

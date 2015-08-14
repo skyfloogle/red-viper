@@ -916,6 +916,7 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 void drc_init() {
     cache_start = memalign(0x1000, CACHE_SIZE);
     cache_pos = cache_start;
+    fprintf(stderr, "BLOCK START: %p\n", cache_start);
 
     u32 pages;
     HB_ReprotectMemory(0x00108000, 10, 0x7, &pages);
@@ -971,6 +972,8 @@ int drc_run() {
             entrypoint = drc_getEntry(entry_PC, NULL);
         }
 //        fprintf(stderr, "BLOCK ENTRY - 0x%x (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
+        if ((entrypoint < cache_start) || (entrypoint > cache_start + CACHE_SIZE))
+            return 1;
 
         v810_state->PC = cur_block->end_pc;
         v810_state->cycles = clocks;
@@ -979,6 +982,9 @@ int drc_run() {
 
         PC = v810_state->PC & 0xFFFFFFFE;
         clocks = v810_state->cycles;
+
+        if (PC == 0)
+            return 1;
 
         if (v810_state->ret) {
             v810_state->ret = 0;

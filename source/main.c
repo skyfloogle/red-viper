@@ -9,123 +9,13 @@
 
 #include "main.h"
 #include "v810_mem.h"
-#include "vb_types.h"
-#include "v810_cpu.h"
 #include "drc_core.h"
 #include "vb_dsp.h"
 #include "vb_set.h"
+#include "vb_gui.h"
 #include "rom_db.h"
 
 int is_sram = 0; //Flag if writes to sram...
-
-FS_archive sdmcArchive;
-
-void clrScreen(int screen) {
-    if ((screen != GFX_TOP) && (screen != GFX_BOTTOM))
-        return;
-    memset(gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL), 0,
-           (GFX_BOTTOM ? 320 : 400) * 240 * 3);
-}
-
-static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
-    if(!src || !dst) return;
-    int n = 0;
-    while (*src && n < max - 1) {
-        *(dst++) = (*(src++)) & 0xFF;
-        n++;
-    }
-    *dst = 0x00;
-}
-
-void toggle3D() {
-    tVBOpt.DSPMODE = !tVBOpt.DSPMODE;
-    gfxSet3D(tVBOpt.DSPMODE);
-}
-
-int romSelect(char* path) {
-    int pos = 1;
-    int keys;
-    char romv[27][100];
-    int romc = 0;
-    int i;
-
-    // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
-    Handle dirHandle;
-    uint32_t entries_read = 1;
-    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
-    static FS_dirent entry;
-
-    // Scrolling isn't implemented yet
-    for(i = 0; i < 29 && entries_read; i++) {
-        memset(&entry, 0, sizeof(FS_dirent));
-        FSDIR_Read(dirHandle, &entries_read, 1, &entry);
-        if(entries_read && !entry.isDirectory) {
-            //if(!strncmp("VB", (char*) entry.shortExt, 2)) {
-                unicodeToChar(romv[romc], entry.name, 100);
-                romc++;
-            //}
-        }
-    }
-
-    FSDIR_Close(dirHandle);
-
-    while(aptMainLoop()) {
-        // Draw splash screen
-        // memcpy(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL), lsplash_bin, lsplash_bin_size);
-        // memcpy(gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL), rsplash_bin, rsplash_bin_size);
-
-        hidScanInput();
-        keys = hidKeysDown();
-        if(keys & KEY_DUP) {
-            pos--;
-        } else if (keys & KEY_DDOWN) {
-            pos++;
-        } else if ((keys & KEY_START) || (keys & KEY_A)) {
-            break;
-        } else if (keys & KEY_R) {
-            // The splash screen should change to red
-            tVBOpt.PALMODE = PAL_RED;
-        } else if (keys & KEY_L) {
-            tVBOpt.PALMODE = PAL_NORMAL;
-        } else if (keys & KEY_SELECT) {
-            return 0;
-        } else if ((CONFIG_3D_SLIDERSTATE > 0.0f) && !tVBOpt.DSPMODE) {
-            toggle3D();
-        } else if ((CONFIG_3D_SLIDERSTATE == 0.0f) && tVBOpt.DSPMODE) {
-            toggle3D();
-        }
-
-        if (pos > romc) {
-            pos = 1;
-        } else if (pos <= 0) {
-            pos = romc;
-        }
-
-        printf("\x1b[;H\x1b[7mSelect a ROM:\n\x1b[0m");
-
-        for(i = 0; i < romc; i++) {
-            char line[40];
-            line[0] = '\0';
-
-            snprintf(line, 39, "%s", romv[i]);
-
-            if ((i+1) == pos)
-                printf("\x1b[1m>");
-            else
-                printf(" ");
-
-            printf(line);
-            printf("\x1b[0m\n");
-        }
-
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
-    }
-
-    strcpy(path, romv[pos-1]);
-    return 1;
-}
 
 int v810_init(char * rom_name) {
     char ram_name[32];
@@ -133,7 +23,7 @@ int v810_init(char * rom_name) {
     unsigned int ram_size = 0;
 
     // Open VB Rom
-    char full_path[46] = "sdmc:/vb/";
+    char full_path[137] = "sdmc:/vb/";
     strcat(full_path, rom_name);
 
     FILE* f = fopen(full_path, "r");
@@ -268,9 +158,6 @@ int main() {
     consoleInit(GFX_BOTTOM, NULL);
     consoleDebugInit(debugDevice_3DMOO);
 
-    sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
-    FSUSER_OpenArchive(NULL, &sdmcArchive);
-
     setDefaults();
     V810_DSP_Init();
 
@@ -280,11 +167,11 @@ int main() {
         gfxSet3D(false);
     }
 
-    char path[64] = "";
-    if (!romSelect(path)) {
+    if (fileSelect("Load ROM", rom_name, "vb") == -1)
         goto exit;
-    }
-    if (!v810_init(path)) {
+    tVBOpt.ROM_NAME = rom_name;
+
+    if (!v810_init(rom_name)) {
         goto exit;
     }
 
@@ -298,15 +185,21 @@ int main() {
         uint64_t startTime = osGetTime();
 
         hidScanInput();
-        int keys = hidKeysHeld();
+        int keys = hidKeysDown();
 
-        if ((keys & KEY_X) && (keys & KEY_Y))
-            break;
+        if (keys & KEY_TOUCH) {
+            openMenu(&main_menu);
+            if (guiop & GUIEXIT) {
+                goto exit;
+            }
+        }
 
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             err = drc_run();
-            if (err)
-                break;
+            if (err) {
+                fprintf(stderr, "BLOCK ERR - %d\n", err);
+                goto exit;
+            }
 
             // Display a frame, only after the right number of 'skips'
             if((tVIPREG.FRMCYC & 0x00FF) < skip) {
@@ -336,7 +229,6 @@ exit:
     V810_DSP_Quit();
     drc_exit();
 
-    FSUSER_CloseArchive(NULL, &sdmcArchive);
     sdmcExit();
     fsExit();
     hbExit();
