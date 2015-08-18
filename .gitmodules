@@ -1,0 +1,3 @@
+[submodule "source/inih"]
+	path = source/inih
+	url = https://github.com/benhoyt/inih.git

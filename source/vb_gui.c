@@ -209,8 +209,7 @@ int options_emulation(void) {
 }
 
 int options_saveoptions(void) {
-    // TODO: Implement me!
-    GUI_STUB();
+    saveFileOptions();
     return D_OK;
 }
 

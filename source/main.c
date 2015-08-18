@@ -159,6 +159,9 @@ int main() {
     consoleDebugInit(debugDevice_3DMOO);
 
     setDefaults();
+    if (loadFileOptions() < 0)
+        saveFileOptions();
+
     V810_DSP_Init();
 
     if (tVBOpt.DSPMODE == DM_3D) {

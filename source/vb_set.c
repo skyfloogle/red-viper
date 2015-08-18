@@ -1,5 +1,8 @@
 #include <3ds.h>
+#include <string.h>
+#include <stdlib.h>
 
+#include "inih/ini.h"
 #include "vb_types.h"
 #include "vb_set.h"
 
@@ -7,7 +10,7 @@ VB_OPT  tVBOpt;
 int     vbkey[15];
 
 void setDefaults(void) {
-    //Set up the Defaults
+    // Set up the Defaults
     tVBOpt.FRMSKIP  = 0;
     tVBOpt.DSPMODE  = DM_NORMAL;
     tVBOpt.DSPSWAP  = 0;
@@ -23,123 +26,136 @@ void setDefaults(void) {
     tVBOpt.SOUND    = 0;
     tVBOpt.DSP2X    = 0;
 
-    //Default keys
-    vbkey[0] = KEY_DUP;     // L Up
-    vbkey[1] = KEY_DDOWN;   // L Down
-    vbkey[2] = KEY_DLEFT;   // L Left
-    vbkey[3] = KEY_DRIGHT;  // L Right
+    // Default keys
+    vbkey[VB_KCFG_LUP] = KEY_DUP;
+    vbkey[VB_KCFG_LDOWN] = KEY_DDOWN;
+    vbkey[VB_KCFG_LLEFT] = KEY_DLEFT;
+    vbkey[VB_KCFG_LRIGHT] = KEY_DRIGHT;
 
-    vbkey[4] = KEY_CSTICK_UP;       // R Up
-    vbkey[5] = KEY_CSTICK_DOWN;     // R Down
-    vbkey[6] = KEY_CSTICK_LEFT;     // R Left
-    vbkey[7] = KEY_CSTICK_RIGHT;    // R Right
+    vbkey[VB_KCFG_RUP] = KEY_CSTICK_UP;
+    vbkey[VB_KCFG_RDOWN] = KEY_CSTICK_DOWN;
+    vbkey[VB_KCFG_RLEFT] = KEY_CSTICK_LEFT;
+    vbkey[VB_KCFG_RRIGHT] = KEY_CSTICK_RIGHT;
 
-    vbkey[8] = KEY_A;       // A
-    vbkey[9] = KEY_B;       // B
+    vbkey[VB_KCFG_A] = KEY_A;
+    vbkey[VB_KCFG_B] = KEY_B;
 
-    vbkey[10] = KEY_START;  // Start
-    vbkey[11] = KEY_SELECT; // Select
+    vbkey[VB_KCFG_START] = KEY_START;
+    vbkey[VB_KCFG_SELECT] = KEY_SELECT;
 
-    vbkey[12] = KEY_L;      // L Trigger
-    vbkey[13] = KEY_R;      // R Trigger
+    vbkey[VB_KCFG_L] = KEY_L;
+    vbkey[VB_KCFG_R] = KEY_R;
 }
 
-// TODO: Read options from file
-//~ int setFileOptions (void) {
-//~ int i=0;
-//~ int j=0;
-//~ int k=0;
-//~ int is_string=0;
-//~ int optionValue;
-//~ char optionSValue[81];
-//~ char lineString[81];
-//~ char optionString[81];
-//~ char tempString[81];
-//~ 
-//~ FILE *optionsFile = fopen(optionfilename, "r");
-//~ 
-//~ if(optionsFile==0) {	return 0; }
-//~ 
-//~ while(1) {
-//~ i=0;
-//~ j=0;
-//~ for(i=0;i<81;i++) {
-//~ lineString[i] = '\0';
-//~ tempString[i] = '\0';
-//~ optionString[i] = '\0';
-//~ optionSValue[i] = '\0';
-//~ }
-//~ i=0;
-//~ fgets(lineString, 70, optionsFile);
-//~ 
-//~ if(feof(optionsFile)) { break; }
-//~ 
-//~ if(lineString[0]=='S') { is_string=1; }
-//~ else { is_string=0; }
-//~ 
-//~ while(1) {
-//~ if(lineString[i] == '=') {
-//~ if(!is_string) {
-//~ optionValue = ((int)lineString[i+1]-48) * 1000 + ((int)lineString[i+2]-48) * 100 + ((int)lineString[i+3]-48) * 10 + ((int)lineString[i+4]-48);
-//~ break;
-//~ }
-//~ 
-//~ else
-//~ {
-//~ k=0;
-//~ i++;
-//~ 
-//~ while(lineString[k+i]!='\n') {
-//~ optionSValue[k] = lineString[k+i];
-//~ k++;
-//~ }
-//~ break;
-//~ }
-//~ }
-//~ 
-//~ else
-//~ {
-//~ optionString[j] = lineString[i];
-//~ j++;
-//~ }
-//~ 
-//~ i++;
-//~ }
-//~ 
-//~ if(strcmp("platform", optionString) == 0) {
-//~ if(optionValue!=platform) {
-//~ printf("Option file is for the wrong platform of Red Dragon!\n");
-//~ return 1;
-//~ }
-//~ }
-//~ if(strcmp("frmskip", optionString) == 0) { tVBOpt.FRMSKIP = optionValue; }
-//~ if(strcmp("dspmode", optionString) == 0) { tVBOpt.DSPMODE = optionValue; }
-//~ if(strcmp("dspswap", optionString) == 0) { tVBOpt.DSPSWAP = optionValue; }
-//~ if(strcmp("dsp2x", optionString) == 0) { tVBOpt.DSP2X = optionValue; }
-//~ if(strcmp("palmode", optionString) == 0) { tVBOpt.PALMODE = optionValue; }
-//~ if(strcmp("scrx", optionString) == 0) { tVBOpt.SCR_X = optionValue; }
-//~ if(strcmp("scry", optionString) == 0) { tVBOpt.SCR_Y = optionValue; }
-//~ if(strcmp("scrmode", optionString) == 0) { tVBOpt.SCR_MODE = VBgfx_driver[optionValue]; }
-//~ if(strcmp("sound", optionString) == 0) { tVBOpt.SOUND = optionValue; }
-//~ if(strcmp("lu", optionString) == 0) { vbkey[0] = optionValue; }
-//~ if(strcmp("ld", optionString) == 0) { vbkey[1] = optionValue; }
-//~ if(strcmp("ll", optionString) == 0) { vbkey[2] = optionValue; }
-//~ if(strcmp("lr", optionString) == 0) { vbkey[3] = optionValue; }
-//~ if(strcmp("ru", optionString) == 0) { vbkey[4] = optionValue; }
-//~ if(strcmp("rd", optionString) == 0) { vbkey[5] = optionValue; }
-//~ if(strcmp("rl", optionString) == 0) { vbkey[6] = optionValue; }
-//~ if(strcmp("rr", optionString) == 0) { vbkey[7] = optionValue; }
-//~ if(strcmp("ba", optionString) == 0) { vbkey[8] = optionValue; }
-//~ if(strcmp("bb", optionString) == 0) { vbkey[9] = optionValue; }
-//~ if(strcmp("st", optionString) == 0) { vbkey[10] = optionValue; }
-//~ if(strcmp("sl", optionString) == 0) { vbkey[11] = optionValue; }
-//~ if(strcmp("tl", optionString) == 0) { vbkey[12] = optionValue; }
-//~ if(strcmp("tr", optionString) == 0) { vbkey[13] = optionValue; }
-//~ if(strcmp("bl", optionString) == 0) { vbkey[14] = optionValue; }
-//~ 
-//~ if(strcmp("Srompath", optionString) == 0) { strcpy(rompath, optionSValue); }
-//~ }
-//~ fclose(optionsFile);
-//~ return 1;
-//~ }
-//~ 
+// inih handler
+static int handler(void* user, const char* section, const char* name,
+                   const char* value) {
+    VB_OPT* pconfig = (VB_OPT*)user;
+
+    #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
+    if (MATCH("vbopt", "frmskip")) {
+        pconfig->FRMSKIP = atoi(value);
+    } else if (MATCH("vbopt", "dspmode")) {
+        pconfig->DSPMODE = atoi(value);
+    } else if (MATCH("vbopt", "dspswap")) {
+        pconfig->DSPSWAP = atoi(value);
+    } else if (MATCH("vbopt", "dsp2x")) {
+        pconfig->DSP2X = atoi(value);
+    } else if (MATCH("vbopt", "palmode")) {
+        pconfig->PALMODE = atoi(value);
+    } else if (MATCH("vbopt", "debug")) {
+        pconfig->DEBUG = atoi(value);
+    } else if (MATCH("vbopt", "stdout")) {
+        pconfig->STDOUT = atoi(value);
+    } else if (MATCH("vbopt", "bfactor")) {
+        pconfig->BFACTOR = atoi(value);
+    } else if (MATCH("vbopt", "scr_x")) {
+        pconfig->SCR_X = atoi(value);
+    } else if (MATCH("vbopt", "scr_y")) {
+        pconfig->SCR_Y = atoi(value);
+    } else if (MATCH("vbopt", "fixpal")) {
+        pconfig->FIXPAL = atoi(value);
+    } else if (MATCH("vbopt", "disasm")) {
+        pconfig->DISASM = atoi(value);
+    } else if (MATCH("vbopt", "scr_mode")) {
+        pconfig->SCR_MODE = atoi(value);
+    } else if (MATCH("vbopt", "sound")) {
+        pconfig->SOUND = atoi(value);
+    } else if (MATCH("keys", "lup")) {
+        vbkey[VB_KCFG_LUP] = atoi(value);
+    } else if (MATCH("keys", "ldown")) {
+        vbkey[VB_KCFG_LDOWN] = atoi(value);
+    } else if (MATCH("keys", "lleft")) {
+        vbkey[VB_KCFG_LLEFT] = atoi(value);
+    } else if (MATCH("keys", "lright")) {
+        vbkey[VB_KCFG_LRIGHT] = atoi(value);
+    } else if (MATCH("keys", "rup")) {
+        vbkey[VB_KCFG_RUP] = atoi(value);
+    } else if (MATCH("keys", "rdown")) {
+        vbkey[VB_KCFG_RDOWN] = atoi(value);
+    } else if (MATCH("keys", "rleft")) {
+        vbkey[VB_KCFG_RLEFT] = atoi(value);
+    } else if (MATCH("keys", "rright")) {
+        vbkey[VB_KCFG_RRIGHT] = atoi(value);
+    } else if (MATCH("keys", "a")) {
+        vbkey[VB_KCFG_A] = atoi(value);
+    } else if (MATCH("keys", "b")) {
+        vbkey[VB_KCFG_B] = atoi(value);
+    } else if (MATCH("keys", "start")) {
+        vbkey[VB_KCFG_START] = atoi(value);
+    } else if (MATCH("keys", "select")) {
+        vbkey[VB_KCFG_SELECT] = atoi(value);
+    } else if (MATCH("keys", "l")) {
+        vbkey[VB_KCFG_L] = atoi(value);
+    } else if (MATCH("keys", "r")) {
+        vbkey[VB_KCFG_R] = atoi(value);
+    } else {
+        return 0;  // unknown section/name, error
+    }
+    return 1;
+}
+
+int loadFileOptions(void) {
+    return ini_parse(CONFIG_FILENAME, handler, &tVBOpt);
+}
+
+int saveFileOptions(void) {
+    FILE* f = fopen(CONFIG_FILENAME, "w");
+    if (!f)
+        return 1;
+
+    fprintf(f, "[vbopt]\n");
+    fprintf(f, "frmskip=%d\n", tVBOpt.FRMSKIP);
+    fprintf(f, "dspmode=%d\n", tVBOpt.DSPMODE);
+    fprintf(f, "dspswap=%d\n", tVBOpt.DSPSWAP);
+    fprintf(f, "palmode=%d\n", tVBOpt.PALMODE);
+    fprintf(f, "debug=%d\n", tVBOpt.DEBUG);
+    fprintf(f, "stdout=%d\n", tVBOpt.STDOUT);
+    fprintf(f, "bfactor=%d\n", tVBOpt.BFACTOR);
+    fprintf(f, "scr_x=%d\n", tVBOpt.SCR_X);
+    fprintf(f, "scr_y=%d\n", tVBOpt.SCR_Y);
+    fprintf(f, "scr_mode=%d\n", tVBOpt.SCR_MODE);
+    fprintf(f, "fixpal=%d\n", tVBOpt.FIXPAL);
+    fprintf(f, "disasm=%d\n", tVBOpt.DISASM);
+    fprintf(f, "sound=%d\n", tVBOpt.SOUND);
+    fprintf(f, "dsp2x=%d\n\n", tVBOpt.DSP2X);
+
+    fprintf(f, "[keys]\n");
+    fprintf(f, "lup=%d\n", vbkey[VB_KCFG_LUP]);
+    fprintf(f, "ldown=%d\n", vbkey[VB_KCFG_LDOWN]);
+    fprintf(f, "lleft=%d\n", vbkey[VB_KCFG_LLEFT]);
+    fprintf(f, "lright=%d\n", vbkey[VB_KCFG_LRIGHT]);
+    fprintf(f, "rup=%d\n", vbkey[VB_KCFG_RUP]);
+    fprintf(f, "rdown=%d\n", vbkey[VB_KCFG_RDOWN]);
+    fprintf(f, "rleft=%d\n", vbkey[VB_KCFG_RLEFT]);
+    fprintf(f, "rright=%d\n", vbkey[VB_KCFG_RRIGHT]);
+    fprintf(f, "a=%d\n", vbkey[VB_KCFG_A]);
+    fprintf(f, "b=%d\n", vbkey[VB_KCFG_B]);
+    fprintf(f, "start=%d\n", vbkey[VB_KCFG_START]);
+    fprintf(f, "select=%d\n", vbkey[VB_KCFG_SELECT]);
+    fprintf(f, "l=%d\n", vbkey[VB_KCFG_L]);
+    fprintf(f, "r=%d\n", vbkey[VB_KCFG_R]);
+
+    fclose(f);
+    return 0;
+}

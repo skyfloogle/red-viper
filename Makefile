@@ -33,9 +33,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source
+SOURCES		:=	source source/inih
 DATA		:=	data
-INCLUDES	:=	include
+INCLUDES	:=	include source
 
 APP_TITLE		:=	r3Ddragon
 APP_DESCRIPTION	:=	A Virtual Boy emulator for the 3DS
