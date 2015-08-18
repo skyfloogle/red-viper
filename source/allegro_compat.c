@@ -95,18 +95,22 @@ void toggle3D() {
     gfxSet3D(tVBOpt.DSPMODE);
 }
 
+// Returns the position of the selected item or -1 if the menu was cancelled
 int openMenu(menu_t* menu) {
     int i, numitems, pos, startpos;
     menu_t* cur_menu = menu;
     u32 keys;
+    bool loop = true;
 
-    while (1) {
+    gfxSetDoubleBuffering(GFX_TOP, false);
+
+    while (loop) {
         pos = 0;
         startpos = 0;
         numitems = cur_menu->numitems;
         consoleClear();
 
-        while (aptMainLoop()) {
+        while (aptMainLoop() && loop) {
             hidScanInput();
             keys = hidKeysDown();
 
@@ -135,20 +139,26 @@ int openMenu(menu_t* menu) {
             } else if (keys & KEY_A) {
                 if (cur_menu->items[pos].proc) {
                     int res = cur_menu->items[pos].proc();
-                    if (res == D_EXIT)
-                        return pos;
+                    if (res == D_EXIT) {
+                        loop = false;
+                        break;
+                    }
                 }
                 if (cur_menu->items[pos].child) {
                     cur_menu = cur_menu->items[pos].child;
                     break;
                 } else {
-                    return pos;
+                    loop = false;
+                    break;
                 }
             } else if (keys & KEY_B) {
-                if (cur_menu->parent)
+                if (cur_menu->parent) {
                     cur_menu = cur_menu->parent;
-                else
-                    return -1;
+                } else {
+                    pos = -1;
+                    loop = false;
+                    break;
+                }
                 break;
             } else if ((CONFIG_3D_SLIDERSTATE > 0.0f) && !tVBOpt.DSPMODE) {
                 toggle3D();
@@ -177,6 +187,9 @@ int openMenu(menu_t* menu) {
             gspWaitForVBlank();
         }
     }
+
+    gfxSetDoubleBuffering(GFX_TOP, true);
+    return pos;
 }
 
 // Taken from github.com/smealum/3ds_hb_menu
