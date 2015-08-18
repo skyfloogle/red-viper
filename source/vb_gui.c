@@ -8,6 +8,7 @@
 #include "vb_gui.h"
 #include "vb_set.h"
 #include "rom_db.h"
+#include "drc_core.h"
 
 #define GUI_STUB() { \
     consoleClear(); \
@@ -16,120 +17,120 @@
 }
 
 menu_item_t main_menu_items[] = {
-        {"File", NULL, &file_menu, 0, NULL},
-        {"Options", NULL, &options_menu, 0, NULL},
-        {"Emulation", NULL, &emulation_menu, D_DISABLED, NULL},
-        {"Debug", NULL, &debug_menu, D_DISABLED, NULL},
-        {"Help", NULL, &help_menu, 0, NULL}
+    {"File", NULL, &file_menu, 0, NULL},
+    {"Options", NULL, &options_menu, 0, NULL},
+    {"Emulation", NULL, &emulation_menu, D_DISABLED, NULL},
+    {"Debug", NULL, &debug_menu, D_DISABLED, NULL},
+    {"Help", NULL, &help_menu, 0, NULL}
 };
 
 menu_item_t file_menu_items[] = {
-        {"Load ROM", file_loadrom, NULL, 0, NULL},
-        {"Close ROM", file_closerom, NULL, D_DISABLED, NULL},
-        {"Exit", file_exit, NULL, 0, NULL}
+    {"Load ROM", file_loadrom, NULL, 0, NULL},
+    {"Close ROM", file_closerom, NULL, D_DISABLED, NULL},
+    {"Exit", file_exit, NULL, 0, NULL}
 };
 
 menu_item_t options_menu_items[] = {
-        {"Video",options_video, NULL, 0, NULL},
-        {"Input",options_input, NULL, 0, NULL},
-        {"Emulation",options_emulation, NULL, 0, NULL},
-        {"Save Options", options_saveoptions, NULL, 0, NULL}
+    {"Video",options_video, NULL, 0, NULL},
+    {"Input",options_input, NULL, 0, NULL},
+    {"Emulation",options_emulation, NULL, 0, NULL},
+    {"Save Options", options_saveoptions, NULL, 0, NULL}
 };
 
 menu_item_t emulation_menu_items[] = {
-        {"Resume Emulation", emulation_resume, NULL, 0, NULL},
-        {"Reset System", emulation_reset, NULL, 0, NULL},
-        {"Cheats", NULL, &emulation_cheat_menu, 0, NULL},
-        {"Save State", emulation_sstate, NULL, 0, NULL},
-        {"Load State", emulation_lstate, NULL, 0, NULL}
+    {"Resume Emulation", emulation_resume, NULL, 0, NULL},
+    {"Reset System", emulation_reset, NULL, 0, NULL},
+    {"Cheats", NULL, &emulation_cheat_menu, 0, NULL},
+    {"Save State", emulation_sstate, NULL, 0, NULL},
+    {"Load State", emulation_lstate, NULL, 0, NULL}
 };
 
 menu_item_t debug_menu_items[] = {
-        {"Trace Logging",debug_trace, NULL, 0, NULL},
-        {"Show ROM Info",debug_showinfo, NULL, 0, NULL},
-        {"Show Dump Info",debug_dumpinfo, NULL, 0, NULL},
-        {"View", NULL, &debug_view_menu,0, NULL},
-//    { "Memory Viewer", debug_memedit, NULL, 0, NULL},
-        {"Watch Points",debug_watchpoints, NULL, 0, NULL},
-        {"Write Binary File", debug_writebin, NULL, 0, NULL},
-        {"Write World\\VIP Info", debug_write_info, NULL, 0, NULL},
-        {"Write Affine Info", debug_write_affine, NULL, 0, NULL},
-        {"Write RAM to File", debug_saveram, NULL, 0, NULL}
+    {"Trace Logging",debug_trace, NULL, 0, NULL},
+    {"Show ROM Info",debug_showinfo, NULL, 0, NULL},
+    {"Show Dump Info",debug_dumpinfo, NULL, 0, NULL},
+    {"View", NULL, &debug_view_menu,0, NULL},
+    {"Watch Points",debug_watchpoints, NULL, 0, NULL},
+    {"Write World\\VIP Info", debug_write_info, NULL, 0, NULL},
+    {"Write Affine Info", debug_write_affine, NULL, 0, NULL},
+    {"Dump VB RAM to file", debug_dumpvbram, NULL, 0, NULL},
+    {"Dump game RAM to file", debug_dumpgameram, NULL, 0, NULL},
+    {"Dump dynarec cache", debug_dumpdrccache, NULL, 0, NULL}
 };
 
 menu_item_t debug_view_menu_items[] = {
-        {"Memory", debug_view_memory, NULL, 0, NULL},
-        {"Chars",debug_view_chars, NULL, 0, NULL},
-        {"BGMaps", debug_view_bgmaps, NULL, 0, NULL},
-        {"Worlds", debug_view_worlds, NULL, 0, NULL},
-        {"OBJs", debug_view_obj, NULL, 0, NULL}
+    {"Memory", debug_view_memory, NULL, 0, NULL},
+    {"Chars",debug_view_chars, NULL, 0, NULL},
+    {"BGMaps", debug_view_bgmaps, NULL, 0, NULL},
+    {"Worlds", debug_view_worlds, NULL, 0, NULL},
+    {"OBJs", debug_view_obj, NULL, 0, NULL}
 };
 
 menu_item_t emulation_cheat_menu_items[] = {
-        {"Browse Cheats",debug_cheat_browse, NULL, 0, NULL},
-        {"Search (Exact)", debug_cheat_search_exact, NULL, 0, NULL},
-        {"Search (Comparative)", debug_cheat_search_comp, NULL, 0, NULL},
-        {"View Results", debug_cheat_view, NULL, 0, NULL}
+    {"Browse Cheats",debug_cheat_browse, NULL, 0, NULL},
+    {"Search (Exact)", debug_cheat_search_exact, NULL, 0, NULL},
+    {"Search (Comparative)", debug_cheat_search_comp, NULL, 0, NULL},
+    {"View Results", debug_cheat_view, NULL, 0, NULL}
 };
 
 menu_item_t help_menu_items[] = {
-        {"About", help_about, &help_menu, 0, NULL}
+    {"About", help_about, &help_menu, 0, NULL}
 };
 
 menu_t main_menu = {
-        "Main menu",
-        NULL,
-        LENGTH(main_menu_items),
-        main_menu_items
+    "Main menu",
+    NULL,
+    LENGTH(main_menu_items),
+    main_menu_items
 };
 
 menu_t file_menu = {
-        "File",
-        &main_menu,
-        LENGTH(file_menu_items),
-        file_menu_items
+    "File",
+    &main_menu,
+    LENGTH(file_menu_items),
+    file_menu_items
 };
 
 menu_t options_menu  = {
-        "Options",
-        &main_menu,
-        LENGTH(options_menu_items),
-        options_menu_items
+    "Options",
+    &main_menu,
+    LENGTH(options_menu_items),
+    options_menu_items
 };
 
 menu_t emulation_menu = {
-        "Emulation",
-        &main_menu,
-        LENGTH(emulation_menu_items),
-        emulation_menu_items
+    "Emulation",
+    &main_menu,
+    LENGTH(emulation_menu_items),
+    emulation_menu_items
 };
 
 menu_t debug_menu = {
-        "Debug",
-        &main_menu,
-        LENGTH(debug_menu_items),
-        debug_menu_items
+    "Debug",
+    &main_menu,
+    LENGTH(debug_menu_items),
+    debug_menu_items
 };
 
 menu_t debug_view_menu = {
-        "Debug view",
-        &debug_menu,
-        LENGTH(debug_view_menu_items),
-        debug_view_menu_items
+    "Debug view",
+    &debug_menu,
+    LENGTH(debug_view_menu_items),
+    debug_view_menu_items
 };
 
 menu_t emulation_cheat_menu = {
-        "Cheats",
-        &emulation_menu,
-        LENGTH(emulation_cheat_menu_items),
-        emulation_cheat_menu_items
+    "Cheats",
+    &emulation_menu,
+    LENGTH(emulation_cheat_menu_items),
+    emulation_cheat_menu_items
 };
 
 menu_t help_menu = {
-        "Help",
-        &main_menu,
-        LENGTH(help_menu_items),
-        help_menu_items
+    "Help",
+    &main_menu,
+    LENGTH(help_menu_items),
+    help_menu_items
 };
 
 void waitForInput() {
@@ -496,12 +497,6 @@ int debug_watchpoints(void) {
     return D_OK;
 }
 
-int debug_writebin(void) {
-    // TODO: Implement me!
-    GUI_STUB();
-    return D_OK;
-}
-
 int debug_write_info(void) {
     // TODO: Implement me!
     GUI_STUB();
@@ -514,9 +509,22 @@ int debug_write_affine(void) {
     return D_OK;
 }
 
-int debug_saveram(void) {
-    // TODO: Implement me!
-    GUI_STUB();
+int debug_dumpvbram(void) {
+    FILE* f = fopen("vb_ram.bin", "w");
+    fwrite(V810_VB_RAM.pmemory, V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr,1, f);
+    fclose(f);
+    return D_OK;
+}
+
+int debug_dumpgameram(void) {
+    FILE* f = fopen("game_ram.bin", "w");
+    fwrite(V810_GAME_RAM.pmemory, V810_GAME_RAM.highaddr - V810_GAME_RAM.lowaddr,1, f);
+    fclose(f);
+    return D_OK;
+}
+
+int debug_dumpdrccache(void) {
+    drc_dumpCache("cache_dump.bin");
     return D_OK;
 }
 

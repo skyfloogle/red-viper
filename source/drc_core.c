@@ -1003,15 +1003,3 @@ void drc_dumpCache(char* filename) {
     fwrite(cache_start, CACHE_SIZE, 1, f);
     fclose(f);
 }
-
-// Dumps the VB RAM and the game RAM onto vb_ram.bin and game_ram.bin
-void vb_dumpRAM() {
-    FILE* f = fopen("vb_ram.bin", "w");
-    fwrite(V810_VB_RAM.pmemory, V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr,1, f);
-    fclose(f);
-
-    f = fopen("game_ram.bin", "w");
-    fwrite(V810_GAME_RAM.pmemory, V810_GAME_RAM.highaddr - V810_GAME_RAM.lowaddr,1, f);
-    fclose(f);
-}
-
