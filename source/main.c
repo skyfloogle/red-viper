@@ -150,17 +150,28 @@ int main() {
     int err = 0;
     static int Left = 0;
     int skip = 0;
+    PrintConsole main_console;
+    PrintConsole debug_console;
 
     gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
     fsInit();
     hbInit();
     sdmcInit();
-    consoleInit(GFX_BOTTOM, NULL);
-    consoleDebugInit(debugDevice_3DMOO);
+    consoleInit(GFX_BOTTOM, &main_console);
+    consoleInit(GFX_BOTTOM, &debug_console);
+    consoleSetWindow(&debug_console, 0, 4, 40, 26);
+    debug_console.flags = CONSOLE_COLOR_FAINT;
+    consoleSelect(&main_console);
+//    consoleDebugInit(debugDevice_3DMOO);
 
     setDefaults();
     if (loadFileOptions() < 0)
         saveFileOptions();
+
+    if (tVBOpt.DEBUG)
+        consoleDebugInit(debugDevice_CONSOLE);
+    else
+        consoleDebugInit(debugDevice_NULL);
 
     V810_DSP_Init();
 
@@ -198,6 +209,7 @@ int main() {
         }
 
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
+            consoleSelect(&debug_console);
             err = drc_run();
             if (err) {
                 fprintf(stderr, "BLOCK ERR - %d\n", err);
@@ -220,6 +232,7 @@ int main() {
             V810_Dsp_Frame(Left); //Temporary...
         }
 
+        consoleSelect(&main_console);
         printf("\x1b[1J\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, PC);
 //        printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) PC);
 

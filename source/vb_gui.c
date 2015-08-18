@@ -31,10 +31,10 @@ menu_item_t file_menu_items[] = {
 };
 
 menu_item_t options_menu_items[] = {
-    {"Video",options_video, NULL, 0, NULL},
-    {"Input",options_input, NULL, 0, NULL},
-    {"Emulation",options_emulation, NULL, 0, NULL},
-    {"Save Options", options_saveoptions, NULL, 0, NULL}
+    {"Video", options_video, NULL, 0, NULL},
+    {"Input", options_input, NULL, 0, NULL},
+    {"Emulation", options_emulation, NULL, 0, NULL},
+    {"Save Options", options_saveoptions, NULL, 0, NULL},
 };
 
 menu_item_t emulation_menu_items[] = {
@@ -46,11 +46,11 @@ menu_item_t emulation_menu_items[] = {
 };
 
 menu_item_t debug_menu_items[] = {
-    {"Trace Logging",debug_trace, NULL, 0, NULL},
-    {"Show ROM Info",debug_showinfo, NULL, 0, NULL},
-    {"Show Dump Info",debug_dumpinfo, NULL, 0, NULL},
+    {"Trace Logging", debug_trace, NULL, 0, NULL},
+    {"Show ROM Info", debug_showinfo, NULL, 0, NULL},
+    {"Show Dump Info", debug_dumpinfo, NULL, 0, NULL},
     {"View", NULL, &debug_view_menu,0, NULL},
-    {"Watch Points",debug_watchpoints, NULL, 0, NULL},
+    {"Watch Points", debug_watchpoints, NULL, 0, NULL},
     {"Write World\\VIP Info", debug_write_info, NULL, 0, NULL},
     {"Write Affine Info", debug_write_affine, NULL, 0, NULL},
     {"Dump VB RAM to file", debug_dumpvbram, NULL, 0, NULL},
@@ -60,14 +60,14 @@ menu_item_t debug_menu_items[] = {
 
 menu_item_t debug_view_menu_items[] = {
     {"Memory", debug_view_memory, NULL, 0, NULL},
-    {"Chars",debug_view_chars, NULL, 0, NULL},
+    {"Chars", debug_view_chars, NULL, 0, NULL},
     {"BGMaps", debug_view_bgmaps, NULL, 0, NULL},
     {"Worlds", debug_view_worlds, NULL, 0, NULL},
     {"OBJs", debug_view_obj, NULL, 0, NULL}
 };
 
 menu_item_t emulation_cheat_menu_items[] = {
-    {"Browse Cheats",debug_cheat_browse, NULL, 0, NULL},
+    {"Browse Cheats", debug_cheat_browse, NULL, 0, NULL},
     {"Search (Exact)", debug_cheat_search_exact, NULL, 0, NULL},
     {"Search (Comparative)", debug_cheat_search_comp, NULL, 0, NULL},
     {"View Results", debug_cheat_view, NULL, 0, NULL}
