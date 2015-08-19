@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <main.h>
 
 #include "vb_types.h"
 #include "v810_ins.h"
@@ -186,8 +187,7 @@ void v810_int(WORD iNum, WORD PC) {
     if((v810_state->S_REG[PSW] & PSW_ID)) return; // Interupt disabled
     if(iNum < ((v810_state->S_REG[PSW] & PSW_IA)>>16)) return; // Interupt to low on the chain
 
-    //vb_log_msg(6,"\nInt %x",iNum);
-    fprintf(stderr, "BLOCK INT - 0x%x\n", iNum);
+    dprintf(1, "[INT]: iNum=0x%x\n", iNum);
 
     //Ready to Generate the Interupts
     v810_state->S_REG[EIPC]  = PC;

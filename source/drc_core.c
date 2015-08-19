@@ -33,6 +33,7 @@
 #include <malloc.h>
 
 #include <3ds.h>
+#include <main.h>
 
 #include "drc_core.h"
 #include "v810_cpu.h"
@@ -354,7 +355,7 @@ void drc_translateBlock(exec_block *block) {
     WORD pool_offset = 0;
 
     drc_scanBlockBounds(&start_PC, &end_PC);
-    fprintf(stderr, "BLOCK: 0x%x -> 0x%x\n", start_PC, end_PC);
+    dprintf(0, "[DRC]: new block - 0x%x->0x%x\n", start_PC, end_PC);
 
     // Clear previous block register stats
     memset(reg_usage, 0, 32);
@@ -798,7 +799,7 @@ void drc_translateBlock(exec_block *block) {
                 POP(1 << 15);
                 break;
             default:
-                fprintf(stderr, "Unimplemented instruction: 0x%x\n", inst_cache[i].opcode);
+                dprintf(0, "[DRC]: 0x%x not implemented\n", inst_cache[i].opcode);
                 // Fill unimplemented instructions with a nop and hope the game still runs
                 NOP();
                 break;
@@ -916,7 +917,7 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 void drc_init() {
     cache_start = memalign(0x1000, CACHE_SIZE);
     cache_pos = cache_start;
-    fprintf(stderr, "BLOCK START: %p\n", cache_start);
+    dprintf(0, "[DRC]: cache_start = %p\n", cache_start);
 
     u32 pages;
     HB_ReprotectMemory(0x00108000, 10, 0x7, &pages);
@@ -971,7 +972,7 @@ int drc_run() {
             cache_pos += cur_block->size;
             entrypoint = drc_getEntry(entry_PC, NULL);
         }
-//        fprintf(stderr, "BLOCK ENTRY - 0x%x (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
+        dprintf(3, "[DRC]: entry - 0x%x (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
         if ((entrypoint < cache_start) || (entrypoint > cache_start + CACHE_SIZE))
             return 1;
 
@@ -990,7 +991,7 @@ int drc_run() {
             v810_state->ret = 0;
             break;
         }
-//        fprintf(stderr, "BLOCK END - 0x%x\n", PC);
+        dprintf(3, "[DRC]: end - 0x%x\n", PC);
     }
 
     // TODO: Handle errors
