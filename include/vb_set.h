@@ -36,6 +36,7 @@ enum VB_KCFG {
 
 // Global Options list
 typedef struct VB_OPT {
+    int   MAXCYCLES; // Number of cycles before checking for interrupts
     int   FRMSKIP;  // Frame Skip of course
     int   DSPMODE;  // Normal, 3D, etc
     int   DSPSWAP;  // Swap 3D effect, 0 normal, 1 swap

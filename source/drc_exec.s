@@ -3,10 +3,7 @@
 
 .data
 
-.extern v810_state, serviceDisplayInt, serviceInt, serviceint
-
-@ The max number of cycles
-.set MAXCYCLES, 2048
+.extern v810_state, serviceDisplayInt, serviceInt, serviceint, tVBOpt
 
 .text
 
@@ -73,13 +70,19 @@ drc_executeBlock:
     push    {lr}
 
     ldRegs
-    mov     r10, #-MAXCYCLES-1
+    @ r10 = -MAXCYCLES
+    ldr     r10, =tVBOpt
+    ldr     r10, [r10]
+    neg     r10, r10
     bx      r0
 
 postexec:
     pop     {r0}
     stRegs
-    add     r10, #MAXCYCLES
+    @ v810_state->cycles = MAXCYCLES + r10 excess
+    ldr     r0, =tVBOpt
+    ldr     r0, [r0]
+    add     r10, r0
     ldr     r0, [r11, #67<<2]
     add     r0, r10
     str     r0, [r11, #67<<2]
@@ -97,7 +100,9 @@ drc_handleInterrupts:
     @ (MAXCYCLES + r10 excess)
     ldr     r0, [r11, #67<<2]
     add     r0, r10
-    add     r0, #MAXCYCLES
+    ldr     r2, =tVBOpt
+    ldr     r2, [r2]
+    add     r0, r2
     str     r0, [r11, #67<<2]
 
     bl      serviceDisplayInt
@@ -111,7 +116,10 @@ drc_handleInterrupts:
     bne     exit_block
 
 ret_to_block:
-    mov     r10, #-MAXCYCLES-1
+    @ r10 = -MAXCYCLES
+    ldr     r10, =tVBOpt
+    ldr     r10, [r10]
+    neg     r10, r10
 
     @ Return to the block
     mov     r0, r4

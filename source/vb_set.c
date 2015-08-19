@@ -11,6 +11,7 @@ int     vbkey[15];
 
 void setDefaults(void) {
     // Set up the Defaults
+    tVBOpt.MAXCYCLES = 1024;
     tVBOpt.FRMSKIP  = 0;
     tVBOpt.DSPMODE  = DM_NORMAL;
     tVBOpt.DSPSWAP  = 0;
@@ -53,7 +54,9 @@ static int handler(void* user, const char* section, const char* name,
     VB_OPT* pconfig = (VB_OPT*)user;
 
     #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
-    if (MATCH("vbopt", "frmskip")) {
+    if (MATCH("vbopt", "maxcycles")) {
+        pconfig->MAXCYCLES = atoi(value);
+    } else if (MATCH("vbopt", "frmskip")) {
         pconfig->FRMSKIP = atoi(value);
     } else if (MATCH("vbopt", "dspmode")) {
         pconfig->DSPMODE = atoi(value);
@@ -125,6 +128,7 @@ int saveFileOptions(void) {
         return 1;
 
     fprintf(f, "[vbopt]\n");
+    fprintf(f, "maxcycles=%d\n", tVBOpt.FRMSKIP);
     fprintf(f, "frmskip=%d\n", tVBOpt.FRMSKIP);
     fprintf(f, "dspmode=%d\n", tVBOpt.DSPMODE);
     fprintf(f, "dspswap=%d\n", tVBOpt.DSPSWAP);
