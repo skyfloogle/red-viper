@@ -33,7 +33,6 @@
 #include <malloc.h>
 
 #include <3ds.h>
-#include <main.h>
 
 #include "drc_core.h"
 #include "v810_cpu.h"
