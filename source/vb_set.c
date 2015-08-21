@@ -16,7 +16,7 @@ void setDefaults(void) {
     tVBOpt.DSPMODE  = DM_NORMAL;
     tVBOpt.DSPSWAP  = 0;
     tVBOpt.PALMODE  = PAL_NORMAL;
-    tVBOpt.DEBUG    = 0;
+    tVBOpt.DEBUG    = DEBUGLEVEL != 0;
     tVBOpt.STDOUT   = 0;
     tVBOpt.BFACTOR  = 64;
     tVBOpt.SCR_X    = 400;

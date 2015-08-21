@@ -13,7 +13,7 @@
 #define INT64 int64_t //64 bit int
 #define INT64U uint64_t //64 bit Unsigned
 
-#define dprintf(level, fmt, ...) \
-    do { if (level <= DEBUGLEVEL) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
+#define dprintf(level, ...) \
+    do { if (level <= DEBUGLEVEL) fprintf(stderr, __VA_ARGS__); } while (0)
 
 #endif // Header Include

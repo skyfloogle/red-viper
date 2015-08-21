@@ -38,6 +38,8 @@
 #include "v810_cpu.h"
 #include "v810_mem.h"
 #include "v810_opt.h"
+#include "vb_set.h"
+#include "vb_gui.h"
 
 #include "arm_emit.h"
 #include "arm_codegen.h"
@@ -973,27 +975,26 @@ int drc_run() {
         }
         dprintf(3, "[DRC]: entry - 0x%x (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
         if ((entrypoint < cache_start) || (entrypoint > cache_start + CACHE_SIZE))
-            return 1;
+            return DRC_ERR_BAD_ENTRY;
 
         v810_state->PC = cur_block->end_pc;
         v810_state->cycles = clocks;
 
         drc_executeBlock(entrypoint, cur_block);
 
-        PC = v810_state->PC & 0xFFFFFFFE;
+        PC = v810_state->PC & V810_ROM1.highaddr;
         clocks = v810_state->cycles;
 
-        if (PC == 0)
-            return 1;
+        if (PC < V810_VB_RAM.lowaddr || PC > V810_ROM1.highaddr)
+            return DRC_ERR_BAD_PC;
 
         if (v810_state->ret) {
             v810_state->ret = 0;
             break;
         }
-        dprintf(3, "[DRC]: end - 0x%x\n", PC);
+        dprintf(4, "[DRC]: end - 0x%x\n", PC);
     }
 
-    // TODO: Handle errors
     return 0;
 }
 
@@ -1001,5 +1002,28 @@ int drc_run() {
 void drc_dumpCache(char* filename) {
     FILE* f = fopen(filename, "w");
     fwrite(cache_start, CACHE_SIZE, 1, f);
+    fclose(f);
+}
+
+void drc_dumpDebugInfo() {
+    int i;
+    FILE* f = fopen("debug_info.txt", "w");
+
+    fprintf(f, "PC: 0x%08x\n", PC);
+    for (i = 0; i < 32; i++)
+        fprintf(f, "r%d: 0x%08x\n", i, v810_state->P_REG[i]);
+
+    for (i = 0; i < 32; i++)
+        fprintf(f, "s%d: 0x%08x\n", i, v810_state->S_REG[i]);
+
+    fprintf(f, "Cycles: %d\n", v810_state->cycles);
+    fprintf(f, "Cache start: %p\n", cache_start);
+    fprintf(f, "Cache pos: %p\n", cache_pos);
+
+    if (tVBOpt.DEBUG) {
+        debug_dumpdrccache();
+        debug_dumpvbram();
+    }
+
     fclose(f);
 }

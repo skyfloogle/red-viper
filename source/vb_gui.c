@@ -133,13 +133,16 @@ menu_t help_menu = {
     help_menu_items
 };
 
-void waitForInput() {
+u32 waitForInput() {
+    u32 keys;
     do {
         hidScanInput();
         gfxFlushBuffers();
         gfxSwapBuffers();
         gspWaitForVBlank();
-    } while (!hidKeysDown());
+    } while (!(keys = hidKeysDown()));
+
+    return keys;
 }
 
 void save_sram(void) {

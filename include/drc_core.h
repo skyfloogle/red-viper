@@ -9,6 +9,9 @@
 #define ARM_CACHE_REG_START 4
 #define ARM_NUM_CACHE_REGS 6
 
+#define DRC_ERR_BAD_ENTRY 0
+#define DRC_ERR_BAD_PC 1
+
 #define END_BLOCK 0xFF
 
 typedef struct {
@@ -64,6 +67,6 @@ void drc_init();
 void drc_exit();
 int drc_run();
 void drc_dumpCache(char* filename);
-void vb_dumpRAM();
+void drc_dumpDebugInfo();
 
 #endif //DRC_CORE_H

@@ -222,6 +222,10 @@ int main() {
             err = drc_run();
             if (err) {
                 dprintf(0, "[DRC]: error #%d @ PC=0x%08X\n", err, PC);
+                printf("Dumping debug info...\n");
+                drc_dumpDebugInfo();
+                printf("Press any key to exit\n");
+                waitForInput();
                 goto exit;
             }
 

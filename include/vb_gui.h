@@ -32,6 +32,7 @@ extern menu_t debug_view_menu;
 extern menu_t emulation_cheat_menu;
 extern menu_t help_menu;
 
+u32 waitForInput();
 void save_sram(void);
 int file_loadrom(void);
 int file_closerom(void);
