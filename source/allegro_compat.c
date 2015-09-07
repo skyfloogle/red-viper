@@ -220,7 +220,7 @@ int fileSelect(const char* message, char* path, const char* ext) {
     Result res = FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
     if (res) {
         consoleClear();
-        printf("ERROR: %08X\n");
+        printf("ERROR: %08X\n", res);
         printf("Unable to open sdmc:/vb/\n");
         printf("Press any key to exit...\n");
         waitForInput();
