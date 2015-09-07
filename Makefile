@@ -128,8 +128,8 @@ endif
 all: testing
 release:	export EXTRA_CFLAGS := -O3 -DDEBUGLEVEL=0
 testing:	export EXTRA_CFLAGS := -O3 -DDEBUGLEVEL=1
-debug:		export EXTRA_CFLAGS := -O0 -DDEBUGLEVEL=2
-slowdebug:	export EXTRA_CFLAGS := -O0 -DDEBUGLEVEL=3
+debug:		export EXTRA_CFLAGS := -g -O0 -DDEBUGLEVEL=2
+slowdebug:	export EXTRA_CFLAGS := -g -O0 -DDEBUGLEVEL=3
 
 release testing debug slowdebug: $(BUILD)
 
