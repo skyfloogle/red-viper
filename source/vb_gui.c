@@ -169,7 +169,7 @@ int file_loadrom(void) {
 
     ret = fileSelect("Load ROM", rompath, "vb");
     // Go back if the menu was cancelled
-    if (!ret)
+    if (ret < 0)
         return D_OK;
 
     tVBOpt.ROM_NAME = rompath;
@@ -234,7 +234,7 @@ int emulation_sstate(void) {
     int lowbyte;
     char sspath[131];
     FILE* state_file;
-    
+
     sprintf(sspath, "%s.rds", tVBOpt.ROM_NAME);
 
     state_file = fopen(sspath, "wb");

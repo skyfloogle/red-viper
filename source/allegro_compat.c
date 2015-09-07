@@ -217,7 +217,15 @@ int fileSelect(const char* message, char* path, const char* ext) {
     FSUSER_OpenArchive(NULL, &sdmcArchive);
 
     // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
-    FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
+    Result res = FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
+    if (res) {
+        consoleClear();
+        printf("ERROR: %08X\n");
+        printf("Unable to open sdmc:/vb/\n");
+        printf("Press any key to exit...\n");
+        waitForInput();
+        return -1;
+    }
 
     for(i = 0; i < 32 && entries_read; i++) {
         memset(&entry, 0, sizeof(FS_dirent));

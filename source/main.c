@@ -188,7 +188,7 @@ int main() {
         gfxSet3D(false);
     }
 
-    if (fileSelect("Load ROM", rom_name, "vb") == -1)
+    if (fileSelect("Load ROM", rom_name, "vb") < 0)
         goto exit;
     tVBOpt.ROM_NAME = rom_name;
 
