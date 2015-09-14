@@ -34,6 +34,7 @@ void v810_reset() {
 
     v810_state = malloc(sizeof(cpu_state));
     v810_state->irq_handler = &drc_handleInterrupts;
+    v810_state->reloc_table = &drc_relocTable;
 
     v810_state->P_REG[0]    =  0x00000000;
     PC                      =  0xFFFFFFF0;

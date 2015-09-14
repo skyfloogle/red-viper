@@ -196,7 +196,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
     BYTE lowB, highB, lowB2, highB2;
     WORD cur_PC = start_PC;
 
-    for (i = 0; (i < MAX_INST) && (cur_PC <= end_PC); i++) {
+    for (i = 0; (i < MAX_INST) && (cur_PC < end_PC); i++) {
         cur_PC = (cur_PC &0x07FFFFFE);
 
         if ((cur_PC >>24) == 0x05) { // RAM
@@ -322,7 +322,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
         block->cycles += opcycle[inst_cache[i].opcode];
     }
 
-    return i - 1;
+    return i;
 }
 
 // Translates a V810 block into ARM code
@@ -386,7 +386,7 @@ void drc_translateBlock(exec_block *block) {
 
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         inst_ptr_start = inst_ptr;
-        drc_setEntry(inst_cache[i].PC, block->phys_loc + inst_cache[i].start_pos, block);
+        drc_setEntry(inst_cache[i].PC, cache_start + block->phys_offset + inst_cache[i].start_pos, block);
         cycles += opcycle[inst_cache[i].opcode];
 
         unmapped_registers = false;
@@ -567,18 +567,18 @@ void drc_translateBlock(exec_block *block) {
                 // reg2%reg1 -> r30 (__modsi3)
                 MOV(0, arm_reg2);
                 MOV(1, arm_reg1);
-                LDW_I(2, &__divsi3);
-                ADD_I(14, 15, 4, 0);
-                MOV(15, 2);
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, DRC_RELOC_DIVSI*4, 0);
+                BLX(ARM_COND_AL, 2);
 
                 MOV(3, arm_reg2);
                 MOV(1, arm_reg1);
                 MOV(arm_reg2, 0);
                 MOV(0, 3);
 
-                LDW_I(2, &__modsi3);
-                ADD_I(14, 15, 4, 0);
-                MOV(15, 2);
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, DRC_RELOC_MODSI*4, 0);
+                BLX(ARM_COND_AL, 2);
 
                 if (!phys_regs[30])
                     STR_IO(0, 11, 30 * 4);
@@ -590,18 +590,18 @@ void drc_translateBlock(exec_block *block) {
             case V810_OP_DIVU: // divu reg1, reg2
                 MOV(0, arm_reg2);
                 MOV(1, arm_reg1);
-                LDW_I(2, &__udivsi3);
-                ADD_I(14, 15, 4, 0);
-                MOV(15, 2);
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, DRC_RELOC_UDIVSI*4, 0);
+                BLX(ARM_COND_AL, 2);
 
                 MOV(3, arm_reg2);
                 MOV(1, arm_reg1);
                 MOV(arm_reg2, 0);
                 MOV(0, 3);
 
-                LDW_I(2, &__umodsi3);
-                ADD_I(14, 15, 4, 0);
-                MOV(15, 2);
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, DRC_RELOC_UMODSI*4, 0);
+                BLX(ARM_COND_AL, 2);
 
                 if (!phys_regs[30])
                     STR_IO(0, 11, 30 * 4);
@@ -692,7 +692,8 @@ void drc_translateBlock(exec_block *block) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                LDW_I(1, &mem_rbyte);
+                LDR_IO(1, 11, 69 * 4);
+                ADD_I(1, 1, DRC_RELOC_RBYTE*4, 0);
                 BLX(ARM_COND_AL, 1);
 
                 // TODO: Implement sxtb
@@ -708,7 +709,8 @@ void drc_translateBlock(exec_block *block) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                LDW_I(1, &mem_rhword);
+                LDR_IO(1, 11, 69 * 4);
+                ADD_I(1, 1, DRC_RELOC_RHWORD*4, 0);
                 BLX(ARM_COND_AL, 1);
 
                 // TODO: Implement sxth
@@ -724,7 +726,8 @@ void drc_translateBlock(exec_block *block) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                LDW_I(1, &mem_rword);
+                LDR_IO(1, 11, 69 * 4);
+                ADD_I(1, 1, DRC_RELOC_RWORD*4, 0);
                 BLX(ARM_COND_AL, 1);
 
                 MOV(arm_reg2, 0);
@@ -741,7 +744,8 @@ void drc_translateBlock(exec_block *block) {
                 else
                     MOV(1, arm_reg2);
 
-                LDW_I(2, &mem_wbyte);
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, DRC_RELOC_WBYTE*4, 0);
                 BLX(ARM_COND_AL, 2);
                 break;
             case V810_OP_ST_H: // st.h reg2, disp16 [reg1]
@@ -755,7 +759,8 @@ void drc_translateBlock(exec_block *block) {
                 else
                     MOV(1, arm_reg2);
 
-                LDW_I(2, &mem_whword);
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, DRC_RELOC_WHWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
                 break;
             case V810_OP_ST_W: // st.h reg2, disp16 [reg1]
@@ -769,7 +774,8 @@ void drc_translateBlock(exec_block *block) {
                 else
                     MOV(1, arm_reg2);
 
-                LDW_I(2, &mem_wword);
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, DRC_RELOC_WWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
@@ -852,12 +858,12 @@ void drc_translateBlock(exec_block *block) {
 #endif
             if (trans_cache[j].needs_branch) {
                 int v810_offset = inst_cache[i].branch_offset;
-                int arm_offset = (int)(drc_getEntry(inst_cache[i].PC + v810_offset, NULL) - &block->phys_loc[j] - 2);
+                int arm_offset = (int)(drc_getEntry(inst_cache[i].PC + v810_offset, NULL) - &((cache_start + block->phys_offset)[j]) - 2);
 
                 trans_cache[j].b_bl.imm = arm_offset & 0xffffff;
             }
 
-            drc_assemble(&block->phys_loc[j], &trans_cache[j]);
+            drc_assemble(&((cache_start + block->phys_offset)[j]), &trans_cache[j]);
         }
     }
 
@@ -881,13 +887,13 @@ WORD* drc_getEntry(WORD loc, exec_block **p_block) {
         case 5:
             map_pos = ((loc-V810_VB_RAM.lowaddr)&V810_VB_RAM.highaddr)>>1;
             if (p_block)
-                *p_block = ram_block_map[map_pos];
-            return ram_entry_map[map_pos];
+                *p_block = block_ptr_start + ram_block_map[map_pos];
+            return cache_start + ram_entry_map[map_pos];
         case 7:
             map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
             if (p_block)
-                *p_block = rom_block_map[map_pos];
-            return rom_entry_map[map_pos];
+                *p_block = block_ptr_start + rom_block_map[map_pos];
+            return cache_start + rom_entry_map[map_pos];
         default:
             return NULL;
     }
@@ -901,13 +907,13 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
     switch (loc>>24) {
         case 5:
             map_pos = ((loc-V810_VB_RAM.lowaddr)&V810_VB_RAM.highaddr)>>1;
-            ram_block_map[map_pos] = block;
-            ram_entry_map[map_pos] = entry;
+            ram_block_map[map_pos] = block - block_ptr_start;
+            ram_entry_map[map_pos] = entry - cache_start;
             break;
         case 7:
             map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
-            rom_block_map[map_pos] = block;
-            rom_entry_map[map_pos] = entry;
+            rom_block_map[map_pos] = block - block_ptr_start;
+            rom_entry_map[map_pos] = entry - cache_start;
             break;
         default:
             return;
@@ -916,33 +922,45 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 
 // Initialize the dynarec
 void drc_init() {
-    cache_start = memalign(0x1000, CACHE_SIZE);
-    cache_pos = cache_start;
-    dprintf(0, "[DRC]: cache_start = %p\n", cache_start);
-
     u32 pages;
-    HB_ReprotectMemory(0x00108000, 10, 0x7, &pages);
-    *((u32*)0x00108000) = 0xDEADBABE;
-    HB_ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7, &pages);
-    HB_FlushInvalidateCache();
 
     // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
-    rom_block_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(exec_block**));
-    rom_entry_map = calloc(1, ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1) * sizeof(WORD*));
-    ram_block_map = calloc(1, ((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1) * sizeof(exec_block**));
-    ram_entry_map = calloc(1, ((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1) * sizeof(WORD*));
+    rom_block_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
+    rom_entry_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
+    ram_block_map = calloc(sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1);
+    ram_entry_map = calloc(sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1);
+    block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
+
+    if (tVBOpt.DYNAREC) {
+        cache_start = memalign(0x1000, CACHE_SIZE);
+        HB_ReprotectMemory(0x00108000, 10, 0x7, &pages);
+        *((u32*)0x00108000) = 0xDEADBABE;
+        HB_ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7, &pages);
+        HB_FlushInvalidateCache();
+    } else {
+        cache_start = &cache_dump_bin;
+        drc_loadSavedCache();
+    }
+
+    cache_pos = cache_start;
+    dprintf(0, "[DRC]: cache_start = %p\n", cache_start);
 }
 
 // Cleanup and exit
 void drc_exit() {
-    free(cache_start);
-
-    // FIXME: Free exec_block structures
-
+    if (tVBOpt.DYNAREC)
+        free(cache_start);
     free(rom_block_map);
     free(rom_entry_map);
     free(ram_block_map);
     free(ram_entry_map);
+    linearFree(block_ptr_start);
+}
+
+int block_pos = 0;
+// TODO: Make it safer
+exec_block* drc_getNextBlockStruct() {
+    return &block_ptr_start[block_pos++];
 }
 
 // Run V810 code until the next frame interrupt
@@ -961,10 +979,9 @@ int drc_run() {
         // Try to find a cached block
         // TODO: make sure we have enough free space
         entrypoint = drc_getEntry(PC, &cur_block);
-        if (!entrypoint) {
-            cur_block = calloc(1, sizeof(exec_block));
-
-            cur_block->phys_loc = cache_pos;
+        if (tVBOpt.DYNAREC && (entrypoint == cache_start)) {
+            cur_block = drc_getNextBlockStruct();
+            cur_block->phys_offset = (uint32_t) (cache_pos - cache_start);
 
             drc_translateBlock(cur_block);
 //            drc_dumpCache("cache_dump_rf.bin");
@@ -998,10 +1015,46 @@ int drc_run() {
     return 0;
 }
 
+void drc_loadSavedCache() {
+    FILE* f;
+    int ret;
+    f = fopen("rom_block_map", "r");
+    ret = fread(rom_block_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fclose(f);
+    f = fopen("rom_entry_map", "r");
+    ret = fread(rom_entry_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fclose(f);
+    f = fopen("ram_block_map", "r");
+    ret = fread(ram_block_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
+    fclose(f);
+    f = fopen("ram_entry_map", "r");
+    ret = fread(ram_entry_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
+    fclose(f);
+    f = fopen("block_heap", "r");
+    ret = fread(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
+    fclose(f);
+}
+
 // Dumps the translation cache onto a file
 void drc_dumpCache(char* filename) {
     FILE* f = fopen(filename, "w");
     fwrite(cache_start, CACHE_SIZE, 1, f);
+    fclose(f);
+
+    f = fopen("rom_block_map", "w");
+    fwrite(rom_block_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fclose(f);
+    f = fopen("rom_entry_map", "w");
+    fwrite(rom_entry_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fclose(f);
+    f = fopen("ram_block_map", "w");
+    fwrite(ram_block_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
+    fclose(f);
+    f = fopen("ram_entry_map", "w");
+    fwrite(ram_entry_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
+    fclose(f);
+    f = fopen("block_heap", "w");
+    fwrite(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
     fclose(f);
 }
 

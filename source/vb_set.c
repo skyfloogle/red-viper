@@ -26,6 +26,7 @@ void setDefaults(void) {
     tVBOpt.DISASM   = 0;
     tVBOpt.SOUND    = 0;
     tVBOpt.DSP2X    = 0;
+    tVBOpt.DYNAREC  = 1;
 
     // Default keys
     vbkey[VB_KCFG_LUP] = KEY_DUP;
@@ -84,6 +85,8 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->SCR_MODE = atoi(value);
     } else if (MATCH("vbopt", "sound")) {
         pconfig->SOUND = atoi(value);
+    } else if (MATCH("vbopt", "dynarec")) {
+        pconfig->DYNAREC = atoi(value);
     } else if (MATCH("keys", "lup")) {
         vbkey[VB_KCFG_LUP] = atoi(value);
     } else if (MATCH("keys", "ldown")) {
@@ -143,6 +146,7 @@ int saveFileOptions(void) {
     fprintf(f, "disasm=%d\n", tVBOpt.DISASM);
     fprintf(f, "sound=%d\n", tVBOpt.SOUND);
     fprintf(f, "dsp2x=%d\n\n", tVBOpt.DSP2X);
+    fprintf(f, "dynarec=%d\n\n", tVBOpt.DYNAREC);
 
     fprintf(f, "[keys]\n");
     fprintf(f, "lup=%d\n", vbkey[VB_KCFG_LUP]);

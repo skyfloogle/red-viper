@@ -8,14 +8,31 @@
 #define MAX_INST    2048
 #define ARM_CACHE_REG_START 4
 #define ARM_NUM_CACHE_REGS 6
+#define MAX_NUM_BLOCKS 4096
 
-#define DRC_ERR_BAD_ENTRY 0
-#define DRC_ERR_BAD_PC 1
+enum {
+    DRC_ERR_BAD_ENTRY,
+    DRC_ERR_BAD_PC,
+    DRC_ERR_NO_DYNAREC,
+};
+
+enum {
+    DRC_RELOC_DIVSI,
+    DRC_RELOC_MODSI,
+    DRC_RELOC_UDIVSI,
+    DRC_RELOC_UMODSI,
+    DRC_RELOC_RBYTE,
+    DRC_RELOC_RHWORD,
+    DRC_RELOC_RWORD,
+    DRC_RELOC_WBYTE,
+    DRC_RELOC_WHWORD,
+    DRC_RELOC_WWORD,
+};
 
 #define END_BLOCK 0xFF
 
 typedef struct {
-    WORD* phys_loc;
+    WORD phys_offset;
     WORD virt_loc;
     WORD size;
     WORD cycles;
@@ -38,13 +55,15 @@ typedef struct {
     bool save_flags;
 } v810_instruction;
 
-exec_block** rom_block_map;
-exec_block** ram_block_map;
-WORD** rom_entry_map;
-WORD** ram_entry_map;
+WORD* rom_block_map;
+WORD* ram_block_map;
+WORD* rom_entry_map;
+WORD* ram_entry_map;
 BYTE reg_usage[32];
 WORD* cache_start;
 static WORD* cache_pos;
+exec_block* block_ptr_start;
+extern void* cache_dump_bin;
 
 int __divsi3(int a, int b);
 int __modsi3(int a, int b);
@@ -59,13 +78,16 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
 void drc_translateBlock(exec_block* block);
 void drc_executeBlock(WORD* entrypoint, exec_block* block);
 int drc_handleInterrupts(WORD cpsr, WORD* PC);
+void drc_relocTable(void);
 
-WORD*drc_getEntry(WORD loc, exec_block **p_block);
+WORD* drc_getEntry(WORD loc, exec_block **p_block);
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block);
+exec_block* drc_getNextBlockStruct();
 
 void drc_init();
 void drc_exit();
 int drc_run();
+void drc_loadSavedCache();
 void drc_dumpCache(char* filename);
 void drc_dumpDebugInfo();
 

@@ -38,7 +38,6 @@ WORD ChrOff[4] = {0x00006000, 0x0000E000, 0x00016000, 0x0001E000};
 HWORD V810_RControll() {
     int ret_keys = 0;
 
-    hidScanInput();
     int key = hidKeysHeld();
 
     if (key & vbkey[14])        ret_keys |= VB_BATERY_LOW;  // Batery Low

@@ -4,9 +4,6 @@
 
 #include <3ds.h>
 
-#include "lsplash_bin.h"
-#include "rsplash_bin.h"
-
 #include "main.h"
 #include "v810_mem.h"
 #include "drc_core.h"
@@ -157,7 +154,6 @@ int main() {
 
     gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
     fsInit();
-    hbInit();
     sdmcInit();
 
 #if DEBUGLEVEL == 0
@@ -170,6 +166,9 @@ int main() {
     setDefaults();
     if (loadFileOptions() < 0)
         saveFileOptions();
+
+    if (tVBOpt.DYNAREC)
+        hbInit();
 
 #if DEBUGLEVEL == 0
     if (tVBOpt.DEBUG)
@@ -222,7 +221,7 @@ int main() {
             err = drc_run();
             if (err) {
                 dprintf(0, "[DRC]: error #%d @ PC=0x%08X\n", err, PC);
-                printf("Dumping debug info...\n");
+                printf("\nDumping debug info...\n");
                 drc_dumpDebugInfo();
                 printf("Press any key to exit\n");
                 waitForInput();
@@ -261,9 +260,10 @@ exit:
     V810_DSP_Quit();
     drc_exit();
 
+    if (tVBOpt.DYNAREC)
+        hbExit();
     sdmcExit();
     fsExit();
-    hbExit();
     gfxExit();
     return 0;
 }

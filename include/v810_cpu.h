@@ -94,6 +94,7 @@ typedef struct {
     WORD S_REG[32]; // System registers sr0-sr31
     WORD cycles;
     int (*irq_handler)(WORD, WORD*);
+    void(*reloc_table)(void);
     BYTE ret;
 } cpu_state;
 
