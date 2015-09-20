@@ -167,9 +167,6 @@ int main() {
     if (loadFileOptions() < 0)
         saveFileOptions();
 
-    if (tVBOpt.DYNAREC)
-        hbInit();
-
 #if DEBUGLEVEL == 0
     if (tVBOpt.DEBUG)
         consoleDebugInit(debugDevice_CONSOLE);
@@ -260,8 +257,7 @@ exit:
     V810_DSP_Quit();
     drc_exit();
 
-    if (tVBOpt.DYNAREC)
-        hbExit();
+    hbHaxExit();
     sdmcExit();
     fsExit();
     gfxExit();

@@ -43,6 +43,7 @@
 
 #include "arm_emit.h"
 #include "arm_codegen.h"
+#include "3ds_utils.h"
 
 // Maps the most used registers in the block to V810 registers
 void drc_mapRegs(exec_block* block) {
@@ -931,14 +932,15 @@ void drc_init() {
     ram_entry_map = calloc(sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1);
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
-    if (tVBOpt.DYNAREC) {
+    hbHaxInit();
+
+    if (hb_type == HB_NH1 || hb_type == HB_CIA) {
         cache_start = memalign(0x1000, CACHE_SIZE);
-        HB_ReprotectMemory(0x00108000, 10, 0x7, &pages);
-        *((u32*)0x00108000) = 0xDEADBABE;
-        HB_ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7, &pages);
-        HB_FlushInvalidateCache();
-    } else {
-        cache_start = &cache_dump_bin;
+        ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7, &pages);
+        FlushInvalidateCache();
+    } else if (hb_type == HB_NH2) {
+        // Uncomment for ninjhax2
+        // cache_start = &cache_dump_bin;
         drc_loadSavedCache();
     }
 
@@ -985,7 +987,7 @@ int drc_run() {
 
             drc_translateBlock(cur_block);
 //            drc_dumpCache("cache_dump_rf.bin");
-            HB_FlushInvalidateCache();
+            FlushInvalidateCache();
 
             cache_pos += cur_block->size;
             entrypoint = drc_getEntry(entry_PC, NULL);
