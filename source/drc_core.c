@@ -934,18 +934,18 @@ void drc_init() {
 
     hbHaxInit();
 
-    if (hb_type == HB_NH1 || hb_type == HB_CIA) {
+    if (tVBOpt.DYNAREC) {
         cache_start = memalign(0x1000, CACHE_SIZE);
         ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7, &pages);
         FlushInvalidateCache();
-    } else if (hb_type == HB_NH2) {
-        // Uncomment for ninjhax2
+    } else {
+        // Uncomment for 9.3+ ninjhax2
         // cache_start = &cache_dump_bin;
         drc_loadSavedCache();
     }
 
     cache_pos = cache_start;
-    dprintf(0, "[DRC]: cache_start = %p\n", cache_start);
+    dprintf(0, "[DRC]: cache_start = %p (%d)\n", cache_start, pages);
 }
 
 // Cleanup and exit

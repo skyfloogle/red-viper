@@ -116,6 +116,7 @@ Reality Boy is in no way affiliated with either of these parties
 * smealum and contributors - ctrulib.
 * Vappy, Team Fail, HtheB, hippy dave and kane159 on GBAtemp - early testing.
 * benhoyt - inih.
+* Myria - libkhax
 * thunderstruck - CIA banner sound (taken from Fishbone).
 * nop90 - Reality Boy backports and fixes.
 * danielps - 3DS port and V810 dynarec.

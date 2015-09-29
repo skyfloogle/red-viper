@@ -1,3 +1,6 @@
 [submodule "source/inih"]
 	path = source/inih
 	url = https://github.com/benhoyt/inih.git
+[submodule "source/libkhax"]
+	path = source/libkhax
+	url = https://github.com/Myriachan/libkhax.git
