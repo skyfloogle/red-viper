@@ -55,7 +55,7 @@ Result ReprotectMemory(u32* addr, u32 pages, u32 mode, u32* reprotectedPages) {
     if (!tVBOpt.DYNAREC)
         return 0xFFFFFFFF;
 
-    u32 mode = mode & 0x7;
+    mode = mode & 0x7;
     if (!mode)mode = 0x7;
 
     Handle processHandle;
