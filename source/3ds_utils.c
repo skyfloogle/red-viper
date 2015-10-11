@@ -50,28 +50,11 @@ void FlushInvalidateCache() {
         svcBackdoor(k_flushCaches);
 }
 
-// https://github.com/smealum/ninjhax/blob/master/ro_command_handler/source/main.c
 Result ReprotectMemory(u32* addr, u32 pages, u32 mode, u32* reprotectedPages) {
     if (!tVBOpt.DYNAREC)
         return 0xFFFFFFFF;
 
-    mode = mode & 0x7;
-    if (!mode)mode = 0x7;
-
     Handle processHandle;
     svcDuplicateHandle(&processHandle, 0xFFFF8001);
-
-    if (addr < 0x00108000 || addr >= 0x10000000 || pages > 0x1000 ||
-        addr + pages * 0x1000 > 0x10000000) {
-        // Send error
-        return 0xFFFFFFFF;
-    }
-
-    u32 ret = 0;
-    int i;
-    for (i = 0; i < pages && !ret; i++)
-        ret = svcControlProcessMemory(processHandle, addr + i * 0x1000, 0x0, 0x1000, MEMOP_PROT, mode);
-
-    *reprotectedPages = i; // Number of pages successfully reprotected
-    return ret; // Error code (if any)
+    return svcControlProcessMemory(processHandle, (u32)addr, 0x0, pages*0x1000, MEMOP_PROT, mode);
 }
