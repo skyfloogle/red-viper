@@ -44,6 +44,9 @@ APP_DESCRIPTION := $(shell echo "$(APP_DESCRIPTION)" | cut -c1-256)
 APP_AUTHOR := $(shell echo "$(APP_AUTHOR)" | cut -c1-128)
 APP_PRODUCT_CODE := $(shell echo $(APP_PRODUCT_CODE) | cut -c1-16)
 APP_UNIQUE_ID := $(shell echo $(APP_UNIQUE_ID) | cut -c1-7)
+APP_ENCRYPTED := $(shell echo $(APP_ENCRYPTED) | cut -c1-5)
+APP_SYSTEM_MODE := $(shell echo $(APP_SYSTEM_MODE) | cut -c1-4)
+APP_SYSTEM_MODE_EXT := $(shell echo $(APP_SYSTEM_MODE_EXT) | cut -c1-6)
 ICON := icon.png
 
 #---------------------------------------------------------------------------------
@@ -145,7 +148,7 @@ endif
 .PHONY: release testing debug slowdebug $(BUILD) clean all
 
 #---------------------------------------------------------------------------------
-all: testing
+all: release
 release:	export EXTRA_CFLAGS := -O3 -DDEBUGLEVEL=0
 testing:	export EXTRA_CFLAGS := -O3 -DDEBUGLEVEL=1
 debug:		export EXTRA_CFLAGS := -g -O0 -DDEBUGLEVEL=2
@@ -185,14 +188,10 @@ icon.icn: $(TOPDIR)/icon.png
 	$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)" -i $(TOPDIR)/icon.png -o icon.icn
 
 cia.rsf:
-	cat $(TOPDIR)/tools/template-cia.rsf | sed 's/{APP_TITLE}/$(APP_TITLE)/' | sed 's/{APP_PRODUCT_CODE}/$(APP_PRODUCT_CODE)/' | sed 's/{APP_UNIQUE_ID}/$(APP_UNIQUE_ID)/' > cia.rsf
+	cat $(TOPDIR)/tools/template-cia.rsf | sed 's/{APP_TITLE}/$(APP_TITLE)/' | sed 's/{APP_PRODUCT_CODE}/$(APP_PRODUCT_CODE)/' | sed 's/{APP_UNIQUE_ID}/$(APP_UNIQUE_ID)/' | sed 's/{APP_ENCRYPTED}/$(APP_ENCRYPTED)/' | sed 's/{APP_SYSTEM_MODE}/$(APP_SYSTEM_MODE)/' | sed 's/{APP_SYSTEM_MODE_EXT}/$(APP_SYSTEM_MODE_EXT)/' > cia.rsf
 
-stripped.elf: $(OUTPUT).elf
-	@cp $(OUTPUT).elf stripped.elf
-	@$(PREFIX)strip stripped.elf
-
-$(OUTPUT).cia: stripped.elf banner.bnr icon.icn cia.rsf
-	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
+$(OUTPUT).cia: banner.bnr icon.icn cia.rsf
+	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf $(OUTPUT).elf -icon icon.icn -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 
 

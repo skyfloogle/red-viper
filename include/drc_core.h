@@ -36,6 +36,7 @@ typedef struct {
     WORD virt_loc;
     WORD size;
     WORD cycles;
+    // Unused. TODO: Remove me!
     BYTE jmp_reg;
     // We can use ARM_NUM_CACHE_REGS registers at a time, r4-r10, and r11 will
     // have the address of v810_state
