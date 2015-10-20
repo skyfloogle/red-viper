@@ -236,7 +236,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                     inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
                     reg_usage[inst_cache[i].reg2]++;
                 } else {
-                    inst_cache[i].reg2 = (BYTE)(-1);
+                    inst_cache[i].reg2 = 0xFF;
                 }
                 break;
             case AM_II:
@@ -244,14 +244,14 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                 inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
                 reg_usage[inst_cache[i].reg2]++;
 
-                inst_cache[i].reg1 = (BYTE)(-1);
+                inst_cache[i].reg1 = 0xFF;
                 break;
             case AM_III: // Branch instructions
                 inst_cache[i].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
                 inst_cache[i].branch_offset = sign_9(inst_cache[i].imm);
 
-                inst_cache[i].reg1 = (BYTE)(-1);
-                inst_cache[i].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
 
                 if (inst_cache[i].opcode != V810_OP_BR &&
                     inst_cache[i].opcode != V810_OP_NOP)
@@ -261,8 +261,8 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                 inst_cache[i].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
                 inst_cache[i].branch_offset = (signed)sign_26(inst_cache[i].imm);
 
-                inst_cache[i].reg1 = (BYTE)(-1);
-                inst_cache[i].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
                 break;
             case AM_V:
                 inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
@@ -292,8 +292,8 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
             case AM_IX:
                 inst_cache[i].imm = (unsigned)((lowB & 0x1)); // Mode ID, Ignore for now
 
-                inst_cache[i].reg1 = (BYTE)(-1);
-                inst_cache[i].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
                 break;
             case AM_BSTR: // Bit String Subopcodes
                 inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
@@ -309,12 +309,12 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                 reg_usage[inst_cache[i].reg2]++;
                 break;
             case AM_UDEF: // Invalid opcode.
-                inst_cache[i].reg1 = (BYTE)(-1);
-                inst_cache[i].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
                 break;
             default: // Invalid opcode.
-                inst_cache[i].reg1 = (BYTE)(-1);
-                inst_cache[i].reg2 = (BYTE)(-1);
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
                 cur_PC += 2;
                 break;
         }
@@ -342,6 +342,7 @@ void drc_translateBlock(exec_block *block) {
     WORD end_PC;
     // For each V810 instruction, tells if either reg1 or reg2 is cached
     bool unmapped_registers;
+    BYTE next_available_reg;
     // Tells if reg1 or reg2 has been modified by the current V810 instruction
     bool reg1_modified;
     bool reg2_modified;
@@ -375,52 +376,41 @@ void drc_translateBlock(exec_block *block) {
 
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
-        if (inst_cache[i].reg1 != -1)
-            arm_reg1 = phys_regs[inst_cache[i].reg1];
-        else
-            arm_reg1 = 0;
-
-        if (inst_cache[i].reg2 != -1)
-            arm_reg2 = phys_regs[inst_cache[i].reg2];
-        else
-            arm_reg1 = 0;
-
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         inst_ptr_start = inst_ptr;
         drc_setEntry(inst_cache[i].PC, cache_start + block->phys_offset + inst_cache[i].start_pos, block);
         cycles += opcycle[inst_cache[i].opcode];
 
-        unmapped_registers = false;
         reg1_modified = false;
         reg2_modified = false;
+        unmapped_registers = false;
+        next_available_reg = 2;
+        arm_reg1 = 0;
+        arm_reg2 = 0;
 
-        // Preload unmapped VB registers
-        if (!arm_reg1 && arm_reg2) {
-            if (inst_cache[i].reg1)
-                LDR_IO(2, 11, inst_cache[i].reg1 * 4);
-            else
-                MOV_I(2, 0, 0);
-            arm_reg1 = 2;
-            unmapped_registers = true;
-        } else if (arm_reg1 && !arm_reg2) {
-            if (inst_cache[i].reg2)
-                LDR_IO(2, 11, inst_cache[i].reg2 * 4);
-            else
-                MOV_I(2, 0, 0);
-            arm_reg2 = 2;
-            unmapped_registers = true;
-        } else if (!arm_reg1 && !arm_reg2) {
-            if (inst_cache[i].reg1)
-                LDR_IO(2, 11, inst_cache[i].reg1 * 4);
-            else
-                MOV_I(2, 0, 0);
-            if (inst_cache[i].reg2)
-                LDR_IO(3, 11, inst_cache[i].reg2 * 4);
-            else
-                MOV_I(3, 0, 0);
-            arm_reg1 = 2;
-            arm_reg2 = 3;
-            unmapped_registers = true;
+        // Map V810 registers and preload them if unmapped
+        if (inst_cache[i].reg1 != 0xFF) {
+            arm_reg1 = phys_regs[inst_cache[i].reg1];
+            if (!arm_reg1) {
+                unmapped_registers = true;
+                arm_reg1 = next_available_reg++;
+                if (inst_cache[i].reg1)
+                    LDR_IO(arm_reg1, 11, inst_cache[i].reg1 * 4);
+                else
+                    MOV_I(arm_reg1, 0, 0);
+            }
+        }
+
+        if (inst_cache[i].reg2 != 0xFF) {
+            arm_reg2 = phys_regs[inst_cache[i].reg2];
+            if (!arm_reg2) {
+                unmapped_registers = true;
+                arm_reg2 = next_available_reg++;
+                if (inst_cache[i].reg2)
+                    LDR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4);
+                else
+                    MOV_I(arm_reg2, 0, 0);
+            }
         }
 
         if (inst_cache[i].save_flags) {
