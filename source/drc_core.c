@@ -553,6 +553,13 @@ void drc_translateBlock(exec_block *block) {
                 }
                 reg2_modified = true;
                 break;
+            case V810_OP_MULU: // mul reg1, reg2
+                UMULLS(arm_reg2, phys_regs[30], arm_reg2, arm_reg1);
+                if (!phys_regs[30]) {
+                    STR_IO(0, 11, 30 * 4);
+                }
+                reg2_modified = true;
+                break;
             case V810_OP_DIV: // div reg1, reg2
                 // reg2/reg1 -> reg2 (__divsi3)
                 // reg2%reg1 -> r30 (__modsi3)
@@ -1004,6 +1011,7 @@ int drc_run() {
         dprintf(4, "[DRC]: end - 0x%x\n", PC);
     }
 
+    PC = v810_state->PC & V810_ROM1.highaddr;
     return 0;
 }
 

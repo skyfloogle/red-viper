@@ -540,6 +540,11 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 #define SMULLS(RdLo, RdHi, Rn, Rm) \
     new_multiply_long(ARM_COND_AL, 1, 0, 1, RdHi, RdLo, Rn, Rm)
 
+// umulls RdLo, RdHi, Rn, Rm
+// Unsigned multiply long
+#define UMULLS(RdLo, RdHi, Rn, Rm) \
+    new_multiply_long(ARM_COND_AL, 0, 0, 1, RdHi, RdLo, Rn, Rm)
+
 // nop
 #define NOP() \
     MOV(0, 0)

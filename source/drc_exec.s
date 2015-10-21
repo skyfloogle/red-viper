@@ -13,7 +13,7 @@
 
     @ Load the CPSR
     ldr     r3, [r11, #(34*4)]
-    msr     cpsr_flg, r3
+    msr     cpsr, r3
 
     @ Load the address of the reg map (block+17)
     add     r3, r1, #17
@@ -79,7 +79,7 @@ drc_executeBlock:
 postexec:
     pop     {r0}
     stRegs
-    @ v810_state->cycles = MAXCYCLES + r10 excess
+    @ v810_state->cycles += MAXCYCLES + r10 excess
     ldr     r0, =tVBOpt
     ldr     r0, [r0]
     add     r10, r0
