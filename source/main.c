@@ -217,7 +217,7 @@ int main() {
 #endif
             err = drc_run();
             if (err) {
-                dprintf(0, "[DRC]: error #%d @ PC=0x%08X\n", err, PC);
+                dprintf(0, "[DRC]: error #%d @ PC=0x%08X\n", err, v810_state->PC);
                 printf("\nDumping debug info...\n");
                 drc_dumpDebugInfo();
                 printf("Press any key to exit\n");
@@ -243,9 +243,9 @@ int main() {
 
 #if DEBUGLEVEL == 0
         consoleSelect(&main_console);
-        printf("\x1b[1J\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, PC);
+        printf("\x1b[1J\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, v810_state->PC);
 #else
-        printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) PC);
+        printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) v810_state->PC);
 #endif
 
         gfxFlushBuffers();

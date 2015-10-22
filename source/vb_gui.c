@@ -252,7 +252,7 @@ int emulation_sstate(void) {
     // Write registers
     fwrite(v810_state->P_REG, 4, 32, state_file);
     fwrite(v810_state->S_REG, 4, 32, state_file);
-    fwrite(&PC, 4, 1, state_file);
+    fwrite(&v810_state->PC, 4, 1, state_file);
 
     // Write the VIP registers first (could be done better!)
     fwrite(&tVIPREG.INTPND, 2, 1, state_file);
@@ -341,7 +341,7 @@ int emulation_lstate(void) {
     //Load registers
     fread(v810_state->P_REG, 4, 32, state_file);
     fread(v810_state->S_REG, 4, 32, state_file);
-    fread(&PC, 4, 1, state_file);
+    fread(&v810_state->PC, 4, 1, state_file);
 
     //Load VIP registers
     fread(&tVIPREG.INTPND, 2, 1, state_file);

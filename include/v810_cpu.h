@@ -102,10 +102,6 @@ cpu_state* v810_state;
 
 ///////////////////////////////////////////////////////////////////
 // Define CPU Globals
-
-extern WORD P_REG[32];  // Main program reg pr0-pr31
-extern WORD S_REG[32];  // System registers sr0-sr31
-extern WORD PC;         // Program Counter
 extern const BYTE opcycle[0x50]; //clock cycles
 
 //DEBUG Globals :P

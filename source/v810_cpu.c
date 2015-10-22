@@ -17,7 +17,6 @@
 
 ////////////////////////////////////////////////////////////
 // Globals
-WORD PC;		 // Program Counter
 
 const BYTE opcycle[0x50] = {
     0x01,0x01,0x01,0x01,0x01,0x01,0x03,0x01,0x0D,0x26,0x0D,0x24,0x01,0x01,0x01,0x01,
@@ -37,7 +36,7 @@ void v810_reset() {
     v810_state->reloc_table = &drc_relocTable;
 
     v810_state->P_REG[0]    =  0x00000000;
-    PC                      =  0xFFFFFFF0;
+    v810_state->PC          =  0xFFFFFFF0;
     v810_state->S_REG[ECR]  =  0x0000FFF0;
     v810_state->S_REG[PSW]  =  0x00008000;
     v810_state->S_REG[PIR]  =  0x00005346;
@@ -215,24 +214,24 @@ void v810_exp(WORD iNum, WORD eCode) {
     eCode &= 0xFFFF;
 
     if(v810_state->S_REG[PSW]&PSW_EP) { //Double Exception
-        v810_state->S_REG[FEPC] = PC;
+        v810_state->S_REG[FEPC] = v810_state->PC;
         v810_state->S_REG[FEPSW] = v810_state->S_REG[PSW];
         v810_state->S_REG[ECR] = (eCode << 16); //Exception Code, dont get it???
         v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_NP;
         v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_ID;
         //S_REG[PSW] = S_REG[PSW] | (((iNum+1) & 0x0f) << 16); //Set the Interupt status
 
-        PC = 0xFFFFFFD0;
+        v810_state->PC = 0xFFFFFFD0;
         return;
-    } else {                                // Regular Exception
-        v810_state->S_REG[EIPC] = PC;
+    } else { // Regular Exception
+        v810_state->S_REG[EIPC] = v810_state->PC;
         v810_state->S_REG[EIPSW] = v810_state->S_REG[PSW];
         v810_state->S_REG[ECR] = eCode; //Exception Code, dont get it???
         v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_EP;
         v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_ID;
         //S_REG[PSW] = S_REG[PSW] | (((iNum+1) & 0x0f) << 16); //Set the Interupt status
 
-        PC = 0xFFFFFF00 | (iNum << 4);
+        v810_state->PC = 0xFFFFFF00 | (iNum << 4);
         return;
     }
 }

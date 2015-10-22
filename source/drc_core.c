@@ -338,7 +338,7 @@ void drc_translateBlock(exec_block *block) {
     // they're not cached, they will be mapped to r2 and r3.
     BYTE arm_reg1, arm_reg2;
     BYTE arm_cond;
-    WORD start_PC = PC;
+    WORD start_PC = v810_state->PC;
     WORD end_PC;
     // For each V810 instruction, tells if either reg1 or reg2 is cached
     bool unmapped_registers;
@@ -365,6 +365,7 @@ void drc_translateBlock(exec_block *block) {
 
     // First pass: decode V810 instructions
     num_v810_inst = drc_decodeInstructions(block, inst_cache, start_PC, end_PC);
+    dprintf(3, "[DRC]: V810 block size - %d\n", num_v810_inst);
 
     // Second pass: map the most used V810 registers to ARM registers
     drc_mapRegs(block);
@@ -872,7 +873,7 @@ void drc_translateBlock(exec_block *block) {
     linearFree(inst_cache);
 
     block->size = num_arm_inst + pool_offset;
-    block->end_pc = PC;
+    block->end_pc = v810_state->PC;
 }
 
 // Returns the entrypoint for the V810 instruction in location loc if it exists
@@ -969,20 +970,21 @@ int drc_run() {
     WORD* entrypoint;
     WORD entry_PC;
 
-    while (!serviceDisplayInt(clocks, PC)) {
+    while (!serviceDisplayInt(clocks, v810_state->PC)) {
 //        serviceInt(clocks, PC);
 
-        PC = (PC & V810_ROM1.highaddr);
-        entry_PC = PC;
+        v810_state->PC &= V810_ROM1.highaddr;
+        entry_PC = v810_state->PC;
 
         // Try to find a cached block
         // TODO: make sure we have enough free space
-        entrypoint = drc_getEntry(PC, &cur_block);
+        entrypoint = drc_getEntry(v810_state->PC, &cur_block);
         if (tVBOpt.DYNAREC && (entrypoint == cache_start)) {
             cur_block = drc_getNextBlockStruct();
             cur_block->phys_offset = (uint32_t) (cache_pos - cache_start);
 
             drc_translateBlock(cur_block);
+            dprintf(3, "[DRC]: ARM block size - %d\n", cur_block->size);
 //            drc_dumpCache("cache_dump_rf.bin");
             FlushInvalidateCache();
 
@@ -998,20 +1000,19 @@ int drc_run() {
 
         drc_executeBlock(entrypoint, cur_block);
 
-        PC = v810_state->PC & V810_ROM1.highaddr;
+        v810_state->PC &= V810_ROM1.highaddr;
         clocks = v810_state->cycles;
 
-        if (PC < V810_VB_RAM.lowaddr || PC > V810_ROM1.highaddr)
+        if (v810_state->PC < V810_VB_RAM.lowaddr || v810_state->PC > V810_ROM1.highaddr)
             return DRC_ERR_BAD_PC;
 
         if (v810_state->ret) {
             v810_state->ret = 0;
             break;
         }
-        dprintf(4, "[DRC]: end - 0x%x\n", PC);
+        dprintf(4, "[DRC]: end - 0x%x\n", v810_state->PC);
     }
 
-    PC = v810_state->PC & V810_ROM1.highaddr;
     return 0;
 }
 
@@ -1062,7 +1063,7 @@ void drc_dumpDebugInfo() {
     int i;
     FILE* f = fopen("debug_info.txt", "w");
 
-    fprintf(f, "PC: 0x%08x\n", PC);
+    fprintf(f, "PC: 0x%08x\n", v810_state->PC);
     for (i = 0; i < 32; i++)
         fprintf(f, "r%d: 0x%08x\n", i, v810_state->P_REG[i]);
 
