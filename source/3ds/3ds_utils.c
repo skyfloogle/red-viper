@@ -1,5 +1,5 @@
 #include <3ds.h>
-#include "3ds_utils.h"
+#include "utils.h"
 #include "vb_set.h"
 #include "libkhax/khax.h"
 

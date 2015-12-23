@@ -155,6 +155,7 @@ int main() {
     gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
     fsInit();
     sdmcInit();
+    osSetSpeedupEnable(true);
 
 #if DEBUGLEVEL == 0
     consoleInit(GFX_BOTTOM, &debug_console);

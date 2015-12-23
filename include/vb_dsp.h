@@ -183,5 +183,6 @@ void clearCache();
 
 extern VB_DSPCACHE tDSPCACHE;
 extern BITMAP *dsp_bmp;
+uint16_t *framebuffer;
 
 #endif

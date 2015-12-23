@@ -32,18 +32,21 @@
 #include <string.h>
 #include <malloc.h>
 
+#ifdef _3DS
 #include <3ds.h>
+#endif
 
+#include "utils.h"
 #include "drc_core.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"
 #include "v810_opt.h"
 #include "vb_set.h"
 #include "vb_gui.h"
+#include "vb_types.h"
 
 #include "arm_emit.h"
 #include "arm_codegen.h"
-#include "3ds_utils.h"
 
 // Maps the most used registers in the block to V810 registers
 void drc_mapRegs(exec_block* block) {

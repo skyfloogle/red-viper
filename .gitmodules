@@ -1,6 +1,6 @@
-[submodule "source/inih"]
-	path = source/inih
+[submodule "source/common/inih"]
+	path = source/common/inih
 	url = https://github.com/benhoyt/inih.git
-[submodule "source/libkhax"]
-	path = source/libkhax
+[submodule "source/3ds/libkhax"]
+	path = source/3ds/libkhax
 	url = https://github.com/Myriachan/libkhax.git

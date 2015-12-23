@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#ifdef _3DS
 #include <3ds.h>
+#endif
+
 #include "vb_types.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"
@@ -10,11 +13,16 @@
 #include "rom_db.h"
 #include "drc_core.h"
 
+#ifdef _3DS
 #define GUI_STUB() { \
     consoleClear(); \
     printf("STUBBED"); \
     waitForInput(); \
 }
+#else
+#define GUI_STUB()
+#define consoleClear()
+#endif
 
 menu_item_t main_menu_items[] = {
     {"File", NULL, &file_menu, 0, NULL},
@@ -134,6 +142,7 @@ menu_t help_menu = {
 };
 
 u32 waitForInput() {
+#ifdef _3DS
     u32 keys;
     do {
         hidScanInput();
@@ -143,6 +152,9 @@ u32 waitForInput() {
     } while (!(keys = hidKeysDown()));
 
     return keys;
+#else
+    return getc(stdin);
+#endif
 }
 
 void save_sram(void) {

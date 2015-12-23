@@ -6,7 +6,9 @@
 #include "vb_dsp.h"
 #include "vb_set.h"
 
+#ifdef _3DS
 #include <3ds.h>
+#endif
 
 // The max number of items that can fit in the screen
 #define MAX_ITEMS 28
@@ -92,11 +94,14 @@ void clear_to_color(BITMAP *bitmap, int color) {
 
 void toggle3D() {
     tVBOpt.DSPMODE = !tVBOpt.DSPMODE;
+#ifdef _3DS
     gfxSet3D(tVBOpt.DSPMODE);
+#endif
 }
 
 // Returns the position of the selected item or -1 if the menu was cancelled
 int openMenu(menu_t* menu) {
+#ifdef _3DS
     int i, numitems, pos, startpos;
     menu_t* cur_menu = menu;
     u32 keys;
@@ -190,6 +195,9 @@ int openMenu(menu_t* menu) {
 
     gfxSetDoubleBuffering(GFX_TOP, true);
     return pos;
+#else
+    return -1;
+#endif
 }
 
 // Taken from github.com/smealum/3ds_hb_menu
@@ -203,9 +211,12 @@ static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
     *dst = 0x00;
 }
 
+#ifdef _3DS
 FS_archive sdmcArchive;
+#endif
 // TODO: Only show files that match the extension
 int fileSelect(const char* message, char* path, const char* ext) {
+#ifdef _3DS
     int i, pos = 0, item;
     menu_item_t files[64];
     char filenames[64][128];
@@ -247,4 +258,7 @@ int fileSelect(const char* message, char* path, const char* ext) {
         strncpy(path, files[item].text, 128);
 
     return item;
+#else
+    return -1;
+#endif
 }
