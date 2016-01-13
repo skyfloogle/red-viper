@@ -212,7 +212,7 @@ static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
 }
 
 #ifdef _3DS
-FS_archive sdmcArchive;
+FS_Archive sdmcArchive;
 #endif
 // TODO: Only show files that match the extension
 int fileSelect(const char* message, char* path, const char* ext) {
@@ -222,13 +222,13 @@ int fileSelect(const char* message, char* path, const char* ext) {
     char filenames[64][128];
     Handle dirHandle;
     uint32_t entries_read = 1;
-    FS_dirent entry;
+    FS_DirectoryEntry entry;
 
-    sdmcArchive = (FS_archive){0x9, (FS_path){PATH_EMPTY, 1, (uint8_t*)"/"}};
-    FSUSER_OpenArchive(NULL, &sdmcArchive);
+    sdmcArchive = (FS_Archive){0x9, (FS_Path){PATH_EMPTY, 1, (uint8_t*)"/"}};
+    FSUSER_OpenArchive(&sdmcArchive);
 
     // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
-    Result res = FSUSER_OpenDirectory(NULL, &dirHandle, sdmcArchive, FS_makePath(PATH_CHAR, "/vb/"));
+    Result res = FSUSER_OpenDirectory(&dirHandle, sdmcArchive, fsMakePath(PATH_ASCII, "/vb/"));
     if (res) {
         consoleClear();
         printf("ERROR: %08X\n", res);
@@ -239,9 +239,9 @@ int fileSelect(const char* message, char* path, const char* ext) {
     }
 
     for(i = 0; i < 32 && entries_read; i++) {
-        memset(&entry, 0, sizeof(FS_dirent));
+        memset(&entry, 0, sizeof(FS_DirectoryEntry));
         FSDIR_Read(dirHandle, &entries_read, 1, &entry);
-        if(entries_read && !entry.isDirectory) {
+        if(entries_read && !(entry.attributes & FS_ATTRIBUTE_DIRECTORY)) {
             //if(!strncmp("VB", (char*) entry.shortExt, 2)) {
             unicodeToChar(filenames[i], entry.name, 128);
             files[pos].text = filenames[i];
@@ -251,7 +251,7 @@ int fileSelect(const char* message, char* path, const char* ext) {
     }
 
     FSDIR_Close(dirHandle);
-    FSUSER_CloseArchive(NULL, &sdmcArchive);
+    FSUSER_CloseArchive(&sdmcArchive);
 
     item = openMenu(&(menu_t){message, NULL, pos, files});
     if (item >= 0 && item < pos)
