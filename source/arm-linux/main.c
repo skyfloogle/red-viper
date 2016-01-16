@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 
 #include "main.h"
 #include "v810_mem.h"
@@ -137,12 +138,24 @@ int v810_init(char * rom_name) {
     return 1;
 }
 
+int arm_keys;
+void sigint_handler(int sig) {
+    int i;
+    if (!scanf("%d", &i)) {
+        V810_DSP_Quit();
+        drc_exit();
+        exit(1);
+    }
+    arm_keys = 0xffffffff;
+}
+
 int main(int argc, char* argv[]) {
     int qwe;
     int frame = 0;
     int err = 0;
     static int Left = 0;
     int skip = 0;
+    signal(SIGINT, sigint_handler);
 
     V810_DSP_Init();
 

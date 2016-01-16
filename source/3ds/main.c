@@ -155,7 +155,6 @@ int main() {
     gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
     fsInit();
     sdmcInit();
-    osSetSpeedupEnable(true);
 
 #if DEBUGLEVEL == 0
     consoleInit(GFX_BOTTOM, &debug_console);
@@ -198,6 +197,8 @@ int main() {
 
     clearCache();
     consoleClear();
+
+    osSetSpeedupEnable(true);
 
     while(aptMainLoop()) {
         uint64_t startTime = osGetTime();

@@ -66,6 +66,7 @@
 // Defines for memory and IO acces
 // Grabed From StarScream Source
 
+#pragma pack(1)
 typedef struct {
     WORD lowaddr;  // Start of ram
     WORD highaddr; // end of ram
@@ -97,6 +98,7 @@ typedef struct {
     void(*reloc_table)(void);
     BYTE ret;
 } cpu_state;
+#pragma pack()
 
 cpu_state* v810_state;
 

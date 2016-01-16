@@ -11,7 +11,7 @@ TARGET_ARCH     := arm
 TARGET_ARCH_ABI := armeabi
 TARGET_PLATFORM := android-16
 
-ifeq ($(NDK_DEBUG), 0)
+ifeq ($(DEBUG), 0)
     LOCAL_CFLAGS    := -DDEBUGLEVEL=0
 else
     LOCAL_CFLAGS    := -DDEBUGLEVEL=3

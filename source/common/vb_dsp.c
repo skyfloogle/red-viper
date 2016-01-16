@@ -36,6 +36,7 @@ WORD ChrOff[4] = {0x00006000, 0x0000E000, 0x00016000, 0x0001E000};
 
 // Keybd Fn's. Had to put it somewhere!
 
+extern int arm_keys;
 // Read the Controller, Fix Me....
 HWORD V810_RControll() {
     int ret_keys = 0;
@@ -43,6 +44,9 @@ HWORD V810_RControll() {
 
 #ifdef _3DS
     key = hidKeysHeld();
+#else
+    ret_keys = arm_keys;
+    arm_keys = 0;
 #endif
     if (key & vbkey[14])        ret_keys |= VB_BATERY_LOW;  // Batery Low
     if (key & vbkey[13])        ret_keys |= VB_KEY_L;       // L Trigger
