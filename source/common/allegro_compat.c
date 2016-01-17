@@ -15,6 +15,8 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+// Graphics stuff
+
 void masked_blit(BITMAP *src, BITMAP *dst, int src_x, int src_y, int dst_x, int dst_y, int w, int h) {
     int x, y;
 
@@ -88,6 +90,185 @@ void clear_to_color(BITMAP *bitmap, int color) {
     if (bitmap) {
         memset(bitmap->dat, color, (bitmap->w)*(bitmap->h));
     }
+}
+
+// Sound stuff
+
+typedef struct {
+    bool playing;
+    int pos;
+    int rate;
+    float vol;
+    float pan;
+    SAMPLE* spl;
+#ifdef _3DS
+    ndspWaveBuf ndsp_buf;
+#endif
+} snd_channel;
+
+snd_channel* channels;
+u32 available;
+
+int install_sound(int digi, int midi, const char *config_path) {
+#ifdef _3DS
+#if DEBUGLEVEL == 0
+    if (ndspInit())
+        return -1;
+#endif
+#endif
+    available = 0x00FFFFFF;
+
+    channels = linearAlloc(32*sizeof(snd_channel));
+    memset(channels, 0, 32*sizeof(snd_channel));
+
+    return 0;
+}
+
+void remove_sound() {
+    linearFree(channels);
+#ifdef _3DS
+    ndspExit();
+#endif
+}
+
+SAMPLE* create_sample(int bits, int stereo, int freq, int len) {
+    SAMPLE* spl;
+
+    spl = linearAlloc(sizeof(SAMPLE));
+    if (!spl)
+        return NULL;
+
+    spl->bits = bits;
+    spl->stereo = stereo;
+    spl->freq = freq;
+    spl->priority = 128;
+    spl->len = len;
+    spl->loop_start = 0;
+    spl->loop_end = len;
+    spl->param = 0;
+
+    spl->data = linearAlloc(len * ((bits==8) ? 1 : sizeof(short)) * ((stereo) ? 2 : 1));
+    if (!spl->data) {
+        free(spl);
+        return NULL;
+    }
+
+    return spl;
+}
+
+void destroy_sample(SAMPLE *spl) {
+    if (spl) {
+        if (spl->data)
+            linearFree(spl->data);
+        linearFree(spl);
+    }
+}
+
+int allocate_voice(SAMPLE* spl) {
+    int i;
+
+    for (i = 0; i < 32; i++) {
+        if ((available>>i) & 1) {
+            available &= ~(1<<i);
+            break;
+        }
+    }
+
+    if (i == 32)
+        return -1;
+
+    channels[i].playing = false;
+    channels[i].pos = 0;
+    channels[i].rate = spl->freq;
+    channels[i].spl = spl;
+
+    return i;
+}
+
+void voice_set_playmode(int voice, int playmode) {
+#ifdef _3DS
+    channels[voice].ndsp_buf.looping = (playmode == PLAYMODE_LOOP);
+#endif
+}
+
+void voice_stop(int voice) {
+#ifdef _3DS
+    ndspChnWaveBufClear(voice);
+#endif
+    channels[voice].playing = false;
+}
+
+void deallocate_voice(int voice) {
+    available |= 1<<voice;
+}
+
+void voice_sweep_frequency(int voice, int time, int endfreq) {
+    // TODO: Actually sweep
+    voice_set_frequency(voice, endfreq);
+}
+
+void voice_set_position(int voice, int position) {
+    channels[voice].pos = position;
+    if (channels[voice].playing && position == 0)
+        voice_start(voice);
+}
+
+void voice_start(int voice) {
+    // Don't play the sound if the voice isn't allocated
+    if (available & (1<<voice))
+        return;
+    if (!channels[voice].spl || !channels[voice].spl->data)
+        return;
+
+    channels[voice].playing = true;
+#ifdef _3DS
+    memset(&channels[voice].ndsp_buf, 0, sizeof(ndspWaveBuf));
+    channels[voice].ndsp_buf.data_vaddr = channels[voice].spl->data;
+    channels[voice].ndsp_buf.nsamples = channels[voice].spl->len;
+    channels[voice].ndsp_buf.looping = true;
+    channels[voice].ndsp_buf.status = NDSP_WBUF_FREE;
+
+    ndspChnReset(voice);
+    ndspChnSetFormat(voice, (channels[voice].spl->bits == 8) ? NDSP_FORMAT_MONO_PCM8 : NDSP_FORMAT_MONO_PCM16);
+    ndspChnSetInterp(voice, NDSP_INTERP_NONE);
+    ndspChnSetRate(voice, channels[voice].spl->freq);
+    ndspChnWaveBufAdd(voice, &channels[voice].ndsp_buf);
+#endif
+}
+
+void voice_set_volume(int voice, int volume) {
+    float mix[12];
+    int i;
+    channels[voice].vol = volume/255.0f;
+#ifdef _3DS
+    for (i = 0; i < 12; i++)
+        mix[i] = channels[voice].vol;
+    ndspChnSetMix(voice, mix);
+#endif
+}
+
+int voice_get_volume(int voice) {
+    return (int)(channels[voice].vol*255);
+}
+
+void voice_set_pan(int voice, int pan) {
+    channels[voice].pan = pan/128.0f - 1;
+}
+
+void voice_ramp_volume(int voice, int time, int endvol) {
+    // TODO: Actually ramp
+    voice_set_volume(voice, endvol);
+}
+
+void voice_set_frequency(int voice, int frequency) {
+    channels[voice].rate = frequency;
+#ifdef _3DS
+    ndspChnSetRate(voice, frequency);
+#endif
+}
+
+int voice_get_frequency(int voice) {
+    return channels[voice].rate;
 }
 
 // The following is not exactly allegro stuff
