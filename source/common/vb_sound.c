@@ -44,7 +44,6 @@ void sound_init() {
         tVBOpt.SOUND = 0;
         return;
     }
-    dprintf(0, "[SND]: sound initialized\n");
 
     for (i = CH1; i <= CH5; ++i) {
         channel[i] = create_sample(8, 0, 0, 32);

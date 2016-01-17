@@ -289,6 +289,8 @@ int openMenu(menu_t* menu) {
     bool loop = true;
 
     gfxSetDoubleBuffering(GFX_TOP, false);
+    if (tVBOpt.SOUND)
+        ndspSetMasterVol(0.0);
 
     while (loop) {
         pos = 0;
@@ -375,6 +377,8 @@ int openMenu(menu_t* menu) {
     }
 
     gfxSetDoubleBuffering(GFX_TOP, true);
+    if (tVBOpt.SOUND)
+        ndspSetMasterVol(1.0);
     return pos;
 #else
     return -1;

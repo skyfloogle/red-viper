@@ -178,6 +178,7 @@ int main() {
 #endif
 
     V810_DSP_Init();
+    sound_init();
 
     if (tVBOpt.DSPMODE == DM_3D) {
         gfxSet3D(true);
@@ -194,7 +195,6 @@ int main() {
     }
 
     v810_reset();
-    sound_init();
     drc_init();
 
     clearCache();

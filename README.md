@@ -16,7 +16,7 @@ If it doesn't exist, `rd_config.ini` will be created. Some relevant options you 
  * _maxcycles_: A lower value will improve compatibility, but it will run slower.
  * _frmskip_: Number of frames to skip before drawing.
  * _debug_: If set to 1, prints debug info.
- * _sound_: Enables sound (partially implemented, but not mainlined).
+ * _sound_: Enables sound.
  * _dynarec_: If set to 0, tries to load the dynarec cache from a file instead of recompiling.
 
 ###FAQs
@@ -32,11 +32,6 @@ There were many reasons why it was commercial failure. That doesn't mean the con
 aren't worth playing. It's definitely received way more hate than it deserved.
 
 Plus, it has a nice homebrew scene with gems such as Hyper Fighting, Snatcher and many more.
-
-> Is it compatible with ninjhax 2 / tubehax / ironhax?
-
-In order for the dynarec to work, we need access to services that ninjhax 2 doesn't provide.
-However, it is possible run a limited version of the emulator.
 
 > Do I need a new 3DS to run this?
 
@@ -56,6 +51,8 @@ between four different make targets:
 * **`make testing`** adds `-O3` to CFLAGS. It's meant to be run on an emulator (citra or 3dmoo). It will output basic debug info to the terminal.
 * **`make debug`** adds `-g -O0` to CFLAGS. It builds without optimizations so it can be debugged with gdb.
 * **`make slowdebug`** adds `-g -O0` to CFLAGS. It will output a lot of debug information, which will slow emulation down but might be helpful to debug game-specific issues.
+
+For easier debugging, you can build it for android (with graphics, sound and input disabled) using `ndk-build`.
 
 ###License
 
