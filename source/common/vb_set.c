@@ -136,7 +136,7 @@ int saveFileOptions(void) {
         return 1;
 
     fprintf(f, "[vbopt]\n");
-    fprintf(f, "maxcycles=%d\n", tVBOpt.FRMSKIP);
+    fprintf(f, "maxcycles=%d\n", tVBOpt.MAXCYCLES);
     fprintf(f, "frmskip=%d\n", tVBOpt.FRMSKIP);
     fprintf(f, "dspmode=%d\n", tVBOpt.DSPMODE);
     fprintf(f, "dspswap=%d\n", tVBOpt.DSPSWAP);
