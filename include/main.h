@@ -8,7 +8,4 @@
 
 char rom_name[128];
 
-// Opens up a VB rom (passed in) and initializes the rom space
-int v810_init(char* rom_name);
-
 #endif

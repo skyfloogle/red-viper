@@ -114,6 +114,9 @@ extern const BYTE opcycle[0x50]; //clock cycles
 //////////////////////////////////////////////////////////////////////////
 // Define CPU Functions
 
+int v810_init(char *rom_name);
+void v810_exit();
+
 // Reset the registers
 void v810_reset();
 

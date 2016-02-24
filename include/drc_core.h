@@ -11,9 +11,9 @@
 #define MAX_NUM_BLOCKS 4096
 
 enum {
-    DRC_ERR_BAD_ENTRY,
-    DRC_ERR_BAD_PC,
-    DRC_ERR_NO_DYNAREC,
+    DRC_ERR_BAD_ENTRY = 1,
+    DRC_ERR_BAD_PC = 2,
+    DRC_ERR_NO_DYNAREC = 3,
 };
 
 enum {

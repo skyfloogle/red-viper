@@ -924,8 +924,6 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 
 // Initialize the dynarec
 void drc_init() {
-    u32 pages;
-
     // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
     rom_block_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     rom_entry_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
@@ -937,16 +935,15 @@ void drc_init() {
 
     if (tVBOpt.DYNAREC) {
         cache_start = memalign(0x1000, CACHE_SIZE);
-        ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7, &pages);
+        ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7);
         FlushInvalidateCache();
     } else {
-        // Uncomment for 9.3+ ninjhax2
         // cache_start = &cache_dump_bin;
         drc_loadSavedCache();
     }
 
     cache_pos = cache_start;
-    dprintf(0, "[DRC]: cache_start = %p (%d)\n", cache_start, pages);
+    dprintf(0, "[DRC]: cache_start = %p\n", cache_start);
 }
 
 // Cleanup and exit
@@ -958,6 +955,7 @@ void drc_exit() {
     free(ram_block_map);
     free(ram_entry_map);
     linearFree(block_ptr_start);
+    hbHaxExit();
 }
 
 int block_pos = 0;
@@ -969,7 +967,7 @@ exec_block* drc_getNextBlockStruct() {
 // Run V810 code until the next frame interrupt
 int drc_run() {
     static unsigned int clocks;
-    exec_block* cur_block;
+    exec_block* cur_block = NULL;
     WORD* entrypoint;
     WORD entry_PC;
 
@@ -998,14 +996,13 @@ int drc_run() {
         if ((entrypoint < cache_start) || (entrypoint > cache_start + CACHE_SIZE))
             return DRC_ERR_BAD_ENTRY;
 
-        v810_state->PC = cur_block->end_pc;
         v810_state->cycles = clocks;
-
         drc_executeBlock(entrypoint, cur_block);
 
         v810_state->PC &= V810_ROM1.highaddr;
         clocks = v810_state->cycles;
 
+        dprintf(4, "[DRC]: end - 0x%x\n", v810_state->PC);
         if (v810_state->PC < V810_VB_RAM.lowaddr || v810_state->PC > V810_ROM1.highaddr)
             return DRC_ERR_BAD_PC;
 
@@ -1013,7 +1010,6 @@ int drc_run() {
             v810_state->ret = 0;
             break;
         }
-        dprintf(4, "[DRC]: end - 0x%x\n", v810_state->PC);
     }
 
     return 0;

@@ -30,7 +30,6 @@ s32 k_flushCaches() {
 
 void hbHaxInit() {
     Handle tempHandle;
-    u32 pages;
 
     if (tVBOpt.DYNAREC) {
         if (srvGetServiceHandle(&tempHandle, "am:u")) {
@@ -50,7 +49,7 @@ void FlushInvalidateCache() {
         svcBackdoor(k_flushCaches);
 }
 
-Result ReprotectMemory(u32* addr, u32 pages, u32 mode, u32* reprotectedPages) {
+Result ReprotectMemory(u32* addr, u32 pages, u32 mode) {
     if (!tVBOpt.DYNAREC)
         return 0xFFFFFFFF;
 

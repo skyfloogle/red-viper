@@ -496,7 +496,7 @@ int debug_dumpinfo(void) {
 
     consoleClear();
     printf("\x1b[7mDump info\x1b[0m\n\n");
-    printf("\x1b[1mCRC32:\x1b[0m %08X\n", tVBOpt.CRC32);
+    printf("\x1b[1mCRC32:\x1b[0m %08lX\n", tVBOpt.CRC32);
     printf("\x1b[1mTitle:\x1b[0m %s\n", rom_db[romnum].title);
     // Prints the rom status either green (good) or red (bad)
     printf("\x1b[1mDump Status:\x1b[0m \x1b[3%cm%s\x1b[0m\n", rom_db[romnum].status[0] == 'G' ? '2' : '1', rom_db[romnum].status);

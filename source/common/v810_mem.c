@@ -5,8 +5,7 @@
 #include "vb_sound.h"
 #include "v810_mem.h"
 
-//////////////////////////////////////////////////////////
-// Memory Functions
+int is_sram = 0;
 
 // Memory read functions
 BYTE mem_rbyte(WORD addr) {

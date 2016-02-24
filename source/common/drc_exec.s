@@ -13,7 +13,7 @@
 
     @ Load the CPSR
     ldr     r3, [r11, #(34*4)]
-    msr     cpsr, r3
+    msr     cpsr_f, r3
 
     @ Load the address of the reg map (block+17)
     add     r3, r1, #17
@@ -127,7 +127,7 @@ ret_to_block:
 
 exit_block:
     @ Restore CPSR
-    msr     cpsr, r4
+    msr     cpsr_f, r4
 
     @ Exit the block ignoring linked return address
     pop     {r4, r5}

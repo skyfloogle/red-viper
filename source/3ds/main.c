@@ -13,141 +13,13 @@
 #include "vb_gui.h"
 #include "rom_db.h"
 
-int is_sram = 0; //Flag if writes to sram...
-
-int v810_init(char * rom_name) {
-    char ram_name[32];
-    unsigned int rom_size = 0;
-    unsigned int ram_size = 0;
-
-    // Open VB Rom
-    char full_path[137] = "sdmc:/vb/";
-    strcat(full_path, rom_name);
-
-    FILE* f = fopen(full_path, "r");
-    if (f) {
-        fseek(f , 0 , SEEK_END);
-        rom_size = ftell(f);
-        rewind(f);
-
-        V810_ROM1.pmemory = malloc(rom_size);
-        fread(V810_ROM1.pmemory, 1, rom_size, f);
-
-        fclose(f);
-    } else {
-        return 0;
-    }
-
-    // CRC32 Calculations
-    gen_table();
-    tVBOpt.CRC32 = get_crc(rom_size);
-
-    // Initialize our rom tables.... (USA)
-    V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
-    V810_ROM1.lowaddr  = 0x07000000;
-    V810_ROM1.off = (unsigned)V810_ROM1.pmemory - V810_ROM1.lowaddr;
-    // Offset + Lowaddr = pmemory
-
-    // Initialize our ram1 tables....
-    V810_DISPLAY_RAM.lowaddr  = 0x00000000;
-    V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
-    // Alocate space for it in memory
-    V810_DISPLAY_RAM.pmemory = (unsigned char *)malloc(((V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr) * sizeof(BYTE));
-    // Offset + Lowaddr = pmemory
-    V810_DISPLAY_RAM.off = (unsigned)V810_DISPLAY_RAM.pmemory - V810_DISPLAY_RAM.lowaddr;
-
-    // Initialize our VIPC Reg tables....
-    V810_VIPCREG.lowaddr  = 0x00040000; //0x0005F800
-    V810_VIPCREG.highaddr = 0x0005FFFF; //0x0005F870
-    // Point to the handler funcs...
-    V810_VIPCREG.rfuncb = &(vipcreg_rbyte);
-    V810_VIPCREG.wfuncb = &(vipcreg_wbyte);
-    V810_VIPCREG.rfunch = &(vipcreg_rhword);
-    V810_VIPCREG.wfunch = &(vipcreg_whword);
-    V810_VIPCREG.rfuncw = &(vipcreg_rword);
-    V810_VIPCREG.wfuncw = &(vipcreg_wword);
-
-    // Initialize our SoundRam tables....
-    V810_SOUND_RAM.lowaddr  = 0x01000000;
-    V810_SOUND_RAM.highaddr = 0x010005FF; //0x010002FF
-    // Alocate space for it in memory
-    V810_SOUND_RAM.pmemory = (unsigned char *)malloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr) * sizeof(BYTE));
-    // Offset + Lowaddr = pmemory
-    V810_SOUND_RAM.off = (unsigned)V810_SOUND_RAM.pmemory - V810_SOUND_RAM.lowaddr;
-
-    // Initialize our VBRam tables....
-    V810_VB_RAM.lowaddr  = 0x05000000;
-    V810_VB_RAM.highaddr = 0x0500FFFF;
-    // Alocate space for it in memory
-    V810_VB_RAM.pmemory = (unsigned char *)malloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr) * sizeof(BYTE));
-    // Offset + Lowaddr = pmemory
-    V810_VB_RAM.off = (unsigned)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
-
-    // Try to load up the saveRam file...
-    // First, copy the rom path and concatenate .ram to it
-    // strcpy(ram_name, rom_name);
-    // strcat(ram_name, ".ram");
-
-    // V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
-
-    if (!ram_size) {
-        is_sram = 0;
-    } else {
-        is_sram = 1;
-    }
-
-    // Initialize our GameRam tables.... (Cartrige Ram)
-    V810_GAME_RAM.lowaddr  = 0x06000000;
-    V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
-    // Alocate space for it in memory
-    if(!is_sram) {
-        V810_GAME_RAM.pmemory = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
-    }
-    // Offset + Lowaddr = pmemory
-    V810_GAME_RAM.off = (unsigned)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
-
-    if(ram_size > (V810_GAME_RAM.highaddr+1) - V810_GAME_RAM.lowaddr) {
-        ram_size = (V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr;
-    }
-
-    // Initialize our HCREG tables.... // realy reg01
-    V810_HCREG.lowaddr  = 0x02000000;
-    V810_HCREG.highaddr = 0x02FFFFFF; // Realy just 0200002C but its mirrored...
-    // Point to the handler funcs...
-    V810_HCREG.rfuncb = &(hcreg_rbyte);
-    V810_HCREG.wfuncb = &(hcreg_wbyte);
-    V810_HCREG.rfunch = &(hcreg_rhword);
-    V810_HCREG.wfunch = &(hcreg_whword);
-    V810_HCREG.rfuncw = &(hcreg_rword);
-    V810_HCREG.wfuncw = &(hcreg_wword);
-
-    mem_whword(0x0005F840, 0x0004); //XPSTTS
-
-    tHReg.SCR	= 0x4C;
-    tHReg.WCR	= 0xFC;
-    tHReg.TCR	= 0xE4;
-    tHReg.THB	= 0xFF;
-    tHReg.TLB	= 0xFF;
-    tHReg.SHB	= 0x00;
-    tHReg.SLB	= 0x00;
-    tHReg.CDRR	= 0x00;
-    tHReg.CDTR	= 0x00;
-    tHReg.CCSR	= 0xFF;
-    tHReg.CCR	= 0x6D;
-
-    tHReg.tTRC = 2000;
-    tHReg.tCount = 0xFFFF;
-    tHReg.tReset = 0;
-
-    return 1;
-}
-
 int main() {
     int qwe;
     int frame = 0;
     int err = 0;
     static int Left = 0;
     int skip = 0;
+    char full_path[256] = "";
     PrintConsole main_console;
 #if DEBUGLEVEL == 0
     PrintConsole debug_console;
@@ -188,6 +60,7 @@ int main() {
 
     if (fileSelect("Load ROM", rom_name, "vb") < 0)
         goto exit;
+    strncat(full_path, rom_name, 256);
     tVBOpt.ROM_NAME = rom_name;
 
     if (!v810_init(rom_name)) {
@@ -258,11 +131,11 @@ int main() {
     }
 
 exit:
+    v810_exit();
     V810_DSP_Quit();
     sound_close();
     drc_exit();
 
-    hbHaxExit();
     sdmcExit();
     fsExit();
     gfxExit();

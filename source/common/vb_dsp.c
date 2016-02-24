@@ -14,6 +14,8 @@
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_dsp.h"
+#include "vb_sound.h"
+#include "drc_core.h"
 #include "allegro_compat.h"
 
 // Globals
@@ -64,9 +66,9 @@ HWORD V810_RControll() {
     if (key & vbkey[1])         ret_keys |= VB_LPAD_D;      // Left Pad, Down
     else if (key & vbkey[0])    ret_keys |= VB_LPAD_U;      // Left Pad, Up
 
-    uint8_t battery_level;
+    //uint8_t battery_level;
     //PTMU_GetBatteryLevel(NULL, &battery_level);
-    if (battery_level <= 1)     ret_keys |= VB_BATERY_LOW;
+    //if (battery_level <= 1)     ret_keys |= VB_BATERY_LOW;
 
     ret_keys = ret_keys|0x0002; // Always set bit1, ctrl ID
     return ret_keys;
