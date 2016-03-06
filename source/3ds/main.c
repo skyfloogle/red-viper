@@ -19,7 +19,7 @@ int main() {
     int err = 0;
     static int Left = 0;
     int skip = 0;
-    char full_path[256] = "";
+    char full_path[256] = "sdmc:/vb/";
     PrintConsole main_console;
 #if DEBUGLEVEL == 0
     PrintConsole debug_console;
@@ -63,7 +63,7 @@ int main() {
     strncat(full_path, rom_name, 256);
     tVBOpt.ROM_NAME = rom_name;
 
-    if (!v810_init(rom_name)) {
+    if (!v810_init(full_path)) {
         goto exit;
     }
 
