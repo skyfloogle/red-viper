@@ -699,10 +699,10 @@ void drc_translateBlock(exec_block *block) {
                 BLX(ARM_COND_AL, 1);
 
                 // TODO: Implement sxtb
-                // lsl r0, r0, #8
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 8, ARM_SHIFT_LSL, 0);
-                // asr reg2, r0, #8
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 8, ARM_SHIFT_ASR, 0);
+                // lsl r0, r0, #24
+                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 24, ARM_SHIFT_LSL, 0);
+                // asr reg2, r0, #24
+                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 24, ARM_SHIFT_ASR, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
