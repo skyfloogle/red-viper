@@ -966,7 +966,7 @@ int drc_run() {
     WORD entry_PC;
 
     while (!serviceDisplayInt(clocks, v810_state->PC)) {
-        serviceInt(clocks, PC);
+        serviceInt(clocks, v810_state->PC);
 
         v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;
