@@ -657,26 +657,20 @@ void drc_translateBlock(exec_block *block) {
                 reg2_modified = true;
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
-                MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
-                // asr r0, r0, #16
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
+                MOV_I(0, (inst_cache[i].imm >> 8), 24);
+                ORR_I(0, (inst_cache[i].imm & 0xFF), 0);
                 ANDS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_XORI: // xori imm16, reg1, reg2
-                MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
-                // asr r0, r0, #16
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
+                MOV_I(0, (inst_cache[i].imm >> 8), 24);
+                ORR_I(0, (inst_cache[i].imm & 0xFF), 0);
                 EORS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
-                MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
-                // asr r0, r0, #16
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
+                MOV_I(0, (inst_cache[i].imm >> 8), 24);
+                ORR_I(0, (inst_cache[i].imm & 0xFF), 0);
                 ORRS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
@@ -972,7 +966,7 @@ int drc_run() {
     WORD entry_PC;
 
     while (!serviceDisplayInt(clocks, v810_state->PC)) {
-//        serviceInt(clocks, PC);
+        serviceInt(clocks, PC);
 
         v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;

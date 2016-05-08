@@ -320,11 +320,14 @@
 // TODO: Implement unconditional instructions
 
 // Maps the V810 branch condition code (opcode & 0xF) to ARM conditions
+// FIXME:
+//  * BNH -> bcs + beq
+//  * BH  -> bcc + bne
 const BYTE cond_map[] = {
         // V810_OP_BV, V810_OP_BL, V810_OP_BE, V810_OP_BNH, V810_OP_BN, V810_OP_BR
-        ARM_COND_VS, ARM_COND_CC, ARM_COND_EQ, ARM_COND_LS, ARM_COND_MI, ARM_COND_AL,
+        ARM_COND_VS, ARM_COND_CS, ARM_COND_EQ, ARM_COND_LS, ARM_COND_MI, ARM_COND_AL,
         // V810_OP_BLT, V810_OP_BLE, V810_OP_BNV, V810_OP_BNL, V810_OP_BNE, V810_OP_BH,
-        ARM_COND_LT, ARM_COND_LE, ARM_COND_VC, ARM_COND_CS, ARM_COND_NE, ARM_COND_HI,
+        ARM_COND_LT, ARM_COND_LE, ARM_COND_VC, ARM_COND_CC, ARM_COND_NE, ARM_COND_HI,
         // V810_OP_BP, NOP, V810_OP_BGE, V810_OP_BGT
         ARM_COND_PL, ARM_COND_NV, ARM_COND_GE, ARM_COND_GT
 };
