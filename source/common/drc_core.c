@@ -180,9 +180,15 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
             case V810_OP_LD_B:
             case V810_OP_LD_H:
             case V810_OP_LD_W:
+            case V810_OP_IN_B:
+            case V810_OP_IN_H:
+            case V810_OP_IN_W:
             case V810_OP_ST_B:
             case V810_OP_ST_H:
             case V810_OP_ST_W:
+            case V810_OP_OUT_B:
+            case V810_OP_OUT_H:
+            case V810_OP_OUT_W:
                 inst_cache[i].save_flags = true;
                 break;
             default:
@@ -683,6 +689,7 @@ void drc_translateBlock(exec_block *block) {
                 reg2_modified = true;
                 break;
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
+            case V810_OP_IN_B: // in.b disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -692,14 +699,19 @@ void drc_translateBlock(exec_block *block) {
                 ADD_I(1, 1, DRC_RELOC_RBYTE*4, 0);
                 BLX(ARM_COND_AL, 1);
 
-                // TODO: Implement sxtb
-                // lsl r0, r0, #24
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 24, ARM_SHIFT_LSL, 0);
-                // asr reg2, r0, #24
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 24, ARM_SHIFT_ASR, 0);
+                if (inst_cache[i].opcode == V810_OP_LD_B) {
+                    // TODO: Implement sxtb
+                    // lsl r0, r0, #24
+                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 24, ARM_SHIFT_LSL, 0);
+                    // asr reg2, r0, #24
+                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 24, ARM_SHIFT_ASR, 0);
+                } else {
+                    MOV(arm_reg2, 0);
+                }
                 reg2_modified = true;
                 break;
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
+            case V810_OP_IN_H: // in.h disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -709,14 +721,19 @@ void drc_translateBlock(exec_block *block) {
                 ADD_I(1, 1, DRC_RELOC_RHWORD*4, 0);
                 BLX(ARM_COND_AL, 1);
 
-                // TODO: Implement sxth
-                // lsl r0, r0, #16
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_LSL, 0);
-                // asr reg2, r0, #16
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 16, ARM_SHIFT_ASR, 0);
+                if (inst_cache[i].opcode == V810_OP_LD_H) {
+                    // TODO: Implement sxth
+                    // lsl r0, r0, #16
+                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_LSL, 0);
+                    // asr reg2, r0, #16
+                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 16, ARM_SHIFT_ASR, 0);
+                } else {
+                    MOV(arm_reg2, 0);
+                }
                 reg2_modified = true;
                 break;
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
+            case V810_OP_IN_W: // in.w disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -729,7 +746,8 @@ void drc_translateBlock(exec_block *block) {
                 MOV(arm_reg2, 0);
                 reg2_modified = true;
                 break;
-            case V810_OP_ST_B: // st.h reg2, disp16 [reg1]
+            case V810_OP_ST_B:  // st.h reg2, disp16 [reg1]
+            case V810_OP_OUT_B: // out.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -744,7 +762,8 @@ void drc_translateBlock(exec_block *block) {
                 ADD_I(2, 2, DRC_RELOC_WBYTE*4, 0);
                 BLX(ARM_COND_AL, 2);
                 break;
-            case V810_OP_ST_H: // st.h reg2, disp16 [reg1]
+            case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
+            case V810_OP_OUT_H: // out.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -759,7 +778,8 @@ void drc_translateBlock(exec_block *block) {
                 ADD_I(2, 2, DRC_RELOC_WHWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
                 break;
-            case V810_OP_ST_W: // st.h reg2, disp16 [reg1]
+            case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
+            case V810_OP_OUT_W: // out.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
                     ADD(0, 0, arm_reg1);
@@ -795,6 +815,12 @@ void drc_translateBlock(exec_block *block) {
                 BIC_I(0, 1, 20);
                 STR_IO(0, 11, (35 + PSW) * 4);
                 break;
+            case V810_OP_SETF: // setf imm5, reg2
+                MOV_I(arm_reg2, 0, 0);
+                // mov<cond> reg2, 1
+                new_data_proc_imm(cond_map[inst_cache[i].imm & 0xF], ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
+                reg2_modified = true;
+                break;
             case V810_OP_NOP:
                 NOP();
                 break;
@@ -802,7 +828,7 @@ void drc_translateBlock(exec_block *block) {
                 POP(1 << 15);
                 break;
             default:
-                dprintf(0, "[DRC]: 0x%x not implemented\n", inst_cache[i].opcode);
+                dprintf(0, "[DRC]: %s (0x%x) not implemented\n", optable[inst_cache[i].opcode].opname, inst_cache[i].opcode);
                 // Fill unimplemented instructions with a nop and hope the game still runs
                 NOP();
                 break;
