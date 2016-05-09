@@ -120,7 +120,7 @@ int main() {
 
 #if DEBUGLEVEL == 0
         consoleSelect(&main_console);
-        printf("\x1b[1J\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%x", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, v810_state->PC);
+        printf("\x1b[1J\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%x\nDRC cache: %.2f%%", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, v810_state->PC, (cache_pos-cache_start)*4*100./CACHE_SIZE);
 #else
         printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) v810_state->PC);
 #endif

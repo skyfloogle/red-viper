@@ -14,6 +14,7 @@ enum {
     DRC_ERR_BAD_ENTRY = 1,
     DRC_ERR_BAD_PC = 2,
     DRC_ERR_NO_DYNAREC = 3,
+    DRC_ERR_NO_BLOCKS = 4,
 };
 
 enum {
@@ -63,8 +64,8 @@ WORD* ram_block_map;
 WORD* rom_entry_map;
 WORD* ram_entry_map;
 BYTE reg_usage[32];
-WORD* cache_start;
-static WORD* cache_pos;
+extern WORD* cache_start;
+extern WORD* cache_pos;
 exec_block* block_ptr_start;
 extern void* cache_dump_bin;
 

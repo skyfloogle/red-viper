@@ -48,6 +48,9 @@
 #include "arm_emit.h"
 #include "arm_codegen.h"
 
+WORD* cache_start;
+WORD* cache_pos;
+
 // Maps the most used registers in the block to V810 registers
 void drc_mapRegs(exec_block* block) {
     int i, j, max;
@@ -979,8 +982,9 @@ void drc_exit() {
 }
 
 int block_pos = 0;
-// TODO: Make it safer
 exec_block* drc_getNextBlockStruct() {
+    if (block_pos > MAX_NUM_BLOCKS)
+        return NULL;
     return &block_ptr_start[block_pos++];
 }
 
@@ -1002,6 +1006,8 @@ int drc_run() {
         entrypoint = drc_getEntry(v810_state->PC, &cur_block);
         if (tVBOpt.DYNAREC && (entrypoint == cache_start)) {
             cur_block = drc_getNextBlockStruct();
+            if (!cur_block)
+                return DRC_ERR_NO_BLOCKS;
             cur_block->phys_offset = (uint32_t) (cache_pos - cache_start);
 
             drc_translateBlock(cur_block);
