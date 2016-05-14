@@ -52,12 +52,12 @@ between four different make targets:
 * **`make debug`** adds `-g -O0` to CFLAGS. It builds without optimizations so it can be debugged with gdb.
 * **`make slowdebug`** adds `-g -O0` to CFLAGS. It will output a lot of debug information, which will slow emulation down but might be helpful to debug game-specific issues.
 
-For easier debugging, you can build it for android (with graphics, sound and input disabled) using `ndk-build`.
+For easier debugging, you can build it for arm-linux (tested on a Raspberry Pi) with `make -f Makefile.linux` or for android using `ndk-build`.
 
 ###License
 
 Some of the code is distributed under the MIT License (check source files for that) but, since
-this is a port of Red Dragon (which was based on Reality Boy), here is (part of) the original readme:
+this is a port of Reality Boy, here is (part of) the original readme:
 
 ```
 This Reality Boy emulator is copyright (C) David Tucker 1997-2008, all rights

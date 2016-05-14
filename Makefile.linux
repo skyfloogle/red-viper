@@ -1,0 +1,54 @@
+# arm-linux makefile
+
+TARGET		:=	$(notdir $(CURDIR))
+BUILD		:=	build
+SOURCES		:=	source/common source/arm-linux source/common/inih
+INCLUDES	:=	include source/common/inih
+
+ARCH	:=	-march=armv6 -mfloat-abi=hard
+
+CFLAGS	:=	-Wall -Wno-unused \
+			-fomit-frame-pointer -ffast-math \
+			$(ARCH)
+
+OUTPUT	:=	$(CURDIR)/$(TARGET)
+TOPDIR	:=	$(CURDIR)
+
+DEPSDIR	:=	$(CURDIR)/$(BUILD)
+VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
+			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+
+CFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+SFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+OFILES	:=	$(addsuffix .o,$(BINFILES)) \
+			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			-I$(CURDIR)/$(BUILD)
+
+CFLAGS	+=	$(INCLUDE)
+ASFLAGS	:=	-g $(ARCH)
+LIBS	:=	-lm
+
+all: slowdebug
+release:	CFLAGS += -O3 -DDEBUGLEVEL=0
+testing:	CFLAGS += -O3 -DDEBUGLEVEL=1
+debug:		CFLAGS += -g -O0 -DDEBUGLEVEL=2
+slowdebug:	CFLAGS += -g -O0 -DDEBUGLEVEL=3
+
+release testing debug slowdebug: $(BUILD) $(OUTPUT).elf
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $(DEPSDIR)/$@
+
+%.o: %.s
+	$(CC) $(CFLAGS) -c $< -o $(DEPSDIR)/$@
+
+$(BUILD):
+	@[ -d $@ ] || mkdir -p $@
+
+$(OUTPUT).elf: $(OFILES)
+	$(CC) $(CFLAGS) $(LIBS) -o $@ $(BUILD)/*.o
+
+clean:
+	@rm -rf build $(OUTPUT).elf
