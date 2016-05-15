@@ -314,7 +314,7 @@
     (cond)  <<28    |\
     (0b101) <<25    |\
     (l)     <<24    |\
-    (imm)           )
+    (imm&0xffffff)  )
 
 // Unconditional instructions
 // TODO: Implement unconditional instructions
