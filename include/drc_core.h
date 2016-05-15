@@ -15,6 +15,7 @@ enum {
     DRC_ERR_BAD_PC = 2,
     DRC_ERR_NO_DYNAREC = 3,
     DRC_ERR_NO_BLOCKS = 4,
+    DRC_ERR_CACHE_FULL = 5,
 };
 
 enum {
@@ -79,10 +80,11 @@ BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]);
 
 void drc_scanBlockBounds(WORD *p_start_PC, WORD *p_end_PC);
 unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_cache, WORD start_PC, WORD end_PC);
-void drc_translateBlock(exec_block* block);
+int drc_translateBlock(exec_block* block);
 void drc_executeBlock(WORD* entrypoint, exec_block* block);
 int drc_handleInterrupts(WORD cpsr, WORD* PC);
 void drc_relocTable(void);
+void drc_clearCache(void);
 
 WORD* drc_getEntry(WORD loc, exec_block **p_block);
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block);

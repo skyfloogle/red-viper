@@ -50,6 +50,7 @@
 
 WORD* cache_start;
 WORD* cache_pos;
+int block_pos = 0;
 
 // Maps the most used registers in the block to V810 registers
 void drc_mapRegs(exec_block* block) {
@@ -339,8 +340,9 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
 }
 
 // Translates a V810 block into ARM code
-void drc_translateBlock(exec_block *block) {
+int drc_translateBlock(exec_block *block) {
     int i, j;
+    int err = 0;
     // Stores the number of clock cycles since the last branch
     unsigned int cycles = 0;
     unsigned int num_v810_inst, num_arm_inst;
@@ -883,6 +885,10 @@ void drc_translateBlock(exec_block *block) {
     }
 
     num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
+    if ((cache_pos - cache_start + num_arm_inst)*4 > CACHE_SIZE) {
+        err = DRC_ERR_CACHE_FULL;
+        goto cleanup;
+    }
 
     // Fourth pass: assemble and link
     for (i = 0; i < num_v810_inst; i++) {
@@ -907,14 +913,31 @@ void drc_translateBlock(exec_block *block) {
         }
     }
 
+    block->size = num_arm_inst + pool_offset;
+    block->end_pc = v810_state->PC;
+
+cleanup:
 #ifdef LITERAL_POOL
     linearFree(pool_cache_start);
 #endif
     linearFree(trans_cache);
     linearFree(inst_cache);
+    return err;
+}
 
-    block->size = num_arm_inst + pool_offset;
-    block->end_pc = v810_state->PC;
+// Clear and invalidate the dynarec cache
+void drc_clearCache() {
+    dprintf(0, "[DRC]: clearing cache...\n");
+    cache_pos = cache_start;
+    block_pos = 0;
+
+    memset(cache_start, 0, CACHE_SIZE);
+    memset(rom_block_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    memset(rom_entry_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    memset(ram_block_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
+    memset(rom_entry_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
+
+    FlushInvalidateCache();
 }
 
 // Returns the entrypoint for the V810 instruction in location loc if it exists
@@ -996,7 +1019,6 @@ void drc_exit() {
     hbHaxExit();
 }
 
-int block_pos = 0;
 exec_block* drc_getNextBlockStruct() {
     if (block_pos > MAX_NUM_BLOCKS)
         return NULL;
@@ -1025,7 +1047,11 @@ int drc_run() {
                 return DRC_ERR_NO_BLOCKS;
             cur_block->phys_offset = (uint32_t) (cache_pos - cache_start);
 
-            drc_translateBlock(cur_block);
+            if (drc_translateBlock(cur_block) == DRC_ERR_CACHE_FULL) {
+                drc_clearCache();
+                continue;
+            }
+
             dprintf(3, "[DRC]: ARM block size - %d\n", cur_block->size);
 //            drc_dumpCache("cache_dump_rf.bin");
             FlushInvalidateCache();
