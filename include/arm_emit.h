@@ -383,6 +383,12 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 #define ORR_I(Rd, imm8, rot) \
     new_data_proc_imm(ARM_COND_AL, ARM_OP_ORR, 0, Rd, Rd, rot>>1, imm8)
 
+// eor Rd, imm, ror #rot
+// Xor immediate
+// imm8 can be rotated an even number of times
+#define EOR_I(Rd, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_EOR, 0, Rd, Rd, rot>>1, imm8)
+
 // bic Rd, imm, ror #rot
 // Bit clear immediate
 // imm8 can be rotated an even number of times
@@ -557,6 +563,9 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
         (inst_ptr-1)->needs_branch = true; \
 }
 
+#define Boff(cond, off) \
+    new_branch_link(cond, 0, (off)-2); \
+
 // bl<cond> imm
 // Branch and link
 #define BL(cond, imm) {\
@@ -579,6 +588,13 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 // Move from register to CPSR
 #define MSR(Rn) \
     new_move_reg_to_cpsr(ARM_COND_AL, 0, 0b1000, 0b1111, 0, Rn);
+
+// Invert the carry flag
+#define INV_CARRY() { \
+    MRS(0); \
+    EOR_I(0, 0b10, 4); \
+    MSR(0); \
+}
 
 // Load word into register using a literal pool
 #ifdef LITERAL_POOL

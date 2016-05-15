@@ -481,7 +481,6 @@ void drc_translateBlock(exec_block *block) {
             case V810_OP_BV:
             case V810_OP_BL:
             case V810_OP_BE:
-            case V810_OP_BNH:
             case V810_OP_BN:
             case V810_OP_BR:
             case V810_OP_BLT:
@@ -489,13 +488,26 @@ void drc_translateBlock(exec_block *block) {
             case V810_OP_BNV:
             case V810_OP_BNL:
             case V810_OP_BNE:
-            case V810_OP_BH:
             case V810_OP_BP:
             case V810_OP_BGE:
             case V810_OP_BGT:
                 arm_cond = cond_map[inst_cache[i].opcode & 0xF];
                 HANDLEINT(inst_cache[i].PC);
                 B(arm_cond, 0);
+                break;
+            // Special case: bnh and bh can't be directly translated to ARM
+            case V810_OP_BNH:
+                HANDLEINT(inst_cache[i].PC);
+                // Branch if C == 1 or Z == 1
+                B(ARM_COND_CS, 0);
+                B(ARM_COND_EQ, 0);
+                break;
+            case V810_OP_BH:
+                HANDLEINT(inst_cache[i].PC);
+                // Branch if C == 0 and Z == 0
+                Boff(ARM_COND_CS, 3);
+                Boff(ARM_COND_EQ, 2);
+                B(ARM_COND_AL, 0);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
@@ -534,6 +546,7 @@ void drc_translateBlock(exec_block *block) {
                 break;
             case V810_OP_SUB: // sub reg1, reg2
                 SUBS(arm_reg2, arm_reg2, arm_reg1);
+                INV_CARRY();
                 reg2_modified = true;
                 break;
             case V810_OP_CMP: // cmp reg1, reg2
@@ -543,6 +556,7 @@ void drc_translateBlock(exec_block *block) {
                     RSBS_I(0, arm_reg1, 0, 0);
                 else
                     CMP(arm_reg2, arm_reg1);
+                INV_CARRY();
                 break;
             case V810_OP_SHL: // shl reg1, reg2
                 LSLS(arm_reg2, arm_reg2, arm_reg1);
@@ -648,6 +662,7 @@ void drc_translateBlock(exec_block *block) {
             case V810_OP_CMP_I: // cmp imm5, reg2
                 MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
                 CMP_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
+                INV_CARRY();
                 reg2_modified = true;
                 break;
             case V810_OP_SHL_I: // shl imm5, reg2
