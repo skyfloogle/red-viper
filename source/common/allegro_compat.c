@@ -409,8 +409,7 @@ int fileSelect(const char* message, char* path, const char* ext) {
     uint32_t entries_read = 1;
     FS_DirectoryEntry entry;
 
-    sdmcArchive = (FS_Archive){0x9, (FS_Path){PATH_EMPTY, 1, (uint8_t*)"/"}};
-    FSUSER_OpenArchive(&sdmcArchive);
+    FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (uint8_t*)"/"});
 
     // Scan directory. Partially taken from github.com/smealum/3ds_hb_menu
     Result res = FSUSER_OpenDirectory(&dirHandle, sdmcArchive, fsMakePath(PATH_ASCII, "/vb/"));
@@ -436,7 +435,7 @@ int fileSelect(const char* message, char* path, const char* ext) {
     }
 
     FSDIR_Close(dirHandle);
-    FSUSER_CloseArchive(&sdmcArchive);
+    FSUSER_CloseArchive(sdmcArchive);
 
     item = openMenu(&(menu_t){message, NULL, pos, files});
     if (item >= 0 && item < pos)
