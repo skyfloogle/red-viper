@@ -39,10 +39,11 @@ menu_item_t file_menu_items[] = {
 };
 
 menu_item_t options_menu_items[] = {
-    {"Video", options_video, NULL, 0, NULL},
+    {"Max cycles", options_maxcycles, NULL, 0, NULL},
+    {"Frameskip", options_frameskip, NULL, 0, NULL},
+    {"Toggle debug", options_debug, NULL, 0, NULL},
+    {"Toggle sound", options_sound, NULL, 0, NULL},
     {"Input", options_input, NULL, 0, NULL},
-    {"Emulation", options_emulation, NULL, 0, NULL},
-    {"Save Options", options_saveoptions, NULL, 0, NULL},
 };
 
 menu_item_t emulation_menu_items[] = {
@@ -205,26 +206,75 @@ int file_exit(void) {
     return D_EXIT;
 }
 
-int options_video(void) {
-    // TODO: Implement me!
-    GUI_STUB();
+int options_maxcycles(void) {
+#ifdef _3DS
+    char buf[5] = "";
+    SwkbdState swkbd;
+    SwkbdButton button;
+
+    sprintf(buf, "%d", tVBOpt.MAXCYCLES);
+
+    swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 4);
+    swkbdSetInitialText(&swkbd, buf);
+    swkbdSetHintText(&swkbd, "The max number of cycles before checking for interrupts");
+    if (swkbdInputText(&swkbd, buf, sizeof(buf)) != SWKBD_BUTTON_CONFIRM)
+        return D_OK;
+
+    tVBOpt.MAXCYCLES = atoi(buf);
+    
+    saveFileOptions();
+#endif
+    return D_OK;
+}
+
+int options_frameskip(void) {
+#ifdef _3DS
+    char buf[2] = "";
+    SwkbdState swkbd;
+    SwkbdButton button;
+
+    sprintf(buf, "%d", tVBOpt.FRMSKIP);
+
+    swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 2, 1);
+    swkbdSetInitialText(&swkbd, buf);
+    swkbdSetHintText(&swkbd, "The number of frames to skip");
+    if (swkbdInputText(&swkbd, buf, sizeof(buf)) != SWKBD_BUTTON_CONFIRM)
+        return D_OK;
+
+    tVBOpt.FRMSKIP = atoi(buf);
+ 
+    saveFileOptions();
+#endif
+    return D_OK;
+}
+
+int options_debug(void) {
+#ifdef _3DS
+    consoleClear();
+    tVBOpt.DEBUG = !tVBOpt.DEBUG;
+    printf("Debug output %s", tVBOpt.DEBUG ? "enabled" : "disabled");
+    waitForInput();
+
+    saveFileOptions();
+#endif
+    return D_OK;
+}
+
+int options_sound(void) {
+#ifdef _3DS
+    consoleClear();
+    tVBOpt.SOUND = !tVBOpt.SOUND;
+    printf("Sound %s", tVBOpt.DEBUG ? "enabled" : "disabled");
+    waitForInput();
+
+    saveFileOptions();
+#endif
     return D_OK;
 }
 
 int options_input(void) {
     // TODO: Implement me!
     GUI_STUB();
-    return D_OK;
-}
-
-int options_emulation(void) {
-    // TODO: Implement me!
-    GUI_STUB();
-    return D_OK;
-}
-
-int options_saveoptions(void) {
-    saveFileOptions();
     return D_OK;
 }
 
