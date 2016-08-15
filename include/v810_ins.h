@@ -16,35 +16,35 @@
 #define sign_5(num) (((num) & 0x0010) ? (WORD)((num)|0xFFFFFFE0) : (num))
 
 
-extern void ins_err   (int arg1, int arg2, int tos3); //Special handler?
+extern void ins_err   (int arg1, int arg2); //Special handler?
 
 //Bitstring SubOpcodes
-extern void ins_sch0bsu (int arg1, int arg2, int arg3);
-extern void ins_sch0bsd (int arg1, int arg2, int arg3);
-extern void ins_sch1bsu (int arg1, int arg2, int arg3);
-extern void ins_sch1bsd (int arg1, int arg2, int arg3);
-extern void ins_orbsu   (int arg1, int arg2, int arg3);
-extern void ins_andbsu  (int arg1, int arg2, int arg3);
-extern void ins_xorbsu  (int arg1, int arg2, int arg3);
-extern void ins_movbsu  (int arg1, int arg2, int arg3);
-extern void ins_ornbsu  (int arg1, int arg2, int arg3);
-extern void ins_andnbsu (int arg1, int arg2, int arg3);
-extern void ins_xornbsu (int arg1, int arg2, int arg3);
-extern void ins_notbsu  (int arg1, int arg2, int arg3);
+extern void ins_sch0bsu (int arg1, int arg2);
+extern void ins_sch0bsd (int arg1, int arg2);
+extern void ins_sch1bsu (int arg1, int arg2);
+extern void ins_sch1bsd (int arg1, int arg2);
+extern void ins_orbsu   (int arg1, int arg2);
+extern void ins_andbsu  (int arg1, int arg2);
+extern void ins_xorbsu  (int arg1, int arg2);
+extern void ins_movbsu  (int arg1, int arg2);
+extern void ins_ornbsu  (int arg1, int arg2);
+extern void ins_andnbsu (int arg1, int arg2);
+extern void ins_xornbsu (int arg1, int arg2);
+extern void ins_notbsu  (int arg1, int arg2);
 
 //FPU SubOpcodes
-extern void ins_cmpf_s  (int arg1, int arg2, int arg3);
-extern void ins_cvt_ws  (int arg1, int arg2, int arg3);
-extern void ins_cvt_sw  (int arg1, int arg2, int arg3);
-extern void ins_addf_s  (int arg1, int arg2, int arg3);
-extern void ins_subf_s  (int arg1, int arg2, int arg3);
-extern void ins_mulf_s  (int arg1, int arg2, int arg3);
-extern void ins_divf_s  (int arg1, int arg2, int arg3);
-extern void ins_trnc_sw (int arg1, int arg2, int arg3);
-extern void ins_xb      (int arg1, int arg2, int arg3); //Undocumented opcode XB (non-FPU)
-extern void ins_xh      (int arg1, int arg2, int arg3); //Undocumented opcode XH (non-FPU)
-extern void ins_rev     (int arg1, int arg2, int arg3); //Undocumented opcode REV (non-FPU)
-extern void ins_mpyhw   (int arg1, int arg2, int arg3); //Undocumented opcode MPYHW (non-FPU)
+extern float ins_cmpf_s  (float reg1, float reg2);
+extern float ins_cvt_ws  (int   reg1, float reg2);
+extern int   ins_cvt_sw  (float reg1, int   reg2);
+extern float ins_addf_s  (float reg1, float reg2);
+extern float ins_subf_s  (float reg1, float reg2);
+extern float ins_mulf_s  (float reg1, float reg2);
+extern float ins_divf_s  (float reg1, float reg2);
+extern int   ins_trnc_sw (float reg1, int   reg2);
+extern void ins_xb      (int arg1, int arg2); //Undocumented opcode XB (non-FPU)
+extern void ins_xh      (int arg1, int arg2); //Undocumented opcode XH (non-FPU)
+extern void ins_rev     (int arg1, int arg2); //Undocumented opcode REV (non-FPU)
+extern void ins_mpyhw   (int arg1, int arg2); //Undocumented opcode MPYHW (non-FPU)
 
 #endif
 

@@ -11,24 +11,26 @@
 #define MAX_NUM_BLOCKS 4096
 
 enum {
-    DRC_ERR_BAD_ENTRY = 1,
-    DRC_ERR_BAD_PC = 2,
-    DRC_ERR_NO_DYNAREC = 3,
-    DRC_ERR_NO_BLOCKS = 4,
-    DRC_ERR_CACHE_FULL = 5,
+    DRC_ERR_BAD_ENTRY   = 1,
+    DRC_ERR_BAD_PC      = 2,
+    DRC_ERR_NO_DYNAREC  = 3,
+    DRC_ERR_NO_BLOCKS   = 4,
+    DRC_ERR_CACHE_FULL  = 5,
 };
 
 enum {
-    DRC_RELOC_DIVSI,
-    DRC_RELOC_MODSI,
-    DRC_RELOC_UDIVSI,
-    DRC_RELOC_UMODSI,
-    DRC_RELOC_RBYTE,
-    DRC_RELOC_RHWORD,
-    DRC_RELOC_RWORD,
-    DRC_RELOC_WBYTE,
-    DRC_RELOC_WHWORD,
-    DRC_RELOC_WWORD,
+    DRC_RELOC_DIVSI     = 0,
+    DRC_RELOC_MODSI     = 1,
+    DRC_RELOC_UDIVSI    = 2,
+    DRC_RELOC_UMODSI    = 3,
+    DRC_RELOC_RBYTE     = 4,
+    DRC_RELOC_RHWORD    = 5,
+    DRC_RELOC_RWORD     = 6,
+    DRC_RELOC_WBYTE     = 7,
+    DRC_RELOC_WHWORD    = 8,
+    DRC_RELOC_WWORD     = 9,
+    DRC_RELOC_FPP       = 10,
+    DRC_RELOC_BSTR      = 26,
 };
 
 #define END_BLOCK 0xFF

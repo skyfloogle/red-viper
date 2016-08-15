@@ -193,6 +193,7 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
             case V810_OP_OUT_B:
             case V810_OP_OUT_H:
             case V810_OP_OUT_W:
+            case V810_OP_FPP:
                 inst_cache[i].save_flags = true;
                 break;
             default:
@@ -839,6 +840,15 @@ int drc_translateBlock(exec_block *block) {
                 MOV_I(arm_reg2, 0, 0);
                 // mov<cond> reg2, 1
                 new_data_proc_imm(cond_map[inst_cache[i].imm & 0xF], ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
+                reg2_modified = true;
+                break;
+            case V810_OP_FPP:
+                MOV_IS(0, arm_reg1, 0, 0);
+                MOV_IS(1, arm_reg2, 0, 0);
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, (DRC_RELOC_FPP+inst_cache[i].imm)*4, 0);
+                BLX(ARM_COND_AL, 2);
+                MOV_IS(arm_reg2, 0, 0, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_NOP:
