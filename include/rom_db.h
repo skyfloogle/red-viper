@@ -14,6 +14,6 @@ extern ROM_INFO rom_db[];
 
 int db_find(unsigned long crc32);
 void gen_table(void);
-unsigned long get_crc(int romsize);   
+unsigned long get_crc(int romsize);
 
 #endif
