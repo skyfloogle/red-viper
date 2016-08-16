@@ -328,6 +328,26 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
     inst_ptr++;
 }
 
+
+// Floating-point data-processing instructions
+static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12, BYTE b8, BYTE opc3, BYTE b4, BYTE opc4) {
+    inst_ptr->type = ARM_FLOATING_POINT;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->needs_branch = false;
+    inst_ptr->fp = (arm_inst_fp) {
+            opc1,
+            opc2,
+            b12,
+            b8,
+            opc3,
+            b4,
+            opc4
+    };
+
+    inst_ptr++;
+}
+
 /**
 * Higher level macros
 */
@@ -550,6 +570,50 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 // Unsigned multiply long
 #define UMULLS(RdLo, RdHi, Rn, Rm) \
     new_multiply_long(ARM_COND_AL, 0, 0, 1, RdHi, RdLo, Rn, Rm)
+
+// vmov Sn, Rt
+#define VMOV_SR(Sn, Rt) \
+    new_floating_point(ARM_COND_AL, 0, Sn>>1, Rt, 0b1010, (Sn&1)<<1, 1, 0)
+
+// vmov Rt, Sn
+#define VMOV_RS(Rt, Sn) \
+    new_floating_point(ARM_COND_AL, 1, Sn>>1, Rt, 0b1010, (Sn&1)<<1, 1, 0)
+
+// vcvt.f32.u32
+#define VCVT_F32_U32(Sd, Sm) \
+    new_floating_point(ARM_COND_AL, 0b1011|((Sd&1)<<2), 0b1000, Sd>>1, 0, 1, (Sm&1)<<1, Sm>>1)
+
+// vcvt.u32.f32
+#define VCVT_U32_F32(Sd, Sm) \
+    new_floating_point(ARM_COND_AL, 0b1011|((Sd&1)<<2), 0b1100, Sd>>1, 0, 1, (Sm&1)<<1, Sm>>1)
+
+// vcvt.f32.s32
+#define VCVT_F32_S32(Sd, Sm) \
+    new_floating_point(ARM_COND_AL, 0b1011|((Sd&1)<<2), 0b1000, Sd>>1, 0, 0b11, (Sm&1)<<1, Sm>>1)
+
+// vcvt.s32.f32
+#define VCVT_S32_F32(Sd, Sm) \
+    new_floating_point(ARM_COND_AL, 0b1011|((Sd&1)<<2), 0b1101, Sd>>1, 0, 1, (Sm&1)<<1, Sm>>1)
+
+// vadd.f32 Sd, Sn, Sm
+#define VADD_F32(Sd, Sn, Sm) \
+    new_floating_point(ARM_COND_AL, 0b11|((Sd&1)<<2), Sn>>1, Sd>>1, 0, (Sn&1)<<1, (Sm&1)<<1, Sm>>1)
+
+// vsub.f32 Sd, Sn, Sm
+#define VSUB_F32(Sd, Sn, Sm) \
+    new_floating_point(ARM_COND_AL, 0b11|((Sd&1)<<2), Sn>>1, Sd>>1, 0, 1|((Sn&1)<<1), (Sm&1)<<1, Sm>>1)
+
+// vmul.f32 Sd, Sn, Sm
+#define VMUL_F32(Sd, Sn, Sm) \
+    new_floating_point(ARM_COND_AL, 0b10|((Sd&1)<<2), Sn>>1, Sd>>1, 0, (Sn&1)<<1, (Sm&1)<<1, Sm>>1)
+
+// vdiv.f32 Sd, Sn, Sm
+#define VDIV_F32(Sd, Sn, Sm) \
+    new_floating_point(ARM_COND_AL, 0b1000|((Sd&1)<<2), Sn>>1, Sd>>1, 0, (Sn&1)<<1, (Sm&1)<<1, Sm>>1)
+
+// vcmp.f32 Sd, Sn, Sm
+#define VCMP_F32(Sd, Sm) \
+    new_floating_point(ARM_COND_AL, 0b1011|((Sd&1)<<2), 0b0100, Sd>>1, 0, 1, (Sm&1)<<1, Sm>>1)
 
 // nop
 #define NOP() \

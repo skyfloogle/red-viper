@@ -316,6 +316,24 @@
     (l)     <<24    |\
     (imm&0xffffff)  )
 
+// 31   28     24     20     16    12     9    8      6    5   4      0
+// +-------------------------------------------------------------------+
+// | COND | 1110 | opc1 | opc2 | b12 | 101 | b8 | opc3 | b5 | 0 | opc4 |
+// +-------------------------------------------------------------------+
+// Floating-point
+#define gen_floating_point(cond, opc1, opc2, b12, b8, opc3, b4, opc4) \
+                        (\
+    (cond)      <<28    |\
+    (0b1110)    <<24    |\
+    (opc1&0xf)  <<20    |\
+    (opc2&0xf)  <<16    |\
+    (b12&0xf)   <<12    |\
+    (0b101)     <<9     |\
+    (b8&1)      <<8     |\
+    (opc3&0x3)  <<6     |\
+    (b4&0x3)    <<4     |\
+    (opc4&0xf)          )
+
 // Unconditional instructions
 // TODO: Implement unconditional instructions
 
@@ -381,6 +399,9 @@ static inline void drc_assemble(WORD* dst, arm_inst* src) {
             break;
         case ARM_BRANCH_LINK:
             *dst = gen_branch_link(src->cond, src->b_bl.l, src->b_bl.imm);
+            break;
+        case ARM_FLOATING_POINT:
+            *dst = gen_floating_point(src->cond, src->fp.opc1, src->fp.opc2, src->fp.b12, src->fp.b8, src->fp.opc3, src->fp.b4, src->fp.opc4);
             break;
     }
 }

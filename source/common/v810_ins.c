@@ -205,7 +205,6 @@ void ins_notbsu  (int arg1, int arg2) {
 
 //FPU SubOpcodes  
 float ins_cmpf_s(float reg1, float reg2) {
-    dprintf(0, "[FP]: %s - %f %f\n", __func__, (float)reg1, (float)reg2);
     int flags = 0; // Set Flags, OV set to Zero
     float fTemp = reg2 - reg1;
     if (fTemp == 0.0F) flags = flags | PSW_Z;
@@ -216,7 +215,6 @@ float ins_cmpf_s(float reg1, float reg2) {
 }
 
 float ins_cvt_ws(int reg1, float reg2) {   //Int to Float
-    dprintf(0, "[FP]: %s - %f %f\n", __func__, (float)reg1, (float)reg2);
     int flags = 0; // Set Flags, OV set to Zero
     reg2 = (float)reg1;
     if (reg2 == 0) flags = flags | PSW_Z;
@@ -227,7 +225,6 @@ float ins_cvt_ws(int reg1, float reg2) {   //Int to Float
 }
 
 int ins_cvt_sw(float reg1, int reg2) {  //Float To Int
-    dprintf(0, "[FP]: %s - %f %f\n", __func__, (float)reg1, (float)reg2);
     int flags = 0; // Set Flags, CY unchanged, OV set to Zero
     reg2 = lroundf(reg1);
     if (reg2 == 0) flags = flags | PSW_Z;
@@ -238,7 +235,6 @@ int ins_cvt_sw(float reg1, int reg2) {  //Float To Int
 }
 
 float ins_addf_s(float reg1, float reg2) {
-    dprintf(0, "[FP]: %s - %f %f\n", __func__, (float)reg1, (float)reg2);
     int flags = 0; // Set Flags, OV set to Zero
     reg2 += reg1;
     if (reg2 == 0.0F) flags = flags | PSW_Z;
@@ -249,7 +245,6 @@ float ins_addf_s(float reg1, float reg2) {
 }
 
 float ins_subf_s(float reg1, float reg2) {
-    dprintf(0, "[FP]: %s - %f %f\n", __func__, (float)reg1, (float)reg2);
     int flags = 0; // Set Flags, OV set to Zero
     reg2 -= reg1;
     if (reg2 == 0.0F) flags = flags | PSW_Z;
@@ -260,7 +255,6 @@ float ins_subf_s(float reg1, float reg2) {
 }
 
 float ins_mulf_s(float reg1, float reg2) {
-    dprintf(0, "[FP]: %s - %f %f\n", __func__, (float)reg1, (float)reg2);
     int flags = 0; // Set Flags, OV set to Zero
     reg2 *= reg1;
     if (reg2 == 0.0F) flags = flags | PSW_Z;
@@ -271,7 +265,6 @@ float ins_mulf_s(float reg1, float reg2) {
 }
 
 float ins_divf_s(float reg1, float reg2) {
-    dprintf(0, "[FP]: %s - %f %f\n", __func__, (float)reg1, (float)reg2);
     int flags = 0; // Set Flags, OV set to Zero
     reg2 /= reg1;
     if (reg2 == 0.0F) flags = flags | PSW_Z;

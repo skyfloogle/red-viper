@@ -69,6 +69,7 @@ typedef enum {
     ARM_SWAP,
     ARM_LDST_MULT,
     ARM_BRANCH_LINK,
+    ARM_FLOATING_POINT,
 } arm_inst_type;
 
 typedef struct {
@@ -221,6 +222,16 @@ typedef struct {
 } arm_inst_b_bl;
 
 typedef struct {
+    BYTE opc1;
+    BYTE opc2;
+    BYTE b12;
+    BYTE b8;
+    BYTE opc3;
+    BYTE b4;
+    BYTE opc4;
+} arm_inst_fp;
+
+typedef struct {
     arm_inst_type type;
     BYTE cond;
     WORD PC;
@@ -247,6 +258,7 @@ typedef struct {
         arm_inst_swp swp;
         arm_inst_ldstm ldstm;
         arm_inst_b_bl b_bl;
+        arm_inst_fp fp;
     };
 } arm_inst;
 

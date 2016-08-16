@@ -193,7 +193,6 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
             case V810_OP_OUT_B:
             case V810_OP_OUT_H:
             case V810_OP_OUT_W:
-            case V810_OP_FPP:
                 inst_cache[i].save_flags = true;
                 break;
             default:
@@ -843,13 +842,63 @@ int drc_translateBlock(exec_block *block) {
                 reg2_modified = true;
                 break;
             case V810_OP_FPP:
-                MOV_IS(0, arm_reg1, 0, 0);
-                MOV_IS(1, arm_reg2, 0, 0);
-                LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, (DRC_RELOC_FPP+inst_cache[i].imm)*4, 0);
-                BLX(ARM_COND_AL, 2);
-                MOV_IS(arm_reg2, 0, 0, 0);
-                reg2_modified = true;
+                switch (inst_cache[i].imm) {
+                case V810_OP_CVT_WS:
+                    VMOV_SR(0, arm_reg1);
+                    VCVT_F32_S32(0, 0);
+                    VMOV_RS(arm_reg2, 0);
+                    reg2_modified = true;
+                    break;
+                case V810_OP_CVT_SW:
+                    VMOV_SR(0, arm_reg1);
+                    VCVT_S32_F32(0, 0);
+                    VMOV_RS(arm_reg2, 0);
+                    reg2_modified = true;
+                    break;
+                case V810_OP_CMPF_S:
+                    VMOV_SR(0, arm_reg1);
+                    VMOV_SR(1, arm_reg2);
+                    VCMP_F32(1, 0);
+                    break;
+                case V810_OP_ADDF_S:
+                    VMOV_SR(0, arm_reg1);
+                    VMOV_SR(1, arm_reg2);
+                    VADD_F32(0, 1, 0);
+                    VMOV_RS(arm_reg2, 0);
+                    reg2_modified = true;
+                    break;
+                case V810_OP_SUBF_S:
+                    VMOV_SR(0, arm_reg1);
+                    VMOV_SR(1, arm_reg2);
+                    VSUB_F32(0, 1, 0);
+                    VMOV_RS(arm_reg2, 0);
+                    reg2_modified = true;
+                    break;
+                case V810_OP_MULF_S:
+                    VMOV_SR(0, arm_reg1);
+                    VMOV_SR(1, arm_reg2);
+                    VMUL_F32(0, 1, 0);
+                    VMOV_RS(arm_reg2, 0);
+                    reg2_modified = true;
+                    break;
+                case V810_OP_DIVF_S:
+                    VMOV_SR(0, arm_reg1);
+                    VMOV_SR(1, arm_reg2);
+                    VDIV_F32(0, 1, 0);
+                    VMOV_RS(arm_reg2, 0);
+                    reg2_modified = true;
+                    break;
+                default:
+                    // TODO: Implement me!
+                    MOV_IS(0, arm_reg1, 0, 0);
+                    MOV_IS(1, arm_reg2, 0, 0);
+                    LDR_IO(2, 11, 69 * 4);
+                    ADD_I(2, 2, (DRC_RELOC_FPP+inst_cache[i].imm)*4, 0);
+                    BLX(ARM_COND_AL, 2);
+                    MOV_IS(arm_reg2, 0, 0, 0);
+                    reg2_modified = true;
+                    break;
+                }
                 break;
             case V810_OP_NOP:
                 NOP();
