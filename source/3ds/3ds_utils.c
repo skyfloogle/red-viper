@@ -1,7 +1,6 @@
 #include <3ds.h>
 #include "utils.h"
 #include "vb_set.h"
-#include "libkhax/khax.h"
 
 s32 k_patchSVC() {
     __asm__ volatile("cpsid aif");
@@ -32,9 +31,7 @@ void hbHaxInit() {
     Handle tempHandle;
 
     if (tVBOpt.DYNAREC) {
-        if (srvGetServiceHandle(&tempHandle, "am:u")) {
-            khaxInit();
-        } else {
+        if (!srvGetServiceHandle(&tempHandle, "am:u")) {
             svcCloseHandle(tempHandle);
             svcBackdoor(k_patchSVC);
         }

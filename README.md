@@ -19,6 +19,8 @@ If it doesn't exist, `rd_config.ini` will be created. Some relevant options you 
  * _sound_: Enables sound.
  * _dynarec_: If set to 0, tries to load the dynarec cache from a file instead of recompiling.
 
+The 3dsx will only work on exploitable system versions (<=11.2) after running [fasthax](https://github.com/nedwill/fasthax/releases).
+
 ###FAQs
 
 > Why would you make a Virtual Boy emulator? Nobody asked for it.

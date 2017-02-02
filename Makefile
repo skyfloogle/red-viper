@@ -33,7 +33,7 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/common source/3ds source/common/inih source/3ds/libkhax
+SOURCES		:=	source/common source/3ds source/common/inih
 DATA		:=	data
 INCLUDES	:=	include source/common/inih
 
