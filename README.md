@@ -7,7 +7,7 @@ A WIP Virtual Boy emulator for the 3DS based on Reality Boy / Red Dragon. You ca
 
 There's an experimental dynarec implemented but it still needs optimizing.
 
-###Usage
+### Usage
 
 You can place place ROMs in /vb/.
 
@@ -21,7 +21,7 @@ If it doesn't exist, `rd_config.ini` will be created. Some relevant options you 
 
 The 3dsx will only work on exploitable system versions (<=11.2) after running [fasthax](https://github.com/nedwill/fasthax/releases).
 
-###FAQs
+### FAQs
 
 > Why would you make a Virtual Boy emulator? Nobody asked for it.
 
@@ -44,7 +44,7 @@ but it's unlikely.
 
 You can find the latest release [here](https://github.com/mrdanielps/r3Ddragon/releases).
 
-###Building
+### Building
 
 Once you have [ctrulib installed](http://3dbrew.org/wiki/Setting_up_Development_Environment), you can choose
 between four different make targets:
@@ -56,7 +56,7 @@ between four different make targets:
 
 For easier debugging, you can build it for arm-linux (tested on a Raspberry Pi) with `make -f Makefile.linux` or for android using `ndk-build`.
 
-###License
+### License
 
 Some of the code is distributed under the MIT License (check source files for that) but, since
 this is a port of Reality Boy, here is (part of) the original readme:
@@ -109,7 +109,7 @@ Virtual Boy is a trade mark of Nintendo
 Reality Boy is in no way affiliated with either of these parties
 ```
 
-###Credits
+### Credits
 
 * Everyone mentioned in the license. Without Reality Boy and Red Dragon it wouldn't have been possible.
 * smealum and contributors - ctrulib.
