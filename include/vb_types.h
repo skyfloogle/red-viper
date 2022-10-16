@@ -14,7 +14,7 @@
 #define INT64U uint64_t //64 bit Unsigned
 
 // TODO: Ideally we shouldn't need this
-#ifndef _3DS
+#ifndef __3DS__
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;

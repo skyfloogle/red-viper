@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#ifdef _3DS
+#ifdef __3DS__
 #include <3ds.h>
 #endif
 
@@ -13,7 +13,7 @@
 #include "rom_db.h"
 #include "drc_core.h"
 
-#ifdef _3DS
+#ifdef __3DS__
 #define GUI_STUB() { \
     consoleClear(); \
     printf("STUBBED"); \
@@ -143,7 +143,7 @@ menu_t help_menu = {
 };
 
 u32 waitForInput() {
-#ifdef _3DS
+#ifdef __3DS__
     u32 keys;
     do {
         hidScanInput();
@@ -207,7 +207,7 @@ int file_exit(void) {
 }
 
 int options_maxcycles(void) {
-#ifdef _3DS
+#ifdef __3DS__
     char buf[5] = "";
     SwkbdState swkbd;
     SwkbdButton button;
@@ -228,7 +228,7 @@ int options_maxcycles(void) {
 }
 
 int options_frameskip(void) {
-#ifdef _3DS
+#ifdef __3DS__
     char buf[2] = "";
     SwkbdState swkbd;
     SwkbdButton button;
@@ -249,7 +249,7 @@ int options_frameskip(void) {
 }
 
 int options_debug(void) {
-#ifdef _3DS
+#ifdef __3DS__
     consoleClear();
     tVBOpt.DEBUG = !tVBOpt.DEBUG;
     printf("Debug output %s", tVBOpt.DEBUG ? "enabled" : "disabled");
@@ -261,7 +261,7 @@ int options_debug(void) {
 }
 
 int options_sound(void) {
-#ifdef _3DS
+#ifdef __3DS__
     consoleClear();
     tVBOpt.SOUND = !tVBOpt.SOUND;
     printf("Sound %s", tVBOpt.DEBUG ? "enabled" : "disabled");

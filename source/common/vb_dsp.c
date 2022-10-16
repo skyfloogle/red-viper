@@ -1,4 +1,4 @@
-#ifdef _3DS
+#ifdef __3DS__
 #include <3ds.h>
 #endif
 
@@ -44,7 +44,7 @@ HWORD V810_RControll() {
     int ret_keys = 0;
     int key = 0;
 
-#ifdef _3DS
+#ifdef __3DS__
     key = hidKeysHeld();
 #else
     ret_keys = arm_keys;
@@ -76,7 +76,7 @@ HWORD V810_RControll() {
 
 void screen_blit(BITMAP *bitmap, int src_x, int src_y, int screen) {
     int x, y;
-#ifdef _3DS
+#ifdef __3DS__
     uint16_t* fb = (uint16_t*)gfxGetFramebuffer(GFX_TOP, screen, NULL, NULL);
 #else
     uint16_t* fb = framebuffer;
@@ -1043,7 +1043,7 @@ bool V810_DSP_Init() {
     clear_to_color(world_bmp2,(tVIPREG.BKCOL & 0x3) + 1);   // zero the memory bitmap
     clear_to_color(dsp_bmp,(tVIPREG.BKCOL & 0x3) + 1);      // zero the memory bitmap
 
-#ifndef _3DS
+#ifndef __3DS__
     framebuffer = malloc(400*240*sizeof(uint16_t));
 #endif
 
@@ -1096,7 +1096,7 @@ void V810_DSP_Quit() {
     for (i = 0; i < 4; i++) {
         destroy_bitmap(tDSPCACHE.ObjCacheBMP[i]);
     }
-#ifndef _3DS
+#ifndef __3DS__
     free(framebuffer);
 #endif
 }

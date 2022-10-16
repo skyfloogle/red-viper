@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifdef _3DS
+#ifdef __3DS__
 #include <3ds.h>
 #endif
 
@@ -32,7 +32,7 @@ void setDefaults(void) {
     tVBOpt.DYNAREC  = 1;
 
     // Default keys
-#ifdef _3DS
+#ifdef __3DS__
     vbkey[VB_KCFG_LUP] = KEY_DUP;
     vbkey[VB_KCFG_LDOWN] = KEY_DDOWN;
     vbkey[VB_KCFG_LLEFT] = KEY_DLEFT;

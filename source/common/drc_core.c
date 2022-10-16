@@ -32,7 +32,7 @@
 #include <string.h>
 #include <malloc.h>
 
-#ifdef _3DS
+#ifdef __3DS__
 #include <3ds.h>
 #endif
 
