@@ -46,6 +46,12 @@ You can find the latest release [here](https://github.com/mrdanielps/r3Ddragon/r
 
 ### Building
 
+Before building fetch the dependencies:
+
+```bash
+> git submodule update
+```
+
 Once you have [ctrulib installed](http://3dbrew.org/wiki/Setting_up_Development_Environment), you can choose
 between four different make targets:
 
