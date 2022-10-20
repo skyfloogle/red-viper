@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+/opt/devkitpro/pacman/bin/pacman --noconfirm -S 3dstools devkitARM devkitARM-gdb 3ds-dev devkit-env
+

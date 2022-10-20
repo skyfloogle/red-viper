@@ -1,0 +1,30 @@
+on: [push]
+
+name: Build r3Ddragon
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      DEVKITARM: /opt/devkitpro/devkitARM
+      DEVKITPRO: /opt/devkitpro
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Fetch submodules
+        run: ${GITHUB_WORKSPACE}/scripts/fetch-submodules
+      - name: Install devkit pro
+        run: sudo ${GITHUB_WORKSPACE}/scripts/install-devkitpro-pacman
+      - name: Install 3DS dev packages
+        run: sudo ${GITHUB_WORKSPACE}/scripts/install-3DS-dev-packages
+      - name: Set up GCC
+        uses: egor-tensin/setup-gcc@v1
+        with:
+          version: latest
+          platform: x64
+      - name: build r3Ddragon
+        run: make release
+      - uses: actions/upload-artifact@v3
+        with:
+          name: r3Ddragon.cia
+          path: r3Ddragon.cia
