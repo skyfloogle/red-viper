@@ -62,6 +62,8 @@ typedef struct {
     void (*func)(int, int, int); //pointer to handler func =)
 } operation;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
 static operation optable[80] = {
     { AM_I,       "mov  ", /*&(ins_mov)  */ &(ins_err) },           // 0x00
     { AM_I,       "add  ", /*&(ins_add)  */ &(ins_err) },           // 0x01
@@ -200,7 +202,7 @@ static suboperation fpsuboptable[16] = {
     { "FErrorE", &(ins_err )    },           // 0x0E  // Unknown
     { "FErrorF", &(ins_err )    },           // 0x0F  // Unknown
 };
-
+#pragma GCC diagnostic pop
 // All instructions greater than 0x50 are undefined (this should not be possible of course)
 
 ///////////////////////////////////////////////////////////////////

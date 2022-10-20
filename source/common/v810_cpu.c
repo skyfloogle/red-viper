@@ -319,7 +319,7 @@ void v810_int(WORD iNum, WORD PC) {
     if((v810_state->S_REG[PSW] & PSW_ID)) return; // Interupt disabled
     if(iNum < ((v810_state->S_REG[PSW] & PSW_IA)>>16)) return; // Interupt to low on the chain
 
-    dprintf(1, "[INT]: iNum=0x%x\n", iNum);
+    dprintf(1, "[INT]: iNum=0x%lx\n", iNum);
 
     //Ready to Generate the Interupts
     v810_state->S_REG[EIPC]  = PC;

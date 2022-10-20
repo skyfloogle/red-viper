@@ -372,7 +372,7 @@ int drc_translateBlock(exec_block *block) {
     WORD pool_offset = 0;
 
     drc_scanBlockBounds(&start_PC, &end_PC);
-    dprintf(0, "[DRC]: new block - 0x%x->0x%x\n", start_PC, end_PC);
+    dprintf(0, "[DRC]: new block - 0x%lx->0x%lx\n", start_PC, end_PC);
 
     // Clear previous block register stats
     memset(reg_usage, 0, 32);
@@ -1111,14 +1111,14 @@ int drc_run() {
                 continue;
             }
 
-            dprintf(3, "[DRC]: ARM block size - %d\n", cur_block->size);
+            dprintf(3, "[DRC]: ARM block size - %ld\n", cur_block->size);
 //            drc_dumpCache("cache_dump_rf.bin");
             FlushInvalidateCache();
 
             cache_pos += cur_block->size;
             entrypoint = drc_getEntry(entry_PC, NULL);
         }
-        dprintf(3, "[DRC]: entry - 0x%x (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
+        dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
         if ((entrypoint < cache_start) || (entrypoint > cache_start + CACHE_SIZE))
             return DRC_ERR_BAD_ENTRY;
 
@@ -1128,7 +1128,7 @@ int drc_run() {
         v810_state->PC &= V810_ROM1.highaddr;
         clocks = v810_state->cycles;
 
-        dprintf(4, "[DRC]: end - 0x%x\n", v810_state->PC);
+        dprintf(4, "[DRC]: end - 0x%lx\n", v810_state->PC);
         if (v810_state->PC < V810_VB_RAM.lowaddr || v810_state->PC > V810_ROM1.highaddr)
             return DRC_ERR_BAD_PC;
 
@@ -1143,21 +1143,20 @@ int drc_run() {
 
 void drc_loadSavedCache() {
     FILE* f;
-    int ret;
     f = fopen("rom_block_map", "r");
-    ret = fread(rom_block_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fread(rom_block_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
     fclose(f);
     f = fopen("rom_entry_map", "r");
-    ret = fread(rom_entry_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fread(rom_entry_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
     fclose(f);
     f = fopen("ram_block_map", "r");
-    ret = fread(ram_block_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
+    fread(ram_block_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
     fclose(f);
     f = fopen("ram_entry_map", "r");
-    ret = fread(ram_entry_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
+    fread(ram_entry_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
     fclose(f);
     f = fopen("block_heap", "r");
-    ret = fread(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
+    fread(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
     fclose(f);
 }
 
@@ -1188,14 +1187,14 @@ void drc_dumpDebugInfo() {
     int i;
     FILE* f = fopen("debug_info.txt", "w");
 
-    fprintf(f, "PC: 0x%08x\n", v810_state->PC);
+    fprintf(f, "PC: 0x%08lx\n", v810_state->PC);
     for (i = 0; i < 32; i++)
-        fprintf(f, "r%d: 0x%08x\n", i, v810_state->P_REG[i]);
+        fprintf(f, "r%d: 0x%08lx\n", i, v810_state->P_REG[i]);
 
     for (i = 0; i < 32; i++)
-        fprintf(f, "s%d: 0x%08x\n", i, v810_state->S_REG[i]);
+        fprintf(f, "s%d: 0x%08lx\n", i, v810_state->S_REG[i]);
 
-    fprintf(f, "Cycles: %d\n", v810_state->cycles);
+    fprintf(f, "Cycles: %ld\n", v810_state->cycles);
     fprintf(f, "Cache start: %p\n", cache_start);
     fprintf(f, "Cache pos: %p\n", cache_pos);
 

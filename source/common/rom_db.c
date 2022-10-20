@@ -53,10 +53,10 @@ ROM_INFO rom_db[] =
     { "Virtual League Baseball (U)",     0x2E20B6E7, "Bad (2)" },
     { "Virtual League Baseball (U)",     0xCE830401, "Bad (3)" },
     { "Virtual Pro Yakyuu '95 (J)",      0x9BA8BB5E, "Good"    },
-    { "Waterworld (U)",                  0x82A95E51, "Good" },
+    { "Waterworld (U)",                  0x82A95E51, "Good"    },
     { "Waterworld (U)",                  0x742298D1, "Bad (1)" },
 
-    { '\0', 0, '\0' }
+    {{ '\0', 0, '\0' }}
 };
 
 int db_find(unsigned long crc32) {

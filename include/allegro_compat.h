@@ -83,7 +83,7 @@ typedef struct _menu_item_s {
 } menu_item_t;
 
 typedef struct _menu_s {
-    char* title;            // The title of the menu
+    const char* title;            // The title of the menu
     struct _menu_s* parent; // The previous menu
     int numitems;           // The number of items in the menu
     struct _menu_item_s* items;
