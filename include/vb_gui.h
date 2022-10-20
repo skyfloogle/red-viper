@@ -1,6 +1,7 @@
 #ifndef VB_GUI_H
 #define VB_GUI_H
 
+#include "3ds.h"
 #include "allegro_compat.h"
 
 #define AKILL           0x01

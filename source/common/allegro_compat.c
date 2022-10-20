@@ -5,6 +5,7 @@
 #include "allegro_compat.h"
 #include "vb_dsp.h"
 #include "vb_set.h"
+#include "vb_gui.h"
 
 #ifdef __3DS__
 #include <3ds.h>
@@ -415,7 +416,7 @@ int fileSelect(const char* message, char* path, const char* ext) {
     Result res = FSUSER_OpenDirectory(&dirHandle, sdmcArchive, fsMakePath(PATH_ASCII, "/vb/"));
     if (res) {
         consoleClear();
-        printf("ERROR: %08X\n", res);
+        printf("ERROR: %08lX\n", res);
         printf("Unable to open sdmc:/vb/\n");
         printf("Press any key to exit...\n");
         waitForInput();
