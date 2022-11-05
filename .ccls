@@ -1,0 +1,9 @@
+--gcc-toolchain=/usr
+-I./source/common/inih
+-I./include
+-I/opt/devkitpro/libctru/include
+-target=armv6k
+-DARM11
+-D__3DS__
+
+
