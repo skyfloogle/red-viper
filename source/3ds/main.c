@@ -61,9 +61,7 @@ int main() {
     if (fileSelect("Load ROM", rom_name, "vb") < 0)
         goto exit;
 
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wstringop-overflow="
-    strncat(full_path, rom_name, 256);
+    strncat(full_path, rom_name, 255);
     #pragma GCC diagnostic pop
     tVBOpt.ROM_NAME = rom_name;
 

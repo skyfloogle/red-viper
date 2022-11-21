@@ -28,3 +28,7 @@ jobs:
         with:
           name: r3Ddragon.cia
           path: r3Ddragon.cia
+      - uses: actions/upload-artifact@v3
+        with:
+          name: r3Ddragon.3dsx
+          path: r3Ddragon.3dsx
