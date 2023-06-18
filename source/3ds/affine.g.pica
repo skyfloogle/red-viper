@@ -1,0 +1,38 @@
+.gsh point c0
+
+.constf myconst(0.0, 0.0, -1.0, 1.0)
+
+.out outpos position
+.out outtc0 texcoord0
+
+.entry gmain
+.proc gmain
+    setemit 0
+    mov r0, myconst
+    mov r0.xy, v0.xy
+    mov outpos, r0
+    mov outtc0, v1
+    emit
+
+    setemit 1
+    mov r0.x, v0.z
+    mov outpos, r0
+    mov r2, v1
+    add outtc0.xy, r2.xy, v2.xy
+    emit
+
+    setemit 2, prim
+    mov r0.xy, v0.xw
+    mov outpos, r0
+    add r1.xy, r2.xy, v2.zw
+    mov outtc0, r1
+    emit
+
+    setemit 0, prim inv
+    mov r0.x, v0.z
+    mov outpos, r0
+    add outtc0.xy, r1.xy, v2.xy
+    emit
+
+    end
+.end

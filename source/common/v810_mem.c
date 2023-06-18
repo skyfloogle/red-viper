@@ -192,6 +192,7 @@ void mem_wbyte(WORD addr, BYTE data) {
                         ((addr>=0x0001E000)&&(addr<0x00020000))) {
                     for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
                     tDSPCACHE.ObjDataCacheInvalid=1;
+                    tDSPCACHE.CharCacheInvalid=1;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     //tDSPCACHE.DDSPDataWrite=1;
                 }
@@ -215,6 +216,7 @@ void mem_wbyte(WORD addr, BYTE data) {
             //Invalidate, writes to Char table
             for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
             tDSPCACHE.ObjDataCacheInvalid=1;
+            tDSPCACHE.CharCacheInvalid=1;
         }
         break;
     case 0x1000000:
@@ -263,6 +265,7 @@ void mem_whword(WORD addr, HWORD data) {
                         ((addr>=0x0001E000)&&(addr<0x00020000))) {
                     for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
                     tDSPCACHE.ObjDataCacheInvalid=1;
+                    tDSPCACHE.CharCacheInvalid=1;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     //tDSPCACHE.DDSPDataWrite=1;
                 }
@@ -286,6 +289,7 @@ void mem_whword(WORD addr, HWORD data) {
             //Invalidate, writes to Char table
             for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
             tDSPCACHE.ObjDataCacheInvalid=1;
+            tDSPCACHE.CharCacheInvalid=1;
         }
         break;
     case 0x1000000:
@@ -334,6 +338,7 @@ void mem_wword(WORD addr, WORD data) {
                         ((addr>=0x0001E000)&&(addr<0x00020000))) {
                     for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
                     tDSPCACHE.ObjDataCacheInvalid=1;
+                    tDSPCACHE.CharCacheInvalid=1;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     //tDSPCACHE.DDSPDataWrite=1;
                 }
@@ -357,6 +362,7 @@ void mem_wword(WORD addr, WORD data) {
             //Invalidate, writes to Char table
             for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
             tDSPCACHE.ObjDataCacheInvalid=1;
+            tDSPCACHE.CharCacheInvalid=1;
         }
         break;
     case 0x1000000:

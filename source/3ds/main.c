@@ -13,6 +13,8 @@
 #include "vb_gui.h"
 #include "rom_db.h"
 
+void doAllTheDrawing();
+
 int main() {
     int qwe;
     int frame = 0;
@@ -25,7 +27,7 @@ int main() {
     PrintConsole debug_console;
 #endif
 
-    gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
+    gfxInitDefault();
     fsInit();
     archiveMountSdmc();
 
@@ -90,46 +92,37 @@ int main() {
             }
         }
 
-        for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
 #if DEBUGLEVEL == 0
-            consoleSelect(&debug_console);
+        consoleSelect(&debug_console);
 #endif
-            err = drc_run();
-            if (err) {
-                dprintf(0, "[DRC]: error #%d @ PC=0x%08lX\n", err, v810_state->PC);
-                printf("\nDumping debug info...\n");
-                drc_dumpDebugInfo();
-                printf("Press any key to exit\n");
-                waitForInput();
-                goto exit;
-            }
-
-            // Display a frame, only after the right number of 'skips'
-            if((tVIPREG.FRMCYC & 0x00FF) < skip) {
-                skip = 0;
-                Left ^= 1;
-            }
-
-            // Increment skip
-            skip++;
-            frame++;
+        err = drc_run();
+        if (err) {
+            dprintf(0, "[DRC]: error #%d @ PC=0x%08lX\n", err, v810_state->PC);
+            printf("\nDumping debug info...\n");
+            drc_dumpDebugInfo();
+            printf("Press any key to exit\n");
+            waitForInput();
+            goto exit;
         }
 
-        // Display
-        if (tVIPREG.DPCTRL & 0x0002) {
-            V810_Dsp_Frame(Left); //Temporary...
+        // Display a frame, only after the right number of 'skips'
+        if((tVIPREG.FRMCYC & 0x00FF) < skip) {
+            skip = 0;
+            if (tVIPREG.DPCTRL & 0x0002) {
+                doAllTheDrawing();
+            }
         }
+
+        // Increment skip
+        skip++;
+        frame++;
 
 #if DEBUGLEVEL == 0
         consoleSelect(&main_console);
-        printf("\x1b[1J\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%lx\nDRC cache: %.2f%%", (tVBOpt.FRMSKIP+1)*(1000./(osGetTime() - startTime)), frame, v810_state->PC, (cache_pos-cache_start)*4*100./CACHE_SIZE);
+        printf("\x1b[1J\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%lx\nDRC cache: %.2f%%", (1)*(1000./(osGetTime() - startTime)), frame, v810_state->PC, (cache_pos-cache_start)*4*100./CACHE_SIZE);
 #else
         printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) v810_state->PC);
 #endif
-
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
     }
 
 exit:

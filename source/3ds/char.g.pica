@@ -1,0 +1,46 @@
+.gsh point c0
+
+.constf const1(0.03125, 0.015625, 0.0, 0.0)
+
+.out outpos position
+.out outtc0 texcoord0
+.out outcol color
+
+.entry gmain
+.proc gmain
+    setemit 0
+    mov outpos, v0
+    mov outtc0, v1
+    mov outcol, v3
+    emit
+
+    setemit 1
+    mov r0, v2
+    mov r0.y, v0.y
+    mov outpos, r0
+    mov r1, v1
+    add r1.x, const1.x, r1.x
+    mov r1.y, v1.y
+    mov outtc0, r1
+    mov outcol, v3
+    emit
+
+    setemit 2, prim
+    mov r0, v2
+    mov r0.x, v0.x
+    mov outpos, r0
+    mov r1, v1
+    add r1.y, const1.y, r1.y
+    mov outtc0, r1
+    mov outcol, v3
+    emit
+
+    setemit 0, prim inv
+    mov outpos, v2
+    add r1.x, const1.x, r1.x
+    mov outtc0, r1
+    mov outcol, v3
+    emit
+
+    end
+.end

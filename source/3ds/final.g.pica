@@ -1,0 +1,37 @@
+.gsh point c0
+
+.out outpos position
+.out outtc0 texcoord0
+
+.entry gmain
+.proc gmain
+    setemit 0
+    mov outpos, v0
+    mov outtc0, v1
+    emit
+
+    setemit 1
+    mov r0, v2
+    mov r0.y, v0.y
+    mov outpos, r0
+    mov r0, v3
+    mov r0.x, v1.x
+    mov outtc0, r0
+    emit
+
+    setemit 2, prim
+    mov r0, v2
+    mov r0.x, v0.x
+    mov outpos, r0
+    mov r0, v3
+    mov r0.y, v1.y
+    mov outtc0, r0
+    emit
+
+    setemit 0, prim inv
+    mov outpos, v2
+    mov outtc0, v3
+    emit
+
+    end
+.end

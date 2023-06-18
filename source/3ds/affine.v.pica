@@ -1,0 +1,17 @@
+.constf const1(0.00390625, 0.0078125, 0.000244140625, -1.0)
+
+.out outpos dummy
+.out outtc0 dummy
+.out outmat dummy
+
+.entry vmain
+.proc vmain
+    mov r0, const1.xyxy
+    mad r0.xyzw, r0.xyxy, v0.xyzw, const1.wwww
+    mov outpos, r0
+    mul r1.xy, const1.zz, v1.xy
+    mov outtc0, r1
+    mul r2.xyzw, const1.zzzz, v2.xyzw
+    mov outmat, r2
+    end
+.end
