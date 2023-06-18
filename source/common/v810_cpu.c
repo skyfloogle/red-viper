@@ -219,6 +219,8 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
     int gamestart;
     unsigned int tfb = (cycles-lastfb);
     bool pending_int = 0;
+    
+    v810_state->PC = PC;
 
     //Handle DPSTTS, XPSTTS, and Frame interrupts
     if (rowcount < 0x1C) {
@@ -304,9 +306,6 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             lastfb=cycles;
         }
     }
-
-    if (!pending_int)
-        v810_state->PC = PC;
 
     return pending_int;
 }
