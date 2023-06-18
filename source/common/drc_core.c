@@ -389,6 +389,30 @@ int drc_translateBlock(exec_block *block) {
     inst_ptr = &trans_cache[0];
     pool_ptr = pool_cache_start;
 
+    #define LOAD_REG1(r) \
+        if (arm_reg1 < 4) { \
+            if (inst_cache[i].reg1) \
+                LDR_IO(r, 11, inst_cache[i].reg1 * 4); \
+            else \
+                MOV_I(r, 0, 0); \
+        } else { \
+            MOV(r, arm_reg1); \
+        }
+
+    #define LOAD_REG2(r) \
+        if (arm_reg2 < 4) { \
+            if (inst_cache[i].reg2) \
+                LDR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4); \
+            else \
+                MOV_I(arm_reg2, 0, 0); \
+        } else { \
+            MOV(r, arm_reg2); \
+        }
+
+    #define SAVE_REG2(r) \
+        if (arm_reg2 < 4) STR_IO(r, 11, inst_cache[i].reg2 * 4); \
+        else MOV(arm_reg2, r);
+
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
@@ -598,10 +622,9 @@ int drc_translateBlock(exec_block *block) {
                 ADD_I(2, 2, DRC_RELOC_DIVSI*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                MOV(3, arm_reg2);
-                MOV(1, arm_reg1);
-                MOV(arm_reg2, 0);
-                MOV(0, 3);
+                SAVE_REG2(0);
+                LOAD_REG2(0);
+                LOAD_REG1(1);
 
                 LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_MODSI*4, 0);
@@ -612,7 +635,6 @@ int drc_translateBlock(exec_block *block) {
                 else
                     MOV(phys_regs[30], 0);
 
-                reg2_modified = true;
                 break;
             case V810_OP_DIVU: // divu reg1, reg2
                 MOV(0, arm_reg2);
@@ -621,10 +643,9 @@ int drc_translateBlock(exec_block *block) {
                 ADD_I(2, 2, DRC_RELOC_UDIVSI*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                MOV(3, arm_reg2);
-                MOV(1, arm_reg1);
-                MOV(arm_reg2, 0);
-                MOV(0, 3);
+                SAVE_REG2(0);
+                LOAD_REG2(0);
+                LOAD_REG1(1);
 
                 LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_UMODSI*4, 0);
