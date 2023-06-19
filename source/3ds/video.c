@@ -436,16 +436,15 @@ void sceneRender()
 		{
 			// object world
 			C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
-			int start_index = object_group_id == 0 ? 0 : tVIPREG.SPT[object_group_id - 1] + 1;
-			u16 *start_obj = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * start_index]);
+			int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
 			int end_index = tVIPREG.SPT[object_group_id];
-			u16 *end_obj = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * end_index]) + 4;
-			while (end_obj > start_obj)
+			for (int i = end_index; i != start_index; i = (i - 1) & 1023)
 			{
-				u16 cw3 = *--end_obj;
-				u16 y = *--end_obj;
-				u16 cw1 = *--end_obj;
-				u16 x = *--end_obj;
+				u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
+				u16 x = obj_ptr[0];
+				u16 cw1 = obj_ptr[1];
+				u16 y = obj_ptr[2];
+				u16 cw3 = obj_ptr[3];
 
 				if (!(cw1 & (0x8000 >> eye)))
 					continue;
