@@ -268,7 +268,7 @@ void sceneRender()
 
 			if ((windows[wnd * 16] & 0x3000) == 0)
 			{
-				C3D_SetScissor(GPU_SCISSOR_NORMAL, gx, gy, gx + w, gy + h);
+				C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, gy >= 0 ? gy : 0, gx + w, gy + h);
 				// normal world
 				int jump = 64 - (((mx + w + 7) >> 3) - (mx >> 3));
 				if (mx + w > 512)
@@ -355,7 +355,7 @@ void sceneRender()
 				C3D_BindProgram(&sAffine);
 				C3D_TexBind(0, &tileMapCache[cache_id]);
 				C3D_SetViewport(0, 0, 512, 256);
-				C3D_SetScissor(GPU_SCISSOR_NORMAL, gx, gy, gx + w, gy + h);
+				C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, gy >= 0 ? gy : 0, gx + w, gy + h);
 
 				C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 				AttrInfo_Init(attrInfo);
