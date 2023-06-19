@@ -47,6 +47,7 @@ typedef struct {
     // have the address of v810_state
     // reg_map[0] would have the VB register that is mapped to r4
     BYTE reg_map[7];
+    WORD start_pc;
     WORD end_pc; // The address of the last instruction in the block
 } exec_block;
 

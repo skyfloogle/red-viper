@@ -170,6 +170,12 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
             end_PC = cur_PC;
     }
 
+    exec_block *otherBlock;
+    if (drc_getEntry(start_PC, &otherBlock) != cache_start && otherBlock->start_pc < start_PC)
+        start_PC = otherBlock->start_pc;
+    if (drc_getEntry(end_PC, &otherBlock) != cache_start && otherBlock->end_pc > end_PC)
+        end_PC = otherBlock->end_pc;
+
     *p_start_PC = start_PC;
     *p_end_PC = end_PC;
 }
@@ -994,7 +1000,8 @@ int drc_translateBlock(exec_block *block) {
     }
 
     block->size = num_arm_inst + pool_offset;
-    block->end_pc = v810_state->PC;
+    block->start_pc = start_PC;
+    block->end_pc = end_PC;
 
 cleanup:
 #ifdef LITERAL_POOL
