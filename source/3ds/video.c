@@ -74,7 +74,10 @@ u8 eye = 0;
 C3D_RenderTarget *finalScreen[2];
 C3D_Tex screenTex[2];
 C3D_RenderTarget *screenTarget[2];
+
 C3D_Tex tileTexture;
+bool tileVisible[2048];
+
 #define AFFINE_CACHE_SIZE 3
 C3D_Tex tileMapCache[AFFINE_CACHE_SIZE];
 C3D_RenderTarget *tileMapCacheTarget[AFFINE_CACHE_SIZE];
@@ -287,6 +290,7 @@ void sceneRender()
 						}
 						uint16_t tile = *tilemap++;
 						uint16_t tileid = tile & 0x07ff;
+						if (!tileVisible[tileid]) continue;
 						bool hflip = (tile & 0x2000) != 0;
 						bool vflip = (tile & 0x1000) != 0;
 						short u = (tileid % 32) * 8;
@@ -332,6 +336,7 @@ void sceneRender()
 					{
 						uint16_t tile = *tilemap++;
 						uint16_t tileid = tile & 0x07ff;
+						if (!tileVisible[tileid]) continue;
 						bool hflip = (tile & 0x2000) != 0;
 						bool vflip = (tile & 0x1000) != 0;
 						short u = (tileid % 32) * 8;
@@ -487,6 +492,14 @@ void doAllTheDrawing()
 		for (int t = 0; t < 2048; t++)
 		{
 			uint16_t *tile = (uint16_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
+			// optimize invisible tiles
+			tileVisible[t] = false;
+			for (int i = 0; i < 2; i++) {
+				if (((uint64_t *)(tile))[i]) {
+					tileVisible[t] = true;
+					break;
+				}
+			}
 			int y = 63 - t / 32;
 			int x = t % 32;
 			uint16_t *dstbuf = texImage + ((y * 32 + x) * 8 * 8);
