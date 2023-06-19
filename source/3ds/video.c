@@ -532,6 +532,9 @@ void doAllTheDrawing()
 		C3D_ImmSendAttrib(-1, -1, -1, 1);
 		C3D_ImmSendAttrib(384.0 / 512, 224.0 / 256, 0, 0);
 		C3D_ImmDrawEnd();
+
+		// 2D mode
+		if (tVBOpt.DSPMODE == DM_NORMAL) break;
 	}
 
 	C3D_FrameEnd(0);
