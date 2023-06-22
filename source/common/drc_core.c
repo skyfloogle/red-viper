@@ -408,9 +408,9 @@ int drc_translateBlock(exec_block *block) {
     #define LOAD_REG2(r) \
         if (arm_reg2 < 4) { \
             if (inst_cache[i].reg2) \
-                LDR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4); \
+                LDR_IO(r, 11, inst_cache[i].reg2 * 4); \
             else \
-                MOV_I(arm_reg2, 0, 0); \
+                MOV_I(r, 0, 0); \
         } else { \
             MOV(r, arm_reg2); \
         }
@@ -628,8 +628,9 @@ int drc_translateBlock(exec_block *block) {
                 ADD_I(2, 2, DRC_RELOC_DIVSI*4, 0);
                 BLX(ARM_COND_AL, 2);
 
+                LOAD_REG2(1);
                 SAVE_REG2(0);
-                LOAD_REG2(0);
+                MOV(0, 1);
                 LOAD_REG1(1);
 
                 LDR_IO(2, 11, 69 * 4);
@@ -649,8 +650,9 @@ int drc_translateBlock(exec_block *block) {
                 ADD_I(2, 2, DRC_RELOC_UDIVSI*4, 0);
                 BLX(ARM_COND_AL, 2);
 
+                LOAD_REG2(1);
                 SAVE_REG2(0);
-                LOAD_REG2(0);
+                MOV(0, 1);
                 LOAD_REG1(1);
 
                 LDR_IO(2, 11, 69 * 4);
