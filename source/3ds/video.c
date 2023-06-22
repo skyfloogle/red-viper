@@ -287,11 +287,11 @@ void sceneRender()
 				if (mapx < 0) mapx = (mapx + scx) % scx;
 				if (mapy < 0) mapy = (mapy + scy) % scy;
 
-				for (int y = gy - (-my & 7); y < gy + h; y += 8)
+				for (int y = gy - (my & 7); y < gy + h; y += 8)
 				{
 					int tx = tsx;
 					int current_map = mapid + scx * mapy + mapx;
-					for (int x = gx - (-mx & 7); x < gx + w; x += 8)
+					for (int x = gx - (mx & 7); x < gx + w; x += 8)
 					{
 						uint16_t tile = tilemap[(64 * 64) * current_map + 64 * ty + tx];
 						if (++tx >= 64) {
