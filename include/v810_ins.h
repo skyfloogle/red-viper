@@ -41,10 +41,10 @@ extern float ins_subf_s  (float reg1, float reg2);
 extern float ins_mulf_s  (float reg1, float reg2);
 extern float ins_divf_s  (float reg1, float reg2);
 extern int   ins_trnc_sw (float reg1, int   reg2);
-extern void ins_xb      (int arg1, int arg2); //Undocumented opcode XB (non-FPU)
-extern void ins_xh      (int arg1, int arg2); //Undocumented opcode XH (non-FPU)
-extern void ins_rev     (int arg1, int arg2); //Undocumented opcode REV (non-FPU)
-extern void ins_mpyhw   (int arg1, int arg2); //Undocumented opcode MPYHW (non-FPU)
+extern int   ins_xb      (int   arg1, int    arg2);   //Undocumented opcode XB (non-FPU)
+extern int   ins_xh      (int   arg1, unsigned arg2);   //Undocumented opcode XH (non-FPU)
+extern int   ins_rev     (int   arg1, int    arg2);   //Undocumented opcode REV (non-FPU)
+extern int   ins_mpyhw   (short arg1, short  arg2); //Undocumented opcode MPYHW (non-FPU)
 
 #endif
 

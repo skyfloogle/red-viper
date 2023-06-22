@@ -285,24 +285,24 @@ int ins_trnc_sw(float reg1, int reg2) {
     return reg2;
 }
 
-void ins_xb(int arg1, int arg2) {
-    v810_state->P_REG[arg1] = ((v810_state->P_REG[arg1]&0xFFFF0000) | (((v810_state->P_REG[arg1]<<8)&0xFF00) | ((v810_state->P_REG[arg1]>>8)&0xFF)));
+int ins_xb(int arg1, int arg2) {
+    return ((arg2&0xFFFF0000) | (((arg2<<8)&0xFF00) | ((arg2>>8)&0xFF)));
     //	clocks+=1; //just a guess
 }
 
-void ins_xh(int arg1, int arg2) {
-    v810_state->P_REG[arg1] = (v810_state->P_REG[arg1]<<16)|(v810_state->P_REG[arg1]>>16);
+int ins_xh(int arg1, unsigned arg2) {
+    return (arg2<<16)|(arg2>>16);
     //	clocks+=1; //just a guess
 }
 
-void ins_rev(int arg1, int arg2) {
+int ins_rev(int arg1, int arg2) {
     WORD temp = 0;
     int i;
-    for (i = 0; i < 32; i++) temp = ((temp << 1) | ((v810_state->P_REG[arg2] >> i) & 1));
-    v810_state->P_REG[arg1] = temp;
+    for (i = 0; i < 32; i++) temp = ((temp << 1) | ((arg1 >> i) & 1));
+    return temp;
 }
 
-void ins_mpyhw(int arg1, int arg2) {
-    v810_state->P_REG[arg1 & 0x1F] = (long)v810_state->P_REG[arg1 & 0x1F] * (long)v810_state->P_REG[arg2 & 0x1F]; //signed multiplication
+int ins_mpyhw(short arg1, short arg2) {
+    return (int)arg1 * (int)arg2; //signed multiplication
     //	clocks+=9; //always 9
 }
