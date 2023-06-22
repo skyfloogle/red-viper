@@ -199,6 +199,10 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
             case V810_OP_OUT_B:
             case V810_OP_OUT_H:
             case V810_OP_OUT_W:
+            case V810_OP_MOV:
+            case V810_OP_MOV_I:
+            case V810_OP_MOVEA:
+            case V810_OP_MOVHI:
                 inst_cache[i].save_flags = true;
                 break;
             default:
