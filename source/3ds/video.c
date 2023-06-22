@@ -239,20 +239,22 @@ void sceneRender()
 		if (!(windows[wnd * 16] & 0xc000))
 			continue;
 		int vcount = 0;
-		if (windows[wnd * 16] & 0x0f00)
-			puts("!! WARNING !! MULTIMAP");
 		if ((windows[wnd * 16] & 0x3000) != 0x3000)
 		{
 			// background world
 			if (!(windows[wnd * 16] & (0x8000 >> eye)))
 				continue;
 			uint8_t mapid = windows[wnd * 16] & 0xf;
+			uint8_t scx = 1 << ((windows[wnd * 16] >> 10) & 3);
+			uint8_t scy = 1 << ((windows[wnd * 16] >> 8) & 3);
 			int16_t gx = windows[wnd * 16 + 1];
 			int16_t gp = windows[wnd * 16 + 2];
 			int16_t gy = windows[wnd * 16 + 3];
-			int16_t mx = windows[wnd * 16 + 4] & 511;
+			int16_t mx = windows[wnd * 16 + 4] & 0xfff;
+			if (mx & 0x800) mx |= 0xf000; 
 			int16_t mp = windows[wnd * 16 + 5];
-			int16_t my = windows[wnd * 16 + 6] & 511;
+			int16_t my = windows[wnd * 16 + 6] & 0xfff;
+			if (my & 0x800) my |= 0xf000;
 			int16_t w = windows[wnd * 16 + 7] + 1;
 			int16_t h = windows[wnd * 16 + 8] + 1;
 
@@ -273,22 +275,30 @@ void sceneRender()
 			{
 				C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, gy >= 0 ? gy : 0, gx + w, gy + h);
 				// normal world
-				int jump = 64 - (((mx + w + 7) >> 3) - (mx >> 3));
-				if (mx + w > 512)
-					jump += 64;
-
-				u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * mapid) + 64 * (my >> 3) + (mx >> 3);
+				u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+				int tsx = mx >> 3;
+				int ty = my >> 3;
+				int mapx = tsx >> 6;
+				int mapy = ty >> 6;
+				tsx &= 63;
+				ty &= 63;
+				mapx %= scx;
+				mapy %= scy;
+				if (mapx < 0) mapx = (mapx + scx) % scx;
+				if (mapy < 0) mapy = (mapy + scy) % scy;
 
 				for (int y = gy - (-my & 7); y < gy + h; y += 8)
 				{
-					u16 *tilewrap = tilemap + 64 - (mx >> 3);
+					int tx = tsx;
+					int current_map = mapid + scx * mapy + mapx;
 					for (int x = gx - (-mx & 7); x < gx + w; x += 8)
 					{
-						if (tilemap >= tilewrap)
-						{
-							tilemap -= 64;
+						uint16_t tile = tilemap[(64 * 64) * current_map + 64 * ty + tx];
+						if (++tx >= 64) {
+							tx = 0;
+							if (++mapx % scx == 0) mapx = 0;
+							current_map = mapid + scx * mapy + mapx;
 						}
-						uint16_t tile = *tilemap++;
 						uint16_t tileid = tile & 0x07ff;
 						if (!tileVisible[tileid]) continue;
 						bool hflip = (tile & 0x2000) != 0;
@@ -306,7 +316,10 @@ void sceneRender()
 
 						vcount++;
 					}
-					tilemap += jump;
+					if (++ty >= 64) {
+						ty = 0;
+						if (++mapy >= scy) mapy = 0;
+					}
 				}
 			}
 			else
