@@ -926,6 +926,12 @@ int drc_translateBlock(exec_block *block) {
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
+                case V810_OP_TRNC_SW:
+                    VMOV_SR(0, arm_reg1);
+                    TRUNC(0, 0);
+                    VMOV_RS(arm_reg2, 0);
+                    reg2_modified = true;
+                    break;
                 default:
                     // TODO: Implement me!
                     MOV_IS(0, arm_reg1, 0, 0);
