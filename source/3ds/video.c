@@ -404,7 +404,7 @@ void sceneRender()
 						avcur->y1 = gy + y;
 						avcur->x2 = gx + w;
 						avcur->y2 = gy + y + 1;
-						avcur->u = (mx + p);
+						avcur->u = (mx + p) * 8;
 						avcur->v = (my + y) * 8;
 						avcur->ix = w * 8;
 						avcur->iy = 0;
