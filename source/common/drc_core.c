@@ -1006,8 +1006,16 @@ int drc_translateBlock(exec_block *block) {
             }
 #endif
             if (trans_cache[j].needs_branch) {
-                int v810_offset = inst_cache[i].branch_offset;
-                int arm_offset = (int)(drc_getEntry(inst_cache[i].PC + v810_offset, NULL) - &((cache_start + block->phys_offset)[j]) - 2);
+                WORD v810_dest = inst_cache[i].PC + inst_cache[i].branch_offset;
+                WORD* arm_dest = drc_getEntry(v810_dest, NULL);
+                int arm_offset = (int)(arm_dest - &((cache_start + block->phys_offset)[j]) - 2);
+
+                if (arm_dest == cache_start) {
+                    // TODO fix
+                    // This is caused by "instructions" from a jump table leaking into actual instructions
+                    // Affects V-Tetris
+                    printf("WARN:can't jump from %lx to %lx\n", inst_cache[i].PC, v810_dest);
+                }
 
                 trans_cache[j].b_bl.imm = arm_offset & 0xffffff;
             }
