@@ -96,6 +96,7 @@ typedef struct {
     WORD cycles;
     int (*irq_handler)(WORD, WORD*);
     void(*reloc_table)(void);
+    WORD except_flags;
     BYTE ret;
 } cpu_state;
 #pragma pack()

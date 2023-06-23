@@ -323,6 +323,7 @@ void v810_int(WORD iNum, WORD PC) {
     //Ready to Generate the Interupts
     v810_state->S_REG[EIPC]  = PC;
     v810_state->S_REG[EIPSW] = v810_state->S_REG[PSW];
+    v810_state->except_flags = v810_state->flags;
 
     v810_state->PC = 0xFFFFFE00 | (iNum << 4);
 
@@ -358,6 +359,7 @@ void v810_exp(WORD iNum, WORD eCode) {
     } else { // Regular Exception
         v810_state->S_REG[EIPC] = v810_state->PC;
         v810_state->S_REG[EIPSW] = v810_state->S_REG[PSW];
+        v810_state->except_flags = v810_state->flags;
         v810_state->S_REG[ECR] = eCode; //Exception Code, dont get it???
         v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_EP;
         v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_ID;

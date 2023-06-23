@@ -96,6 +96,9 @@ drc_handleInterrupts:
     mov     r4, r0
     mov     r5, r1
 
+    @ Save flags
+    str     r4, [r11, #(34*4)]
+
     @ Load v810_state->cycles and add it to the total number of cycles
     @ (MAXCYCLES + r10 excess)
     ldr     r0, [r11, #67<<2]

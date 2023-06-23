@@ -512,6 +512,11 @@ int drc_translateBlock(exec_block *block) {
 
                 STR_IO(1, 11, 33 * 4);
                 STR_IO(2, 11, (35 + PSW) * 4);
+
+                // restore flags
+                LDR_IO(1, 11, 70 * 4);
+                MSR(1);
+
                 POP(1 << 15);
                 break;
             case V810_OP_BV:
