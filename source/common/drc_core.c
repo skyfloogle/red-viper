@@ -1182,8 +1182,10 @@ int drc_run() {
         clocks = v810_state->cycles;
 
         dprintf(4, "[DRC]: end - 0x%lx\n", v810_state->PC);
-        if (v810_state->PC < V810_VB_RAM.lowaddr || v810_state->PC > V810_ROM1.highaddr)
+        if (v810_state->PC < V810_VB_RAM.lowaddr || v810_state->PC > V810_ROM1.highaddr) {
+            printf("Last entry: 0x%lx\n", entry_PC);
             return DRC_ERR_BAD_PC;
+        }
 
         if (v810_state->ret) {
             v810_state->ret = 0;
