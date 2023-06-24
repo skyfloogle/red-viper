@@ -92,83 +92,89 @@ BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
 void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     WORD start_PC = *p_start_PC & V810_ROM1.highaddr;
     WORD end_PC = start_PC;
-    WORD cur_PC = start_PC;
+    WORD cur_PC;
     WORD branch_addr;
     int branch_offset;
     BYTE opcode;
-    bool finished = false;
+    bool finished;
     BYTE lowB, highB, lowB2, highB2;
 
-    while(!finished) {
-        // TODO: implement reading from RAM
-        if ((cur_PC >>24) == 0x05) { // RAM
-            cur_PC = (cur_PC & V810_VB_RAM.highaddr);
-            lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
-            highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
-            lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
-            highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
-        } else if ((cur_PC >>24) >= 0x07) { // ROM
-            cur_PC = (cur_PC & V810_ROM1.highaddr);
-            lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
-            highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
-            lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
-            highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
-        } else {
-            return;
-        }
-        if ((highB & 0xE0) == 0x80)
-            opcode = highB>>1;
-        else
-            opcode = highB>>2;
+    WORD last_start_PC;
+    do {
+        last_start_PC = start_PC;
+        cur_PC = start_PC;
+        finished = false;
+        while(!finished) {
+            // TODO: implement reading from RAM
+            if ((cur_PC >>24) == 0x05) { // RAM
+                cur_PC = (cur_PC & V810_VB_RAM.highaddr);
+                lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
+                highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
+                lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
+                highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
+            } else if ((cur_PC >>24) >= 0x07) { // ROM
+                cur_PC = (cur_PC & V810_ROM1.highaddr);
+                lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
+                highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
+                lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
+                highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
+            } else {
+                return;
+            }
+            if ((highB & 0xE0) == 0x80)
+                opcode = highB>>1;
+            else
+                opcode = highB>>2;
 
-        switch (opcode) {
-            case V810_OP_JR:
-                branch_offset = (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                if (abs(branch_offset) < 1024) {
-                    branch_addr = cur_PC + branch_offset;
+            switch (opcode) {
+                case V810_OP_JR:
+                    branch_offset = (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
+                    if (abs(branch_offset) < 1024) {
+                        branch_addr = cur_PC + branch_offset;
+                        if (branch_addr < start_PC)
+                            start_PC = branch_addr;
+                        else if (branch_addr > end_PC)
+                            end_PC = branch_addr;
+                        break;
+                    }
+                case V810_OP_JMP:
+                case V810_OP_JAL:
+                case V810_OP_RETI:
+                    if (cur_PC >= end_PC) {
+                        end_PC = cur_PC;
+                        finished = true;
+                    }
+                    break;
+                case V810_OP_BV:
+                case V810_OP_BL:
+                case V810_OP_BE:
+                case V810_OP_BNH:
+                case V810_OP_BN:
+                case V810_OP_BR:
+                case V810_OP_BLT:
+                case V810_OP_BLE:
+                case V810_OP_BNV:
+                case V810_OP_BNL:
+                case V810_OP_BNE:
+                case V810_OP_BH:
+                case V810_OP_BP:
+                case V810_OP_BGE:
+                case V810_OP_BGT:
+                    branch_addr = cur_PC + sign_9(((highB & 0x1) << 8) + (lowB & 0xFE));
+
                     if (branch_addr < start_PC)
                         start_PC = branch_addr;
                     else if (branch_addr > end_PC)
                         end_PC = branch_addr;
                     break;
-                }
-            case V810_OP_JMP:
-            case V810_OP_JAL:
-            case V810_OP_RETI:
-                if (cur_PC >= end_PC) {
-                    end_PC = cur_PC;
-                    finished = true;
-                }
-                break;
-            case V810_OP_BV:
-            case V810_OP_BL:
-            case V810_OP_BE:
-            case V810_OP_BNH:
-            case V810_OP_BN:
-            case V810_OP_BR:
-            case V810_OP_BLT:
-            case V810_OP_BLE:
-            case V810_OP_BNV:
-            case V810_OP_BNL:
-            case V810_OP_BNE:
-            case V810_OP_BH:
-            case V810_OP_BP:
-            case V810_OP_BGE:
-            case V810_OP_BGT:
-                branch_addr = cur_PC + sign_9(((highB & 0x1) << 8) + (lowB & 0xFE));
+            }
 
-                if (branch_addr < start_PC)
-                    start_PC = branch_addr;
-                else if (branch_addr > end_PC)
-                    end_PC = branch_addr;
-                break;
+            cur_PC += am_size_table[optable[opcode].addr_mode];
+
+            if (cur_PC > end_PC)
+                end_PC = cur_PC;
         }
-
-        cur_PC += am_size_table[optable[opcode].addr_mode];
-
-        if (cur_PC > end_PC)
-            end_PC = cur_PC;
-    }
+    } while (start_PC < last_start_PC);
 
     exec_block *otherBlock;
     if (drc_getEntry(start_PC, &otherBlock) != cache_start && otherBlock->start_pc < start_PC)
