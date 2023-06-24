@@ -445,7 +445,7 @@ void sceneRender()
 				vcount = 0;
 				if (++cache_id == AFFINE_CACHE_SIZE)
 				{
-					C3D_FrameSplit(0);
+					puts("WARN:affine cache full");
 					cache_id = 0;
 				}
 			}
