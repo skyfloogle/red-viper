@@ -384,6 +384,10 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
         }
     } while (!finished);
 
+    if (i == MAX_INST) {
+        printf("WARN:%lx-%lx exceeds max instrs", start_PC, end_PC);
+    }
+
     return i;
 }
 
