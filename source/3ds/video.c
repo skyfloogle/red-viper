@@ -369,8 +369,19 @@ void sceneRender()
 						vcount++;
 					}
 				}
-				if (vcount != 0)
-					C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
+				if (vcount == 0) {
+					// bail
+					C3D_FrameDrawOn(screenTarget[eye]);
+					bufInfo = C3D_GetBufInfo();
+					BufInfo_Init(bufInfo);
+					BufInfo_Add(bufInfo, vbuf, sizeof(vertex), 2, 0x10);
+					C3D_BindProgram(&sChar);
+					C3D_TexBind(0, &tileTexture);
+					setRegularDrawing();
+					continue;
+				}
+					
+				C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 				// next, draw the affine map
 				C3D_FrameDrawOn(screenTarget[eye]);
