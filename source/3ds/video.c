@@ -366,7 +366,8 @@ void sceneRender()
 						vcount++;
 					}
 				}
-				C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
+				if (vcount != 0)
+					C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 				// next, draw the affine map
 				C3D_FrameDrawOn(screenTarget[eye]);
