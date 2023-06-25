@@ -441,8 +441,8 @@ void sceneRender()
 						avcur->y1 = gy + y;
 						avcur->x2 = gx + w;
 						avcur->y2 = gy + y + 1;
-						avcur->u = mx - ((eye == 0) != (mp >= 0) ? mp * dx >> 6 : 0);
-						avcur->v = my - ((eye == 0) != (mp >= 0) ? mp * dy >> 6 : 0);
+						avcur->u = mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
+						avcur->v = my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
 						avcur->ix = dx * (w + mp) >> 6;
 						avcur->iy = dy * (w + mp) >> 6;
 						avcur->jx = params[y * 8 + 3] != 0 ? 0 : 1 * 8;
