@@ -626,7 +626,7 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // Branch
 #define B(cond, imm){ \
     new_branch_link(cond, 0, imm); \
-    if (!imm) \
+    if (!(imm)) \
         (inst_ptr-1)->needs_branch = true; \
 }
 
@@ -696,6 +696,20 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     LDR_IO(2, 11, 68*4); \
     BLX(ARM_COND_PL, 2); \
     MSR(0); \
+    cycles = 0; \
+}
+
+#define BUSYWAIT(cond, ret_PC) { \
+    B(cond ^ 1, 8); \
+    MRS(0); \
+    MOV_I(1, (ret_PC) & 0xff, 0); \
+    ORR_I(1, ((ret_PC) & 0xff00)>>8, 24); \
+    ORR_I(1, ((ret_PC) & 0xff0000)>>16, 16); \
+    ORR_I(1, ((ret_PC) & 0xff000000)>>24, 8); \
+    ADDS_I(10, 10, cycles & 0xFF, 0); \
+    LDR_IO(2, 11, 68 * 4); \
+    BLX(ARM_COND_AL, 2); \
+    B(ARM_COND_AL, (-9) & 0xffffff); \
     cycles = 0; \
 }
 

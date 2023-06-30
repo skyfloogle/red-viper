@@ -60,6 +60,7 @@ typedef struct {
     BYTE trans_size;
     int branch_offset;
     bool save_flags;
+    bool busywait;
 } v810_instruction;
 #pragma pack()
 

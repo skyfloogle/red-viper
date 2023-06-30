@@ -190,6 +190,7 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
 // before a conditional branch.
 // Sets save_flags for all unconditional instructions prior to a branch.
 void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
+    bool save_flags = true, busywait = inst_cache[pos].branch_offset < 0;
     int i;
     for (i = pos - 1; i >= 0; i--) {
         switch (inst_cache[i].opcode) {
@@ -209,9 +210,21 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
             case V810_OP_MOV_I:
             case V810_OP_MOVEA:
             case V810_OP_MOVHI:
-                inst_cache[i].save_flags = true;
+                inst_cache[i].save_flags = save_flags;
                 break;
+            case V810_OP_ANDI:
+                // affects flags but is used in busywait
+                save_flags = false;
+                break;
+            case V810_OP_OR:
+                // only operating on itself is valid here, otherwise fallthrough
+                if (inst_cache[i].reg1 == inst_cache[i].reg2)
+                    break;
             default:
+                if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
+                    printf("busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+                    inst_cache[pos].busywait = true;
+                }
                 return;
         }
     }
@@ -249,6 +262,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
 
             inst_cache[i].PC = cur_PC;
             inst_cache[i].save_flags = false;
+            inst_cache[i].busywait = false;
 
             inst_cache[i].opcode = highB >> 2;
             if ((highB & 0xE0) == 0x80)              // Special opcode format for
@@ -583,8 +597,12 @@ int drc_translateBlock(exec_block *block) {
             case V810_OP_BGE:
             case V810_OP_BGT:
                 arm_cond = cond_map[inst_cache[i].opcode & 0xF];
-                HANDLEINT(inst_cache[i].PC);
-                B(arm_cond, 0);
+                if (inst_cache[i].busywait) {
+                    BUSYWAIT(arm_cond, inst_cache[i].PC + inst_cache[i].branch_offset);
+                } else {
+                    HANDLEINT(inst_cache[i].PC);
+                    B(arm_cond, 0);
+                }
                 break;
             // Special case: bnh and bh can't be directly translated to ARM
             case V810_OP_BNH:
