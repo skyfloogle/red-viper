@@ -539,7 +539,11 @@ int drc_translateBlock(exec_block *block) {
                 break;
             case V810_OP_JR: // jr imm26
                 if (abs(inst_cache[i].branch_offset) < 1024) {
-                    HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
+                    if (inst_cache[i].branch_offset < 0) {
+                        HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
+                    } else {
+                        ADDCYCLES();
+                    }
                     B(ARM_COND_AL, 0);
                 } else {
                     ADDCYCLES();
@@ -600,19 +604,37 @@ int drc_translateBlock(exec_block *block) {
                 if (inst_cache[i].busywait) {
                     BUSYWAIT(arm_cond, inst_cache[i].PC + inst_cache[i].branch_offset);
                 } else {
-                    HANDLEINT(inst_cache[i].PC);
+                    if (inst_cache[i].branch_offset < 0) {
+                        HANDLEINT(inst_cache[i].PC);
+                    } else {
+                        MRS(0);
+                        ADDCYCLES();
+                        MSR(0);
+                    }
                     B(arm_cond, 0);
                 }
                 break;
             // Special case: bnh and bh can't be directly translated to ARM
             case V810_OP_BNH:
-                HANDLEINT(inst_cache[i].PC);
+                if (inst_cache[i].branch_offset < 0) {
+                    HANDLEINT(inst_cache[i].PC);
+                } else {
+                    MRS(0);
+                    ADDCYCLES();
+                    MSR(0);
+                }
                 // Branch if C == 1 or Z == 1
                 B(ARM_COND_CS, 0);
                 B(ARM_COND_EQ, 0);
                 break;
             case V810_OP_BH:
-                HANDLEINT(inst_cache[i].PC);
+                if (inst_cache[i].branch_offset < 0) {
+                    HANDLEINT(inst_cache[i].PC);
+                } else {
+                    MRS(0);
+                    ADDCYCLES();
+                    MSR(0);
+                }
                 // Branch if C == 0 and Z == 0
                 Boff(ARM_COND_CS, 3);
                 Boff(ARM_COND_EQ, 2);
