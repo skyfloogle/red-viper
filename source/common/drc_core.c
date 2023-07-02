@@ -87,6 +87,30 @@ BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
     return 0;
 }
 
+bool is_byte_getter(WORD start_PC) {
+    static BYTE byte_getter_func[] = {
+        0x46, 0xc1, 0x00, 0x00, // ld.b [r6], r10
+        0x1f, 0x18,             // jmp  [lp] 
+    };
+    BYTE* dest = (BYTE*)(V810_ROM1.off + start_PC);
+    return !memcmp(dest, byte_getter_func, sizeof(byte_getter_func));
+}
+
+bool is_hword_getter(WORD start_PC) {
+    static BYTE hword_getter_func[] = {
+        0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
+        0x1f, 0x18,             // jmp  [lp] 
+    };
+    static BYTE hword_getter_jr_func[] = {
+        0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
+        0x00, 0xa8, 0x04, 0x00, // jr   +4
+        0x1f, 0x18,             // jmp  [lp]
+    };
+    BYTE* dest = (BYTE*)(V810_ROM1.off + start_PC);
+    return !memcmp(dest, hword_getter_func, sizeof(hword_getter_func))
+        || !memcmp(dest, hword_getter_jr_func, sizeof(hword_getter_jr_func));
+}
+
 // Finds the starting and ending address of a V810 code block. It stops after a
 // jmp, jal, reti or a long jr unless it branches further.
 void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
@@ -137,8 +161,10 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
                             end_PC = branch_addr;
                         break;
                     }
-                case V810_OP_JMP:
                 case V810_OP_JAL:
+                    branch_addr = cur_PC + (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
+                    if (is_byte_getter(branch_addr) || is_hword_getter(branch_addr)) break;
+                case V810_OP_JMP:
                 case V810_OP_RETI:
                     if (cur_PC >= end_PC) {
                         end_PC = cur_PC;
@@ -320,6 +346,30 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
 
                     inst_cache[i].reg1 = 0xFF;
                     inst_cache[i].reg2 = 0xFF;
+
+                    // inlining
+                    static BYTE hword_getter_func[] = {
+                        0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
+                        0x1f, 0x18,             // jmp  [lp] 
+                    };
+                    static BYTE hword_getter_jr_func[] = {
+                        0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
+                        0x00, 0xa8, 0x04, 0x00, // jr   +4
+                        0x1f, 0x18,             // jmp  [lp]
+                    };
+                    if (inst_cache[i].opcode == V810_OP_JAL) {
+                        if (is_hword_getter(inst_cache[i].PC + inst_cache[i].branch_offset)) {
+                            inst_cache[i].opcode = V810_OP_LD_H;
+                            inst_cache[i].imm = 0;
+                            inst_cache[i].reg1 = 6;
+                            inst_cache[i].reg2 = 10;
+                        } else if (is_byte_getter(inst_cache[i].PC + inst_cache[i].branch_offset)) {
+                            inst_cache[i].opcode = V810_OP_LD_B;
+                            inst_cache[i].imm = 0;
+                            inst_cache[i].reg1 = 6;
+                            inst_cache[i].reg2 = 10;
+                        }
+                    }
                     break;
                 case AM_V:
                     inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
