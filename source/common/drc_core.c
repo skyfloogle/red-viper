@@ -212,6 +212,7 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
             case V810_OP_MOVHI:
                 inst_cache[i].save_flags = save_flags;
                 break;
+            case V810_OP_AND:
             case V810_OP_ANDI:
             case V810_OP_CMP:
                 // affects flags but is used in busywait
@@ -235,7 +236,7 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
                 return;
         }
     }
-    if (busywait && inst_cache[0].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
+    if (busywait && inst_cache[0].PC <= inst_cache[pos].PC + inst_cache[pos].branch_offset) {
         printf("busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
         inst_cache[pos].busywait = true;
     }
