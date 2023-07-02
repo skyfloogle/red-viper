@@ -127,7 +127,7 @@ typedef struct {
     bool    BGCacheInvalid[14];     // Object Cache Is invalid
     BITMAP  *BGCacheBMP[14];        // BGMap Cache Bitmaps
 	bool		CharCacheInvalid;
-	BITMAP	*CharacterCache;		//Character chace
+	bool	CharacterCache[2048];	//Character chace
     bool    DDSPDataWrite;          // Direct DisplayDraws True
 } VB_DSPCACHE;
 

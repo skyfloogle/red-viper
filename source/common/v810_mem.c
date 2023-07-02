@@ -193,6 +193,7 @@ void mem_wbyte(WORD addr, BYTE data) {
                     for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
                     tDSPCACHE.ObjDataCacheInvalid=1;
                     tDSPCACHE.CharCacheInvalid=1;
+                    tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     //tDSPCACHE.DDSPDataWrite=1;
                 }
@@ -217,6 +218,7 @@ void mem_wbyte(WORD addr, BYTE data) {
             for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
             tDSPCACHE.ObjDataCacheInvalid=1;
             tDSPCACHE.CharCacheInvalid=1;
+            tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
         }
         break;
     case 0x1000000:
@@ -266,6 +268,7 @@ void mem_whword(WORD addr, HWORD data) {
                     for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
                     tDSPCACHE.ObjDataCacheInvalid=1;
                     tDSPCACHE.CharCacheInvalid=1;
+                    tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     //tDSPCACHE.DDSPDataWrite=1;
                 }
@@ -290,6 +293,7 @@ void mem_whword(WORD addr, HWORD data) {
             for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
             tDSPCACHE.ObjDataCacheInvalid=1;
             tDSPCACHE.CharCacheInvalid=1;
+            tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
         }
         break;
     case 0x1000000:
@@ -339,6 +343,7 @@ void mem_wword(WORD addr, WORD data) {
                     for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
                     tDSPCACHE.ObjDataCacheInvalid=1;
                     tDSPCACHE.CharCacheInvalid=1;
+                    tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     //tDSPCACHE.DDSPDataWrite=1;
                 }
@@ -363,6 +368,7 @@ void mem_wword(WORD addr, WORD data) {
             for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
             tDSPCACHE.ObjDataCacheInvalid=1;
             tDSPCACHE.CharCacheInvalid=1;
+            tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
         }
         break;
     case 0x1000000:

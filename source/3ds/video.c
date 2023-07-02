@@ -65,6 +65,8 @@ void clearCache() {
         tDSPCACHE.BGCacheInvalid[i] = 1;    // Object Cache Is invalid
     tDSPCACHE.DDSPDataWrite = 1;            // Direct Screen Draw changed
 	tDSPCACHE.CharCacheInvalid = true;
+	for (i = 0; i < 2048; i++)
+		tDSPCACHE.CharacterCache[i] = true;
 }
 
 // my stuff
@@ -519,6 +521,10 @@ void doAllTheDrawing()
 		uint16_t *texImage = C3D_Tex2DGetImagePtr(&tileTexture, 0, NULL);
 		for (int t = 0; t < 2048; t++)
 		{
+			if (tDSPCACHE.CharacterCache[t])
+				tDSPCACHE.CharacterCache[t] = false;
+			else
+				continue;
 			uint16_t *tile = (uint16_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
 			// optimize invisible tiles
 			tileVisible[t] = false;
