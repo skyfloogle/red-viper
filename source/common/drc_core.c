@@ -217,10 +217,16 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
                 // affects flags but is used in busywait
                 save_flags = false;
                 break;
+            case V810_OP_ADD:
             case V810_OP_OR:
-                // only operating on itself is valid here, otherwise fallthrough
-                if (inst_cache[i].reg1 == inst_cache[i].reg2)
+                // only certain operators are ok for busywait here, otherwise fallthrough
+                if (
+                    (inst_cache[i].opcode == V810_OP_OR && inst_cache[i].reg1 == inst_cache[i].reg2) ||
+                    (inst_cache[i].opcode == V810_OP_ADD && inst_cache[i].reg1 == 0)
+                ) {
+                    save_flags = false;
                     break;
+                }
             default:
                 if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
                     printf("busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
@@ -228,6 +234,10 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
                 }
                 return;
         }
+    }
+    if (busywait && inst_cache[0].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
+        printf("busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+        inst_cache[pos].busywait = true;
     }
 }
 
