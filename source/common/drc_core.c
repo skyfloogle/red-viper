@@ -213,6 +213,7 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
                 inst_cache[i].save_flags = save_flags;
                 break;
             case V810_OP_ANDI:
+            case V810_OP_CMP:
                 // affects flags but is used in busywait
                 save_flags = false;
                 break;
