@@ -255,14 +255,16 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
         if ((rowcount == 0x1C) && (tfb > 0x10000)) {            //0x100000
             tVIPREG.XPSTTS = (0x1B00 | (tVIPREG.XPCTRL & 0x02));
 
-            /*if(tVBOpt.VFHACK)                   //vertical force hack
-                v810_int(4);
-            else */if (tVIPREG.INTENB & 0x4000) {
-                v810_int(4, PC);                    //XPEND
-                pending_int = 1;
-            }
+            if (frames == 0) {
+                /*if(tVBOpt.VFHACK)                   //vertical force hack
+                    v810_int(4);
+                else */if (tVIPREG.INTENB & 0x4000) {
+                    v810_int(4, PC);                    //XPEND
+                    pending_int = 1;
+                }
 
-            tVIPREG.INTPND |= 0x4000;               //(tVIPREG.INTENB&0x4000);
+                tVIPREG.INTPND |= 0x4000;               //(tVIPREG.INTENB&0x4000);
+            }
             rowcount++;
         } else if ((rowcount == 0x1D) && (tfb > 0x18000)) {     //0xE690
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
