@@ -581,10 +581,6 @@ int drc_translateBlock(exec_block *block) {
             if (!arm_reg2) {
                 unmapped_registers = true;
                 arm_reg2 = next_available_reg++;
-                if (inst_cache[i].reg2)
-                    LDR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4);
-                else
-                    MOV_I(arm_reg2, 0, 0);
             }
         }
 
@@ -739,6 +735,7 @@ int drc_translateBlock(exec_block *block) {
                 reg2_modified = true;
                 break;
             case V810_OP_SUB: // sub reg1, reg2
+                LOAD_REG2();
                 SUBS(arm_reg2, arm_reg2, arm_reg1);
                 INV_CARRY();
                 reg2_modified = true;
