@@ -1066,6 +1066,7 @@ int drc_translateBlock(exec_block *block) {
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
                     VCMP_F32(1, 0);
+                    VMRS();
                     break;
                 case V810_OP_ADDF_S:
                     LOAD_REG2();
