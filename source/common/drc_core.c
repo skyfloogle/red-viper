@@ -1070,6 +1070,7 @@ int drc_translateBlock(exec_block *block) {
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
                     VADD_F32(0, 1, 0);
+                    VMRS();
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
@@ -1078,6 +1079,7 @@ int drc_translateBlock(exec_block *block) {
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
                     VSUB_F32(0, 1, 0);
+                    VMRS();
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
@@ -1086,6 +1088,7 @@ int drc_translateBlock(exec_block *block) {
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
                     VMUL_F32(0, 1, 0);
+                    VMRS();
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
@@ -1094,6 +1097,7 @@ int drc_translateBlock(exec_block *block) {
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
                     VDIV_F32(0, 1, 0);
+                    VMRS();
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
