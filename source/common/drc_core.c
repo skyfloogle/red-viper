@@ -1105,9 +1105,8 @@ int drc_translateBlock(exec_block *block) {
                     break;
                 default:
                     // TODO: Implement me!
-                    LOAD_REG2();
                     MOV_IS(0, arm_reg1, 0, 0);
-                    MOV_IS(1, arm_reg2, 0, 0);
+                    RELOAD_REG2(1);
                     LDR_IO(2, 11, 69 * 4);
                     ADD_I(2, 2, (DRC_RELOC_FPP+inst_cache[i].imm)*4, 0);
                     BLX(ARM_COND_AL, 2);
