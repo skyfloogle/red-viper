@@ -114,13 +114,14 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
     if (len == 0) return;
     WORD srcoff = offs & 31;
     WORD dstoff = offs >> 16;
+    WORD dstbuf;
 
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
-            WORD tmp = mem_rword(dst);
-            tmp &= ((1 << srcoff) - 1);
-            tmp |= mem_rword(src) & ~((1 << srcoff) - 1);
-            mem_wword(dst, tmp);
+            dstbuf = mem_rword(dst);
+            dstbuf &= ((1 << srcoff) - 1);
+            dstbuf |= mem_rword(src) & ~((1 << srcoff) - 1);
+            mem_wword(dst, dstbuf);
             src += 4;
             dst += 4;
             len -= 32 - srcoff;
@@ -139,10 +140,10 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
         // if srcoff != 0, then len <= 32-srcoff
         // if srcoff == 0, then len < 32
         if (len > 0) {
-            WORD tmp = mem_rword(dst);
-            tmp &= ~(((1 << len) - 1) << srcoff);
-            tmp |= mem_rword(src) & (((1 << len) - 1) << srcoff);
-            mem_wword(dst, tmp);
+            dstbuf = mem_rword(dst);
+            dstbuf &= ~(((1 << len) - 1) << srcoff);
+            dstbuf |= mem_rword(src) & (((1 << len) - 1) << srcoff);
+            mem_wword(dst, dstbuf);
             srcoff = dstoff += len;
             if (srcoff == 32) {
                 srcoff = dstoff = 0;
@@ -152,7 +153,60 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
             len = 0;
         }
     } else {
-        puts("WRN:movbsu with srcoff!=dstoff not implemented");
+        WORD srcbuf = mem_rword(src);
+        dstbuf = mem_rword(dst);
+        while (len > 0) {
+            // we align ourself to the destination because that makes things simpler
+            if (srcoff > dstoff) {
+                int bits_to_transfer = 32 - srcoff;
+                if (bits_to_transfer > len) bits_to_transfer = len;
+                WORD tmp = srcbuf;
+                tmp >>= srcoff - dstoff;
+                tmp &= ((1 << bits_to_transfer) - 1) << dstoff;
+                // only necessary because we overwrite
+                dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+                dstbuf |= tmp;
+                srcoff += bits_to_transfer;
+                if (srcoff >= 32) {
+                    src += 4;
+                    srcoff &= 31;
+                }
+                // dstoff + bits_to_transfer < 32 guaranteed
+                dstoff += bits_to_transfer;
+                len -= bits_to_transfer;
+                if (len <= 0) {
+                    mem_wword(dst, dstbuf);
+                    break;
+                }
+                else srcbuf = mem_rword(src);
+            }
+            // if we got here, then dstoff <= srcoff
+            int bits_to_transfer = 32 - dstoff;
+            if (bits_to_transfer > len) bits_to_transfer = len;
+            WORD tmp = srcbuf;
+            tmp <<= dstoff - srcoff;
+            tmp &= ((1 << bits_to_transfer) - 1) << dstoff;
+            // only necessary because we overwrite
+            dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+            dstbuf |= tmp;
+            mem_wword(dst, dstbuf);
+            srcoff += bits_to_transfer;
+            if (srcoff >= 32) {
+                src += 4;
+                srcoff &= 31;
+            }
+            dstoff += bits_to_transfer;
+            if (dstoff >= 32) {
+                dst += 4;
+                dstoff &= 31;
+            }
+            len -= bits_to_transfer;
+            if (len <= 0) break;
+            else {
+                dstbuf = mem_rword(dst);
+                if (srcoff == 0) srcbuf = mem_rword(src);
+            }
+        }
     }
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
