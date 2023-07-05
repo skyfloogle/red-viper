@@ -33,3 +33,19 @@ drc_relocTable:
     b       ins_err
     b       ins_err
     b       ins_err
+    b       ins_sch0bsu
+    b       ins_sch0bsd
+    b       ins_sch1bsu
+    b       ins_sch1bsd
+    b       ins_err
+    b       ins_err
+    b       ins_err
+    b       ins_err
+    b       ins_orbsu
+    b       ins_andbsu
+    b       ins_xorbsu
+    b       ins_movbsu
+    b       ins_ornbsu
+    b       ins_andnbsu
+    b       ins_xornbsu
+    b       ins_notbsu

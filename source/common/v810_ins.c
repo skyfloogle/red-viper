@@ -54,44 +54,29 @@ void set_bitstr(WORD *str, WORD dst, WORD dstoff, WORD len) {
 }
 
 //Bitstring SubOpcodes
-void ins_sch0bsu (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_sch0bsu (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 }
 
-void ins_sch0bsd (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_sch0bsd (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 }
 
-void ins_sch1bsu (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_sch1bsu (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 }
 
-void ins_sch1bsd (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_sch1bsd (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 }
 
-void ins_orbsu   (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_orbsu   (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -101,12 +86,9 @@ void ins_orbsu   (int arg1, int arg2) {
     set_bitstr(tmp,dst,dstoff,len);
 }
 
-void ins_andbsu  (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_andbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -116,12 +98,9 @@ void ins_andbsu  (int arg1, int arg2) {
     set_bitstr(tmp,dst,dstoff,len);
 }
 
-void ins_xorbsu  (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_xorbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -131,25 +110,60 @@ void ins_xorbsu  (int arg1, int arg2) {
     set_bitstr(tmp,dst,dstoff,len);
 }
 
-void ins_movbsu  (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    if (len == 0) return;
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 
-    WORD tmp[8192];
+    if (srcoff == dstoff) {
+        if (srcoff != 0 && len > 32-srcoff) {
+            WORD tmp = mem_rword(dst);
+            tmp &= ((1 << srcoff) - 1);
+            tmp |= mem_rword(src) & ~((1 << srcoff) - 1);
+            mem_wword(dst, tmp);
+            src += 4;
+            dst += 4;
+            len -= 32 - srcoff;
+            srcoff = dstoff = 0;
+        }
 
-    get_bitstr(tmp,src,srcoff,len);
-    set_bitstr(tmp,dst,dstoff,len);
+        if (srcoff == 0) {
+            while (len >= 32) {
+                mem_wword(dst, mem_rword(src));
+                src += 4;
+                dst += 4;
+                len -= 32;
+            }
+        }
+
+        // if srcoff != 0, then len <= 32-srcoff
+        // if srcoff == 0, then len < 32
+        if (len > 0) {
+            WORD tmp = mem_rword(dst);
+            tmp &= ~(((1 << len) - 1) << srcoff);
+            tmp |= mem_rword(src) & (((1 << len) - 1) << srcoff);
+            mem_wword(dst, tmp);
+            srcoff = dstoff += len;
+            if (srcoff == 32) {
+                srcoff = dstoff = 0;
+                src += 4;
+                dst += 4;
+            }
+            len = 0;
+        }
+    } else {
+        puts("WRN:movbsu with srcoff!=dstoff not implemented");
+    }
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = dst;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = srcoff;
+    v810_state->P_REG[26] = dstoff;
 }
 
-void ins_ornbsu  (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_ornbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -159,12 +173,9 @@ void ins_ornbsu  (int arg1, int arg2) {
     set_bitstr(tmp,dst,dstoff,len);
 }
 
-void ins_andnbsu (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_andnbsu (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -174,12 +185,9 @@ void ins_andnbsu (int arg1, int arg2) {
     set_bitstr(tmp,dst,dstoff,len);
 }
 
-void ins_xornbsu (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_xornbsu (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 
     WORD i,tmp[8192],tmp2[8192];
 
@@ -189,12 +197,9 @@ void ins_xornbsu (int arg1, int arg2) {
     set_bitstr(tmp,dst,dstoff,len);
 }
 
-void ins_notbsu  (int arg1, int arg2) {
-    WORD dstoff = (v810_state->P_REG[26] & 0x1F);
-    WORD srcoff = (v810_state->P_REG[27] & 0x1F);
-    WORD len =     v810_state->P_REG[28];
-    WORD dst =    (v810_state->P_REG[29] & 0xFFFFFFFC);
-    WORD src =    (v810_state->P_REG[30] & 0xFFFFFFFC);
+void ins_notbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
 
     WORD i,tmp[8192];
 

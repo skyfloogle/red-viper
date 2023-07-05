@@ -19,18 +19,18 @@
 extern void ins_err   (int arg1, int arg2); //Special handler?
 
 //Bitstring SubOpcodes
-extern void ins_sch0bsu (int arg1, int arg2);
-extern void ins_sch0bsd (int arg1, int arg2);
-extern void ins_sch1bsu (int arg1, int arg2);
-extern void ins_sch1bsd (int arg1, int arg2);
-extern void ins_orbsu   (int arg1, int arg2);
-extern void ins_andbsu  (int arg1, int arg2);
-extern void ins_xorbsu  (int arg1, int arg2);
-extern void ins_movbsu  (int arg1, int arg2);
-extern void ins_ornbsu  (int arg1, int arg2);
-extern void ins_andnbsu (int arg1, int arg2);
-extern void ins_xornbsu (int arg1, int arg2);
-extern void ins_notbsu  (int arg1, int arg2);
+extern void ins_sch0bsu (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_sch0bsd (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_sch1bsu (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_sch1bsd (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_orbsu   (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_andbsu  (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_xorbsu  (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_ornbsu  (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_andnbsu (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_xornbsu (WORD src, WORD dst, WORD len, WORD offs);
+extern void ins_notbsu  (WORD src, WORD dst, WORD len, WORD offs);
 
 //FPU SubOpcodes
 extern float ins_cmpf_s  (float reg1, float reg2);

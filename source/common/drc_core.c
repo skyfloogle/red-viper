@@ -403,10 +403,15 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                     inst_cache[i].reg2 = 0xFF;
                     break;
                 case AM_BSTR: // Bit String Subopcodes
-                    inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                    inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
-                    reg_usage[inst_cache[i].reg1]++;
-                    reg_usage[inst_cache[i].reg2]++;
+                    inst_cache[i].imm = (unsigned)((lowB & 0x1F));
+                    reg_usage[26]++;
+                    reg_usage[27]++;
+                    reg_usage[28]++;
+                    reg_usage[29]++;
+                    reg_usage[30]++;
+
+                    inst_cache[i].reg1 = 0xFF;
+                    inst_cache[i].reg2 = 0xFF;
                     break;
                 case AM_FPP: // Floating Point Subcode
                     inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
@@ -1043,6 +1048,46 @@ int drc_translateBlock(exec_block *block) {
                 // mov<cond> reg2, 1
                 new_data_proc_imm(cond_map[inst_cache[i].imm & 0xF], ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
                 reg2_modified = true;
+                break;
+            case V810_OP_BSTR:
+                if (inst_cache[i].imm != V810_OP_MOVBSU) {
+                    dprintf(0, "[DRC]: %s (0x%x) not implemented\n", bssuboptable[inst_cache[i].imm].opname, inst_cache[i].imm);
+                    break;
+                }
+                MOV_I(2, 31, 0);
+                // v810 r26 -> arm r3 hi
+                if (!phys_regs[26]) LDR_IO(0, 11, 26 * 4);
+                AND(3, phys_regs[26], 2);
+                MOV_IS(3, 3, ARM_SHIFT_LSL, 16);
+                // v810 r27 -> arm r3 lo
+                if (!phys_regs[27]) LDR_IO(0, 11, 27 * 4);
+                AND(0, phys_regs[27], 2);
+                ORR(3, 0, 3);
+
+                // mov r2, ~3
+                new_data_proc_imm(ARM_COND_AL, ARM_OP_MVN, 0, 0, 2, 0, 3);
+                // v810 r29 & (~3) -> arm r1
+                if (!phys_regs[29]) LDR_IO(0, 11, 29 * 4);
+                AND(1, phys_regs[29], 2);
+
+                // v810 r30 & (~3) -> arm r0
+                if (!phys_regs[30]) LDR_IO(0, 11, 30 * 4);
+                AND(0, phys_regs[30], 2);
+
+                // v810 r28 -> arm r2
+                if (!phys_regs[28]) LDR_IO(2, 11, 28 * 4);
+                else MOV(2, phys_regs[28]);
+
+                // call the function
+                PUSH(1<<5);
+                LDR_IO(5, 11, 69 * 4);
+                ADD_I(5, 5, (DRC_RELOC_BSTR+inst_cache[i].imm)*4, 0);
+                BLX(ARM_COND_AL, 5);
+                POP(1<<5);
+                // reload registers
+                for (int i = 26; i <= 30; i++)
+                    if (phys_regs[i])
+                        LDR_IO(phys_regs[i], 11, i * 4);
                 break;
             case V810_OP_FPP:
                 switch (inst_cache[i].imm) {

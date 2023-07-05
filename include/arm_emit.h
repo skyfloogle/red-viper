@@ -430,6 +430,10 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define MOV_IS(Rd, Rm, shift, shift_imm) \
     new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, Rd, shift_imm, shift, Rm)
 
+// and Rd, Rn, Rm, shift #shift_imm
+#define AND_IS(Rd, Rn, Rm, shift, shift_imm) \
+    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_AND, 0, Rn, Rd, shift_imm, shift, Rm)
+
 // orr Rd, Rn, Rm, shift #shift_imm
 // Or immediate shift
 #define ORR_IS(Rd, Rn, Rm, shift, shift_imm) \
@@ -504,6 +508,9 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // mov Rd, Rm
 #define MOV(Rd, Rm) \
     MOV_IS(Rd, Rm, 0, 0)
+
+#define AND(Rd, Rn, Rm) \
+    AND_IS(Rd, Rn, Rm, 0, 0)
 
 // orr Rd, Rn, Rm
 #define ORR(Rd, Rn, Rm) \
