@@ -75,42 +75,8 @@ void ins_sch1bsd (WORD src, WORD dst, WORD len, WORD offs) {
 }
 
 void ins_orbsu   (WORD src, WORD dst, WORD len, WORD offs) {
-    WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
-
-    WORD i,tmp[8192],tmp2[8192];
-
-    get_bitstr(tmp,src,srcoff,len);
-    get_bitstr(tmp2,dst,dstoff,len);
-    for (i = 0; i < ((len>>5)+1); i++) tmp[i] |= tmp2[i];
-    set_bitstr(tmp,dst,dstoff,len);
-}
-
-void ins_andbsu  (WORD src, WORD dst, WORD len, WORD offs) {
-    WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
-
-    WORD i,tmp[8192],tmp2[8192];
-
-    get_bitstr(tmp,src,srcoff,len);
-    get_bitstr(tmp2,dst,dstoff,len);
-    for (i = 0; i < ((len>>5)+1); i++) tmp[i] &= tmp2[i];
-    set_bitstr(tmp,dst,dstoff,len);
-}
-
-void ins_xorbsu  (WORD src, WORD dst, WORD len, WORD offs) {
-    WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
-
-    WORD i,tmp[8192],tmp2[8192];
-
-    get_bitstr(tmp,src,srcoff,len);
-    get_bitstr(tmp2,dst,dstoff,len);
-    for (i = 0; i < ((len>>5)+1); i++) tmp[i] ^= tmp2[i];
-    set_bitstr(tmp,dst,dstoff,len);
-}
-
-void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    #define ADD(s) dstbuf | (s)
+    #define FILTER(s,f) s & f
     if (len == 0) return;
     WORD srcoff = offs & 31;
     WORD dstoff = offs >> 16;
@@ -119,8 +85,10 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
             dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
             dstbuf &= ((1 << srcoff) - 1);
-            dstbuf |= mem_rword(src) & ~((1 << srcoff) - 1);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), ~((1 << srcoff) - 1)));
             mem_wword(dst, dstbuf);
             src += 4;
             dst += 4;
@@ -129,8 +97,12 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
         }
 
         if (srcoff == 0) {
+            dstbuf = 0;
             while (len >= 32) {
-                mem_wword(dst, mem_rword(src));
+                #ifndef CLEARDST
+                dstbuf = mem_rword(dst);
+                #endif
+                mem_wword(dst, ADD(mem_rword(src)));
                 src += 4;
                 dst += 4;
                 len -= 32;
@@ -141,8 +113,10 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
         // if srcoff == 0, then len < 32
         if (len > 0) {
             dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
             dstbuf &= ~(((1 << len) - 1) << srcoff);
-            dstbuf |= mem_rword(src) & (((1 << len) - 1) << srcoff);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), (((1 << len) - 1) << srcoff)));
             mem_wword(dst, dstbuf);
             srcoff = dstoff += len;
             if (srcoff == 32) {
@@ -162,10 +136,11 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
                 if (bits_to_transfer > len) bits_to_transfer = len;
                 WORD tmp = srcbuf;
                 tmp >>= srcoff - dstoff;
-                tmp &= ((1 << bits_to_transfer) - 1) << dstoff;
-                // only necessary because we overwrite
+                tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+                #ifdef CLEARDST
                 dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
-                dstbuf |= tmp;
+                #endif
+                dstbuf = ADD(tmp);
                 srcoff += bits_to_transfer;
                 if (srcoff >= 32) {
                     src += 4;
@@ -185,10 +160,12 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
             if (bits_to_transfer > len) bits_to_transfer = len;
             WORD tmp = srcbuf;
             tmp <<= dstoff - srcoff;
-            tmp &= ((1 << bits_to_transfer) - 1) << dstoff;
+            tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
             // only necessary because we overwrite
+            #ifdef CLEARDST
             dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
-            dstbuf |= tmp;
+            #endif
+            dstbuf = ADD(tmp);
             mem_wword(dst, dstbuf);
             srcoff += bits_to_transfer;
             if (srcoff >= 32) {
@@ -208,6 +185,373 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
             }
         }
     }
+    #undef ADD
+    #undef CLEARDST
+    #undef FILTER
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = dst;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = srcoff;
+    v810_state->P_REG[26] = dstoff;
+}
+
+void ins_andbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    #define ADD(s) dstbuf & (s)
+    #define FILTER(s,f) s | ~(f)
+    if (len == 0) return;
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
+    WORD dstbuf;
+
+    if (srcoff == dstoff) {
+        if (srcoff != 0 && len > 32-srcoff) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ((1 << srcoff) - 1);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), ~((1 << srcoff) - 1)));
+            mem_wword(dst, dstbuf);
+            src += 4;
+            dst += 4;
+            len -= 32 - srcoff;
+            srcoff = dstoff = 0;
+        }
+
+        if (srcoff == 0) {
+            dstbuf = 0;
+            while (len >= 32) {
+                #ifndef CLEARDST
+                dstbuf = mem_rword(dst);
+                #endif
+                mem_wword(dst, ADD(mem_rword(src)));
+                src += 4;
+                dst += 4;
+                len -= 32;
+            }
+        }
+
+        // if srcoff != 0, then len <= 32-srcoff
+        // if srcoff == 0, then len < 32
+        if (len > 0) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << len) - 1) << srcoff);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), (((1 << len) - 1) << srcoff)));
+            mem_wword(dst, dstbuf);
+            srcoff = dstoff += len;
+            if (srcoff == 32) {
+                srcoff = dstoff = 0;
+                src += 4;
+                dst += 4;
+            }
+            len = 0;
+        }
+    } else {
+        WORD srcbuf = mem_rword(src);
+        dstbuf = mem_rword(dst);
+        while (len > 0) {
+            // we align ourself to the destination because that makes things simpler
+            if (srcoff > dstoff) {
+                int bits_to_transfer = 32 - srcoff;
+                if (bits_to_transfer > len) bits_to_transfer = len;
+                WORD tmp = srcbuf;
+                tmp >>= srcoff - dstoff;
+                tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+                #ifdef CLEARDST
+                dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+                #endif
+                dstbuf = ADD(tmp);
+                srcoff += bits_to_transfer;
+                if (srcoff >= 32) {
+                    src += 4;
+                    srcoff &= 31;
+                }
+                // dstoff + bits_to_transfer < 32 guaranteed
+                dstoff += bits_to_transfer;
+                len -= bits_to_transfer;
+                if (len <= 0) {
+                    mem_wword(dst, dstbuf);
+                    break;
+                }
+                else srcbuf = mem_rword(src);
+            }
+            // if we got here, then dstoff <= srcoff
+            int bits_to_transfer = 32 - dstoff;
+            if (bits_to_transfer > len) bits_to_transfer = len;
+            WORD tmp = srcbuf;
+            tmp <<= dstoff - srcoff;
+            tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+            // only necessary because we overwrite
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+            #endif
+            dstbuf = ADD(tmp);
+            mem_wword(dst, dstbuf);
+            srcoff += bits_to_transfer;
+            if (srcoff >= 32) {
+                src += 4;
+                srcoff &= 31;
+            }
+            dstoff += bits_to_transfer;
+            if (dstoff >= 32) {
+                dst += 4;
+                dstoff &= 31;
+            }
+            len -= bits_to_transfer;
+            if (len <= 0) break;
+            else {
+                dstbuf = mem_rword(dst);
+                if (srcoff == 0) srcbuf = mem_rword(src);
+            }
+        }
+    }
+    #undef ADD
+    #undef CLEARDST
+    #undef FILTER
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = dst;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = srcoff;
+    v810_state->P_REG[26] = dstoff;
+}
+
+void ins_xorbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    #define ADD(s) dstbuf ^ (s)
+    #define FILTER(s,f) s & f
+    if (len == 0) return;
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
+    WORD dstbuf;
+
+    if (srcoff == dstoff) {
+        if (srcoff != 0 && len > 32-srcoff) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ((1 << srcoff) - 1);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), ~((1 << srcoff) - 1)));
+            mem_wword(dst, dstbuf);
+            src += 4;
+            dst += 4;
+            len -= 32 - srcoff;
+            srcoff = dstoff = 0;
+        }
+
+        if (srcoff == 0) {
+            dstbuf = 0;
+            while (len >= 32) {
+                #ifndef CLEARDST
+                dstbuf = mem_rword(dst);
+                #endif
+                mem_wword(dst, ADD(mem_rword(src)));
+                src += 4;
+                dst += 4;
+                len -= 32;
+            }
+        }
+
+        // if srcoff != 0, then len <= 32-srcoff
+        // if srcoff == 0, then len < 32
+        if (len > 0) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << len) - 1) << srcoff);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), (((1 << len) - 1) << srcoff)));
+            mem_wword(dst, dstbuf);
+            srcoff = dstoff += len;
+            if (srcoff == 32) {
+                srcoff = dstoff = 0;
+                src += 4;
+                dst += 4;
+            }
+            len = 0;
+        }
+    } else {
+        WORD srcbuf = mem_rword(src);
+        dstbuf = mem_rword(dst);
+        while (len > 0) {
+            // we align ourself to the destination because that makes things simpler
+            if (srcoff > dstoff) {
+                int bits_to_transfer = 32 - srcoff;
+                if (bits_to_transfer > len) bits_to_transfer = len;
+                WORD tmp = srcbuf;
+                tmp >>= srcoff - dstoff;
+                tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+                #ifdef CLEARDST
+                dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+                #endif
+                dstbuf = ADD(tmp);
+                srcoff += bits_to_transfer;
+                if (srcoff >= 32) {
+                    src += 4;
+                    srcoff &= 31;
+                }
+                // dstoff + bits_to_transfer < 32 guaranteed
+                dstoff += bits_to_transfer;
+                len -= bits_to_transfer;
+                if (len <= 0) {
+                    mem_wword(dst, dstbuf);
+                    break;
+                }
+                else srcbuf = mem_rword(src);
+            }
+            // if we got here, then dstoff <= srcoff
+            int bits_to_transfer = 32 - dstoff;
+            if (bits_to_transfer > len) bits_to_transfer = len;
+            WORD tmp = srcbuf;
+            tmp <<= dstoff - srcoff;
+            tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+            // only necessary because we overwrite
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+            #endif
+            dstbuf = ADD(tmp);
+            mem_wword(dst, dstbuf);
+            srcoff += bits_to_transfer;
+            if (srcoff >= 32) {
+                src += 4;
+                srcoff &= 31;
+            }
+            dstoff += bits_to_transfer;
+            if (dstoff >= 32) {
+                dst += 4;
+                dstoff &= 31;
+            }
+            len -= bits_to_transfer;
+            if (len <= 0) break;
+            else {
+                dstbuf = mem_rword(dst);
+                if (srcoff == 0) srcbuf = mem_rword(src);
+            }
+        }
+    }
+    #undef ADD
+    #undef CLEARDST
+    #undef FILTER
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = dst;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = srcoff;
+    v810_state->P_REG[26] = dstoff;
+}
+
+void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    #define ADD(s) dstbuf | (s)
+    #define FILTER(s,f) s & f
+    #define CLEARDST
+    if (len == 0) return;
+    WORD srcoff = offs & 31;
+    WORD dstoff = offs >> 16;
+    WORD dstbuf;
+
+    if (srcoff == dstoff) {
+        if (srcoff != 0 && len > 32-srcoff) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ((1 << srcoff) - 1);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), ~((1 << srcoff) - 1)));
+            mem_wword(dst, dstbuf);
+            src += 4;
+            dst += 4;
+            len -= 32 - srcoff;
+            srcoff = dstoff = 0;
+        }
+
+        if (srcoff == 0) {
+            dstbuf = 0;
+            while (len >= 32) {
+                #ifndef CLEARDST
+                dstbuf = mem_rword(dst);
+                #endif
+                mem_wword(dst, ADD(mem_rword(src)));
+                src += 4;
+                dst += 4;
+                len -= 32;
+            }
+        }
+
+        // if srcoff != 0, then len <= 32-srcoff
+        // if srcoff == 0, then len < 32
+        if (len > 0) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << len) - 1) << srcoff);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), (((1 << len) - 1) << srcoff)));
+            mem_wword(dst, dstbuf);
+            srcoff = dstoff += len;
+            if (srcoff == 32) {
+                srcoff = dstoff = 0;
+                src += 4;
+                dst += 4;
+            }
+            len = 0;
+        }
+    } else {
+        WORD srcbuf = mem_rword(src);
+        dstbuf = mem_rword(dst);
+        while (len > 0) {
+            // we align ourself to the destination because that makes things simpler
+            if (srcoff > dstoff) {
+                int bits_to_transfer = 32 - srcoff;
+                if (bits_to_transfer > len) bits_to_transfer = len;
+                WORD tmp = srcbuf;
+                tmp >>= srcoff - dstoff;
+                tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+                #ifdef CLEARDST
+                dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+                #endif
+                dstbuf = ADD(tmp);
+                srcoff += bits_to_transfer;
+                if (srcoff >= 32) {
+                    src += 4;
+                    srcoff &= 31;
+                }
+                // dstoff + bits_to_transfer < 32 guaranteed
+                dstoff += bits_to_transfer;
+                len -= bits_to_transfer;
+                if (len <= 0) {
+                    mem_wword(dst, dstbuf);
+                    break;
+                }
+                else srcbuf = mem_rword(src);
+            }
+            // if we got here, then dstoff <= srcoff
+            int bits_to_transfer = 32 - dstoff;
+            if (bits_to_transfer > len) bits_to_transfer = len;
+            WORD tmp = srcbuf;
+            tmp <<= dstoff - srcoff;
+            tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+            // only necessary because we overwrite
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+            #endif
+            dstbuf = ADD(tmp);
+            mem_wword(dst, dstbuf);
+            srcoff += bits_to_transfer;
+            if (srcoff >= 32) {
+                src += 4;
+                srcoff &= 31;
+            }
+            dstoff += bits_to_transfer;
+            if (dstoff >= 32) {
+                dst += 4;
+                dstoff &= 31;
+            }
+            len -= bits_to_transfer;
+            if (len <= 0) break;
+            else {
+                dstbuf = mem_rword(dst);
+                if (srcoff == 0) srcbuf = mem_rword(src);
+            }
+        }
+    }
+    #undef ADD
+    #undef CLEARDST
+    #undef FILTER
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
     v810_state->P_REG[28] = len;
@@ -216,50 +560,488 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
 }
 
 void ins_ornbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    #define ADD(s) dstbuf | ~(s)
+    #define FILTER(s,f) s & f
+    if (len == 0) return;
     WORD srcoff = offs & 31;
     WORD dstoff = offs >> 16;
+    WORD dstbuf;
 
-    WORD i,tmp[8192],tmp2[8192];
+    if (srcoff == dstoff) {
+        if (srcoff != 0 && len > 32-srcoff) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ((1 << srcoff) - 1);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), ~((1 << srcoff) - 1)));
+            mem_wword(dst, dstbuf);
+            src += 4;
+            dst += 4;
+            len -= 32 - srcoff;
+            srcoff = dstoff = 0;
+        }
 
-    get_bitstr(tmp,src,srcoff,len);
-    get_bitstr(tmp2,dst,dstoff,len);
-    for (i = 0; i < ((len>>5)+1); i++) tmp[i] = (~tmp[i] | tmp2[i]);
-    set_bitstr(tmp,dst,dstoff,len);
+        if (srcoff == 0) {
+            dstbuf = 0;
+            while (len >= 32) {
+                #ifndef CLEARDST
+                dstbuf = mem_rword(dst);
+                #endif
+                mem_wword(dst, ADD(mem_rword(src)));
+                src += 4;
+                dst += 4;
+                len -= 32;
+            }
+        }
+
+        // if srcoff != 0, then len <= 32-srcoff
+        // if srcoff == 0, then len < 32
+        if (len > 0) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << len) - 1) << srcoff);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), (((1 << len) - 1) << srcoff)));
+            mem_wword(dst, dstbuf);
+            srcoff = dstoff += len;
+            if (srcoff == 32) {
+                srcoff = dstoff = 0;
+                src += 4;
+                dst += 4;
+            }
+            len = 0;
+        }
+    } else {
+        WORD srcbuf = mem_rword(src);
+        dstbuf = mem_rword(dst);
+        while (len > 0) {
+            // we align ourself to the destination because that makes things simpler
+            if (srcoff > dstoff) {
+                int bits_to_transfer = 32 - srcoff;
+                if (bits_to_transfer > len) bits_to_transfer = len;
+                WORD tmp = srcbuf;
+                tmp >>= srcoff - dstoff;
+                tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+                #ifdef CLEARDST
+                dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+                #endif
+                dstbuf = ADD(tmp);
+                srcoff += bits_to_transfer;
+                if (srcoff >= 32) {
+                    src += 4;
+                    srcoff &= 31;
+                }
+                // dstoff + bits_to_transfer < 32 guaranteed
+                dstoff += bits_to_transfer;
+                len -= bits_to_transfer;
+                if (len <= 0) {
+                    mem_wword(dst, dstbuf);
+                    break;
+                }
+                else srcbuf = mem_rword(src);
+            }
+            // if we got here, then dstoff <= srcoff
+            int bits_to_transfer = 32 - dstoff;
+            if (bits_to_transfer > len) bits_to_transfer = len;
+            WORD tmp = srcbuf;
+            tmp <<= dstoff - srcoff;
+            tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+            // only necessary because we overwrite
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+            #endif
+            dstbuf = ADD(tmp);
+            mem_wword(dst, dstbuf);
+            srcoff += bits_to_transfer;
+            if (srcoff >= 32) {
+                src += 4;
+                srcoff &= 31;
+            }
+            dstoff += bits_to_transfer;
+            if (dstoff >= 32) {
+                dst += 4;
+                dstoff &= 31;
+            }
+            len -= bits_to_transfer;
+            if (len <= 0) break;
+            else {
+                dstbuf = mem_rword(dst);
+                if (srcoff == 0) srcbuf = mem_rword(src);
+            }
+        }
+    }
+    #undef ADD
+    #undef CLEARDST
+    #undef FILTER
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = dst;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = srcoff;
+    v810_state->P_REG[26] = dstoff;
 }
 
 void ins_andnbsu (WORD src, WORD dst, WORD len, WORD offs) {
+    #define ADD(s) dstbuf & ~(s)
+    #define FILTER(s,f) s | ~(f)
+    if (len == 0) return;
     WORD srcoff = offs & 31;
     WORD dstoff = offs >> 16;
+    WORD dstbuf;
 
-    WORD i,tmp[8192],tmp2[8192];
+    if (srcoff == dstoff) {
+        if (srcoff != 0 && len > 32-srcoff) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ((1 << srcoff) - 1);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), ~((1 << srcoff) - 1)));
+            mem_wword(dst, dstbuf);
+            src += 4;
+            dst += 4;
+            len -= 32 - srcoff;
+            srcoff = dstoff = 0;
+        }
 
-    get_bitstr(tmp,src,srcoff,len);
-    get_bitstr(tmp2,dst,dstoff,len);
-    for (i = 0; i < ((len>>5)+1); i++) tmp[i] = (~tmp[i] & tmp2[i]);
-    set_bitstr(tmp,dst,dstoff,len);
+        if (srcoff == 0) {
+            dstbuf = 0;
+            while (len >= 32) {
+                #ifndef CLEARDST
+                dstbuf = mem_rword(dst);
+                #endif
+                mem_wword(dst, ADD(mem_rword(src)));
+                src += 4;
+                dst += 4;
+                len -= 32;
+            }
+        }
+
+        // if srcoff != 0, then len <= 32-srcoff
+        // if srcoff == 0, then len < 32
+        if (len > 0) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << len) - 1) << srcoff);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), (((1 << len) - 1) << srcoff)));
+            mem_wword(dst, dstbuf);
+            srcoff = dstoff += len;
+            if (srcoff == 32) {
+                srcoff = dstoff = 0;
+                src += 4;
+                dst += 4;
+            }
+            len = 0;
+        }
+    } else {
+        WORD srcbuf = mem_rword(src);
+        dstbuf = mem_rword(dst);
+        while (len > 0) {
+            // we align ourself to the destination because that makes things simpler
+            if (srcoff > dstoff) {
+                int bits_to_transfer = 32 - srcoff;
+                if (bits_to_transfer > len) bits_to_transfer = len;
+                WORD tmp = srcbuf;
+                tmp >>= srcoff - dstoff;
+                tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+                #ifdef CLEARDST
+                dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+                #endif
+                dstbuf = ADD(tmp);
+                srcoff += bits_to_transfer;
+                if (srcoff >= 32) {
+                    src += 4;
+                    srcoff &= 31;
+                }
+                // dstoff + bits_to_transfer < 32 guaranteed
+                dstoff += bits_to_transfer;
+                len -= bits_to_transfer;
+                if (len <= 0) {
+                    mem_wword(dst, dstbuf);
+                    break;
+                }
+                else srcbuf = mem_rword(src);
+            }
+            // if we got here, then dstoff <= srcoff
+            int bits_to_transfer = 32 - dstoff;
+            if (bits_to_transfer > len) bits_to_transfer = len;
+            WORD tmp = srcbuf;
+            tmp <<= dstoff - srcoff;
+            tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+            // only necessary because we overwrite
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+            #endif
+            dstbuf = ADD(tmp);
+            mem_wword(dst, dstbuf);
+            srcoff += bits_to_transfer;
+            if (srcoff >= 32) {
+                src += 4;
+                srcoff &= 31;
+            }
+            dstoff += bits_to_transfer;
+            if (dstoff >= 32) {
+                dst += 4;
+                dstoff &= 31;
+            }
+            len -= bits_to_transfer;
+            if (len <= 0) break;
+            else {
+                dstbuf = mem_rword(dst);
+                if (srcoff == 0) srcbuf = mem_rword(src);
+            }
+        }
+    }
+    #undef ADD
+    #undef CLEARDST
+    #undef FILTER
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = dst;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = srcoff;
+    v810_state->P_REG[26] = dstoff;
 }
 
 void ins_xornbsu (WORD src, WORD dst, WORD len, WORD offs) {
+    #define ADD(s) dstbuf ^ ~(s)
+    #define FILTER(s,f) s & f
+    if (len == 0) return;
     WORD srcoff = offs & 31;
     WORD dstoff = offs >> 16;
+    WORD dstbuf;
 
-    WORD i,tmp[8192],tmp2[8192];
+    if (srcoff == dstoff) {
+        if (srcoff != 0 && len > 32-srcoff) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ((1 << srcoff) - 1);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), ~((1 << srcoff) - 1)));
+            mem_wword(dst, dstbuf);
+            src += 4;
+            dst += 4;
+            len -= 32 - srcoff;
+            srcoff = dstoff = 0;
+        }
 
-    get_bitstr(tmp,src,srcoff,len);
-    get_bitstr(tmp2,dst,dstoff,len);
-    for (i = 0; i < ((len>>5)+1); i++) tmp[i] = (~tmp[i] ^ tmp2[i]);
-    set_bitstr(tmp,dst,dstoff,len);
+        if (srcoff == 0) {
+            dstbuf = 0;
+            while (len >= 32) {
+                #ifndef CLEARDST
+                dstbuf = mem_rword(dst);
+                #endif
+                mem_wword(dst, ADD(mem_rword(src)));
+                src += 4;
+                dst += 4;
+                len -= 32;
+            }
+        }
+
+        // if srcoff != 0, then len <= 32-srcoff
+        // if srcoff == 0, then len < 32
+        if (len > 0) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << len) - 1) << srcoff);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), (((1 << len) - 1) << srcoff)));
+            mem_wword(dst, dstbuf);
+            srcoff = dstoff += len;
+            if (srcoff == 32) {
+                srcoff = dstoff = 0;
+                src += 4;
+                dst += 4;
+            }
+            len = 0;
+        }
+    } else {
+        WORD srcbuf = mem_rword(src);
+        dstbuf = mem_rword(dst);
+        while (len > 0) {
+            // we align ourself to the destination because that makes things simpler
+            if (srcoff > dstoff) {
+                int bits_to_transfer = 32 - srcoff;
+                if (bits_to_transfer > len) bits_to_transfer = len;
+                WORD tmp = srcbuf;
+                tmp >>= srcoff - dstoff;
+                tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+                #ifdef CLEARDST
+                dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+                #endif
+                dstbuf = ADD(tmp);
+                srcoff += bits_to_transfer;
+                if (srcoff >= 32) {
+                    src += 4;
+                    srcoff &= 31;
+                }
+                // dstoff + bits_to_transfer < 32 guaranteed
+                dstoff += bits_to_transfer;
+                len -= bits_to_transfer;
+                if (len <= 0) {
+                    mem_wword(dst, dstbuf);
+                    break;
+                }
+                else srcbuf = mem_rword(src);
+            }
+            // if we got here, then dstoff <= srcoff
+            int bits_to_transfer = 32 - dstoff;
+            if (bits_to_transfer > len) bits_to_transfer = len;
+            WORD tmp = srcbuf;
+            tmp <<= dstoff - srcoff;
+            tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+            // only necessary because we overwrite
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+            #endif
+            dstbuf = ADD(tmp);
+            mem_wword(dst, dstbuf);
+            srcoff += bits_to_transfer;
+            if (srcoff >= 32) {
+                src += 4;
+                srcoff &= 31;
+            }
+            dstoff += bits_to_transfer;
+            if (dstoff >= 32) {
+                dst += 4;
+                dstoff &= 31;
+            }
+            len -= bits_to_transfer;
+            if (len <= 0) break;
+            else {
+                dstbuf = mem_rword(dst);
+                if (srcoff == 0) srcbuf = mem_rword(src);
+            }
+        }
+    }
+    #undef ADD
+    #undef CLEARDST
+    #undef FILTER
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = dst;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = srcoff;
+    v810_state->P_REG[26] = dstoff;
 }
 
 void ins_notbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+    #define ADD(s) dstbuf | ~(s)
+    #define FILTER(s,f) s & f
+    #define CLEARDST
+    if (len == 0) return;
     WORD srcoff = offs & 31;
     WORD dstoff = offs >> 16;
+    WORD dstbuf;
 
-    WORD i,tmp[8192];
+    if (srcoff == dstoff) {
+        if (srcoff != 0 && len > 32-srcoff) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ((1 << srcoff) - 1);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), ~((1 << srcoff) - 1)));
+            mem_wword(dst, dstbuf);
+            src += 4;
+            dst += 4;
+            len -= 32 - srcoff;
+            srcoff = dstoff = 0;
+        }
 
-    get_bitstr(tmp,src,srcoff,len);
-    for (i = 0; i < ((len>>5)+1); i++) tmp[i] = ~tmp[i];
-    set_bitstr(tmp,dst,dstoff,len);
+        if (srcoff == 0) {
+            dstbuf = 0;
+            while (len >= 32) {
+                #ifndef CLEARDST
+                dstbuf = mem_rword(dst);
+                #endif
+                mem_wword(dst, ADD(mem_rword(src)));
+                src += 4;
+                dst += 4;
+                len -= 32;
+            }
+        }
+
+        // if srcoff != 0, then len <= 32-srcoff
+        // if srcoff == 0, then len < 32
+        if (len > 0) {
+            dstbuf = mem_rword(dst);
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << len) - 1) << srcoff);
+            #endif
+            dstbuf = ADD(FILTER(mem_rword(src), (((1 << len) - 1) << srcoff)));
+            mem_wword(dst, dstbuf);
+            srcoff = dstoff += len;
+            if (srcoff == 32) {
+                srcoff = dstoff = 0;
+                src += 4;
+                dst += 4;
+            }
+            len = 0;
+        }
+    } else {
+        WORD srcbuf = mem_rword(src);
+        dstbuf = mem_rword(dst);
+        while (len > 0) {
+            // we align ourself to the destination because that makes things simpler
+            if (srcoff > dstoff) {
+                int bits_to_transfer = 32 - srcoff;
+                if (bits_to_transfer > len) bits_to_transfer = len;
+                WORD tmp = srcbuf;
+                tmp >>= srcoff - dstoff;
+                tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+                #ifdef CLEARDST
+                dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+                #endif
+                dstbuf = ADD(tmp);
+                srcoff += bits_to_transfer;
+                if (srcoff >= 32) {
+                    src += 4;
+                    srcoff &= 31;
+                }
+                // dstoff + bits_to_transfer < 32 guaranteed
+                dstoff += bits_to_transfer;
+                len -= bits_to_transfer;
+                if (len <= 0) {
+                    mem_wword(dst, dstbuf);
+                    break;
+                }
+                else srcbuf = mem_rword(src);
+            }
+            // if we got here, then dstoff <= srcoff
+            int bits_to_transfer = 32 - dstoff;
+            if (bits_to_transfer > len) bits_to_transfer = len;
+            WORD tmp = srcbuf;
+            tmp <<= dstoff - srcoff;
+            tmp = FILTER(tmp, ((1 << bits_to_transfer) - 1) << dstoff);
+            // only necessary because we overwrite
+            #ifdef CLEARDST
+            dstbuf &= ~(((1 << bits_to_transfer) - 1) << dstoff);
+            #endif
+            dstbuf = ADD(tmp);
+            mem_wword(dst, dstbuf);
+            srcoff += bits_to_transfer;
+            if (srcoff >= 32) {
+                src += 4;
+                srcoff &= 31;
+            }
+            dstoff += bits_to_transfer;
+            if (dstoff >= 32) {
+                dst += 4;
+                dstoff &= 31;
+            }
+            len -= bits_to_transfer;
+            if (len <= 0) break;
+            else {
+                dstbuf = mem_rword(dst);
+                if (srcoff == 0) srcbuf = mem_rword(src);
+            }
+        }
+    }
+    #undef ADD
+    #undef CLEARDST
+    #undef FILTER
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = dst;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = srcoff;
+    v810_state->P_REG[26] = dstoff;
 }
 
 //FPU SubOpcodes  
