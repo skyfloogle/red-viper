@@ -109,7 +109,9 @@ typedef struct
 	short ix, iy, jx, jy;
 } avertex;
 
+#define VBUF_SIZE 64 * 64 * 2 * 32
 vertex *vbuf, *vcur;
+#define AVBUF_SIZE 2048
 avertex *avbuf, *avcur;
 
 #define DISPLAY_TRANSFER_FLAGS                                                                     \
@@ -176,8 +178,8 @@ bool V810_DSP_Init()
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 
-	vbuf = linearAlloc(sizeof(vertex) * 64 * 64 * 2 * 32);
-	avbuf = linearAlloc(sizeof(avertex) * 384 * 4);
+	vbuf = linearAlloc(sizeof(vertex) * VBUF_SIZE);
+	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
 
 	return true;
 }
@@ -383,6 +385,7 @@ void sceneRender()
 					continue;
 				}
 					
+				if (vcur - vbuf > VBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", vcur - vbuf, AVBUF_SIZE);
 				C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 				// next, draw the affine map
@@ -451,6 +454,7 @@ void sceneRender()
 						avcur++->jy = params[y * 8 + 3] == 0 ? 0 : 1 * 8;
 					}
 				}
+				if (avcur - avbuf > AVBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", avcur - avbuf, AVBUF_SIZE);
 				C3D_DrawArrays(GPU_GEOMETRY_PRIM, avcur - avbuf - h, h);
 
 				bufInfo = C3D_GetBufInfo();
@@ -509,6 +513,7 @@ void sceneRender()
 			}
 			object_group_id = (object_group_id - 1) & 3;
 		}
+		if (vcur - vbuf > VBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", vcur - vbuf, AVBUF_SIZE);
 		if (vcount != 0)
 			C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 	}
