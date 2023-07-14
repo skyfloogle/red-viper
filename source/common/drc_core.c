@@ -195,10 +195,10 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
                     break;
             }
 
-            cur_PC += am_size_table[optable[opcode].addr_mode];
-
             if (cur_PC > end_PC)
                 end_PC = cur_PC;
+
+            cur_PC += am_size_table[optable[opcode].addr_mode];
         }
     } while (start_PC < last_start_PC);
 
@@ -279,7 +279,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
     bool finished;
 
     do {
-        for (; (i < MAX_INST) && (cur_PC < end_PC); i++) {
+        for (; (i < MAX_INST) && (cur_PC <= end_PC); i++) {
             cur_PC = (cur_PC &0x07FFFFFE);
 
             if ((cur_PC >>24) == 0x05) { // RAM
