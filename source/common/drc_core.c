@@ -1051,7 +1051,7 @@ int drc_translateBlock(exec_block *block) {
                 reg2_modified = true;
                 break;
             case V810_OP_BSTR:
-                if (inst_cache[i].imm != V810_OP_MOVBSU) {
+                if (inst_cache[i].imm < 4) {
                     dprintf(0, "[DRC]: %s (0x%lx) not implemented\n", bssuboptable[inst_cache[i].imm].opname, inst_cache[i].imm);
                     break;
                 }
