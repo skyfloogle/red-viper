@@ -1052,7 +1052,7 @@ int drc_translateBlock(exec_block *block) {
                 break;
             case V810_OP_BSTR:
                 if (inst_cache[i].imm != V810_OP_MOVBSU) {
-                    dprintf(0, "[DRC]: %s (0x%x) not implemented\n", bssuboptable[inst_cache[i].imm].opname, inst_cache[i].imm);
+                    dprintf(0, "[DRC]: %s (0x%lx) not implemented\n", bssuboptable[inst_cache[i].imm].opname, inst_cache[i].imm);
                     break;
                 }
                 MOV_I(2, 31, 0);
