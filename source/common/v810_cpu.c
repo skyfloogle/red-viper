@@ -67,7 +67,7 @@ int v810_init(char *rom_name) {
     V810_DISPLAY_RAM.off = (unsigned)V810_DISPLAY_RAM.pmemory - V810_DISPLAY_RAM.lowaddr;
 
     // Initialize our VIPC Reg tables....
-    V810_VIPCREG.lowaddr  = 0x00040000; //0x0005F800
+    V810_VIPCREG.lowaddr  = 0x0005F800; //0x0005F800
     V810_VIPCREG.highaddr = 0x0005FFFF; //0x0005F870
     // Point to the handler funcs...
     V810_VIPCREG.rfuncb = &(vipcreg_rbyte);
