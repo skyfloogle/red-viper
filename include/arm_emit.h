@@ -710,18 +710,22 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     cycles = 0; \
 }
 
-#define BUSYWAIT(cond, ret_PC) { \
-    B(cond ^ 1, 8); \
+#define HALT(next_PC) { \
     MRS(0); \
-    MOV_I(1, (ret_PC) & 0xff, 0); \
-    ORR_I(1, ((ret_PC) & 0xff00)>>8, 24); \
-    ORR_I(1, ((ret_PC) & 0xff0000)>>16, 16); \
-    ORR_I(1, ((ret_PC) & 0xff000000)>>24, 8); \
+    MOV_I(1, (next_PC) & 0xff, 0); \
+    ORR_I(1, ((next_PC) & 0xff00)>>8, 24); \
+    ORR_I(1, ((next_PC) & 0xff0000)>>16, 16); \
+    ORR_I(1, ((next_PC) & 0xff000000)>>24, 8); \
     MOV_I(10, 0, 0); \
     LDR_IO(2, 11, 68 * 4); \
     BLX(ARM_COND_AL, 2); \
-    B(ARM_COND_AL, (-9) & 0xffffff); \
+    B(ARM_COND_AL, (-8) & 0xffffff); \
     cycles = 0; \
+}
+
+#define BUSYWAIT(cond, ret_PC) { \
+    B(cond ^ 1, 8); \
+    HALT(ret_PC); \
 }
 
 #endif

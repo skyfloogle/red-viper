@@ -1050,6 +1050,9 @@ int drc_translateBlock(exec_block *block) {
                 new_data_proc_imm(cond_map[inst_cache[i].imm & 0xF], ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
                 reg2_modified = true;
                 break;
+            case V810_OP_HALT: // halt
+                HALT(inst_cache[i].PC + 2);
+                break;
             case V810_OP_BSTR:
                 if (inst_cache[i].imm < 4) {
                     dprintf(0, "[DRC]: %s (0x%lx) not implemented\n", bssuboptable[inst_cache[i].imm].opname, inst_cache[i].imm);
