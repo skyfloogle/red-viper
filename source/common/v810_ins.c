@@ -11,6 +11,7 @@
 #include "v810_cpu.h"
 #include "v810_mem.h"  //Remove Me!!!
 #include "v810_ins.h"
+#include "vb_dsp.h"
 
 //The Instructions
 void ins_err(int arg1, int arg2) { //Mode1/2
@@ -76,7 +77,17 @@ void ins_sch1bsd (WORD src, WORD dst, WORD len, WORD offs) {
 
 #define OPT_XORBSU { \
     if (src == dst) { \
-        while (len >= 32) { \
+        /* niko-chan battle speedhack */ \
+        if (dst == 0x78800 && len == 0x3c000) { \
+            memset(V810_DISPLAY_RAM.pmemory + 0x06800, 0, 0x1800); \
+            memset(V810_DISPLAY_RAM.pmemory + 0x0e000, 0, 0x2000); \
+            memset(V810_DISPLAY_RAM.pmemory + 0x16000, 0, 0x2000); \
+            memset(V810_DISPLAY_RAM.pmemory + 0x1e000, 0, 0x2000); \
+            memset(tDSPCACHE.CharacterCache + 0x80, 1, 0x780); \
+            src += 0x7800; \
+            dst += 0x7800; \
+            len = 0; \
+        } else while (len >= 32) { \
             mem_wword(dst, 0); \
             src += 4; \
             dst += 4; \
