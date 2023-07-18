@@ -258,7 +258,7 @@ void voice_set_pan(int voice, int pan) {
 
 void voice_ramp_volume(int voice, int time, int endvol) {
     // TODO: Actually ramp
-    voice_set_volume(voice, endvol);
+    //voice_set_volume(voice, endvol);
 }
 
 void voice_set_frequency(int voice, int frequency) {
