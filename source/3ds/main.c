@@ -26,6 +26,8 @@ int main() {
 #if DEBUGLEVEL == 0
     PrintConsole debug_console;
 #endif
+    Handle nothingEvent = 0;
+    svcCreateEvent(&nothingEvent, 0);
 
     gfxInitDefault();
     fsInit();
@@ -79,6 +81,8 @@ int main() {
 
     osSetSpeedupEnable(true);
 
+    u64 lastTime = svcGetSystemTick();
+
     while(aptMainLoop()) {
         uint64_t startTime = osGetTime();
 
@@ -116,6 +120,14 @@ int main() {
         // Increment skip
         skip++;
         frame++;
+
+        if (!tVBOpt.FASTFORWARD) {
+            u64 newTime = svcGetSystemTick();
+            if (newTime - lastTime < 20 * CPU_TICKS_PER_MSEC) {
+                svcWaitSynchronization(nothingEvent, 2000 * (20 * CPU_TICKS_PER_MSEC - (newTime - lastTime)) / CPU_TICKS_PER_USEC);
+            }
+            lastTime = newTime;
+        }
 
 #if DEBUGLEVEL == 0
         consoleSelect(&main_console);

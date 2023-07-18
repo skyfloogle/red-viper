@@ -30,6 +30,7 @@ void setDefaults(void) {
     tVBOpt.SOUND    = 0;
     tVBOpt.DSP2X    = 0;
     tVBOpt.DYNAREC  = 1;
+    tVBOpt.FASTFORWARD = 0;
 
     // Default keys
 #ifdef __3DS__
