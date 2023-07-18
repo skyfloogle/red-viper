@@ -232,8 +232,15 @@ void voice_start(int voice) {
     ndspChnReset(voice);
     ndspChnSetFormat(voice, (channels[voice].spl->bits == 8) ? NDSP_FORMAT_MONO_PCM8 : NDSP_FORMAT_MONO_PCM16);
     ndspChnSetInterp(voice, NDSP_INTERP_NONE);
-    ndspChnSetRate(voice, channels[voice].spl->freq);
     ndspChnWaveBufAdd(voice, &channels[voice].ndsp_buf);
+    float mix[12];
+    int i;
+    mix[0] = channels[voice].vol;
+    mix[1] = channels[voice].vol;
+    for (i = 2; i < 12; i++)
+        mix[i] = 0;
+    ndspChnSetMix(voice, mix);
+    ndspChnSetRate(voice, channels[voice].rate);
 #endif
 }
 
@@ -242,8 +249,10 @@ void voice_set_volume(int voice, int volume) {
     int i;
     channels[voice].vol = volume/255.0f;
 #ifdef __3DS__
-    for (i = 0; i < 12; i++)
-        mix[i] = channels[voice].vol;
+    mix[0] = channels[voice].vol;
+    mix[1] = channels[voice].vol;
+    for (i = 2; i < 12; i++)
+        mix[i] = 0;
     ndspChnSetMix(voice, mix);
 #endif
 }
