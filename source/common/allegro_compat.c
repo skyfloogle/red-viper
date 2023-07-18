@@ -99,7 +99,8 @@ typedef struct {
     bool playing;
     int pos;
     int rate;
-    float vol;
+    float leftvol;
+    float rightvol;
     float pan;
     SAMPLE* spl;
 #ifdef __3DS__
@@ -235,8 +236,8 @@ void voice_start(int voice) {
     ndspChnWaveBufAdd(voice, &channels[voice].ndsp_buf);
     float mix[12];
     int i;
-    mix[0] = channels[voice].vol;
-    mix[1] = channels[voice].vol;
+    mix[0] = channels[voice].leftvol;
+    mix[1] = channels[voice].rightvol;
     for (i = 2; i < 12; i++)
         mix[i] = 0;
     ndspChnSetMix(voice, mix);
@@ -244,30 +245,18 @@ void voice_start(int voice) {
 #endif
 }
 
-void voice_set_volume(int voice, int volume) {
+void voice_set_volume(int voice, int left, int right) {
     float mix[12];
     int i;
-    channels[voice].vol = volume/255.0f;
+    channels[voice].leftvol = left/255.0f;
+    channels[voice].rightvol = right/255.0f;
 #ifdef __3DS__
-    mix[0] = channels[voice].vol;
-    mix[1] = channels[voice].vol;
+    mix[0] = channels[voice].leftvol;
+    mix[1] = channels[voice].rightvol;
     for (i = 2; i < 12; i++)
         mix[i] = 0;
     ndspChnSetMix(voice, mix);
 #endif
-}
-
-int voice_get_volume(int voice) {
-    return (int)(channels[voice].vol*255);
-}
-
-void voice_set_pan(int voice, int pan) {
-    channels[voice].pan = pan/128.0f - 1;
-}
-
-void voice_ramp_volume(int voice, int time, int endvol) {
-    // TODO: Actually ramp
-    //voice_set_volume(voice, endvol);
 }
 
 void voice_set_frequency(int voice, int frequency) {

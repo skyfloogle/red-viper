@@ -153,34 +153,11 @@ void sound_update(int reg) {
         case S1EV1:
             reg1 = mem_rbyte(S1LRV);
             reg2 = mem_rbyte(S1EV0);
-            // There's probably a better way to do volume/pan
-            temp1 = (reg1 & 0x0F) | (reg1 >> 4); //OR L/R values
-            temp2 = 4;
-            // Find highest bit
-            for (i = 0; i < 4; i++) {
-                if (temp1 & 0x8) {
-                    temp2 = i;
-                    break;
-                }
-                temp1 <<= 1;
-            }
-            if (temp2 < 4) // L/R non-zero
-                voice_set_volume(voice[CH1], (1 << (3 - temp2)) * (reg2 >> 4)); //multiply by envelope
-            else
-                voice_set_volume(voice[CH1], 0);
-            voice_set_pan(voice[CH1], (128 + (((reg1 & 0x0F) - (reg1 >> 4)) * (8 << temp2))));
+            voice_set_volume(voice[CH1], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
 
             // Envelope on
             if (reg2 & 0x01) {
-                // Need to check bit D1 for repeat cycle (not sure how to do this)
-                reg1 = mem_rbyte(S1EV1);
-                if (reg1 & 0x08) { //grow
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((255 - voice_get_volume(voice[CH1])) >> 4));
-                    voice_ramp_volume(voice[CH1], temp1, 255);
-                } else { // Decay
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((voice_get_volume(voice[CH1]) - 0) >> 4));
-                    voice_ramp_volume(voice[CH1], temp1, 0);
-                }
+                // TODO
             }
             break;
         case S1FQL:
@@ -224,32 +201,10 @@ void sound_update(int reg) {
         case S2EV1:
             reg1 = mem_rbyte(S2LRV);
             reg2 = mem_rbyte(S2EV0);
-            // There's probably a better way to do volume/pan
-            temp1 = (reg1 & 0x0F) | (reg1 >> 4); //OR L/R values
-            temp2 = 4;
-            for (i = 0; i < 4; i++) { //find highest bit
-                if (temp1 & 0x8) {
-                    temp2 = i;
-                    break;
-                }
-                temp1 <<= 1;
-            }
-            if (temp2 < 4) // L/R non-zero
-                voice_set_volume(voice[CH2], (1 << (3 - temp2)) * (reg2 >> 4)); //multiply by envelope
-            else
-                voice_set_volume(voice[CH2], 0);
-            voice_set_pan(voice[CH2], (128 + (((reg1 & 0x0F) - (reg1 >> 4)) * (8 << temp2))));
+            voice_set_volume(voice[CH2], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
 
             if (reg2 & 0x01) { // Envelope on
-                // Need to check bit D1 for repeat cycle (not sure how to do this)
-                reg1 = mem_rbyte(S2EV1);
-                if (reg1 & 0x08) { //grow
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((255 - voice_get_volume(voice[CH2])) >> 4));
-                    voice_ramp_volume(voice[CH2], temp1, 255);
-                } else { // Decay
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((voice_get_volume(voice[CH2]) - 0) >> 4));
-                    voice_ramp_volume(voice[CH2], temp1, 0);
-                }
+                // TODO
             }
             break;
         case S2FQL:
@@ -293,32 +248,10 @@ void sound_update(int reg) {
         case S3EV1:
             reg1 = mem_rbyte(S3LRV);
             reg2 = mem_rbyte(S3EV0);
-            // There's probably a better way to do volume/pan
-            temp1 = (reg1 & 0x0F) | (reg1 >> 4); // OR L/R values
-            temp2 = 4;
-            for (i = 0; i < 4; i++) { // Find highest bit
-                if (temp1 & 0x8) {
-                    temp2 = i;
-                    break;
-                }
-                temp1 <<= 1;
-            }
-            if (temp2 < 4) // L/R non-zero
-                voice_set_volume(voice[CH3], (1 << (3 - temp2)) * (reg2 >> 4)); //multiply by envelope
-            else
-                voice_set_volume(voice[CH3], 0);
-            voice_set_pan(voice[CH3], (128 + (((reg1 & 0x0F) - (reg1 >> 4)) * (8 << temp2))));
+            voice_set_volume(voice[CH3], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
 
             if (reg2 & 0x01) { // Envelope on
-                // Need to check bit D1 for repeat cycle (not sure how to do this)
-                reg1 = mem_rbyte(S3EV1);
-                if (reg1 & 0x08) { // Grow
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((255 - voice_get_volume(voice[CH3])) >> 4));
-                    voice_ramp_volume(voice[CH3], temp1, 255);
-                } else { // Decay
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((voice_get_volume(voice[CH3]) - 0) >> 4));
-                    voice_ramp_volume(voice[CH3], temp1, 0);
-                }
+                // TODO
             }
             break;
         case S3FQL:
@@ -362,32 +295,10 @@ void sound_update(int reg) {
         case S4EV1:
             reg1 = mem_rbyte(S4LRV);
             reg2 = mem_rbyte(S4EV0);
-            // There's probably a better way to do volume/pan
-            temp1 = (reg1 & 0x0F) | (reg1 >> 4); // OR L/R values
-            temp2 = 4;
-            for (i = 0; i < 4; i++) { //Find highest bit
-                if (temp1 & 0x8) {
-                    temp2 = i;
-                    break;
-                }
-                temp1 <<= 1;
-            }
-            if (temp2 < 4) // L/R non-zero
-                voice_set_volume(voice[CH4], (1 << (3 - temp2)) * (reg2 >> 4)); //multiply by envelope
-            else
-                voice_set_volume(voice[CH4], 0);
-            voice_set_pan(voice[CH4], (128 + (((reg1 & 0x0F) - (reg1 >> 4)) * (8 << temp2))));
+            voice_set_volume(voice[CH4], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
 
             if (reg2 & 0x01) { // Envelope on
-                // Need to check bit D1 for repeat cycle (not sure how to do this)
-                reg1 = mem_rbyte(S4EV1);
-                if (reg1 & 0x08) { // Grow
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((255 - voice_get_volume(voice[CH4])) >> 4));
-                    voice_ramp_volume(voice[CH4], temp1, 255);
-                } else { // Decay
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((voice_get_volume(voice[CH4]) - 0) >> 4));
-                    voice_ramp_volume(voice[CH4], temp1, 0);
-                }
+                // TODO
             }
             break;
         case S4FQL:
@@ -432,32 +343,10 @@ void sound_update(int reg) {
         case S5SWP:
             reg1 = mem_rbyte(S5LRV);
             reg2 = mem_rbyte(S5EV0);
-            // There's probably a better way to do volume/pan
-            temp1 = (reg1 & 0x0F) | (reg1 >> 4); //OR L/R values
-            temp2 = 4;
-            for (i = 0; i < 4; i++) { // Find highest bit
-                if (temp1 & 0x8) {
-                    temp2 = i;
-                    break;
-                }
-                temp1 <<= 1;
-            }
-            if (temp2 < 4) // L/R non-zero
-                voice_set_volume(voice[CH5], (1 << (3 - temp2)) * (reg2 >> 4)); //multiply by envelope
-            else
-                voice_set_volume(voice[CH5], 0);
-            voice_set_pan(voice[CH5], (128 + (((reg1 & 0x0F) - (reg1 >> 4)) * (8 << temp2))));
+            voice_set_volume(voice[CH5], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
 
             if (reg2 & 0x01) { // Envelope on
-                // Need to check bit D1 for repeat cycle (not sure how to do this)
-                reg1 = mem_rbyte(S5EV1);
-                if (reg1 & 0x08) { // Grow
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((255 - voice_get_volume(voice[CH5])) >> 4));
-                    voice_ramp_volume(voice[CH5], temp1, 255);
-                } else { // Decay
-                    temp1 = 15.36f * (float) (((reg1 & 0x07) + 1) * ((voice_get_volume(voice[CH5]) - 0) >> 4));
-                    voice_ramp_volume(voice[CH5], temp1, 0);
-                }
+                // TODO
             }
 
             // Sweep/modulation stuff
@@ -526,32 +415,10 @@ void sound_update(int reg) {
         case S6EV1:
             reg1 = mem_rbyte(S6LRV);
             reg2 = mem_rbyte(S6EV0);
-            // There's probably a better way to do volume/pan
-            temp1 = (reg1 & 0x0F) | (reg1 >> 4); //OR L/R values
-            temp2 = 4;
-            for (i = 0; i < 4; i++) { // Find highest bit
-                if (temp1 & 0x8) {
-                    temp2 = i;
-                    break;
-                }
-                temp1 <<= 1;
-            }
-            if (temp2 < 4) // L/R non-zero
-                voice_set_volume(Curr_C6V, (1 << (3 - temp2)) * (reg2 >> 4)); // Multiply by envelope
-            else
-                voice_set_volume(Curr_C6V, 0);
-            voice_set_pan(Curr_C6V, (128 + (((reg1 & 0x0F) - (reg1 >> 4)) * (8 << temp2))));
+            voice_set_volume(voice[Curr_C6V], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
 
             if (reg2 & 0x01) { // Envelope on
-                // Need to check bit D1 for repeat cycle (not sure how to do this)
-                reg1 = mem_rbyte(S4EV1);
-                if (reg1 & 0x08) { // Grow
-                    temp1 = 15.36f * ((reg1 & 0x07) + 1) * ((255 - voice_get_volume(Curr_C6V)) >> 4);
-                    voice_ramp_volume(Curr_C6V, temp1, 255);
-                } else { // Decay
-                    temp1 = 15.36f * ((reg1 & 0x07) + 1) * ((voice_get_volume(Curr_C6V) - 0) >> 4);
-                    voice_ramp_volume(Curr_C6V, temp1, 0);
-                }
+                // TODO
             }
 
             // Changing LFSR voice?  Rather than recopy LFSR sequence and

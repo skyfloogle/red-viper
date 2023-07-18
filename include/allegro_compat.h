@@ -64,10 +64,7 @@ void deallocate_voice(int voice);
 void voice_sweep_frequency(int voice, int time, int endfreq);
 void voice_set_position(int voice, int position);
 void voice_start(int voice);
-void voice_set_volume(int voice, int volume);
-int voice_get_volume(int voice);
-void voice_set_pan(int voice, int pan);
-void voice_ramp_volume(int voice, int time, int endvol);
+void voice_set_volume(int voice, int left, int right);
 void voice_set_frequency(int voice, int frequency);
 int voice_get_frequency(int voice);
 
