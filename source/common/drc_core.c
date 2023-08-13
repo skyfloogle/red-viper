@@ -216,7 +216,7 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
 // before a conditional branch.
 // Sets save_flags for all unconditional instructions prior to a branch.
 void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
-    bool save_flags = true, busywait = inst_cache[pos].branch_offset < 0;
+    bool save_flags = true, busywait = inst_cache[pos].branch_offset <= 0;
     int i;
     for (i = pos - 1; i >= 0; i--) {
         switch (inst_cache[i].opcode) {
@@ -603,7 +603,7 @@ int drc_translateBlock(exec_block *block) {
                 break;
             case V810_OP_JR: // jr imm26
                 if (abs(inst_cache[i].branch_offset) < 1024) {
-                    if (inst_cache[i].branch_offset < 0) {
+                    if (inst_cache[i].branch_offset <= 0) {
                         HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
                     } else {
                         ADDCYCLES();
@@ -668,7 +668,7 @@ int drc_translateBlock(exec_block *block) {
                 if (inst_cache[i].busywait) {
                     BUSYWAIT(arm_cond, inst_cache[i].PC + inst_cache[i].branch_offset);
                 } else {
-                    if (inst_cache[i].branch_offset < 0) {
+                    if (inst_cache[i].branch_offset <= 0) {
                         HANDLEINT(inst_cache[i].PC);
                     } else {
                         MRS(0);
@@ -680,7 +680,7 @@ int drc_translateBlock(exec_block *block) {
                 break;
             // Special case: bnh and bh can't be directly translated to ARM
             case V810_OP_BNH:
-                if (inst_cache[i].branch_offset < 0) {
+                if (inst_cache[i].branch_offset <= 0) {
                     HANDLEINT(inst_cache[i].PC);
                 } else {
                     MRS(0);
@@ -692,7 +692,7 @@ int drc_translateBlock(exec_block *block) {
                 B(ARM_COND_EQ, 0);
                 break;
             case V810_OP_BH:
-                if (inst_cache[i].branch_offset < 0) {
+                if (inst_cache[i].branch_offset <= 0) {
                     HANDLEINT(inst_cache[i].PC);
                 } else {
                     MRS(0);
