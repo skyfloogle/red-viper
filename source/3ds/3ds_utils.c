@@ -43,7 +43,10 @@ void hbHaxExit() {
 
 void FlushInvalidateCache() {
     if (tVBOpt.DYNAREC)
-        svcBackdoor(k_flushCaches);
+        __asm__ volatile(
+            "ldr r0, =k_flushCaches\n\t"
+            "svc 0x80\n\t"
+        );
 }
 
 Result ReprotectMemory(u32* addr, u32 pages, u32 mode) {
