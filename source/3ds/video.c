@@ -111,7 +111,7 @@ typedef struct
 
 #define VBUF_SIZE 64 * 64 * 2 * 32
 vertex *vbuf, *vcur;
-#define AVBUF_SIZE 2048
+#define AVBUF_SIZE 4096
 avertex *avbuf, *avcur;
 
 #define DISPLAY_TRANSFER_FLAGS                                                                     \
@@ -379,7 +379,7 @@ void sceneRender()
 					// bail
 					continue;
 				}
-				if (vcur - vbuf > VBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", vcur - vbuf, AVBUF_SIZE);
+				if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
 
 				// set up cache texture
 				C3D_FrameDrawOn(tileMapCacheTarget[cache_id]);
@@ -537,7 +537,7 @@ void sceneRender()
 			}
 			object_group_id = (object_group_id - 1) & 3;
 		}
-		if (vcur - vbuf > VBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", vcur - vbuf, AVBUF_SIZE);
+		if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
 		if (vcount != 0)
 			C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 	}
