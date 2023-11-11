@@ -382,11 +382,35 @@ void sceneRender()
 				if (vcur - vbuf > VBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", vcur - vbuf, AVBUF_SIZE);
 
 				// set up cache texture
-				C3D_RenderTargetClear(tileMapCacheTarget[cache_id], C3D_CLEAR_ALL, 0, 0);
 				C3D_FrameDrawOn(tileMapCacheTarget[cache_id]);
 				C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
 				C3D_SetViewport(0, 0, 512, 512);
 				C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+
+				// clear
+				C3D_BindProgram(&sFinal);
+				C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+				C3D_AlphaTest(false, GPU_GREATER, 0);
+
+				C3D_TexEnv *env = C3D_GetTexEnv(0);
+				C3D_TexEnvInit(env);
+				C3D_TexEnvColor(env, 0);
+				C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
+				C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+
+				C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
+				C3D_ImmSendAttrib(1, 1, -1, 1);
+				C3D_ImmSendAttrib(0, 0, 0, 0);
+				C3D_ImmSendAttrib(-1, -1, -1, 1);
+				C3D_ImmSendAttrib(1, 1, 0, 0);
+				C3D_ImmDrawEnd();
+
+				// reset and draw cache
+				C3D_BindProgram(&sChar);
+				C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+				C3D_AlphaTest(true, GPU_GREATER, 0);
+				setRegularTexEnv();
+				
 				C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 				// next, draw the affine map
@@ -406,7 +430,7 @@ void sceneRender()
 				BufInfo_Init(bufInfo);
 				BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 3, 0x210);
 
-				C3D_TexEnv *env = C3D_GetTexEnv(0);
+				env = C3D_GetTexEnv(0);
 				C3D_TexEnvInit(env);
 				C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
 				C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
@@ -467,7 +491,6 @@ void sceneRender()
 				vcount = 0;
 				if (++cache_id == AFFINE_CACHE_SIZE)
 				{
-					puts("WARN:affine cache full");
 					cache_id = 0;
 				}
 			}
