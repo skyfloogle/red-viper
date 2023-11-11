@@ -184,6 +184,15 @@ bool V810_DSP_Init()
 	return true;
 }
 
+void setRegularTexEnv()
+{
+	C3D_TexEnv *env = C3D_GetTexEnv(0);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
+	C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+}
+
 void setRegularDrawing()
 {
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
@@ -191,11 +200,7 @@ void setRegularDrawing()
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
 	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
 
-	C3D_TexEnv *env = C3D_GetTexEnv(0);
-	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
-	C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+	setRegularTexEnv();
 
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (256 / 2), -1.0, 1.0);
 	memcpy(C3D_FVUnifWritePtr(GPU_VERTEX_SHADER, uLoc_palettes, 8), palettes, sizeof(palettes));
@@ -344,11 +349,8 @@ void sceneRender()
 					cache_y2 = 64 * 8;
 				}
 				// first, render a cache
-				C3D_RenderTargetClear(tileMapCacheTarget[cache_id], C3D_CLEAR_ALL, 0, 0);
-				C3D_FrameDrawOn(tileMapCacheTarget[cache_id]);
-				C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
-				C3D_SetViewport(0, 0, 512, 512);
-				C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+				// set up cache vertices
+
 				u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * mapid) + 64 * (cache_y1 >> 3);
 				for (int y = cache_y1; y < cache_y2; y += 8)
 				{
@@ -375,17 +377,16 @@ void sceneRender()
 				}
 				if (vcount == 0) {
 					// bail
-					C3D_FrameDrawOn(screenTarget[eye]);
-					bufInfo = C3D_GetBufInfo();
-					BufInfo_Init(bufInfo);
-					BufInfo_Add(bufInfo, vbuf, sizeof(vertex), 2, 0x10);
-					C3D_BindProgram(&sChar);
-					C3D_TexBind(0, &tileTexture);
-					setRegularDrawing();
 					continue;
 				}
-					
 				if (vcur - vbuf > VBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", vcur - vbuf, AVBUF_SIZE);
+
+				// set up cache texture
+				C3D_RenderTargetClear(tileMapCacheTarget[cache_id], C3D_CLEAR_ALL, 0, 0);
+				C3D_FrameDrawOn(tileMapCacheTarget[cache_id]);
+				C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
+				C3D_SetViewport(0, 0, 512, 512);
+				C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 				C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 				// next, draw the affine map
