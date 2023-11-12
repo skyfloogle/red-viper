@@ -169,6 +169,7 @@ bool V810_DSP_Init()
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++)
 	{
 		C3D_TexInitWithParams(&tileMapCache[i], NULL, params);
+		C3D_TexSetWrap(&tileMapCache[i], GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
 		tileMapCacheTarget[i] = C3D_RenderTargetCreateFromTex(&tileMapCache[i], GPU_TEX_2D, 0, GPU_RB_DEPTH16);
 		C3D_RenderTargetClear(tileMapCacheTarget[i], C3D_CLEAR_ALL, 0, 0);
 	}
