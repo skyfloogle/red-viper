@@ -169,7 +169,6 @@ bool V810_DSP_Init()
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++)
 	{
 		C3D_TexInitWithParams(&tileMapCache[i], NULL, params);
-		C3D_TexSetWrap(&tileMapCache[i], GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
 		tileMapCacheTarget[i] = C3D_RenderTargetCreateFromTex(&tileMapCache[i], GPU_TEX_2D, 0, GPU_RB_DEPTH16);
 		C3D_RenderTargetClear(tileMapCacheTarget[i], C3D_CLEAR_ALL, 0, 0);
 	}
@@ -260,6 +259,7 @@ void sceneRender()
 			uint8_t mapid = windows[wnd * 16] & 0xf;
 			uint8_t scx = 1 << ((windows[wnd * 16] >> 10) & 3);
 			uint8_t scy = 1 << ((windows[wnd * 16] >> 8) & 3);
+			bool over = windows[wnd * 16] & 0x80;
 			int16_t gx = windows[wnd * 16 + 1];
 			int16_t gp = windows[wnd * 16 + 2];
 			int16_t gy = windows[wnd * 16 + 3];
@@ -270,6 +270,7 @@ void sceneRender()
 			if (my & 0x800) my |= 0xf000;
 			int16_t w = windows[wnd * 16 + 7] + 1;
 			int16_t h = windows[wnd * 16 + 8] + 1;
+			int16_t over_tile = windows[wnd * 16 + 10];
 
 			if (h == 0) continue;
 
@@ -297,8 +298,10 @@ void sceneRender()
 				ty &= 63;
 				mapx %= scx;
 				mapy %= scy;
-				if (mapx < 0) mapx = (mapx + scx) % scx;
-				if (mapy < 0) mapy = (mapy + scy) % scy;
+				if (!over) {
+					if (mapx < 0) mapx = (mapx + scx) % scx;
+					if (mapy < 0) mapy = (mapy + scy) % scy;
+				}
 
 				for (int y = gy - (my & 7); y < gy + h; y += 8)
 				{
@@ -306,10 +309,11 @@ void sceneRender()
 					int current_map = mapid + scx * mapy + mapx;
 					for (int x = gx - (mx & 7); x < gx + w; x += 8)
 					{
-						uint16_t tile = tilemap[(64 * 64) * current_map + 64 * ty + tx];
+						bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
+						uint16_t tile = use_over ? over_tile : tilemap[(64 * 64) * current_map + 64 * ty + tx];
 						if (++tx >= 64) {
 							tx = 0;
-							if (++mapx % scx == 0) mapx = 0;
+							if (++mapx % scx == 0 && !over) mapx = 0;
 							current_map = mapid + scx * mapy + mapx;
 						}
 						uint16_t tileid = tile & 0x07ff;
@@ -331,7 +335,7 @@ void sceneRender()
 					}
 					if (++ty >= 64) {
 						ty = 0;
-						if (++mapy >= scy) mapy = 0;
+						if (++mapy >= scy && !over) mapy = 0;
 					}
 				}
 			}
@@ -417,6 +421,19 @@ void sceneRender()
 				setRegularTexEnv();
 				
 				C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
+
+				// set up wrapping for affine map
+				if (over) {
+					C3D_TexSetWrap(&tileMapCache[cache_id], GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
+					if (tileVisible[over_tile]) {
+						if ((windows[wnd * 16] & 0x3000) == 0x1000)
+							puts("WARN:Overplane for H-Bias not implemented");
+						else
+							puts("WARN:Overplane for Affine not implemented");
+					}
+				} else {
+					C3D_TexSetWrap(&tileMapCache[cache_id], GPU_REPEAT, GPU_REPEAT);
+				}
 
 				// next, draw the affine map
 				C3D_FrameDrawOn(screenTarget[eye]);
