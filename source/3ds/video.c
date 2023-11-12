@@ -351,8 +351,8 @@ void sceneRender()
 					int cache_y1, cache_y2;
 					if ((windows[wnd * 16] & 0x3000) == 0x1000)
 					{
-						cache_y1 = my & ~7;
-						cache_y2 = my + h;
+						cache_y1 = (sub_bg & (scy - 1)) == 0 ? my & ~7 : 0;
+						cache_y2 = (sub_bg & (scy - 1)) == scy - 1 ?  my + h : 64 * 8;
 					}
 					else
 					{
