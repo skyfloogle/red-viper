@@ -246,7 +246,7 @@ void sceneRender()
 
 	for (int8_t wnd = 31; wnd >= 0; wnd--)
 	{
-		if (windows[wnd * 16] & 64)
+		if (windows[wnd * 16] & 0x40)
 			break;
 		if (!(windows[wnd * 16] & 0xc000))
 			continue;
@@ -292,46 +292,50 @@ void sceneRender()
 				u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
 				int tsx = mx >> 3;
 				int ty = my >> 3;
-				int mapx = tsx >> 6;
+				int mapsx = tsx >> 6;
 				int mapy = ty >> 6;
 				tsx &= 63;
 				ty &= 63;
-				mapx %= scx;
-				mapy %= scy;
 				if (!over) {
-					if (mapx < 0) mapx = (mapx + scx) % scx;
+					mapsx %= scx;
+					mapy %= scy;
+					if (mapsx < 0) mapsx = (mapsx + scx) % scx;
 					if (mapy < 0) mapy = (mapy + scy) % scy;
 				}
+				bool over_visible = !over || tileVisible[tilemap[over_tile] & 0x07ff];
 
 				for (int y = gy - (my & 7); y < gy + h; y += 8)
 				{
-					int tx = tsx;
-					int current_map = mapid + scx * mapy + mapx;
-					for (int x = gx - (mx & 7); x < gx + w; x += 8)
-					{
-						bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
-						uint16_t tile = use_over ? over_tile : tilemap[(64 * 64) * current_map + 64 * ty + tx];
-						if (++tx >= 64) {
-							tx = 0;
-							if (++mapx % scx == 0 && !over) mapx = 0;
-							current_map = mapid + scx * mapy + mapx;
+					if (over_visible || (mapy & (scy - 1)) == mapy) {
+						int tx = tsx;
+						int mapx = mapsx;
+						int current_map = mapid + scx * mapy + mapx;
+						for (int x = gx - (mx & 7); x < gx + w; x += 8)
+						{
+							bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
+							uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
+							if (++tx >= 64) {
+								tx = 0;
+								if (++mapx % scx == 0 && !over) mapx = 0;
+								current_map = mapid + scx * mapy + mapx;
+							}
+							uint16_t tileid = tile & 0x07ff;
+							if (!tileVisible[tileid]) continue;
+							bool hflip = (tile & 0x2000) != 0;
+							bool vflip = (tile & 0x1000) != 0;
+							short u = (tileid % 32) * 8;
+							short v = (tileid / 32) * 8;
+
+							vcur->x1 = x + 8 * hflip;
+							vcur->y1 = y + 8 * vflip;
+							vcur->x2 = x + 8 * !hflip;
+							vcur->y2 = y + 8 * !vflip;
+							vcur->u = u;
+							vcur->v = v;
+							vcur++->palette = tile >> 14;
+
+							vcount++;
 						}
-						uint16_t tileid = tile & 0x07ff;
-						if (!tileVisible[tileid]) continue;
-						bool hflip = (tile & 0x2000) != 0;
-						bool vflip = (tile & 0x1000) != 0;
-						short u = (tileid % 32) * 8;
-						short v = (tileid / 32) * 8;
-
-						vcur->x1 = x + 8 * hflip;
-						vcur->y1 = y + 8 * vflip;
-						vcur->x2 = x + 8 * !hflip;
-						vcur->y2 = y + 8 * !vflip;
-						vcur->u = u;
-						vcur->v = v;
-						vcur++->palette = tile >> 14;
-
-						vcount++;
 					}
 					if (++ty >= 64) {
 						ty = 0;
