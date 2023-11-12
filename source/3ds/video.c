@@ -287,8 +287,8 @@ void sceneRender()
 
 			if ((windows[wnd * 16] & 0x3000) == 0)
 			{
-				C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, gy >= 0 ? gy : 0, gx + w, gy + h);
 				// normal world
+				C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, gy >= 0 ? gy : 0, gx + w, gy + h);
 				u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
 				int tsx = mx >> 3;
 				int ty = my >> 3;
