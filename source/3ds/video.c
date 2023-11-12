@@ -425,16 +425,16 @@ void sceneRender()
 					C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 					// set up wrapping for affine map
-					if (over) {
+					if (!over && scx == 1 && scy == 1) {
+						C3D_TexSetWrap(&tileMapCache[cache_id], GPU_REPEAT, GPU_REPEAT);
+					} else {
 						C3D_TexSetWrap(&tileMapCache[cache_id], GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
-						if (tileVisible[over_tile]) {
+						if (over && tileVisible[over_tile]) {
 							if ((windows[wnd * 16] & 0x3000) == 0x1000)
 								puts("WARN:Overplane for H-Bias not implemented");
 							else
 								puts("WARN:Overplane for Affine not implemented");
 						}
-					} else {
-						C3D_TexSetWrap(&tileMapCache[cache_id], GPU_REPEAT, GPU_REPEAT);
 					}
 
 					// next, draw the affine map
@@ -463,6 +463,8 @@ void sceneRender()
 
 					int base_u = -512 * (sub_bg >> scy_pow);
 					int base_v = -512 * (sub_bg & (scy - 1));
+					int full_w = 512 * scx;
+					int full_h = 512 * scy;
 
 					if ((windows[wnd * 16] & 0x3000) == 0x1000)
 					{
@@ -478,8 +480,16 @@ void sceneRender()
 							avcur->y1 = gy + y;
 							avcur->x2 = gx + w;
 							avcur->y2 = gy + y + 1;
-							avcur->u = (base_u + p) * 8;
-							avcur->v = (base_v + y) * 8;
+							// we can do just one pass per bg for repeating multimap
+							// because hbias isn't downscaled
+							int u = base_u + p;
+							int v = base_v + y;
+							if (!over) {
+								u &= full_w - 1;
+								v &= full_h - 1;
+							}
+							avcur->u = u * 8;
+							avcur->v = v * 8;
 							avcur->ix = w * 8;
 							avcur->iy = 0;
 							avcur->jx = 0;
@@ -489,6 +499,7 @@ void sceneRender()
 					else
 					{
 						// affine
+						// TODO handle repeating multimap
 						for (int y = 0; y < h; y++)
 						{
 							mx = params[y * 8 + 0];
