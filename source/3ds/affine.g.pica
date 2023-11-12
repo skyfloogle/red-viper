@@ -1,12 +1,18 @@
 .gsh point c0
 
+; base required z and w
 .constf myconst(0.0, 0.0, -1.0, 1.0)
+
+; v0: (left,top,right,bottom) pos
+; v1: (u,v) texcoord origin
+; v2: (ix,iy,jx,jy) texcoord basis
 
 .out outpos position
 .out outtc0 texcoord0
 
 .entry gmain
 .proc gmain
+    ; top left
     setemit 0
     mov r0, myconst
     mov r0.xy, v0.xy
@@ -14,23 +20,29 @@
     mov outtc0, v1
     emit
 
+    ; top right
     setemit 1
     mov r0.x, v0.z
     mov outpos, r0
+    ; add i to texcoord origin
     mov r2, v1
     add outtc0.xy, r2.xy, v2.xy
     emit
 
+    ; bottom left
     setemit 2, prim
     mov r0.xy, v0.xw
     mov outpos, r0
+    ; add j to texcoord origin
     add r1.xy, r2.xy, v2.zw
     mov outtc0, r1
     emit
 
+    ; bottom left
     setemit 0, prim inv
     mov r0.x, v0.z
     mov outpos, r0
+    ; add i to previous texcoord
     add outtc0.xy, r1.xy, v2.xy
     emit
 

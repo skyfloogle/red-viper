@@ -3,6 +3,9 @@
 
 .constf const2(0.00390625, 0.001953125, 0.0, 0.0)
 
+; v0: (left,top,right,bottom) pos
+; v1: (left,top,palette) texcoord
+
 .out outpos1 dummy
 .out outtc0 dummy
 .out outpos2 dummy
@@ -10,13 +13,16 @@
 
 .entry vmain
 .proc vmain
+    ; position: 0..size -> -1..1
     mov r0, posscale
     mad r0.xy, r0.xy, v0.xy, posscale.zz
     mov outpos1, r0
     mov r0, posscale
     mad r0.xy, r0.xy, v0.zw, posscale.zz
     mov outpos2, r0
+    ; outtex: 0..size -> 0..1
     mul outtc0, const2, v1
+    ; load palette from palette id
     mova a0.x, v1.z
     mov outcol, palettes[a0.x]
     end

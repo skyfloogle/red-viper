@@ -2,43 +2,60 @@
 
 .constf const1(0.03125, 0.015625, 0.0, 0.0)
 
+; v0: top left pos
+; v1: top left texcoord
+; v2: bottom right pos
+; v3: color (read: palette)
+
 .out outpos position
 .out outtc0 texcoord0
 .out outcol color
 
 .entry gmain
 .proc gmain
+    ; top left
     setemit 0
     mov outpos, v0
     mov outtc0, v1
     mov outcol, v3
     emit
 
+    ; top right
     setemit 1
+    ; position: v2.x, v0.y
     mov r0, v2
     mov r0.y, v0.y
     mov outpos, r0
+    ; texcoord: add 8 pixels to x
     mov r1, v1
     add r1.x, const1.x, r1.x
     mov r1.y, v1.y
     mov outtc0, r1
+    ; color
     mov outcol, v3
     emit
 
+    ; bottom right
     setemit 2, prim
+    ; position: v0.x, v2.y
     mov r0, v2
     mov r0.x, v0.x
     mov outpos, r0
+    ; texcoord: add 8 pixels to y
     mov r1, v1
     add r1.y, const1.y, r1.y
     mov outtc0, r1
     mov outcol, v3
     emit
 
+    ; bottom left
     setemit 0, prim inv
+    ; position: v2
     mov outpos, v2
+    ; texcoord: take bottom right and add 8 pixels to x
     add r1.x, const1.x, r1.x
     mov outtc0, r1
+    ; color
     mov outcol, v3
     emit
 
