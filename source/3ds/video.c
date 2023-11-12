@@ -343,14 +343,14 @@ void sceneRender()
 				{
 					cache_y1 = my & ~7;
 					cache_y2 = my + h;
-					if (scx != 0 || scy != 0)
+					if (scx != 1 || scy != 1)
 						puts("WARN:Multi-BG H-Bias not implemented");
 				}
 				else
 				{
 					cache_y1 = 0;
 					cache_y2 = 64 * 8;
-					if (scx != 0 || scy != 0)
+					if (scx != 1 || scy != 1)
 						puts("WARN:Multi-BG Affine not implemented");
 				}
 				// first, render a cache
