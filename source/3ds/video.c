@@ -257,8 +257,10 @@ void sceneRender()
 			if (!(windows[wnd * 16] & (0x8000 >> eye)))
 				continue;
 			uint8_t mapid = windows[wnd * 16] & 0xf;
-			uint8_t scx = 1 << ((windows[wnd * 16] >> 10) & 3);
-			uint8_t scy = 1 << ((windows[wnd * 16] >> 8) & 3);
+			uint8_t scx_pow = ((windows[wnd * 16] >> 10) & 3);
+			uint8_t scy_pow = ((windows[wnd * 16] >> 8) & 3);
+			uint8_t scx = 1 << scx_pow;
+			uint8_t scy = 1 << scy_pow;
 			bool over = windows[wnd * 16] & 0x80;
 			int16_t gx = windows[wnd * 16 + 1];
 			int16_t gp = windows[wnd * 16 + 2];
@@ -297,10 +299,8 @@ void sceneRender()
 				tsx &= 63;
 				ty &= 63;
 				if (!over) {
-					mapsx %= scx;
-					mapy %= scy;
-					if (mapsx < 0) mapsx = (mapsx + scx) % scx;
-					if (mapy < 0) mapy = (mapy + scy) % scy;
+					mapsx &= scx - 1;
+					mapy &= scy - 1;
 				}
 				bool over_visible = !over || tileVisible[tilemap[over_tile] & 0x07ff];
 
@@ -316,7 +316,7 @@ void sceneRender()
 							uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
 							if (++tx >= 64) {
 								tx = 0;
-								if (++mapx % scx == 0 && !over) mapx = 0;
+								if ((++mapx & (scx - 1)) == 0 && !over) mapx = 0;
 								current_map = mapid + scx * mapy + mapx;
 							}
 							uint16_t tileid = tile & 0x07ff;
@@ -461,8 +461,8 @@ void sceneRender()
 
 					s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + windows[wnd * 16 + 9] * 2]);
 
-					int base_u = -512 * (sub_bg / scy);
-					int base_v = -512 * (sub_bg % scy);
+					int base_u = -512 * (sub_bg >> scy_pow);
+					int base_v = -512 * (sub_bg & (scy - 1));
 
 					if ((windows[wnd * 16] & 0x3000) == 0x1000)
 					{
