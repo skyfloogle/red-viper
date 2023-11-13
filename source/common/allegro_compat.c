@@ -206,7 +206,7 @@ void deallocate_voice(int voice) {
 
 void voice_sweep_frequency(int voice, int time, int endfreq) {
     // TODO: Actually sweep
-    voice_set_frequency(voice, endfreq);
+    //voice_set_frequency(voice, endfreq);
 }
 
 void voice_set_position(int voice, int position) {
