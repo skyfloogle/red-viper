@@ -43,8 +43,13 @@ void sound_thread() {
     int shutoff_divider = 0;
     int clk1_divider = 0;
     int envelope_divider = 0;
+    u64 lastTime = svcGetSystemTick();
     while (true) {
-        svcWaitSynchronization(nothingEvent, 960000);
+        u64 newTime = svcGetSystemTick();
+        s64 waitNanos = 960000 - 2000 * (newTime - lastTime) / CPU_TICKS_PER_USEC;
+        if (waitNanos > 0)
+            svcSleepThread(waitNanos / 2);
+        lastTime = newTime;
         // do clk0
         if (--shutoff_divider >= 0) continue;
         shutoff_divider += 4;
