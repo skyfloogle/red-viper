@@ -79,14 +79,14 @@ void sound_thread() {
                     envelope_values[i] += (data0 & 8) ? 1 : -1;
                     if (envelope_values[i] & 0x10) {
                         if (data1 & 2) {
-                                                        envelope_values[i] = data0 >> 4;
+                            envelope_values[i] = data0 >> 4;
                         } else {
                             envelope_values[i] -= (data0 & 8) ? 1 : -1;
                             if (envelope_values[i] == 0) voice_stop(i);
                         }
                     }
                     int lr = mem_rbyte(S1LRV + 0x40 * i);
-                                        voice_set_volume(voice[i], (lr >> 4) * envelope_values[i], (lr & 0x0F) * envelope_values[i]);
+                    voice_set_volume(voice[i], (lr >> 4) * envelope_values[i], (lr & 0x0F) * envelope_values[i]);
                 }
                 
             }
@@ -210,10 +210,6 @@ void sound_update(int reg) {
                     shutoff_intervals[0] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH1], 0);
-                reg1 = mem_rbyte(S1LRV);
-                reg2 = mem_rbyte(S1EV0);
-                voice_set_volume(voice[CH1], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
-                envelope_values[0] = reg2 >> 4;
                 envelope_intervals[0] = reg2 & 7;
                 voice_start(voice[CH1]);
             } else {
@@ -222,7 +218,12 @@ void sound_update(int reg) {
             break;
         case S1LRV:
         case S1EV0:
-        case S1EV1:
+            reg1 = mem_rbyte(S1LRV);
+            if (reg == S1EV0) {
+                reg2 = mem_rbyte(S1EV0);
+                envelope_values[0] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH1], (reg1 >> 4) * envelope_values[0], (reg1 & 0x0F) * envelope_values[0]);
 
             // Envelope on
             if (mem_rbyte(S1EV1) & 0x01) {
@@ -261,10 +262,6 @@ void sound_update(int reg) {
                     shutoff_intervals[1] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH2], 0);
-                reg1 = mem_rbyte(S2LRV);
-                reg2 = mem_rbyte(S2EV0);
-                voice_set_volume(voice[CH2], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
-                envelope_values[1] = reg2 >> 4;
                 envelope_intervals[1] = reg2 & 7;
                 voice_start(voice[CH2]);
             } else {
@@ -273,7 +270,12 @@ void sound_update(int reg) {
             break;
         case S2LRV:
         case S2EV0:
-        case S2EV1:
+            reg1 = mem_rbyte(S2LRV);
+            if (reg == S2EV0) {
+                reg2 = mem_rbyte(S2EV0);
+                envelope_values[1] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH2], (reg1 >> 4) * envelope_values[1], (reg1 & 0x0F) * envelope_values[1]);
 
             if (mem_rbyte(S2EV1) & 0x01) { // Envelope on
                 // TODO
@@ -311,10 +313,6 @@ void sound_update(int reg) {
                     shutoff_intervals[2] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH3], 0);
-                reg1 = mem_rbyte(S3LRV);
-                reg2 = mem_rbyte(S3EV0);
-                voice_set_volume(voice[CH3], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
-                envelope_values[2] = reg2 >> 4;
                 envelope_intervals[2] = reg2 & 7;
                 voice_start(voice[CH3]);
             } else {
@@ -323,7 +321,12 @@ void sound_update(int reg) {
             break;
         case S3LRV:
         case S3EV0:
-        case S3EV1:
+            reg1 = mem_rbyte(S3LRV);
+            if (reg == S3EV0) {
+                reg2 = mem_rbyte(S3EV0);
+                envelope_values[2] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH3], (reg1 >> 4) * envelope_values[2], (reg1 & 0x0F) * envelope_values[2]);
 
             if (mem_rbyte(S3EV1) & 0x01) { // Envelope on
                 // TODO
@@ -361,10 +364,6 @@ void sound_update(int reg) {
                     shutoff_intervals[3] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH4], 0);
-                reg1 = mem_rbyte(S4LRV);
-                reg2 = mem_rbyte(S4EV0);
-                voice_set_volume(voice[CH4], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
-                envelope_values[3] = reg2 >> 4;
                 envelope_intervals[3] = reg2 & 7;
                 voice_start(voice[CH4]);
             } else {
@@ -373,9 +372,12 @@ void sound_update(int reg) {
             break;
         case S4LRV:
         case S4EV0:
-        case S4EV1:
             reg1 = mem_rbyte(S4LRV);
-            reg2 = mem_rbyte(S4EV0);
+            if (reg == S4EV0) {
+                reg2 = mem_rbyte(S4EV0);
+                envelope_values[3] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH4], (reg1 >> 4) * envelope_values[3], (reg1 & 0x0F) * envelope_values[3]);
 
             if (mem_rbyte(S4EV1) & 0x01) { // Envelope on
                 // TODO
@@ -413,10 +415,6 @@ void sound_update(int reg) {
                     shutoff_intervals[4] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH5], 0);
-                reg1 = mem_rbyte(S5LRV);
-                reg2 = mem_rbyte(S5EV0);
-                voice_set_volume(voice[CH5], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
-                envelope_values[4] = reg2 >> 4;
                 envelope_intervals[4] = reg2 & 7;
                 voice_start(voice[CH5]);
             } else {
@@ -428,8 +426,11 @@ void sound_update(int reg) {
         case S5EV1:
         case S5SWP:
             reg1 = mem_rbyte(S5LRV);
-            reg2 = mem_rbyte(S5EV0);
-            voice_set_volume(voice[CH5], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
+            if (reg == S5EV0) {
+                reg2 = mem_rbyte(S5EV0);
+                envelope_values[4] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH5], (reg1 >> 4) * envelope_values[4], (reg1 & 0x0F) * envelope_values[4]);
 
             if (mem_rbyte(S5EV1) & 0x01) { // Envelope on
                 // TODO
@@ -490,10 +491,6 @@ void sound_update(int reg) {
                     shutoff_intervals[5] = reg1 & 0x1f;
                                     }
                 voice_set_position(Curr_C6V, 0);
-                reg1 = mem_rbyte(S6LRV);
-                reg2 = mem_rbyte(S6EV0);
-                voice_set_volume(voice[Curr_C6V], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
-                envelope_values[5] = reg2 >> 4;
                 envelope_intervals[5] = reg2 & 7;
                 voice_start(Curr_C6V);
                 C6V_playing = 1;
@@ -504,9 +501,12 @@ void sound_update(int reg) {
             break;
         case S6LRV:
         case S6EV0:
-        case S6EV1:
             reg1 = mem_rbyte(S6LRV);
-            reg2 = mem_rbyte(S6EV0);
+            if (reg == S6EV0) {
+                reg2 = mem_rbyte(S6EV0);
+                envelope_values[5] = reg2 >> 4;
+            }
+            voice_set_volume(voice[Curr_C6V], (reg1 >> 4) * envelope_values[5], (reg1 & 0x0F) * envelope_values[5]);
 
             if (mem_rbyte(S6EV1) & 0x01) { // Envelope on
                 // TODO
