@@ -34,17 +34,17 @@ int snd_ram_changed[6] = {0, 0, 0, 0, 0, 0};
 BYTE* Noise_Opt[8] = {Noise_Opt0, Noise_Opt1, Noise_Opt2, Noise_Opt3, Noise_Opt4, Noise_Opt5, Noise_Opt6, Noise_Opt7};
 int Noise_Opt_Size[8] = {OPT0LEN, OPT1LEN, OPT2LEN, OPT3LEN, OPT4LEN, OPT5LEN, OPT6LEN, OPT7LEN};
 
+bool sound_running = false;
+Thread soundThread;
 uint8_t shutoff_intervals[6];
 uint8_t envelope_intervals[6];
 uint8_t envelope_values[6];
 void sound_thread() {
-    Handle nothingEvent = 0;
-    svcCreateEvent(&nothingEvent, 0);
     int shutoff_divider = 0;
     int clk1_divider = 0;
     int envelope_divider = 0;
     u64 lastTime = svcGetSystemTick();
-    while (true) {
+    while (sound_running) {
         u64 newTime = svcGetSystemTick();
         s64 waitNanos = 960000 - 2000 * (newTime - lastTime) / CPU_TICKS_PER_USEC;
         if (waitNanos > 0)
@@ -125,8 +125,10 @@ void sound_init() {
     // Set default to 0
     Curr_C6V = voice[CH6_0];
 
+    sound_running = true;
+
     APT_SetAppCpuTimeLimit(30);
-    if (!threadCreate(sound_thread, NULL, 4000, 0x18, 1, true))
+    if (!(soundThread = threadCreate(sound_thread, NULL, 4000, 0x18, 1, true)))
         printf("couldn't make sound thread\n");
 }
 
@@ -136,6 +138,9 @@ void sound_close() {
 
     if (!tVBOpt.SOUND)
         return;
+
+    sound_running = false;
+    threadJoin(soundThread, U64_MAX);
 
     for (i = 0; i < CH_TOTAL; ++i) {
         voice_stop(voice[i]);
