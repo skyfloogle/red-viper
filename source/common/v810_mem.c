@@ -197,6 +197,8 @@ void mem_wbyte(WORD addr, BYTE data) {
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     //tDSPCACHE.DDSPDataWrite=1;
                 }
+            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
+                tDSPCACHE.ColumnTableInvalid=1;
             }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
                 tDSPCACHE.ObjDataCacheInvalid=1;
             } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
@@ -272,6 +274,8 @@ void mem_whword(WORD addr, HWORD data) {
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     //tDSPCACHE.DDSPDataWrite=1;
                 }
+            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
+                tDSPCACHE.ColumnTableInvalid=1;
             }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
                 tDSPCACHE.ObjDataCacheInvalid=1;
             } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
@@ -347,6 +351,8 @@ void mem_wword(WORD addr, WORD data) {
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     //tDSPCACHE.DDSPDataWrite=1;
                 }
+            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
+                tDSPCACHE.ColumnTableInvalid=1;
             }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
                 tDSPCACHE.ObjDataCacheInvalid=1;
             } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table

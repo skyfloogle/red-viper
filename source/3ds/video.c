@@ -67,6 +67,7 @@ void clearCache() {
 	tDSPCACHE.CharCacheInvalid = true;
 	for (i = 0; i < 2048; i++)
 		tDSPCACHE.CharacterCache[i] = true;
+	tDSPCACHE.ColumnTableInvalid = true;
 }
 
 // my stuff
@@ -95,6 +96,8 @@ shaderProgram_s sFinal;
 
 DVLB_s *sAffine_dvlb;
 shaderProgram_s sAffine;
+
+uint8_t maxRepeat = 0, minRepeat = 0;
 
 typedef struct
 {
@@ -206,12 +209,25 @@ void setRegularDrawing()
 	memcpy(C3D_FVUnifWritePtr(GPU_VERTEX_SHADER, uLoc_palettes, 8), palettes, sizeof(palettes));
 }
 
+void processColumnTable()
+{
+	u8 *repeats = V810_DISPLAY_RAM.pmemory + 0x3dc01;
+	minRepeat = maxRepeat = *repeats;
+	for (int i = 1; i < 512; i++) {
+		repeats += 2;
+		u8 r = *repeats;
+		if (r < minRepeat) minRepeat = r;
+		if (r > maxRepeat) maxRepeat = r;
+	}
+	maxRepeat++;
+}
+
 void sceneRender()
 {
 	float cols[4] = {0,
-		((tVIPREG.BRTA & 0xff) + 0x80) / 256.0,
-		((tVIPREG.BRTB & 0xff) + 0x80) / 256.0,
-		(((tVIPREG.BRTA & 0xff) + (tVIPREG.BRTB & 0xff) + (tVIPREG.BRTC & 0xff)) + 0x80) / 256.0};
+		((tVIPREG.BRTA & 0xff) * maxRepeat + 0x80) / 256.0,
+		((tVIPREG.BRTB & 0xff) * maxRepeat + 0x80) / 256.0,
+		(((tVIPREG.BRTA & 0xff) + (tVIPREG.BRTB & 0xff) + (tVIPREG.BRTC & 0xff)) * maxRepeat + 0x80) / 256.0};
 	u32 clearcol = (cols[tVIPREG.BKCOL] - 0.5) * 510;
 	C3D_RenderTargetClear(screenTarget[eye], C3D_CLEAR_ALL, clearcol | (clearcol << 8) | (clearcol << 16) | 0xff000000, 0);
 	for (int i = 0; i < 4; i++)
@@ -625,6 +641,9 @@ void doAllTheDrawing()
 
 	vcur = vbuf;
 	avcur = avbuf;
+	
+	if (tDSPCACHE.ColumnTableInvalid)
+		processColumnTable();
 
 	for (eye = 0; eye < 2; eye++)
 	{

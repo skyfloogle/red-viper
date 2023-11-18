@@ -32,6 +32,7 @@
 #define CHR_SIZE        0x0010      // The size of one character, in bytes
 #define BGMAP_OFFSET    0x00020000
 #define BGMAP_SIZE      0x2000
+#define COLTABLE_OFFSET 0x0003DC00
 #define OBJ_OFFSET      0x0003E000
 #define OBJ_SIZE        0x0008
 #define WORLD_OFFSET    0x0003D800
@@ -129,6 +130,7 @@ typedef struct {
 	bool		CharCacheInvalid;
 	bool	CharacterCache[2048];	//Character chace
     bool    DDSPDataWrite;          // Direct DisplayDraws True
+    bool    ColumnTableInvalid;     // Column Table is invalid
 } VB_DSPCACHE;
 
 ////////////////////////////////////////////////////////////////////
