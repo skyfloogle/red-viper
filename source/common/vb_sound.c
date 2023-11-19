@@ -246,12 +246,6 @@ void sound_update(int reg) {
                     snd_ram_changed[mem_rbyte(S1RAM)] = 0;
                     // Output according to interval data
                 }
-                if (reg1 & 0x20) {
-                    temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
-                    // Rig to stay at same freq, but for limited time (does this actually work?)
-                    voice_sweep_frequency(voice[CH1], temp1, voice_get_frequency(voice[CH1]));
-                    shutoff_intervals[0] = reg1 & 0x1f;
-                                    }
                 voice_set_position(voice[CH1], 0);
                 reg2 = mem_rbyte(S1EV0);
                 envelope_intervals[0] = reg2 & 7;
@@ -268,11 +262,6 @@ void sound_update(int reg) {
                 envelope_values[0] = reg2 >> 4;
             }
             voice_set_volume(voice[CH1], (reg1 >> 4) * envelope_values[0], (reg1 & 0x0F) * envelope_values[0]);
-
-            // Envelope on
-            if (mem_rbyte(S1EV1) & 0x01) {
-                // TODO
-            }
             break;
         case S1FQL:
         case S1FQH:
@@ -299,12 +288,6 @@ void sound_update(int reg) {
                     memcpy(channel[CH2]->data, waveram, 32);
                     snd_ram_changed[mem_rbyte(S2RAM)] = 0;
                 }
-                if (reg1 & 0x20) { // Output according to interval data
-                    temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
-                    // Rig to stay at same freq, but for limited time (does this actually work?)
-                    voice_sweep_frequency(voice[CH2], temp1, voice_get_frequency(voice[CH2]));
-                    shutoff_intervals[1] = reg1 & 0x1f;
-                                    }
                 voice_set_position(voice[CH2], 0);
                 reg2 = mem_rbyte(S2EV0);
                 envelope_intervals[1] = reg2 & 7;
@@ -321,10 +304,6 @@ void sound_update(int reg) {
                 envelope_values[1] = reg2 >> 4;
             }
             voice_set_volume(voice[CH2], (reg1 >> 4) * envelope_values[1], (reg1 & 0x0F) * envelope_values[1]);
-
-            if (mem_rbyte(S2EV1) & 0x01) { // Envelope on
-                // TODO
-            }
             break;
         case S2FQL:
         case S2FQH:
@@ -351,12 +330,6 @@ void sound_update(int reg) {
                     memcpy(channel[CH3]->data, waveram, 32);
                     snd_ram_changed[mem_rbyte(S3RAM)] = 0;
                 }
-                if (reg1 & 0x20) { // Output according to interval data
-                    temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
-                    // Rig to stay at same freq, but for limited time (does this actually work?)
-                    voice_sweep_frequency(voice[CH3], temp1, voice_get_frequency(voice[CH3]));
-                    shutoff_intervals[2] = reg1 & 0x1f;
-                                    }
                 voice_set_position(voice[CH3], 0);
                 reg2 = mem_rbyte(S3EV0);
                 envelope_intervals[2] = reg2 & 7;
@@ -373,10 +346,6 @@ void sound_update(int reg) {
                 envelope_values[2] = reg2 >> 4;
             }
             voice_set_volume(voice[CH3], (reg1 >> 4) * envelope_values[2], (reg1 & 0x0F) * envelope_values[2]);
-
-            if (mem_rbyte(S3EV1) & 0x01) { // Envelope on
-                // TODO
-            }
             break;
         case S3FQL:
         case S3FQH:
@@ -403,12 +372,6 @@ void sound_update(int reg) {
                     memcpy(channel[CH4]->data, waveram, 32);
                     snd_ram_changed[mem_rbyte(S4RAM)] = 0;
                 }
-                if (reg1 & 0x20) { // Output according to interval data
-                    temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
-                    // Rig to stay at same freq, but for limited time (does this actually work?)
-                    voice_sweep_frequency(voice[CH4], temp1, voice_get_frequency(voice[CH4]));
-                    shutoff_intervals[3] = reg1 & 0x1f;
-                                    }
                 voice_set_position(voice[CH4], 0);
                 reg2 = mem_rbyte(S4EV0);
                 envelope_intervals[3] = reg2 & 7;
@@ -425,10 +388,6 @@ void sound_update(int reg) {
                 envelope_values[3] = reg2 >> 4;
             }
             voice_set_volume(voice[CH4], (reg1 >> 4) * envelope_values[3], (reg1 & 0x0F) * envelope_values[3]);
-
-            if (mem_rbyte(S4EV1) & 0x01) { // Envelope on
-                // TODO
-            }
             break;
         case S4FQL:
         case S4FQH:
@@ -455,12 +414,6 @@ void sound_update(int reg) {
                     memcpy(channel[CH5]->data, waveram, 32);
                     snd_ram_changed[mem_rbyte(S5RAM)] = 0;
                 }
-                if (reg1 & 0x20) { // Output according to interval data
-                    temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
-                    // Rig to stay at same freq, but for limited time (does this actually work?)
-                    voice_sweep_frequency(voice[CH5], temp1, voice_get_frequency(voice[CH5]));
-                    shutoff_intervals[4] = reg1 & 0x1f;
-                                    }
                 voice_set_position(voice[CH5], 0);
                 reg2 = mem_rbyte(S5EV0);
                 envelope_intervals[4] = reg2 & 7;
@@ -493,41 +446,6 @@ void sound_update(int reg) {
                 envelope_values[4] = reg2 >> 4;
             }
             voice_set_volume(voice[CH5], (reg1 >> 4) * envelope_values[4], (reg1 & 0x0F) * envelope_values[4]);
-
-            if (mem_rbyte(S5EV1) & 0x01) { // Envelope on
-                // TODO
-            }
-
-            // Sweep/modulation stuff
-            reg1 = mem_rbyte(S5EV1);
-            if (reg1 & 0x40) { // Sweep/modulation enabled
-                if (reg1 & 0x10) { // Modulation
-                    //vb_printf("\nmodulation"); // Dunno how to do this yet
-                } else { // Sweep
-                    //vb_printf("\nsweep"); // Doubt this is right
-                    reg1 = mem_rbyte(S5SWP);
-                    //operation interval
-                    if (reg1 & 0x80)
-                        temp1 = 7.68f * (float) ((reg1 >> 4) & 0x07);
-                    else
-                        temp1 = 0.96f * (float) ((reg1 >> 4) & 0x07);
-                    if (reg1 & 0x08) { // Add freq
-                        // Amount of frequency needed to be sweeped * the time
-                        // per increment / amount changed per increment+1 (not
-                        // sure if +1 is right, but the others seem to do that,
-                        // plus that avoids div by 0)
-                        temp2 = ((0x7FF - (((mem_rbyte(S5FQH) << 8) | mem_rbyte(S5FQL)) & 0x7FF)) * temp1) / ((reg1 & 0x07) + 1);
-                        voice_sweep_frequency(voice[CH5], temp2, VB_FRQ_REG_TO_SAMP_FREQ(0x7FF));
-                    } else { // Subtract freq
-                        // Amount of frequency needed to be sweeped * the time
-                        // per increment / amount changed per increment+1 (not
-                        // sure if +1 is right, but the others seem to do that,
-                        // plus that avoids div by 0)
-                        temp2 = (((((mem_rbyte(S5FQH) << 8) | mem_rbyte(S5FQL)) & 0x7FF) - 0) * temp1) / ((reg1 & 0x07) + 1);
-                        voice_sweep_frequency(voice[CH5], temp2, VB_FRQ_REG_TO_SAMP_FREQ(0));
-                    }
-                }
-            }
             break;
         case S5FQL:
         case S5FQH:
@@ -546,12 +464,6 @@ void sound_update(int reg) {
         case S6INT:
             reg1 = mem_rbyte(reg);
             if (reg1 & 0x80) {
-                if (reg1 & 0x20) { // Output according to interval data
-                    temp1 = 3.84f * ((reg1 & 0x1F) + 1);
-                    // Rig to stay at same freq, but for limited time (does this actually work?)
-                    voice_sweep_frequency(Curr_C6V, temp1, voice_get_frequency(Curr_C6V));
-                    shutoff_intervals[5] = reg1 & 0x1f;
-                                    }
                 voice_set_position(Curr_C6V, 0);
                 reg2 = mem_rbyte(S6EV0);
                 envelope_intervals[5] = reg2 & 7;
@@ -570,10 +482,6 @@ void sound_update(int reg) {
                 envelope_values[5] = reg2 >> 4;
             }
             voice_set_volume(voice[Curr_C6V], (reg1 >> 4) * envelope_values[5], (reg1 & 0x0F) * envelope_values[5]);
-
-            if (mem_rbyte(S6EV1) & 0x01) { // Envelope on
-                // TODO
-            }
 
             // Changing LFSR voice?  Rather than recopy LFSR sequence and
             // handle sequences of different lengths, just switch between
