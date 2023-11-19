@@ -215,6 +215,7 @@ void sound_update(int reg) {
                     shutoff_intervals[0] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH1], 0);
+                reg2 = mem_rbyte(S1EV0);
                 envelope_intervals[0] = reg2 & 7;
                 voice_start(voice[CH1]);
             } else {
@@ -267,6 +268,7 @@ void sound_update(int reg) {
                     shutoff_intervals[1] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH2], 0);
+                reg2 = mem_rbyte(S2EV0);
                 envelope_intervals[1] = reg2 & 7;
                 voice_start(voice[CH2]);
             } else {
@@ -318,6 +320,7 @@ void sound_update(int reg) {
                     shutoff_intervals[2] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH3], 0);
+                reg2 = mem_rbyte(S3EV0);
                 envelope_intervals[2] = reg2 & 7;
                 voice_start(voice[CH3]);
             } else {
@@ -369,6 +372,7 @@ void sound_update(int reg) {
                     shutoff_intervals[3] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH4], 0);
+                reg2 = mem_rbyte(S4EV0);
                 envelope_intervals[3] = reg2 & 7;
                 voice_start(voice[CH4]);
             } else {
@@ -420,6 +424,7 @@ void sound_update(int reg) {
                     shutoff_intervals[4] = reg1 & 0x1f;
                                     }
                 voice_set_position(voice[CH5], 0);
+                reg2 = mem_rbyte(S5EV0);
                 envelope_intervals[4] = reg2 & 7;
                 voice_start(voice[CH5]);
             } else {
@@ -496,6 +501,7 @@ void sound_update(int reg) {
                     shutoff_intervals[5] = reg1 & 0x1f;
                                     }
                 voice_set_position(Curr_C6V, 0);
+                reg2 = mem_rbyte(S6EV0);
                 envelope_intervals[5] = reg2 & 7;
                 voice_start(Curr_C6V);
                 C6V_playing = 1;
