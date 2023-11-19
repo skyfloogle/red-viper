@@ -1,6 +1,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include <3ds.h>
+
 #include "allegro_compat.h"
 #include "vb_types.h"
 #include "vb_set.h"
@@ -32,6 +34,66 @@ int snd_ram_changed[6] = {0, 0, 0, 0, 0, 0};
 BYTE* Noise_Opt[8] = {Noise_Opt0, Noise_Opt1, Noise_Opt2, Noise_Opt3, Noise_Opt4, Noise_Opt5, Noise_Opt6, Noise_Opt7};
 int Noise_Opt_Size[8] = {OPT0LEN, OPT1LEN, OPT2LEN, OPT3LEN, OPT4LEN, OPT5LEN, OPT6LEN, OPT7LEN};
 
+bool sound_running = false;
+Thread soundThread;
+uint8_t shutoff_intervals[6];
+uint8_t envelope_intervals[6];
+uint8_t envelope_values[6];
+void sound_thread() {
+    int shutoff_divider = 0;
+    int clk1_divider = 0;
+    int envelope_divider = 0;
+    u64 lastTime = svcGetSystemTick();
+    while (sound_running) {
+        u64 newTime = svcGetSystemTick();
+        s64 waitNanos = 960000 - 2000 * (newTime - lastTime) / CPU_TICKS_PER_USEC;
+        if (waitNanos > 0)
+            svcSleepThread(waitNanos / 2);
+        lastTime = newTime;
+        // do clk0
+        if (--shutoff_divider >= 0) continue;
+        shutoff_divider += 4;
+        // do shutoff
+        for (int i = 0; i < 6; i++) {
+            int addr = S1INT + 0x40 * i;
+            int data = mem_rbyte(addr);
+            if ((data & 0xa0) == 0xa0) {
+                if ((--shutoff_intervals[i] & 0x1f) == 0x1f) {
+                    voice_stop(voice[i]);
+                    data &= ~0x80;
+                    mem_wbyte(addr, data);
+                }
+            }
+        }
+        if (--clk1_divider >= 0) continue;
+        clk1_divider += 2;
+        // do clk1
+        if (--envelope_divider >= 0) continue;
+        envelope_divider += 2;
+        for (int i = 0; i < 6; i++) {
+            int data1 = mem_rbyte(S1EV1 + 0x40 * i);
+            if (data1 & 1) {
+                if (--envelope_intervals[i] & 8) {
+                    int data0 = mem_rbyte(S1EV0 + 0x40 * i);
+                    envelope_intervals[i] = data0 & 7;
+                    envelope_values[i] += (data0 & 8) ? 1 : -1;
+                    if (envelope_values[i] & 0x10) {
+                        if (data1 & 2) {
+                            envelope_values[i] = data0 >> 4;
+                        } else {
+                            envelope_values[i] -= (data0 & 8) ? 1 : -1;
+                            if (envelope_values[i] == 0) voice_stop(i);
+                        }
+                    }
+                    int lr = mem_rbyte(S1LRV + 0x40 * i);
+                    voice_set_volume(voice[i], (lr >> 4) * envelope_values[i], (lr & 0x0F) * envelope_values[i]);
+                }
+                
+            }
+        }
+    }
+}
+
 // Set up Allegro sound stuff
 void sound_init() {
     int i, index;
@@ -62,6 +124,12 @@ void sound_init() {
 
     // Set default to 0
     Curr_C6V = voice[CH6_0];
+
+    sound_running = true;
+
+    APT_SetAppCpuTimeLimit(30);
+    if (!(soundThread = threadCreate(sound_thread, NULL, 4000, 0x18, 1, true)))
+        printf("couldn't make sound thread\n");
 }
 
 // Close Allegro sound stuff
@@ -70,6 +138,9 @@ void sound_close() {
 
     if (!tVBOpt.SOUND)
         return;
+
+    sound_running = false;
+    threadJoin(soundThread, U64_MAX);
 
     for (i = 0; i < CH_TOTAL; ++i) {
         voice_stop(voice[i]);
@@ -141,8 +212,10 @@ void sound_update(int reg) {
                     temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
                     // Rig to stay at same freq, but for limited time (does this actually work?)
                     voice_sweep_frequency(voice[CH1], temp1, voice_get_frequency(voice[CH1]));
-                }
+                    shutoff_intervals[0] = reg1 & 0x1f;
+                                    }
                 voice_set_position(voice[CH1], 0);
+                envelope_intervals[0] = reg2 & 7;
                 voice_start(voice[CH1]);
             } else {
                 voice_stop(voice[CH1]);
@@ -150,13 +223,15 @@ void sound_update(int reg) {
             break;
         case S1LRV:
         case S1EV0:
-        case S1EV1:
             reg1 = mem_rbyte(S1LRV);
-            reg2 = mem_rbyte(S1EV0);
-            voice_set_volume(voice[CH1], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
+            if (reg == S1EV0) {
+                reg2 = mem_rbyte(S1EV0);
+                envelope_values[0] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH1], (reg1 >> 4) * envelope_values[0], (reg1 & 0x0F) * envelope_values[0]);
 
             // Envelope on
-            if (reg2 & 0x01) {
+            if (mem_rbyte(S1EV1) & 0x01) {
                 // TODO
             }
             break;
@@ -189,8 +264,10 @@ void sound_update(int reg) {
                     temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
                     // Rig to stay at same freq, but for limited time (does this actually work?)
                     voice_sweep_frequency(voice[CH2], temp1, voice_get_frequency(voice[CH2]));
-                }
+                    shutoff_intervals[1] = reg1 & 0x1f;
+                                    }
                 voice_set_position(voice[CH2], 0);
+                envelope_intervals[1] = reg2 & 7;
                 voice_start(voice[CH2]);
             } else {
                 voice_stop(voice[CH2]);
@@ -198,12 +275,14 @@ void sound_update(int reg) {
             break;
         case S2LRV:
         case S2EV0:
-        case S2EV1:
             reg1 = mem_rbyte(S2LRV);
-            reg2 = mem_rbyte(S2EV0);
-            voice_set_volume(voice[CH2], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
+            if (reg == S2EV0) {
+                reg2 = mem_rbyte(S2EV0);
+                envelope_values[1] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH2], (reg1 >> 4) * envelope_values[1], (reg1 & 0x0F) * envelope_values[1]);
 
-            if (reg2 & 0x01) { // Envelope on
+            if (mem_rbyte(S2EV1) & 0x01) { // Envelope on
                 // TODO
             }
             break;
@@ -236,8 +315,10 @@ void sound_update(int reg) {
                     temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
                     // Rig to stay at same freq, but for limited time (does this actually work?)
                     voice_sweep_frequency(voice[CH3], temp1, voice_get_frequency(voice[CH3]));
-                }
+                    shutoff_intervals[2] = reg1 & 0x1f;
+                                    }
                 voice_set_position(voice[CH3], 0);
+                envelope_intervals[2] = reg2 & 7;
                 voice_start(voice[CH3]);
             } else {
                 voice_stop(voice[CH3]);
@@ -245,12 +326,14 @@ void sound_update(int reg) {
             break;
         case S3LRV:
         case S3EV0:
-        case S3EV1:
             reg1 = mem_rbyte(S3LRV);
-            reg2 = mem_rbyte(S3EV0);
-            voice_set_volume(voice[CH3], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
+            if (reg == S3EV0) {
+                reg2 = mem_rbyte(S3EV0);
+                envelope_values[2] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH3], (reg1 >> 4) * envelope_values[2], (reg1 & 0x0F) * envelope_values[2]);
 
-            if (reg2 & 0x01) { // Envelope on
+            if (mem_rbyte(S3EV1) & 0x01) { // Envelope on
                 // TODO
             }
             break;
@@ -283,8 +366,10 @@ void sound_update(int reg) {
                     temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
                     // Rig to stay at same freq, but for limited time (does this actually work?)
                     voice_sweep_frequency(voice[CH4], temp1, voice_get_frequency(voice[CH4]));
-                }
+                    shutoff_intervals[3] = reg1 & 0x1f;
+                                    }
                 voice_set_position(voice[CH4], 0);
+                envelope_intervals[3] = reg2 & 7;
                 voice_start(voice[CH4]);
             } else {
                 voice_stop(voice[CH4]);
@@ -292,12 +377,14 @@ void sound_update(int reg) {
             break;
         case S4LRV:
         case S4EV0:
-        case S4EV1:
             reg1 = mem_rbyte(S4LRV);
-            reg2 = mem_rbyte(S4EV0);
-            voice_set_volume(voice[CH4], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
+            if (reg == S4EV0) {
+                reg2 = mem_rbyte(S4EV0);
+                envelope_values[3] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH4], (reg1 >> 4) * envelope_values[3], (reg1 & 0x0F) * envelope_values[3]);
 
-            if (reg2 & 0x01) { // Envelope on
+            if (mem_rbyte(S4EV1) & 0x01) { // Envelope on
                 // TODO
             }
             break;
@@ -330,8 +417,10 @@ void sound_update(int reg) {
                     temp1 = 3.84f * (float) ((reg1 & 0x1F) + 1);
                     // Rig to stay at same freq, but for limited time (does this actually work?)
                     voice_sweep_frequency(voice[CH5], temp1, voice_get_frequency(voice[CH5]));
-                }
+                    shutoff_intervals[4] = reg1 & 0x1f;
+                                    }
                 voice_set_position(voice[CH5], 0);
+                envelope_intervals[4] = reg2 & 7;
                 voice_start(voice[CH5]);
             } else {
                 voice_stop(voice[CH5]);
@@ -342,10 +431,13 @@ void sound_update(int reg) {
         case S5EV1:
         case S5SWP:
             reg1 = mem_rbyte(S5LRV);
-            reg2 = mem_rbyte(S5EV0);
-            voice_set_volume(voice[CH5], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
+            if (reg == S5EV0) {
+                reg2 = mem_rbyte(S5EV0);
+                envelope_values[4] = reg2 >> 4;
+            }
+            voice_set_volume(voice[CH5], (reg1 >> 4) * envelope_values[4], (reg1 & 0x0F) * envelope_values[4]);
 
-            if (reg2 & 0x01) { // Envelope on
+            if (mem_rbyte(S5EV1) & 0x01) { // Envelope on
                 // TODO
             }
 
@@ -401,8 +493,10 @@ void sound_update(int reg) {
                     temp1 = 3.84f * ((reg1 & 0x1F) + 1);
                     // Rig to stay at same freq, but for limited time (does this actually work?)
                     voice_sweep_frequency(Curr_C6V, temp1, voice_get_frequency(Curr_C6V));
-                }
+                    shutoff_intervals[5] = reg1 & 0x1f;
+                                    }
                 voice_set_position(Curr_C6V, 0);
+                envelope_intervals[5] = reg2 & 7;
                 voice_start(Curr_C6V);
                 C6V_playing = 1;
             } else {
@@ -412,12 +506,14 @@ void sound_update(int reg) {
             break;
         case S6LRV:
         case S6EV0:
-        case S6EV1:
             reg1 = mem_rbyte(S6LRV);
-            reg2 = mem_rbyte(S6EV0);
-            voice_set_volume(voice[Curr_C6V], (reg1 >> 4) * (reg2 >> 4), (reg1 & 0x0F) * (reg2 >> 4));
+            if (reg == S6EV0) {
+                reg2 = mem_rbyte(S6EV0);
+                envelope_values[5] = reg2 >> 4;
+            }
+            voice_set_volume(voice[Curr_C6V], (reg1 >> 4) * envelope_values[5], (reg1 & 0x0F) * envelope_values[5]);
 
-            if (reg2 & 0x01) { // Envelope on
+            if (mem_rbyte(S6EV1) & 0x01) { // Envelope on
                 // TODO
             }
 
