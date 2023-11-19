@@ -636,7 +636,7 @@ HWORD vipcreg_rhword(WORD addr) {
         break;
     case 0x0005F830:    //CTA, ColumTable Address
         //~ dtprintf(8,ferr,"\nRead  HWORD VIP CTA [%08x]:%04x ",addr,tVIPREG.CTA);
-        return tVIPREG.CTA;
+        return 0xffff;
         break;
     case 0x0005F840:    //XPSTTS
         //~ dtprintf(3,ferr,"\nRead  HWORD VIP XPSTTS [%08x]:%04x ",addr,tVIPREG.XPSTTS);
