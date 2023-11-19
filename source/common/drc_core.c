@@ -523,6 +523,14 @@ int drc_translateBlock(exec_block *block) {
     inst_ptr = &trans_cache[0];
     pool_ptr = pool_cache_start;
 
+    #define LOAD_REG1() \
+        if (arm_reg1 < 4) { \
+            if (inst_cache[i].reg1) \
+                LDR_IO(arm_reg1, 11, inst_cache[i].reg1 * 4); \
+            else \
+                MOV_I(arm_reg1, 0, 0); \
+        }
+
     #define RELOAD_REG1(r) \
         if (arm_reg1 < 4) { \
             if (inst_cache[i].reg1) \
@@ -575,10 +583,6 @@ int drc_translateBlock(exec_block *block) {
             if (!arm_reg1) {
                 unmapped_registers = true;
                 arm_reg1 = next_available_reg++;
-                if (inst_cache[i].reg1)
-                    LDR_IO(arm_reg1, 11, inst_cache[i].reg1 * 4);
-                else
-                    MOV_I(arm_reg1, 0, 0);
             }
         }
 
@@ -597,6 +601,7 @@ int drc_translateBlock(exec_block *block) {
 
         switch (inst_cache[i].opcode) {
             case V810_OP_JMP: // jmp [reg1]
+                LOAD_REG1();
                 STR_IO(arm_reg1, 11, 33 * 4);
                 ADDCYCLES();
                 POP(1 << 15);
@@ -711,6 +716,7 @@ int drc_translateBlock(exec_block *block) {
                 if (inst_cache[i].reg1 == 0) {
                     SAVE_REG2(0);
                 } else {
+                    LOAD_REG1();
                     ADD(arm_reg2, 0, arm_reg1);
                     reg2_modified = true;
                 }
@@ -720,15 +726,18 @@ int drc_translateBlock(exec_block *block) {
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // The zero-register will always be zero, so don't add it
-                if (inst_cache[i].reg1 == 0)
+                if (inst_cache[i].reg1 == 0) {
                     MOV_IS(arm_reg2, 0, ARM_SHIFT_ASR, 16);
-                else
+                } else {
+                    LOAD_REG1();
                     ADD_IS(arm_reg2, arm_reg1, 0, ARM_SHIFT_ASR, 16);
+                }
 
                 reg2_modified = true;
                 break;
             case V810_OP_MOV: // mov reg1, reg2
                 if (inst_cache[i].reg1 != 0) {
+                    LOAD_REG1();
                     SAVE_REG2(arm_reg1);
                 } else {
                     MOV_I(arm_reg2, 0, 0);
@@ -736,11 +745,13 @@ int drc_translateBlock(exec_block *block) {
                 }
                 break;
             case V810_OP_ADD: // add reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 ADDS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_SUB: // sub reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 SUBS(arm_reg2, arm_reg2, arm_reg1);
                 INV_CARRY();
@@ -748,30 +759,37 @@ int drc_translateBlock(exec_block *block) {
                 break;
             case V810_OP_CMP: // cmp reg1, reg2
                 LOAD_REG2();
-                if (inst_cache[i].reg1 == 0)
+                if (inst_cache[i].reg1 == 0) {
                     CMP_I(arm_reg2, 0, 0);
-                else if (inst_cache[i].reg2 == 0)
-                    RSBS_I(0, arm_reg1, 0, 0);
-                else
-                    CMP(arm_reg2, arm_reg1);
+                } else {
+                    LOAD_REG1();
+                    if (inst_cache[i].reg2 == 0)
+                        RSBS_I(0, arm_reg1, 0, 0);
+                    else
+                        CMP(arm_reg2, arm_reg1);
+                }
                 INV_CARRY();
                 break;
             case V810_OP_SHL: // shl reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 LSLS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_SHR: // shr reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 LSRS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_SAR: // sar reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 ASRS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_MUL: // mul reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 SMULLS(arm_reg2, phys_regs[30], arm_reg2, arm_reg1);
                 // If the 30th register isn't being used in the block, the high
@@ -783,6 +801,7 @@ int drc_translateBlock(exec_block *block) {
                 reg2_modified = true;
                 break;
             case V810_OP_MULU: // mul reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 UMULLS(arm_reg2, phys_regs[30], arm_reg2, arm_reg1);
                 if (!phys_regs[30]) {
@@ -794,7 +813,7 @@ int drc_translateBlock(exec_block *block) {
                 // reg2/reg1 -> reg2 (__divsi3)
                 // reg2%reg1 -> r30 (__modsi3)
                 RELOAD_REG2(0);
-                MOV(1, arm_reg1);
+                RELOAD_REG1(1);
                 LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_DIVSI*4, 0);
                 BLX(ARM_COND_AL, 2);
@@ -816,7 +835,7 @@ int drc_translateBlock(exec_block *block) {
                 break;
             case V810_OP_DIVU: // divu reg1, reg2
                 RELOAD_REG2(0);
-                MOV(1, arm_reg1);
+                RELOAD_REG1(1);
                 LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_UDIVSI*4, 0);
                 BLX(ARM_COND_AL, 2);
@@ -836,21 +855,25 @@ int drc_translateBlock(exec_block *block) {
                     MOV(phys_regs[30], 0);
                 break;
             case V810_OP_OR: // or reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 ORRS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_AND: // and reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 ANDS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_XOR: // xor reg1, reg2
+                LOAD_REG1();
                 LOAD_REG2();
                 EORS(arm_reg2, arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
             case V810_OP_NOT: // not reg1, reg2
+                LOAD_REG1();
                 MVNS(arm_reg2, arm_reg1);
                 reg2_modified = true;
                 break;
@@ -891,24 +914,28 @@ int drc_translateBlock(exec_block *block) {
                 reg2_modified = true;
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
+                LOAD_REG1();
                 MOV_I(0, (inst_cache[i].imm >> 8), 24);
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 0);
                 ANDS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_XORI: // xori imm16, reg1, reg2
+                LOAD_REG1();
                 MOV_I(0, (inst_cache[i].imm >> 8), 24);
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 0);
                 EORS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
+                LOAD_REG1();
                 MOV_I(0, (inst_cache[i].imm >> 8), 24);
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 0);
                 ORRS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_ADDI: // addi imm16, reg1, reg2
+                LOAD_REG1();
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
                 ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
@@ -920,6 +947,7 @@ int drc_translateBlock(exec_block *block) {
             case V810_OP_IN_B: // in.b disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
+                    LOAD_REG1();
                     ADD(0, 0, arm_reg1);
                 }
 
@@ -942,6 +970,7 @@ int drc_translateBlock(exec_block *block) {
             case V810_OP_IN_H: // in.h disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
+                    LOAD_REG1();
                     ADD(0, 0, arm_reg1);
                 }
 
@@ -964,6 +993,7 @@ int drc_translateBlock(exec_block *block) {
             case V810_OP_IN_W: // in.w disp16 [reg1], reg2
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
+                    LOAD_REG1();
                     ADD(0, 0, arm_reg1);
                 }
 
@@ -977,6 +1007,7 @@ int drc_translateBlock(exec_block *block) {
             case V810_OP_OUT_B: // out.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
+                    LOAD_REG1();
                     ADD(0, 0, arm_reg1);
                 }
 
@@ -993,6 +1024,7 @@ int drc_translateBlock(exec_block *block) {
             case V810_OP_OUT_H: // out.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
+                    LOAD_REG1();
                     ADD(0, 0, arm_reg1);
                 }
 
@@ -1009,6 +1041,7 @@ int drc_translateBlock(exec_block *block) {
             case V810_OP_OUT_W: // out.h reg2, disp16 [reg1]
                 LDW_I(0, sign_16(inst_cache[i].imm));
                 if (inst_cache[i].reg1 != 0) {
+                    LOAD_REG1();
                     ADD(0, 0, arm_reg1);
                 }
 
@@ -1096,18 +1129,21 @@ int drc_translateBlock(exec_block *block) {
             case V810_OP_FPP:
                 switch (inst_cache[i].imm) {
                 case V810_OP_CVT_WS:
+                    LOAD_REG1();
                     VMOV_SR(0, arm_reg1);
                     VCVT_F32_S32(0, 0);
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
                 case V810_OP_CVT_SW:
+                    LOAD_REG1();
                     VMOV_SR(0, arm_reg1);
                     VCVT_S32_F32(0, 0);
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
                 case V810_OP_CMPF_S:
+                    LOAD_REG1();
                     LOAD_REG2();
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
@@ -1115,6 +1151,7 @@ int drc_translateBlock(exec_block *block) {
                     VMRS();
                     break;
                 case V810_OP_ADDF_S:
+                    LOAD_REG1();
                     LOAD_REG2();
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
@@ -1124,6 +1161,7 @@ int drc_translateBlock(exec_block *block) {
                     reg2_modified = true;
                     break;
                 case V810_OP_SUBF_S:
+                    LOAD_REG1();
                     LOAD_REG2();
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
@@ -1133,6 +1171,7 @@ int drc_translateBlock(exec_block *block) {
                     reg2_modified = true;
                     break;
                 case V810_OP_MULF_S:
+                    LOAD_REG1();
                     LOAD_REG2();
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
@@ -1142,6 +1181,7 @@ int drc_translateBlock(exec_block *block) {
                     reg2_modified = true;
                     break;
                 case V810_OP_DIVF_S:
+                    LOAD_REG1();
                     LOAD_REG2();
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
@@ -1151,6 +1191,7 @@ int drc_translateBlock(exec_block *block) {
                     reg2_modified = true;
                     break;
                 case V810_OP_TRNC_SW:
+                    LOAD_REG1();
                     VMOV_SR(0, arm_reg1);
                     TRUNC(0, 0);
                     VMOV_RS(arm_reg2, 0);
@@ -1158,6 +1199,7 @@ int drc_translateBlock(exec_block *block) {
                     break;
                 default:
                     // TODO: Implement me!
+                    LOAD_REG1();
                     MOV_IS(0, arm_reg1, 0, 0);
                     RELOAD_REG2(1);
                     LDR_IO(2, 11, 69 * 4);
