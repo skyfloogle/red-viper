@@ -1125,7 +1125,7 @@ void V810_Dsp_Frame(int dNum) {
 
     // Normalize the Palette, Is this to slow??? (tVIPREG.BRTA*64)/MaxBrt
     if (tDSPCACHE.BrtPALMod > 0) { //If palette changed
-        V810_SetPal((tVIPREG.BRTA&0xFF)/2, (tVIPREG.BRTB&0xFF)/2, ((tVIPREG.BRTA&0xFF)+(tVIPREG.BRTB&0xFF)+(tVIPREG.BRTC&0xFF))/2);
+        V810_SetPal(tVIPREG.BRTA/2, tVIPREG.BRTB/2, (tVIPREG.BRTA+tVIPREG.BRTB+tVIPREG.BRTC)/2);
         tDSPCACHE.BrtPALMod = 0;
     }
 

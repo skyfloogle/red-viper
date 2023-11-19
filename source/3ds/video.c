@@ -225,9 +225,9 @@ void processColumnTable()
 void sceneRender()
 {
 	float cols[4] = {0,
-		((tVIPREG.BRTA & 0xff) * maxRepeat + 0x80) / 256.0,
-		((tVIPREG.BRTB & 0xff) * maxRepeat + 0x80) / 256.0,
-		(((tVIPREG.BRTA & 0xff) + (tVIPREG.BRTB & 0xff) + (tVIPREG.BRTC & 0xff)) * maxRepeat + 0x80) / 256.0};
+		(tVIPREG.BRTA * maxRepeat + 0x80) / 256.0,
+		(tVIPREG.BRTB * maxRepeat + 0x80) / 256.0,
+		((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat + 0x80) / 256.0};
 	u32 clearcol = (cols[tVIPREG.BKCOL] - 0.5) * 510;
 	C3D_RenderTargetClear(screenTarget[eye], C3D_CLEAR_ALL, clearcol | (clearcol << 8) | (clearcol << 16) | 0xff000000, 0);
 	for (int i = 0; i < 4; i++)
