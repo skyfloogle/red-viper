@@ -34,14 +34,24 @@ int snd_ram_changed[6] = {0, 0, 0, 0, 0, 0};
 BYTE* Noise_Opt[8] = {Noise_Opt0, Noise_Opt1, Noise_Opt2, Noise_Opt3, Noise_Opt4, Noise_Opt5, Noise_Opt6, Noise_Opt7};
 int Noise_Opt_Size[8] = {OPT0LEN, OPT1LEN, OPT2LEN, OPT3LEN, OPT4LEN, OPT5LEN, OPT6LEN, OPT7LEN};
 
+// FRQ reg converted to sampling frq for allegro
+// manual says up to 2040, but any higher than 2038 crashes RB
+// frequency * 32 samples per cycle
+#define VB_FRQ_REG_TO_SAMP_FREQ(v) (5000000/(2048-(((v)>2038)?2038:(v))))
+//#define VB_FRQ_REG_TO_SAMP_FREQ(v) (5000000/(2048-((v)*32)))
+
+// Noise FRQ reg converted to sampling frq for allegro
+#define RAND_FRQ_REG_TO_SAMP_FREQ(v) (500000/(2048-(v)))
+
 bool sound_running = false;
 Thread soundThread;
 uint8_t shutoff_intervals[6];
 uint8_t envelope_intervals[6];
 uint8_t envelope_values[6];
+int8_t sweep_interval;
+int16_t sweep_frequency;
 void sound_thread() {
     int shutoff_divider = 0;
-    int clk1_divider = 0;
     int envelope_divider = 0;
     u64 lastTime = svcGetSystemTick();
     while (sound_running) {
@@ -50,7 +60,32 @@ void sound_thread() {
         if (waitNanos > 0)
             svcSleepThread(waitNanos / 2);
         lastTime = newTime;
-        // do clk0
+        // do sweep
+        if (mem_rbyte(S5INT) & 0x80) {
+            int env = mem_rbyte(S5EV1);
+            if ((env & 0x40) && --sweep_interval < 0) {
+                int swp = mem_rbyte(S5SWP);
+                int interval = (swp >> 4) & 7;
+                sweep_interval = interval * ((swp & 0x80) ? 8 : 1);
+                if (sweep_interval != 0) {
+                    if (env & 0x10) {
+                        // modulation
+                    } else {
+                        // sweep
+                        int shift = swp & 7;
+                        if (swp & 8)
+                            sweep_frequency += sweep_frequency >> shift;
+                        else
+                            sweep_frequency -= sweep_frequency >> shift;
+                        if (sweep_frequency < 0 || sweep_frequency >= 2048) {
+                            voice_stop(voice[CH5]);
+                        } else {
+                            voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(sweep_frequency));
+                        }
+                    }
+                }
+            }
+        }
         if (--shutoff_divider >= 0) continue;
         shutoff_divider += 4;
         // do shutoff
@@ -65,11 +100,8 @@ void sound_thread() {
                 }
             }
         }
-        if (--clk1_divider >= 0) continue;
-        clk1_divider += 2;
-        // do clk1
         if (--envelope_divider >= 0) continue;
-        envelope_divider += 2;
+        envelope_divider += 4;
         for (int i = 0; i < 6; i++) {
             int data1 = mem_rbyte(S1EV1 + 0x40 * i);
             if (data1 & 1) {
@@ -149,15 +181,6 @@ void sound_close() {
     }
     remove_sound();
 }
-
-// FRQ reg converted to sampling frq for allegro
-// manual says up to 2040, but any higher than 2038 crashes RB
-// frequency * 32 samples per cycle
-#define VB_FRQ_REG_TO_SAMP_FREQ(v) (5000000/(2048-(((v)>2038)?2038:(v))))
-//#define VB_FRQ_REG_TO_SAMP_FREQ(v) (5000000/(2048-((v)*32)))
-
-// Noise FRQ reg converted to sampling frq for allegro
-#define RAND_FRQ_REG_TO_SAMP_FREQ(v) (500000/(2048-(v)))
 
 // Handles updating allegro sounds according VB sound regs
 void sound_update(int reg) {
@@ -426,6 +449,15 @@ void sound_update(int reg) {
                 voice_set_position(voice[CH5], 0);
                 reg2 = mem_rbyte(S5EV0);
                 envelope_intervals[4] = reg2 & 7;
+                reg2 = mem_rbyte(S5EV1);
+                if (reg2 & 0x40) {
+                    // sweep
+                    if (reg2 & 0x10) puts("modulate not supported");
+                    reg2 = mem_rbyte(S5SWP);
+                    int interval = (reg2 >> 4) & 7;
+                    sweep_interval = interval * ((reg2 & 0x80) ? 8 : 1);
+                    sweep_frequency = ((mem_rbyte(S5FQH) << 8) | mem_rbyte(S5FQL)) & 0x7ff;
+                }
                 voice_start(voice[CH5]);
             } else {
                 voice_stop(voice[CH5]);
