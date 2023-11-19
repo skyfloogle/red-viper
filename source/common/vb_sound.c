@@ -50,6 +50,9 @@ uint8_t envelope_intervals[6];
 uint8_t envelope_values[6];
 int8_t sweep_interval;
 int16_t sweep_frequency;
+bool modulation_enabled = false;
+int8_t modulation_values[32];
+uint8_t modulation_counter = 0;
 void sound_thread() {
     int shutoff_divider = 0;
     int envelope_divider = 0;
@@ -61,7 +64,7 @@ void sound_thread() {
             svcSleepThread(waitNanos / 2);
         lastTime = newTime;
         // do sweep
-        if (mem_rbyte(S5INT) & 0x80) {
+        if (modulation_enabled && mem_rbyte(S5INT) & 0x80) {
             int env = mem_rbyte(S5EV1);
             if ((env & 0x40) && --sweep_interval < 0) {
                 int swp = mem_rbyte(S5SWP);
@@ -70,6 +73,17 @@ void sound_thread() {
                 if (sweep_interval != 0) {
                     if (env & 0x10) {
                         // modulation
+                        sweep_frequency += modulation_values[modulation_counter++];
+                        if (modulation_counter >= 32) {
+                            if (env & 0x20) {
+                                // repeat
+                                modulation_counter = 0;
+                            } else {
+                                modulation_enabled = false;
+                            }
+                        }
+                        sweep_frequency &= 0x7ff;
+                        voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(sweep_frequency));
                     } else {
                         // sweep
                         int shift = swp & 7;
@@ -79,6 +93,7 @@ void sound_thread() {
                             sweep_frequency -= sweep_frequency >> shift;
                         if (sweep_frequency < 0 || sweep_frequency >= 2048) {
                             voice_stop(voice[CH5]);
+                            modulation_enabled = false;
                         } else {
                             voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(sweep_frequency));
                         }
@@ -451,12 +466,17 @@ void sound_update(int reg) {
                 envelope_intervals[4] = reg2 & 7;
                 reg2 = mem_rbyte(S5EV1);
                 if (reg2 & 0x40) {
-                    // sweep
-                    if (reg2 & 0x10) puts("modulate not supported");
+                    // sweep/modulation
                     reg2 = mem_rbyte(S5SWP);
                     int interval = (reg2 >> 4) & 7;
                     sweep_interval = interval * ((reg2 & 0x80) ? 8 : 1);
                     sweep_frequency = ((mem_rbyte(S5FQH) << 8) | mem_rbyte(S5FQL)) & 0x7ff;
+                    modulation_enabled = true;
+                    if (reg2 & 0x10) {
+                        for (int i = 0; i < 32; i++) {
+                            modulation_values[i] = mem_rbyte(MODDATA + i * 4);
+                        }
+                    }
                 }
                 voice_start(voice[CH5]);
             } else {
