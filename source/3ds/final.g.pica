@@ -2,6 +2,7 @@
 
 ; for final screen output
 ; also mirrored diagonally for 3ds screen
+; texcoord 1 is the input texcoord but only the bottom
 ; v0: top left pos
 ; v1: top left texcoord
 ; v2: bottom right pos
@@ -9,6 +10,7 @@
 
 .out outpos position
 .out outtc0 texcoord0
+.out outtc1 texcoord1
 
 .entry gmain
 .proc gmain
@@ -16,18 +18,21 @@
     setemit 0
     mov outpos, v0
     mov outtc0, v1
+    ; texcoord shading: bottom left (v1.x, v3.y)
+    mov r0, v3
+    mov r0.x, v1.x
+    mov outtc1, r0
     emit
 
     ; bottom left
     setemit 1
+    ; texcoord: reuse previous
+    mov outtc0, r0
+    mov outtc1, r0
     ; position: v2.x, v0.y (really top right)
     mov r0, v2
     mov r0.y, v0.y
     mov outpos, r0
-    ; texcoord: v1.x, v3.y
-    mov r0, v3
-    mov r0.x, v1.x
-    mov outtc0, r0
     emit
 
     ; top right
@@ -40,12 +45,15 @@
     mov r0, v3
     mov r0.y, v1.y
     mov outtc0, r0
+    ; texcoord shading: bottom right
+    mov outtc1, v3
     emit
 
     ; bottom right
     setemit 0, prim inv
     mov outpos, v2
     mov outtc0, v3
+    mov outtc1, v3
     emit
 
     end

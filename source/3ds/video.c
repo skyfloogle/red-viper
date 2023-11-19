@@ -97,7 +97,18 @@ shaderProgram_s sFinal;
 DVLB_s *sAffine_dvlb;
 shaderProgram_s sAffine;
 
-uint8_t maxRepeat = 0, minRepeat = 0;
+// We have two ways of dealing with the colours:
+// 1. multiply base colours by max repeat, and scale down in postprocessing
+//  -> lighter darks, less saturated lights
+// 2. same but delay up to a factor of 4 until postprocessing using texenv scale
+//  -> more saturated lights, barely (if at all) visible darks
+// Method 2 would be more accurate if we had gamma correction,
+// but I don't know how to do that.
+// So for now, we'll use method 1, as it looks better IMO.
+// To use method 2, uncomment the following line:
+//#define COLTABLESCALE
+static uint8_t maxRepeat = 0, minRepeat = 0;
+C3D_Tex columnTableTexture[2];
 
 typedef struct
 {
@@ -176,6 +187,14 @@ bool V810_DSP_Init()
 		C3D_RenderTargetClear(tileMapCacheTarget[i], C3D_CLEAR_ALL, 0, 0);
 	}
 
+	params.width = 128;
+	params.height = 8;
+	params.format = GPU_L8;
+	params.onVram = false;
+	for (int i = 0; i < 2; i++) {
+		C3D_TexInitWithParams(&columnTableTexture[i], NULL, params);
+	}
+
 	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
 
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
@@ -211,23 +230,47 @@ void setRegularDrawing()
 
 void processColumnTable()
 {
-	u8 *repeats = V810_DISPLAY_RAM.pmemory + 0x3dc01;
-	minRepeat = maxRepeat = *repeats;
+	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
+	minRepeat = maxRepeat = table[0];
 	for (int i = 1; i < 512; i++) {
-		repeats += 2;
-		u8 r = *repeats;
+		u8 r = table[i * 2];
 		if (r < minRepeat) minRepeat = r;
 		if (r > maxRepeat) maxRepeat = r;
 	}
-	maxRepeat++;
+	// if maxRepeat would be 3 or 5+, make sure it's divisible by 4
+	#ifdef COLTABLESCALE
+	if (maxRepeat == 2 || maxRepeat > 3) {
+		minRepeat += 4 - (maxRepeat & 3);
+		maxRepeat += 4 - (maxRepeat & 3);
+	} else
+	#endif
+	{
+		minRepeat++;
+		maxRepeat++;
+	}
+	if (minRepeat != maxRepeat) {
+		// populate the bottom row of the textures
+		for (int t = 0; t < 2; t++) {
+			uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture[t], 0, NULL);
+			for (int i = 0; i < 96; i++) {
+				tex[((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)
+					] = 255 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
+			}
+		}
+	}
 }
 
 void sceneRender()
 {
+	#ifdef COLTABLESCALE
+	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
+	#else
+	int col_scale = maxRepeat;
+	#endif
 	float cols[4] = {0,
-		(tVIPREG.BRTA * maxRepeat + 0x80) / 256.0,
-		(tVIPREG.BRTB * maxRepeat + 0x80) / 256.0,
-		((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat + 0x80) / 256.0};
+		(tVIPREG.BRTA * col_scale + 0x80) / 256.0,
+		(tVIPREG.BRTB * col_scale + 0x80) / 256.0,
+		((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale + 0x80) / 256.0};
 	u32 clearcol = (cols[tVIPREG.BKCOL] - 0.5) * 510;
 	C3D_RenderTargetClear(screenTarget[eye], C3D_CLEAR_ALL, clearcol | (clearcol << 8) | (clearcol << 16) | 0xff000000, 0);
 	for (int i = 0; i < 4; i++)
@@ -661,6 +704,17 @@ void doAllTheDrawing()
 		C3D_TexEnvColor(env, 0xff0000ff);
 		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
 		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+		if (minRepeat != maxRepeat) {
+			env = C3D_GetTexEnv(0);
+			C3D_TexBind(1, &columnTableTexture[eye]);
+			env = C3D_GetTexEnv(1);
+			C3D_TexEnvInit(env);
+			C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE1, 0);
+			C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+			#ifdef COLTABLESCALE
+			C3D_TexEnvScale(env, C3D_RGB, maxRepeat <= 2 ? maxRepeat - 1 : GPU_TEVSCALE_4);
+			#endif
+		}
 
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
 		C3D_ImmSendAttrib(1, 1, -1, 1);
@@ -668,6 +722,11 @@ void doAllTheDrawing()
 		C3D_ImmSendAttrib(-1, -1, -1, 1);
 		C3D_ImmSendAttrib(384.0 / 512, 224.0 / 256, 0, 0);
 		C3D_ImmDrawEnd();
+
+		if (minRepeat != maxRepeat) {
+			env = C3D_GetTexEnv(1);
+			C3D_TexEnvInit(env);
+		}
 
 		// 2D mode
 		if (tVBOpt.DSPMODE == DM_NORMAL) break;
