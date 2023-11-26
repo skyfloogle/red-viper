@@ -110,8 +110,10 @@ void sound_thread() {
             if ((data & 0xa0) == 0xa0) {
                 if ((--shutoff_intervals[i] & 0x1f) == 0x1f) {
                     voice_stop(voice[i]);
-                    data &= ~0x80;
-                    mem_wbyte(addr, data);
+                    if (i == 5) {
+                        for (int j = CH6_1; j <= CH6_7; j++) voice_stop(voice[j]);
+                        C6V_playing = false;
+                    }
                 }
             }
         }
@@ -133,7 +135,10 @@ void sound_thread() {
                         }
                     }
                     int lr = mem_rbyte(S1LRV + 0x40 * i);
-                    voice_set_volume(voice[i], (lr >> 4) * envelope_values[i], (lr & 0x0F) * envelope_values[i]);
+                    int left = (lr >> 4) * envelope_values[i];
+                    int right = (lr & 0x0F) * envelope_values[i];
+                    voice_set_volume(voice[i], left, right);
+                    if (i == 5) for (int j = CH6_1; j <= CH6_7; j++) voice_set_volume(voice[j], left, right);
                 }
                 
             }
