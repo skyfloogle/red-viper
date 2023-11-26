@@ -82,7 +82,9 @@ int main() {
 
     osSetSpeedupEnable(true);
 
-    u64 lastTime = svcGetSystemTick();
+    Handle frameTimer;
+    svcCreateTimer(&frameTimer, RESET_STICKY);
+    svcSetTimer(frameTimer, 0, 20000000);
 
     while(aptMainLoop()) {
         uint64_t startTime = osGetTime();
@@ -123,11 +125,8 @@ int main() {
         frame++;
 
         if (!tVBOpt.FASTFORWARD) {
-            u64 newTime = svcGetSystemTick();
-            if (newTime - lastTime < 20 * CPU_TICKS_PER_MSEC) {
-                svcWaitSynchronization(nothingEvent, 2000 * (20 * CPU_TICKS_PER_MSEC - (newTime - lastTime)) / CPU_TICKS_PER_USEC);
-            }
-            lastTime = newTime;
+            svcWaitSynchronization(frameTimer, 20000000);
+            svcClearTimer(frameTimer);
         }
 
 #if DEBUGLEVEL == 0
