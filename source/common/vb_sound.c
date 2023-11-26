@@ -251,6 +251,7 @@ void sound_update(int reg) {
                     snd_ram_changed[mem_rbyte(S1RAM)] = 0;
                     // Output according to interval data
                 }
+                shutoff_intervals[0] = reg1 & 0x1f;
                 voice_set_position(voice[CH1], 0);
                 reg2 = mem_rbyte(S1EV0);
                 envelope_intervals[0] = reg2 & 7;
@@ -293,6 +294,7 @@ void sound_update(int reg) {
                     memcpy(channel[CH2]->data, waveram, 32);
                     snd_ram_changed[mem_rbyte(S2RAM)] = 0;
                 }
+                shutoff_intervals[1] = reg1 & 0x1f;
                 voice_set_position(voice[CH2], 0);
                 reg2 = mem_rbyte(S2EV0);
                 envelope_intervals[1] = reg2 & 7;
@@ -335,6 +337,7 @@ void sound_update(int reg) {
                     memcpy(channel[CH3]->data, waveram, 32);
                     snd_ram_changed[mem_rbyte(S3RAM)] = 0;
                 }
+                shutoff_intervals[2] = reg1 & 0x1f;
                 voice_set_position(voice[CH3], 0);
                 reg2 = mem_rbyte(S3EV0);
                 envelope_intervals[2] = reg2 & 7;
@@ -377,6 +380,7 @@ void sound_update(int reg) {
                     memcpy(channel[CH4]->data, waveram, 32);
                     snd_ram_changed[mem_rbyte(S4RAM)] = 0;
                 }
+                shutoff_intervals[3] = reg1 & 0x1f;
                 voice_set_position(voice[CH4], 0);
                 reg2 = mem_rbyte(S4EV0);
                 envelope_intervals[3] = reg2 & 7;
@@ -419,6 +423,7 @@ void sound_update(int reg) {
                     memcpy(channel[CH5]->data, waveram, 32);
                     snd_ram_changed[mem_rbyte(S5RAM)] = 0;
                 }
+                shutoff_intervals[4] = reg1 & 0x1f;
                 voice_set_position(voice[CH5], 0);
                 reg2 = mem_rbyte(S5EV0);
                 envelope_intervals[4] = reg2 & 7;
@@ -469,6 +474,7 @@ void sound_update(int reg) {
         case S6INT:
             reg1 = mem_rbyte(reg);
             if (reg1 & 0x80) {
+                shutoff_intervals[5] = reg1 & 0x1f;
                 voice_set_position(Curr_C6V, 0);
                 reg2 = mem_rbyte(S6EV0);
                 envelope_intervals[5] = reg2 & 7;
