@@ -59,9 +59,9 @@ void sound_thread() {
     u64 lastTime = svcGetSystemTick();
     while (sound_running) {
         u64 newTime = svcGetSystemTick();
-        s64 waitNanos = 960000 - 2000 * (newTime - lastTime) / CPU_TICKS_PER_USEC;
+        s64 waitNanos = 960000 - 1000 * (newTime - lastTime) / CPU_TICKS_PER_USEC;
         if (waitNanos > 0)
-            svcSleepThread(waitNanos / 2);
+            svcSleepThread(waitNanos);
         lastTime = newTime;
         // do sweep
         if (modulation_enabled && mem_rbyte(S5INT) & 0x80) {
