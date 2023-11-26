@@ -193,6 +193,10 @@ int serviceInt(unsigned int cycles, WORD PC) {
     //}
 
     if (tHReg.TCR & 0x01) { // Timer Enabled
+        if ((tHReg.TCR & 0x10) && tHReg.tTHW == 200) {
+            // hack, see drc_run
+            return 0;
+        }
         if ((cycles-lasttime) > tHReg.tTRC) {
             if (tHReg.tCount)
                 tHReg.tCount--;

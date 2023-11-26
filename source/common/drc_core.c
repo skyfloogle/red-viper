@@ -1410,6 +1410,8 @@ int drc_run() {
     WORD* entrypoint;
     WORD entry_PC;
 
+    bool handled_timer_hack = false;
+
     while (!serviceDisplayInt(clocks, v810_state->PC)) {
         serviceInt(clocks, v810_state->PC);
 
@@ -1451,6 +1453,15 @@ int drc_run() {
         if (v810_state->PC < V810_VB_RAM.lowaddr || v810_state->PC > V810_ROM1.highaddr) {
             printf("Last entry: 0x%lx\n", entry_PC);
             return DRC_ERR_BAD_PC;
+        }
+        
+        // hack for games like wario land with 20ms timers
+        if ((tHReg.TCR & 0x11) == 0x01 && tHReg.tTHW == 200 && !handled_timer_hack) {
+            handled_timer_hack = true;
+            tHReg.TCR |= 0x02; //Zero Status
+            if (tHReg.TCR & 0x08) {
+                v810_int(1, v810_state->PC);
+            }
         }
 
         if (v810_state->ret) {
