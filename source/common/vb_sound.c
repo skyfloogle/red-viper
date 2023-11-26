@@ -1,9 +1,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include <3ds.h>
-
 #include "allegro_compat.h"
+#include "periodic.h"
 #include "vb_types.h"
 #include "vb_set.h"
 #include "v810_cpu.h"
@@ -43,8 +42,6 @@ int Noise_Opt_Size[8] = {OPT0LEN, OPT1LEN, OPT2LEN, OPT3LEN, OPT4LEN, OPT5LEN, O
 // Noise FRQ reg converted to sampling frq for allegro
 #define RAND_FRQ_REG_TO_SAMP_FREQ(v) (500000/(2048-(v)))
 
-bool sound_running = false;
-Thread soundThread;
 uint8_t shutoff_intervals[6];
 uint8_t envelope_intervals[6];
 uint8_t envelope_values[6];
@@ -54,93 +51,84 @@ bool modulation_enabled = false;
 int8_t modulation_values[32];
 uint8_t modulation_counter = 0;
 void sound_thread() {
-    int shutoff_divider = 0;
-    int envelope_divider = 0;
-    u64 lastTime = svcGetSystemTick();
-    while (sound_running) {
-        u64 newTime = svcGetSystemTick();
-        s64 waitNanos = 960000 - 1000 * (newTime - lastTime) / CPU_TICKS_PER_USEC;
-        if (waitNanos > 0)
-            svcSleepThread(waitNanos);
-        lastTime = newTime;
-        // do sweep
-        if (modulation_enabled && mem_rbyte(S5INT) & 0x80) {
-            int env = mem_rbyte(S5EV1);
-            if ((env & 0x40) && --sweep_interval < 0) {
-                int swp = mem_rbyte(S5SWP);
-                int interval = (swp >> 4) & 7;
-                sweep_interval = interval * ((swp & 0x80) ? 8 : 1);
-                if (sweep_interval != 0) {
-                    if (env & 0x10) {
-                        // modulation
-                        sweep_frequency += modulation_values[modulation_counter++];
-                        if (modulation_counter >= 32) {
-                            if (env & 0x20) {
-                                // repeat
-                                modulation_counter = 0;
-                            } else {
-                                modulation_enabled = false;
-                            }
-                        }
-                        sweep_frequency &= 0x7ff;
-                        voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(sweep_frequency));
-                    } else {
-                        // sweep
-                        int shift = swp & 7;
-                        if (swp & 8)
-                            sweep_frequency += sweep_frequency >> shift;
-                        else
-                            sweep_frequency -= sweep_frequency >> shift;
-                        if (sweep_frequency < 0 || sweep_frequency >= 2048) {
-                            voice_stop(voice[CH5]);
+    static int shutoff_divider = 0;
+    static int envelope_divider = 0;
+    // do sweep
+    if (modulation_enabled && mem_rbyte(S5INT) & 0x80) {
+        int env = mem_rbyte(S5EV1);
+        if ((env & 0x40) && --sweep_interval < 0) {
+            int swp = mem_rbyte(S5SWP);
+            int interval = (swp >> 4) & 7;
+            sweep_interval = interval * ((swp & 0x80) ? 8 : 1);
+            if (sweep_interval != 0) {
+                if (env & 0x10) {
+                    // modulation
+                    sweep_frequency += modulation_values[modulation_counter++];
+                    if (modulation_counter >= 32) {
+                        if (env & 0x20) {
+                            // repeat
+                            modulation_counter = 0;
+                        } else {
                             modulation_enabled = false;
-                        } else {
-                            voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(sweep_frequency));
                         }
+                    }
+                    sweep_frequency &= 0x7ff;
+                    voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(sweep_frequency));
+                } else {
+                    // sweep
+                    int shift = swp & 7;
+                    if (swp & 8)
+                        sweep_frequency += sweep_frequency >> shift;
+                    else
+                        sweep_frequency -= sweep_frequency >> shift;
+                    if (sweep_frequency < 0 || sweep_frequency >= 2048) {
+                        voice_stop(voice[CH5]);
+                        modulation_enabled = false;
+                    } else {
+                        voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(sweep_frequency));
                     }
                 }
             }
         }
-        if (--shutoff_divider >= 0) continue;
-        shutoff_divider += 4;
-        // do shutoff
-        for (int i = 0; i < 6; i++) {
-            int addr = S1INT + 0x40 * i;
-            int data = mem_rbyte(addr);
-            if ((data & 0xa0) == 0xa0) {
-                if ((--shutoff_intervals[i] & 0x1f) == 0x1f) {
-                    voice_stop(voice[i]);
-                    if (i == 5) {
-                        for (int j = CH6_1; j <= CH6_7; j++) voice_stop(voice[j]);
-                        C6V_playing = false;
-                    }
+    }
+    if (--shutoff_divider >= 0) return;
+    shutoff_divider += 4;
+    // do shutoff
+    for (int i = 0; i < 6; i++) {
+        int addr = S1INT + 0x40 * i;
+        int data = mem_rbyte(addr);
+        if ((data & 0xa0) == 0xa0) {
+            if ((--shutoff_intervals[i] & 0x1f) == 0x1f) {
+                voice_stop(voice[i]);
+                if (i == 5) {
+                    for (int j = CH6_1; j <= CH6_7; j++) voice_stop(voice[j]);
+                    C6V_playing = false;
                 }
             }
         }
-        if (--envelope_divider >= 0) continue;
-        envelope_divider += 4;
-        for (int i = 0; i < 6; i++) {
-            int data1 = mem_rbyte(S1EV1 + 0x40 * i);
-            if (data1 & 1) {
-                if (--envelope_intervals[i] & 8) {
-                    int data0 = mem_rbyte(S1EV0 + 0x40 * i);
-                    envelope_intervals[i] = data0 & 7;
-                    envelope_values[i] += (data0 & 8) ? 1 : -1;
-                    if (envelope_values[i] & 0x10) {
-                        if (data1 & 2) {
-                            envelope_values[i] = data0 >> 4;
-                        } else {
-                            envelope_values[i] -= (data0 & 8) ? 1 : -1;
-                            if (envelope_values[i] == 0) voice_stop(i);
-                        }
+    }
+    if (--envelope_divider >= 0) return;
+    envelope_divider += 4;
+    for (int i = 0; i < 6; i++) {
+        int data1 = mem_rbyte(S1EV1 + 0x40 * i);
+        if (data1 & 1) {
+            if (--envelope_intervals[i] & 8) {
+                int data0 = mem_rbyte(S1EV0 + 0x40 * i);
+                envelope_intervals[i] = data0 & 7;
+                envelope_values[i] += (data0 & 8) ? 1 : -1;
+                if (envelope_values[i] & 0x10) {
+                    if (data1 & 2) {
+                        envelope_values[i] = data0 >> 4;
+                    } else {
+                        envelope_values[i] -= (data0 & 8) ? 1 : -1;
+                        if (envelope_values[i] == 0) voice_stop(i);
                     }
-                    int lr = mem_rbyte(S1LRV + 0x40 * i);
-                    int left = (lr >> 4) * envelope_values[i];
-                    int right = (lr & 0x0F) * envelope_values[i];
-                    voice_set_volume(voice[i], left, right);
-                    if (i == 5) for (int j = CH6_1; j <= CH6_7; j++) voice_set_volume(voice[j], left, right);
                 }
-                
+                int lr = mem_rbyte(S1LRV + 0x40 * i);
+                int left = (lr >> 4) * envelope_values[i];
+                int right = (lr & 0x0F) * envelope_values[i];
+                voice_set_volume(voice[i], left, right);
+                if (i == 5) for (int j = CH6_1; j <= CH6_7; j++) voice_set_volume(voice[j], left, right);
             }
         }
     }
@@ -177,11 +165,8 @@ void sound_init() {
     // Set default to 0
     Curr_C6V = voice[CH6_0];
 
-    sound_running = true;
-
-    APT_SetAppCpuTimeLimit(30);
-    if (!(soundThread = threadCreate(sound_thread, NULL, 4000, 0x18, 1, true)))
-        printf("couldn't make sound thread\n");
+    if (!startPeriodic(sound_thread, 960000))
+        puts("couldn't make sound thread");
 }
 
 // Close Allegro sound stuff
@@ -190,9 +175,6 @@ void sound_close() {
 
     if (!tVBOpt.SOUND)
         return;
-
-    sound_running = false;
-    threadJoin(soundThread, U64_MAX);
 
     for (i = 0; i < CH_TOTAL; ++i) {
         voice_stop(voice[i]);

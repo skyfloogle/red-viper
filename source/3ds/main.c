@@ -5,6 +5,7 @@
 #include <3ds.h>
 
 #include "main.h"
+#include "periodic.h"
 #include "v810_mem.h"
 #include "drc_core.h"
 #include "vb_dsp.h"
@@ -139,6 +140,7 @@ int main() {
 
 exit:
     v810_exit();
+    endThreads();
     V810_DSP_Quit();
     sound_close();
     drc_exit();
