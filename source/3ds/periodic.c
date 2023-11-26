@@ -35,12 +35,11 @@ static void periodic(void *periodArgs_v) {
 }
 
 bool startPeriodic(void (*func)(), int periodNanos) {
-    APT_SetAppCpuTimeLimit(30);
     PeriodArgs periodArgs;
     periodArgs.func = func;
     periodArgs.periodNanos = periodNanos;
     svcCreateEvent(&periodArgs.readyEvent, RESET_ONESHOT);
-    return (threads[thread_count++] = threadCreate(periodic, &periodArgs, 4000, 0x18, 1, true));
+    return (threads[thread_count++] = threadCreate(periodic, &periodArgs, 4000, 0x18, 0, true));
     svcWaitSynchronization(periodArgs.readyEvent, 0);
     svcCloseHandle(periodArgs.readyEvent);
 }
