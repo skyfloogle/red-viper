@@ -22,15 +22,16 @@ static void periodic(void *periodArgs_v) {
     int periodNanos = periodArgs->periodNanos;
     svcSignalEvent(periodArgs->readyEvent);
 
-    u64 lastTime = svcGetSystemTick();
+    Handle timer;
+    svcCreateTimer(&timer, RESET_PULSE);
+    svcSetTimer(timer, 0, periodNanos);
+
     while (running) {
-        u64 newTime = svcGetSystemTick();
-        s64 waitNanos = periodNanos - 1000 * (newTime - lastTime) / CPU_TICKS_PER_USEC;
-        if (waitNanos > 0)
-            svcSleepThread(waitNanos);
-        lastTime = newTime;
+        svcWaitSynchronization(timer, periodNanos);
         func();
     }
+
+    svcCloseHandle(timer);
 }
 
 bool startPeriodic(void (*func)(), int periodNanos) {
