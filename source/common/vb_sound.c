@@ -121,7 +121,13 @@ void sound_thread() {
                         envelope_values[i] = data0 >> 4;
                     } else {
                         envelope_values[i] -= (data0 & 8) ? 1 : -1;
-                        if (envelope_values[i] == 0) voice_stop(i);
+                        if (envelope_values[i] == 0) {
+                            voice_stop(i);
+                            if (i == 5) {
+                                for (int j = CH6_1; j <= CH6_7; j++) voice_stop(voice[j]);
+                                C6V_playing = false;
+                            }
+                        }
                     }
                 }
                 int lr = mem_rbyte(S1LRV + 0x40 * i);
