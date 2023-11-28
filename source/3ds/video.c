@@ -489,16 +489,14 @@ void sceneRender()
 					C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 					// set up wrapping for affine map
-					if (!over && scx == 1 && scy == 1) {
-						C3D_TexSetWrap(&tileMapCache[cache_id], GPU_REPEAT, GPU_REPEAT);
-					} else {
-						C3D_TexSetWrap(&tileMapCache[cache_id], GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
-						if (over && tileVisible[over_tile]) {
-							if ((windows[wnd * 16] & 0x3000) == 0x1000)
-								puts("WARN:Overplane for H-Bias not implemented");
-							else
-								puts("WARN:Overplane for Affine not implemented");
-						}
+					C3D_TexSetWrap(&tileMapCache[cache_id],
+						!over && scx == 1 ? GPU_REPEAT : GPU_CLAMP_TO_BORDER,
+						!over && scy == 1 ? GPU_REPEAT : GPU_CLAMP_TO_BORDER);
+					if (over && tileVisible[over_tile]) {
+						if ((windows[wnd * 16] & 0x3000) == 0x1000)
+							puts("WARN:Overplane for H-Bias not implemented");
+						else
+							puts("WARN:Overplane for Affine not implemented");
 					}
 
 					// next, draw the affine map
@@ -546,8 +544,8 @@ void sceneRender()
 						
 						C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, 256 * eye + (gy >= 0 ? gy : 0), gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
 						
-						int base_u = -512 * (sub_bg >> scy_pow);
-						int base_v = -512 * (sub_bg & (scy - 1));
+						int base_u = -512 * (sub_bg & (scy - 1));
+						int base_v = -512 * (sub_bg >> scy_pow);
 
 						if ((windows[wnd * 16] & 0x3000) == 0x1000)
 						{
@@ -569,7 +567,9 @@ void sceneRender()
 								int v = base_v + y;
 								if (!over) {
 									u &= full_w - 1;
+									if (u & (full_w >> 1)) u -= full_w;
 									v &= full_h - 1;
+									if (v & (full_h >> 1)) v -= full_h;
 								}
 								avcur->u = u * 8;
 								avcur->v = v * 8;
