@@ -72,11 +72,9 @@ void clearCache() {
 
 // my stuff
 
-u8 eye = 0;
-
 C3D_RenderTarget *finalScreen[2];
-C3D_Tex screenTex[2];
-C3D_RenderTarget *screenTarget[2];
+C3D_Tex screenTex;
+C3D_RenderTarget *screenTarget;
 
 C3D_Tex tileTexture;
 bool tileVisible[2048];
@@ -169,14 +167,11 @@ bool V810_DSP_Init()
 	C3D_TexInitWithParams(&tileTexture, NULL, params);
 
 	params.width = 512;
-	params.height = 256;
+	params.height = 512;
 	params.format = GPU_RGBA4;
 	params.onVram = true;
-	for (int i = 0; i < 2; i++)
-	{
-		C3D_TexInitWithParams(&screenTex[i], NULL, params);
-		screenTarget[i] = C3D_RenderTargetCreateFromTex(&screenTex[i], GPU_TEX_2D, 0, GPU_RB_DEPTH16);
-	}
+	C3D_TexInitWithParams(&screenTex, NULL, params);
+	screenTarget = C3D_RenderTargetCreateFromTex(&screenTex, GPU_TEX_2D, 0, GPU_RB_DEPTH16);
 
 	params.width = 512;
 	params.height = 512;
@@ -224,7 +219,7 @@ void setRegularDrawing()
 
 	setRegularTexEnv();
 
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (256 / 2), -1.0, 1.0);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
 	memcpy(C3D_FVUnifWritePtr(GPU_VERTEX_SHADER, uLoc_palettes, 8), palettes, sizeof(palettes));
 }
 
@@ -272,7 +267,7 @@ void sceneRender()
 		(tVIPREG.BRTB * col_scale + 0x80) / 256.0,
 		((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale + 0x80) / 256.0};
 	u32 clearcol = (cols[tVIPREG.BKCOL] - 0.5) * 510;
-	C3D_RenderTargetClear(screenTarget[eye], C3D_CLEAR_ALL, clearcol | (clearcol << 8) | (clearcol << 16) | 0xff000000, 0);
+	C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, clearcol | (clearcol << 8) | (clearcol << 16) | 0xff000000, 0);
 	for (int i = 0; i < 4; i++)
 	{
 		HWORD pal = tVIPREG.GPLT[i];
@@ -285,10 +280,9 @@ void sceneRender()
 		palettes[i + 4].z = cols[(pal >> 2) & 3];
 	}
 
-	C3D_FrameDrawOn(screenTarget[eye]);
+	C3D_FrameDrawOn(screenTarget);
 	setRegularDrawing();
 
-	C3D_SetViewport(0, 0, 512, 256);
 	C3D_TexBind(0, &tileTexture);
 	C3D_BindProgram(&sChar);
 
@@ -310,22 +304,25 @@ void sceneRender()
 		if (!(windows[wnd * 16] & 0xc000))
 			continue;
 		int vcount = 0;
+		
+		#define DRAW_VBUF \
+			if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE); \
+			if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
+
 		if ((windows[wnd * 16] & 0x3000) != 0x3000)
 		{
 			// background world
-			if (!(windows[wnd * 16] & (0x8000 >> eye)))
-				continue;
 			uint8_t mapid = windows[wnd * 16] & 0xf;
 			uint8_t scx_pow = ((windows[wnd * 16] >> 10) & 3);
 			uint8_t scy_pow = ((windows[wnd * 16] >> 8) & 3);
 			uint8_t scx = 1 << scx_pow;
 			uint8_t scy = 1 << scy_pow;
 			bool over = windows[wnd * 16] & 0x80;
-			int16_t gx = windows[wnd * 16 + 1];
+			int16_t base_gx = windows[wnd * 16 + 1];
 			int16_t gp = windows[wnd * 16 + 2];
 			int16_t gy = windows[wnd * 16 + 3];
-			int16_t mx = windows[wnd * 16 + 4] & 0xfff;
-			if (mx & 0x800) mx |= 0xf000; 
+			int16_t base_mx = windows[wnd * 16 + 4] & 0xfff;
+			if (base_mx & 0x800) base_mx |= 0xf000; 
 			int16_t mp = windows[wnd * 16 + 5];
 			int16_t my = windows[wnd * 16 + 6] & 0xfff;
 			if (my & 0x800) my |= 0xf000;
@@ -335,71 +332,80 @@ void sceneRender()
 
 			if (h == 0) continue;
 
-			if (eye == 0)
-			{
-				gx -= gp;
-				mx -= mp;
-			}
-			else
-			{
-				gx += gp;
-				mx += mp;
-			}
-
 			if ((windows[wnd * 16] & 0x3000) == 0)
 			{
 				// normal world
-				C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, gy >= 0 ? gy : 0, gx + w, gy + h);
-				u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
-				int tsx = mx >> 3;
-				int ty = my >> 3;
-				int mapsx = tsx >> 6;
-				int mapy = ty >> 6;
-				tsx &= 63;
-				ty &= 63;
-				if (!over) {
-					mapsx &= scx - 1;
-					mapy &= scy - 1;
-				}
-				bool over_visible = !over || tileVisible[tilemap[over_tile] & 0x07ff];
+				for (int eye = 0; eye < 2; eye++) {
+					if (!(windows[wnd * 16] & (0x8000 >> eye)))
+						continue;
 
-				for (int y = gy - (my & 7); y < gy + h; y += 8)
-				{
-					if (over_visible || (mapy & (scy - 1)) == mapy) {
-						int tx = tsx;
-						int mapx = mapsx;
-						int current_map = mapid + scx * mapy + mapx;
-						for (int x = gx - (mx & 7); x < gx + w; x += 8)
-						{
-							bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
-							uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
-							if (++tx >= 64) {
-								tx = 0;
-								if ((++mapx & (scx - 1)) == 0 && !over) mapx = 0;
-								current_map = mapid + scx * mapy + mapx;
+					int gx = base_gx;
+					int mx = base_mx;
+					if (eye == 0)
+					{
+						gx -= gp;
+						mx -= mp;
+					}
+					else
+					{
+						gx += gp;
+						mx += mp;
+					}
+					vcount = 0;
+
+					C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, (gy >= 0 ? gy : 0) + 256 * eye, gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
+					u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+					int tsx = mx >> 3;
+					int ty = my >> 3;
+					int mapsx = tsx >> 6;
+					int mapy = ty >> 6;
+					tsx &= 63;
+					ty &= 63;
+					if (!over) {
+						mapsx &= scx - 1;
+						mapy &= scy - 1;
+					}
+					bool over_visible = !over || tileVisible[tilemap[over_tile] & 0x07ff];
+
+					for (int y = gy - (my & 7); y < gy + h; y += 8)
+					{
+						if (over_visible || (mapy & (scy - 1)) == mapy) {
+							int tx = tsx;
+							int mapx = mapsx;
+							int current_map = mapid + scx * mapy + mapx;
+							for (int x = gx - (mx & 7); x < gx + w; x += 8)
+							{
+								bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
+								uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
+								if (++tx >= 64) {
+									tx = 0;
+									if ((++mapx & (scx - 1)) == 0 && !over) mapx = 0;
+									current_map = mapid + scx * mapy + mapx;
+								}
+								uint16_t tileid = tile & 0x07ff;
+								if (!tileVisible[tileid]) continue;
+								bool hflip = (tile & 0x2000) != 0;
+								bool vflip = (tile & 0x1000) != 0;
+								short u = (tileid % 32) * 8;
+								short v = (tileid / 32) * 8;
+
+								vcur->x1 = x + 8 * hflip;
+								vcur->y1 = y + 8 * vflip + 256 * eye;
+								vcur->x2 = x + 8 * !hflip;
+								vcur->y2 = y + 8 * !vflip + 256 * eye;
+								vcur->u = u;
+								vcur->v = v;
+								vcur++->palette = tile >> 14;
+
+								vcount++;
 							}
-							uint16_t tileid = tile & 0x07ff;
-							if (!tileVisible[tileid]) continue;
-							bool hflip = (tile & 0x2000) != 0;
-							bool vflip = (tile & 0x1000) != 0;
-							short u = (tileid % 32) * 8;
-							short v = (tileid / 32) * 8;
-
-							vcur->x1 = x + 8 * hflip;
-							vcur->y1 = y + 8 * vflip;
-							vcur->x2 = x + 8 * !hflip;
-							vcur->y2 = y + 8 * !vflip;
-							vcur->u = u;
-							vcur->v = v;
-							vcur++->palette = tile >> 14;
-
-							vcount++;
+						}
+						if (++ty >= 64) {
+							ty = 0;
+							if (++mapy >= scy && !over) mapy = 0;
 						}
 					}
-					if (++ty >= 64) {
-						ty = 0;
-						if (++mapy >= scy && !over) mapy = 0;
-					}
+					DRAW_VBUF;
 				}
 			}
 			else
@@ -454,7 +460,6 @@ void sceneRender()
 					// set up cache texture
 					C3D_FrameDrawOn(tileMapCacheTarget[cache_id]);
 					C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
-					C3D_SetViewport(0, 0, 512, 512);
 					C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
 					// clear
@@ -497,11 +502,9 @@ void sceneRender()
 					}
 
 					// next, draw the affine map
-					C3D_FrameDrawOn(screenTarget[eye]);
+					C3D_FrameDrawOn(screenTarget);
 					C3D_BindProgram(&sAffine);
 					C3D_TexBind(0, &tileMapCache[cache_id]);
-					C3D_SetViewport(0, 0, 512, 256);
-					C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, gy >= 0 ? gy : 0, gx + w, gy + h);
 
 					C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 					AttrInfo_Init(attrInfo);
@@ -520,66 +523,88 @@ void sceneRender()
 
 					s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + windows[wnd * 16 + 9] * 2]);
 
-					int base_u = -512 * (sub_bg >> scy_pow);
-					int base_v = -512 * (sub_bg & (scy - 1));
 					int full_w = 512 * scx;
 					int full_h = 512 * scy;
 
-					if ((windows[wnd * 16] & 0x3000) == 0x1000)
-					{
-						// hbias
-						base_u += mx;
-						base_v += my;
-						for (int y = 0; y < h; y++)
+					for (int eye = 0; eye < 2; eye++) {
+						if (!(windows[wnd * 16] & (0x8000 >> eye)))
+							continue;
+
+						int gx = base_gx;
+						int mx = base_mx;
+
+						if (eye == 0)
 						{
-							s16 p = params[y * 2 + eye];
-							if (p & 0x1000)
-								p |= (s16)0xe000;
-							avcur->x1 = gx;
-							avcur->y1 = gy + y;
-							avcur->x2 = gx + w;
-							avcur->y2 = gy + y + 1;
-							// we can do just one pass per bg for repeating multimap
-							// because hbias isn't downscaled
-							int u = base_u + p;
-							int v = base_v + y;
-							if (!over) {
-								u &= full_w - 1;
-								v &= full_h - 1;
+							gx -= gp;
+							mx -= mp;
+						}
+						else
+						{
+							gx += gp;
+							mx += mp;
+						}
+						
+						C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, 256 * eye + (gy >= 0 ? gy : 0), gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
+						
+						int base_u = -512 * (sub_bg >> scy_pow);
+						int base_v = -512 * (sub_bg & (scy - 1));
+
+						if ((windows[wnd * 16] & 0x3000) == 0x1000)
+						{
+							// hbias
+							base_u += mx;
+							base_v += my;
+							for (int y = 0; y < h; y++)
+							{
+								s16 p = params[y * 2 + eye];
+								if (p & 0x1000)
+									p |= (s16)0xe000;
+								avcur->x1 = gx;
+								avcur->y1 = gy + y + 256 * eye;
+								avcur->x2 = gx + w;
+								avcur->y2 = gy + y + 1 + 256 * eye;
+								// we can do just one pass per bg for repeating multimap
+								// because hbias isn't downscaled
+								int u = base_u + p;
+								int v = base_v + y;
+								if (!over) {
+									u &= full_w - 1;
+									v &= full_h - 1;
+								}
+								avcur->u = u * 8;
+								avcur->v = v * 8;
+								avcur->ix = w * 8;
+								avcur->iy = 0;
+								avcur->jx = 0;
+								avcur++->jy = 1 * 8;
 							}
-							avcur->u = u * 8;
-							avcur->v = v * 8;
-							avcur->ix = w * 8;
-							avcur->iy = 0;
-							avcur->jx = 0;
-							avcur++->jy = 1 * 8;
 						}
-					}
-					else
-					{
-						// affine
-						// TODO handle repeating multimap
-						for (int y = 0; y < h; y++)
+						else
 						{
-							mx = params[y * 8 + 0];
-							mp = params[y * 8 + 1];
-							my = params[y * 8 + 2];
-							s32 dx = params[y * 8 + 3];
-							s32 dy = params[y * 8 + 4];
-							avcur->x1 = gx;
-							avcur->y1 = gy + y;
-							avcur->x2 = gx + w;
-							avcur->y2 = gy + y + 1;
-							avcur->u = base_u + mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
-							avcur->v = base_v + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
-							avcur->ix = dx * (w + mp) >> 6;
-							avcur->iy = dy * (w + mp) >> 6;
-							avcur->jx = params[y * 8 + 3] != 0 ? 0 : 1 * 8;
-							avcur++->jy = params[y * 8 + 3] == 0 ? 0 : 1 * 8;
+							// affine
+							// TODO handle repeating multimap
+							for (int y = 0; y < h; y++)
+							{
+								mx = params[y * 8 + 0];
+								mp = params[y * 8 + 1];
+								my = params[y * 8 + 2];
+								s32 dx = params[y * 8 + 3];
+								s32 dy = params[y * 8 + 4];
+								avcur->x1 = gx;
+								avcur->y1 = gy + y + 256 * eye;
+								avcur->x2 = gx + w;
+								avcur->y2 = gy + y + 1 + 256 * eye;
+								avcur->u = base_u + mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
+								avcur->v = base_v + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
+								avcur->ix = dx * (w + mp) >> 6;
+								avcur->iy = dy * (w + mp) >> 6;
+								avcur->jx = params[y * 8 + 3] != 0 ? 0 : 1 * 8;
+								avcur++->jy = params[y * 8 + 3] == 0 ? 0 : 1 * 8;
+							}
 						}
+						if (avcur - avbuf > AVBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", avcur - avbuf, AVBUF_SIZE);
+						C3D_DrawArrays(GPU_GEOMETRY_PRIM, avcur - avbuf - h, h);
 					}
-					if (avcur - avbuf > AVBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", avcur - avbuf, AVBUF_SIZE);
-					C3D_DrawArrays(GPU_GEOMETRY_PRIM, avcur - avbuf - h, h);
 
 					bufInfo = C3D_GetBufInfo();
 					BufInfo_Init(bufInfo);
@@ -598,48 +623,49 @@ void sceneRender()
 		else
 		{
 			// object world
-			C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
-			int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
-			int end_index = tVIPREG.SPT[object_group_id];
-			for (int i = end_index; i != start_index; i = (i - 1) & 1023)
-			{
-				u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
-				u16 x = obj_ptr[0];
-				u16 cw1 = obj_ptr[1];
-				u16 y = obj_ptr[2];
-				u16 cw3 = obj_ptr[3];
+			for (int eye = 0; eye < 2; eye++) {
+				C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+				int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
+				int end_index = tVIPREG.SPT[object_group_id];
+				for (int i = end_index; i != start_index; i = (i - 1) & 1023)
+				{
+					u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
+					u16 x = obj_ptr[0];
+					u16 cw1 = obj_ptr[1];
+					u16 y = obj_ptr[2];
+					u16 cw3 = obj_ptr[3];
 
-				if (!(cw1 & (0x8000 >> eye)))
-					continue;
+					if (!(cw1 & (0x8000 >> eye)))
+						continue;
 
-				s16 jp = cw1 & 0x1ff;
-				if (jp & 0x100)
-					jp |= 0xfe00;
-				if (eye == 0)
-					x -= jp;
-				else
-					x += jp;
+					s16 jp = cw1 & 0x1ff;
+					if (jp & 0x100)
+						jp |= 0xfe00;
+					if (eye == 0)
+						x -= jp;
+					else
+						x += jp;
 
-				u16 tileid = cw3 & 0x07ff;
-				bool hflip = (cw3 & 0x2000) != 0;
-				bool vflip = (cw3 & 0x1000) != 0;
-				short u = (tileid % 32) * 8;
-				short v = (tileid / 32) * 8;
+					u16 tileid = cw3 & 0x07ff;
+					bool hflip = (cw3 & 0x2000) != 0;
+					bool vflip = (cw3 & 0x1000) != 0;
+					short u = (tileid % 32) * 8;
+					short v = (tileid / 32) * 8;
 
-				vcur->x1 = x + 8 * hflip;
-				vcur->y1 = y + 8 * vflip;
-				vcur->x2 = x + 8 * !hflip;
-				vcur->y2 = y + 8 * !vflip;
-				vcur->u = u;
-				vcur->v = v;
-				vcur++->palette = (cw3 >> 14) | 4;
-				vcount++;
+					vcur->x1 = x + 8 * hflip;
+					vcur->y1 = y + 8 * vflip + 256 * eye;
+					vcur->x2 = x + 8 * !hflip;
+					vcur->y2 = y + 8 * !vflip + 256 * eye;
+					vcur->u = u;
+					vcur->v = v;
+					vcur++->palette = (cw3 >> 14) | 4;
+					vcount++;
+				}
 			}
 			object_group_id = (object_group_id - 1) & 3;
+			
+			DRAW_VBUF;
 		}
-		if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
-		if (vcount != 0)
-			C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 	}
 }
 
@@ -688,48 +714,45 @@ void doAllTheDrawing()
 	if (tDSPCACHE.ColumnTableInvalid)
 		processColumnTable();
 
-	for (eye = 0; eye < 2; eye++)
-	{
-		sceneRender();
+	sceneRender();
+	
+	C3D_TexBind(0, &screenTex);
+	C3D_BindProgram(&sFinal);
+	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
+	C3D_TexEnv *env = C3D_GetTexEnv(0);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvColor(env, 0xff0000ff);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
+	C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+	if (minRepeat != maxRepeat) {
+		env = C3D_GetTexEnv(0);
+		env = C3D_GetTexEnv(1);
+		C3D_TexEnvInit(env);
+		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE1, 0);
+		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+		#ifdef COLTABLESCALE
+		C3D_TexEnvScale(env, C3D_RGB, maxRepeat <= 2 ? maxRepeat - 1 : GPU_TEVSCALE_4);
+		#endif
+	}
+
+	for (int eye = 0; eye < 2; eye++) {
 		C3D_RenderTargetClear(finalScreen[eye], C3D_CLEAR_ALL, 0, 0);
 		C3D_FrameDrawOn(finalScreen[eye]);
 		C3D_SetViewport((240 - 224) / 2, (400 - 384) / 2, 224, 384);
-		C3D_TexBind(0, &screenTex[eye]);
-		C3D_BindProgram(&sFinal);
-		C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
-
-		C3D_TexEnv *env = C3D_GetTexEnv(0);
-		C3D_TexEnvInit(env);
-		C3D_TexEnvColor(env, 0xff0000ff);
-		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
-		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
-		if (minRepeat != maxRepeat) {
-			env = C3D_GetTexEnv(0);
-			C3D_TexBind(1, &columnTableTexture[eye]);
-			env = C3D_GetTexEnv(1);
-			C3D_TexEnvInit(env);
-			C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE1, 0);
-			C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
-			#ifdef COLTABLESCALE
-			C3D_TexEnvScale(env, C3D_RGB, maxRepeat <= 2 ? maxRepeat - 1 : GPU_TEVSCALE_4);
-			#endif
-		}
+		C3D_TexBind(1, &columnTableTexture[eye]);
 
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
 		C3D_ImmSendAttrib(1, 1, -1, 1);
-		C3D_ImmSendAttrib(0, 0, 0, 0);
+		C3D_ImmSendAttrib(0, eye ? 0.5 : 0, 0, 0);
 		C3D_ImmSendAttrib(-1, -1, -1, 1);
-		C3D_ImmSendAttrib(384.0 / 512, 224.0 / 256, 0, 0);
+		C3D_ImmSendAttrib(384.0 / 512, (eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
 		C3D_ImmDrawEnd();
+	}
 
-		if (minRepeat != maxRepeat) {
-			env = C3D_GetTexEnv(1);
-			C3D_TexEnvInit(env);
-		}
-
-		// 2D mode
-		if (tVBOpt.DSPMODE == DM_NORMAL) break;
+	if (minRepeat != maxRepeat) {
+		env = C3D_GetTexEnv(1);
+		C3D_TexEnvInit(env);
 	}
 
 	C3D_FrameEnd(0);

@@ -1,4 +1,4 @@
-.constf const1(0.00390625, 0.0078125, 0.000244140625, -1.0)
+.constf const1(0.00390625, 0.00390625, 0.000244140625, -1.0)
 
 ; v0: (left,top,right,bottom) pos
 ; v1: (u,v) texcoord origin
