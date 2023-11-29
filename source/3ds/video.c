@@ -410,9 +410,9 @@ void sceneRender()
 			}
 			else
 			{
+				// hbias or affine world
 				for (uint8_t sub_bg = 0; sub_bg < scx * scy; sub_bg++)
 				{
-					// hbias or affine world
 					int cache_y1, cache_y2;
 					if ((windows[wnd * 16] & 0x3000) == 0x1000)
 					{
