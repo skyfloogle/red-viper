@@ -680,7 +680,7 @@ void doAllTheDrawing()
 				tDSPCACHE.CharacterCache[t] = false;
 			else
 				continue;
-			uint16_t *tile = (uint16_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
+			uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
 			// optimize invisible tiles
 			tileVisible[t] = false;
 			for (int i = 0; i < 2; i++) {
@@ -692,16 +692,45 @@ void doAllTheDrawing()
 			int y = 63 - t / 32;
 			int x = t % 32;
 			uint16_t *dstbuf = texImage + ((y * 32 + x) * 8 * 8);
-			for (int i = 0; i < 8 * 8; i++)
-			{
-				uint8_t sx = (i & 1) | ((i >> 1) & 2) | ((i >> 2) & 4);
-				uint8_t sy = 7 - (((i >> 1) & 1) | ((i >> 2) & 2) | ((i >> 3) & 4));
-				uint16_t row = tile[sy];
-				while (sx-- > 0)
-					row >>= 2;
-				row &= 3;
+			
+			for (int i = 2; i >= 0; i -= 2) {
+				uint32_t slice1 = tile[i + 1];
+				uint32_t slice2 = tile[i];
+		
 				const static uint16_t colors[4] = {0, 0x88ff, 0x8f8f, 0xf88f};
-				dstbuf[i] = colors[row];
+				#define PUMP(x) \
+					*dstbuf++ = colors[(uint8_t)x]; \
+					*dstbuf++ = colors[(uint8_t)(x >> 8)]; \
+					*dstbuf++ = colors[(uint8_t)(x >> 16)]; \
+					*dstbuf++ = colors[(uint8_t)(x >> 24)];
+
+				#define PX1(x, i) \
+					(i < 1 ? x << 8 : \
+					i < 2 ? x << 4 : \
+					i < 3 ? x : x >> 4)
+				#define SQUARE(x, i) __builtin_bswap32((PX1(x, i) & 0x03000300) | ((x >> (2 + 4*i)) & 0x00030003));
+
+				uint32_t indices;
+				indices = SQUARE(slice1, 0);
+				PUMP(indices);
+				indices = SQUARE(slice1, 1);
+				PUMP(indices);
+				indices = SQUARE(slice2, 0);
+				PUMP(indices);
+				indices = SQUARE(slice2, 1);
+				PUMP(indices);
+				indices = SQUARE(slice1, 2);
+				PUMP(indices);
+				indices = SQUARE(slice1, 3);
+				PUMP(indices);
+				indices = SQUARE(slice2, 2);
+				PUMP(indices);
+				indices = SQUARE(slice2, 3);
+				PUMP(indices);
+
+				#undef SQUARE
+				#undef PX1
+				#undef PUMP
 			}
 		}
 	}
