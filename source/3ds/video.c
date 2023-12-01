@@ -676,19 +676,21 @@ void doAllTheDrawing()
 		uint16_t *texImage = C3D_Tex2DGetImagePtr(&tileTexture, 0, NULL);
 		for (int t = 0; t < 2048; t++)
 		{
+			// skip if this tile wasn't modified
 			if (tDSPCACHE.CharacterCache[t])
 				tDSPCACHE.CharacterCache[t] = false;
 			else
 				continue;
+
 			uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
+
 			// optimize invisible tiles
-			tileVisible[t] = false;
-			for (int i = 0; i < 2; i++) {
-				if (((uint64_t *)(tile))[i]) {
-					tileVisible[t] = true;
-					break;
-				}
+			{
+				bool tv = ((uint64_t*)tile)[0] | ((uint64_t*)tile)[1];
+				tileVisible[t] = tv;
+				if (!tv) continue;
 			}
+
 			int y = 63 - t / 32;
 			int x = t % 32;
 			uint16_t *dstbuf = texImage + ((y * 32 + x) * 8 * 8);
