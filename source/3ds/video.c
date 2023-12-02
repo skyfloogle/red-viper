@@ -700,39 +700,26 @@ void doAllTheDrawing()
 				uint32_t slice2 = tile[i];
 		
 				const static uint16_t colors[4] = {0, 0x88ff, 0x8f8f, 0xf88f};
-				#define PUMP(x) \
-					*dstbuf++ = colors[(uint8_t)x]; \
-					*dstbuf++ = colors[(uint8_t)(x >> 8)]; \
-					*dstbuf++ = colors[(uint8_t)(x >> 16)]; \
-					*dstbuf++ = colors[(uint8_t)(x >> 24)];
 
-				#define PX1(x, i) \
-					(i < 1 ? x << 8 : \
-					i < 2 ? x << 4 : \
-					i < 3 ? x : x >> 4)
-				#define SQUARE(x, i) __builtin_bswap32((PX1(x, i) & 0x03000300) | ((x >> (2 + 4*i)) & 0x00030003));
+				#define SQUARE(x, i) { \
+					uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
+					uint32_t right = x >> (2 + 4*i) & 0x00030003; \
+					*dstbuf++ = colors[left  >> 16];              \
+					*dstbuf++ = colors[right >> 16];              \
+					*dstbuf++ = colors[(uint16_t)left];           \
+					*dstbuf++ = colors[(uint16_t)right];          \
+				}
 
-				uint32_t indices;
-				indices = SQUARE(slice1, 0);
-				PUMP(indices);
-				indices = SQUARE(slice1, 1);
-				PUMP(indices);
-				indices = SQUARE(slice2, 0);
-				PUMP(indices);
-				indices = SQUARE(slice2, 1);
-				PUMP(indices);
-				indices = SQUARE(slice1, 2);
-				PUMP(indices);
-				indices = SQUARE(slice1, 3);
-				PUMP(indices);
-				indices = SQUARE(slice2, 2);
-				PUMP(indices);
-				indices = SQUARE(slice2, 3);
-				PUMP(indices);
+				SQUARE(slice1, 0);
+				SQUARE(slice1, 1);
+				SQUARE(slice2, 0);
+				SQUARE(slice2, 1);
+				SQUARE(slice1, 2);
+				SQUARE(slice1, 3);
+				SQUARE(slice2, 2);
+				SQUARE(slice2, 3);
 
 				#undef SQUARE
-				#undef PX1
-				#undef PUMP
 			}
 		}
 	}
