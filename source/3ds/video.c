@@ -108,14 +108,12 @@ shaderProgram_s sAffine;
 static uint8_t maxRepeat = 0, minRepeat = 0;
 C3D_Tex columnTableTexture[2];
 
-typedef struct
-{
+typedef struct {
 	short x1, y1, x2, y2;
 	short u, v, palette;
 } vertex;
 
-typedef struct
-{
+typedef struct {
 	short x1, y1, x2, y2;
 	short u, v;
 	short ix, iy, jx, jy;
@@ -131,8 +129,7 @@ avertex *avbuf, *avcur;
 	 GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
 	 GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
 
-bool V810_DSP_Init()
-{
+bool V810_DSP_Init() {
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
 	finalScreen[0] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, GPU_RB_DEPTH16);
 	C3D_RenderTargetSetOutput(finalScreen[0], GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
@@ -175,8 +172,7 @@ bool V810_DSP_Init()
 
 	params.width = 512;
 	params.height = 512;
-	for (int i = 0; i < AFFINE_CACHE_SIZE; i++)
-	{
+	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		C3D_TexInitWithParams(&tileMapCache[i], NULL, params);
 		tileMapCacheTarget[i] = C3D_RenderTargetCreateFromTex(&tileMapCache[i], GPU_TEX_2D, 0, GPU_RB_DEPTH16);
 		C3D_RenderTargetClear(tileMapCacheTarget[i], C3D_CLEAR_ALL, 0, 0);
@@ -201,8 +197,7 @@ bool V810_DSP_Init()
 	return true;
 }
 
-void setRegularTexEnv()
-{
+void setRegularTexEnv() {
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
 	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
@@ -210,8 +205,7 @@ void setRegularTexEnv()
 	C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
 }
 
-void setRegularDrawing()
-{
+void setRegularDrawing() {
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
@@ -223,8 +217,7 @@ void setRegularDrawing()
 	memcpy(C3D_FVUnifWritePtr(GPU_VERTEX_SHADER, uLoc_palettes, 8), palettes, sizeof(palettes));
 }
 
-void processColumnTable()
-{
+void processColumnTable() {
 	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
 	minRepeat = maxRepeat = table[0];
 	for (int i = 1; i < 512; i++) {
@@ -255,8 +248,7 @@ void processColumnTable()
 	}
 }
 
-void sceneRender()
-{
+void sceneRender() {
 	#ifdef COLTABLESCALE
 	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
 	#else
@@ -268,8 +260,7 @@ void sceneRender()
 		((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale + 0x80) / 256.0};
 	u32 clearcol = (cols[tVIPREG.BKCOL] - 0.5) * 510;
 	C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, clearcol | (clearcol << 8) | (clearcol << 16) | 0xff000000, 0);
-	for (int i = 0; i < 4; i++)
-	{
+	for (int i = 0; i < 4; i++) {
 		HWORD pal = tVIPREG.GPLT[i];
 		palettes[i].x = cols[(pal >> 6) & 3];
 		palettes[i].y = cols[(pal >> 4) & 3];
@@ -297,8 +288,7 @@ void sceneRender()
 	uint8_t object_group_id = 3;
 	int cache_id = 0;
 
-	for (int8_t wnd = 31; wnd >= 0; wnd--)
-	{
+	for (int8_t wnd = 31; wnd >= 0; wnd--) {
 		if (windows[wnd * 16] & 0x40)
 			break;
 		if (!(windows[wnd * 16] & 0xc000))
@@ -309,8 +299,7 @@ void sceneRender()
 			if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE); \
 			if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
-		if ((windows[wnd * 16] & 0x3000) != 0x3000)
-		{
+		if ((windows[wnd * 16] & 0x3000) != 0x3000) {
 			// background world
 			uint8_t mapid = windows[wnd * 16] & 0xf;
 			uint8_t scx_pow = ((windows[wnd * 16] >> 10) & 3);
@@ -332,8 +321,7 @@ void sceneRender()
 
 			if (h == 0) continue;
 
-			if ((windows[wnd * 16] & 0x3000) == 0)
-			{
+			if ((windows[wnd * 16] & 0x3000) == 0) {
 				// normal world
 				for (int eye = 0; eye < 2; eye++) {
 					if (!(windows[wnd * 16] & (0x8000 >> eye)))
@@ -341,13 +329,10 @@ void sceneRender()
 
 					int gx = base_gx;
 					int mx = base_mx;
-					if (eye == 0)
-					{
+					if (eye == 0) {
 						gx -= gp;
 						mx -= mp;
-					}
-					else
-					{
+					} else {
 						gx += gp;
 						mx += mp;
 					}
@@ -367,14 +352,12 @@ void sceneRender()
 					}
 					bool over_visible = !over || tileVisible[tilemap[over_tile] & 0x07ff];
 
-					for (int y = gy - (my & 7); y < gy + h; y += 8)
-					{
+					for (int y = gy - (my & 7); y < gy + h; y += 8) {
 						if (over_visible || (mapy & (scy - 1)) == mapy) {
 							int tx = tsx;
 							int mapx = mapsx;
 							int current_map = mapid + scx * mapy + mapx;
-							for (int x = gx - (mx & 7); x < gx + w; x += 8)
-							{
+							for (int x = gx - (mx & 7); x < gx + w; x += 8) {
 								bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
 								uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
 								if (++tx >= 64) {
@@ -407,20 +390,14 @@ void sceneRender()
 					}
 					DRAW_VBUF;
 				}
-			}
-			else
-			{
+			} else {
 				// hbias or affine world
-				for (uint8_t sub_bg = 0; sub_bg < scx * scy; sub_bg++)
-				{
+				for (uint8_t sub_bg = 0; sub_bg < scx * scy; sub_bg++) {
 					int cache_y1, cache_y2;
-					if ((windows[wnd * 16] & 0x3000) == 0x1000)
-					{
+					if ((windows[wnd * 16] & 0x3000) == 0x1000) {
 						cache_y1 = (sub_bg & (scy - 1)) == 0 ? my & ~7 : 0;
 						cache_y2 = (sub_bg & (scy - 1)) == scy - 1 ?  my + h : 64 * 8;
-					}
-					else
-					{
+					} else {
 						cache_y1 = 0;
 						cache_y2 = 64 * 8;
 					}
@@ -428,10 +405,8 @@ void sceneRender()
 					// set up cache vertices
 
 					u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid + sub_bg)) + 64 * (cache_y1 >> 3);
-					for (int y = cache_y1; y < cache_y2; y += 8)
-					{
-						for (int x = 0; x < 64 * 8; x += 8)
-						{
+					for (int y = cache_y1; y < cache_y2; y += 8) {
+						for (int x = 0; x < 64 * 8; x += 8) {
 							uint16_t tile = *tilemap++;
 							uint16_t tileid = tile & 0x07ff;
 							if (!tileVisible[tileid]) continue;
@@ -531,13 +506,10 @@ void sceneRender()
 						int gx = base_gx;
 						int mx = base_mx;
 
-						if (eye == 0)
-						{
+						if (eye == 0) {
 							gx -= gp;
 							mx -= mp;
-						}
-						else
-						{
+						} else {
 							gx += gp;
 							mx += mp;
 						}
@@ -547,13 +519,11 @@ void sceneRender()
 						int base_u = -512 * (sub_bg & (scy - 1));
 						int base_v = -512 * (sub_bg >> scy_pow);
 
-						if ((windows[wnd * 16] & 0x3000) == 0x1000)
-						{
+						if ((windows[wnd * 16] & 0x3000) == 0x1000) {
 							// hbias
 							base_u += mx;
 							base_v += my;
-							for (int y = 0; y < h; y++)
-							{
+							for (int y = 0; y < h; y++) {
 								s16 p = params[y * 2 + eye];
 								if (p & 0x1000)
 									p |= (s16)0xe000;
@@ -578,13 +548,10 @@ void sceneRender()
 								avcur->jx = 0;
 								avcur++->jy = 1 * 8;
 							}
-						}
-						else
-						{
+						} else {
 							// affine
 							// TODO handle repeating multimap
-							for (int y = 0; y < h; y++)
-							{
+							for (int y = 0; y < h; y++) {
 								mx = params[y * 8 + 0];
 								mp = params[y * 8 + 1];
 								my = params[y * 8 + 2];
@@ -613,22 +580,18 @@ void sceneRender()
 					C3D_TexBind(0, &tileTexture);
 					setRegularDrawing();
 					vcount = 0;
-					if (++cache_id == AFFINE_CACHE_SIZE)
-					{
+					if (++cache_id == AFFINE_CACHE_SIZE) {
 						cache_id = 0;
 					}
 				}
 			}
-		}
-		else
-		{
+		} else {
 			// object world
 			for (int eye = 0; eye < 2; eye++) {
 				C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 				int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
 				int end_index = tVIPREG.SPT[object_group_id];
-				for (int i = end_index; i != start_index; i = (i - 1) & 1023)
-				{
+				for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
 					u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
 					u16 x = obj_ptr[0];
 					u16 cw1 = obj_ptr[1];
@@ -669,13 +632,11 @@ void sceneRender()
 	}
 }
 
-void doAllTheDrawing()
-{
+void doAllTheDrawing() {
 	if (tDSPCACHE.CharCacheInvalid) {
 		tDSPCACHE.CharCacheInvalid = false;
 		uint16_t *texImage = C3D_Tex2DGetImagePtr(&tileTexture, 0, NULL);
-		for (int t = 0; t < 2048; t++)
-		{
+		for (int t = 0; t < 2048; t++) {
 			// skip if this tile wasn't modified
 			if (tDSPCACHE.CharacterCache[t])
 				tDSPCACHE.CharacterCache[t] = false;
