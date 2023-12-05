@@ -610,6 +610,7 @@ void sceneRender() {
 						x += jp;
 
 					u16 tileid = cw3 & 0x07ff;
+					if (!tileVisible[tileid]) continue;
 					bool hflip = (cw3 & 0x2000) != 0;
 					bool vflip = (cw3 & 0x1000) != 0;
 					short u = (tileid % 32) * 8;
