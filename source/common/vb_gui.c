@@ -10,6 +10,7 @@
 #include "v810_mem.h"
 #include "vb_gui.h"
 #include "vb_set.h"
+#include "vb_sound.h"
 #include "rom_db.h"
 #include "drc_core.h"
 
@@ -264,7 +265,11 @@ int options_sound(void) {
 #ifdef __3DS__
     consoleClear();
     tVBOpt.SOUND = !tVBOpt.SOUND;
-    printf("Sound %s", tVBOpt.DEBUG ? "enabled" : "disabled");
+    printf("Sound %s\n", tVBOpt.SOUND ? "enabled" : "disabled");
+
+    if (tVBOpt.SOUND) sound_init();
+    else sound_close();
+
     waitForInput();
 
     saveFileOptions();

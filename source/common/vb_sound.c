@@ -144,9 +144,6 @@ void sound_thread() {
 void sound_init() {
     int i, index;
 
-    if (!tVBOpt.SOUND)
-        return;
-
     if (-1 == install_sound(DIGI_AUTODETECT, MIDI_NONE, NULL)) {
         dprintf(0, "[SND]: Error installing sound\n");
         tVBOpt.SOUND = 0;
@@ -173,14 +170,19 @@ void sound_init() {
 
     if (!startPeriodic(sound_thread, 960000))
         puts("couldn't make sound thread");
+
+    // Initialize cache and sound thread
+    for (int i = 0; i < 6; i++) {
+        snd_ram_changed[i] = true;
+        envelope_values[i] = mem_rbyte(S1EV0 + 0x40 * i) >> 4;
+    }
 }
 
 // Close Allegro sound stuff
 void sound_close() {
     int i;
 
-    if (!tVBOpt.SOUND)
-        return;
+    endThread(sound_thread);
 
     for (i = 0; i < CH_TOTAL; ++i) {
         voice_stop(voice[i]);

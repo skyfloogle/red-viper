@@ -2,15 +2,16 @@
 
 #include <3ds.h>
 
+
 #define THREAD_COUNT 10
 static Thread threads[THREAD_COUNT];
-static int thread_count = 0;
-
-static volatile bool running = true;
+static volatile bool threadrunning[THREAD_COUNT];
+static threadfunc_t threadfuncs[THREAD_COUNT];
 
 typedef struct PeriodArgs_t {
-    void (*func)();
+    threadfunc_t func;
     int periodNanos;
+    int id;
     // to let the main thread know it's safe to delete this struct
     Handle readyEvent;
 } PeriodArgs;
@@ -18,7 +19,8 @@ typedef struct PeriodArgs_t {
 
 static void periodic(void *periodArgs_v) {
     PeriodArgs *periodArgs = (PeriodArgs*)periodArgs_v;
-    void (*func)() = periodArgs->func;
+    threadfunc_t func = periodArgs->func;
+    int id = periodArgs->id;
     int periodNanos = periodArgs->periodNanos;
     svcSignalEvent(periodArgs->readyEvent);
 
@@ -26,7 +28,7 @@ static void periodic(void *periodArgs_v) {
     svcCreateTimer(&timer, RESET_PULSE);
     svcSetTimer(timer, 0, periodNanos);
 
-    while (running) {
+    while (threadrunning[id]) {
         svcWaitSynchronization(timer, periodNanos);
         func();
     }
@@ -34,17 +36,39 @@ static void periodic(void *periodArgs_v) {
     svcCloseHandle(timer);
 }
 
-bool startPeriodic(void (*func)(), int periodNanos) {
+bool startPeriodic(threadfunc_t func, int periodNanos) {
     PeriodArgs periodArgs;
     periodArgs.func = func;
     periodArgs.periodNanos = periodNanos;
     svcCreateEvent(&periodArgs.readyEvent, RESET_ONESHOT);
-    return (threads[thread_count++] = threadCreate(periodic, &periodArgs, 4000, 0x18, 0, true));
-    svcWaitSynchronization(periodArgs.readyEvent, 0);
-    svcCloseHandle(periodArgs.readyEvent);
+    for (int i = 0; i < THREAD_COUNT; i++) {
+        if (!threadrunning[i]) {
+            periodArgs.id = i;
+            threadfuncs[i] = func;
+            threadrunning[i] = true;
+            threads[i] = threadCreate(periodic, &periodArgs, 4000, 0x18, 0, true);
+            if (!threads[i]) {
+                threadrunning[i] = false;
+                return false;
+            }
+            svcWaitSynchronization(periodArgs.readyEvent, 0);
+            svcCloseHandle(periodArgs.readyEvent);
+            return true;
+        }
+    }
+    return false;
+}
+
+void endThread(threadfunc_t func) {
+    for (int i = 0; i < THREAD_COUNT; i++) {
+        if (threadrunning[i] && threadfuncs[i] == func) {
+            threadrunning[i] = false;
+            threadJoin(threads[i], U64_MAX);
+        }
+    }
 }
 
 void endThreads() {
-    running = false;
-    for (int i = 0; i < thread_count; i++) threadJoin(threads[i], U64_MAX);
+    for (int i = 0; i < THREAD_COUNT; i++) threadrunning[i] = false;
+    for (int i = 0; i < THREAD_COUNT; i++) threadJoin(threads[i], U64_MAX);
 }

@@ -55,7 +55,7 @@ int main() {
 #endif
 
     V810_DSP_Init();
-    sound_init();
+    if (tVBOpt.SOUND) sound_init();
 
     if (tVBOpt.DSPMODE == DM_3D) {
         gfxSet3D(true);
@@ -141,7 +141,7 @@ exit:
     v810_exit();
     endThreads();
     V810_DSP_Quit();
-    sound_close();
+    if (tVBOpt.SOUND) sound_close();
     drc_exit();
 
     fsExit();
