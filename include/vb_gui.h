@@ -42,6 +42,7 @@ int options_maxcycles(void);
 int options_frameskip(void);
 int options_debug(void);
 int options_sound(void);
+int options_fastforward(void);
 int options_input(void);
 int options_saveoptions(void);
 int emulation_resume(void);

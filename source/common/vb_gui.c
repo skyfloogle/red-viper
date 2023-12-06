@@ -44,6 +44,7 @@ menu_item_t options_menu_items[] = {
     {"Frameskip", options_frameskip, NULL, 0, NULL},
     {"Toggle debug", options_debug, NULL, 0, NULL},
     {"Toggle sound", options_sound, NULL, 0, NULL},
+    {"Toggle fastforward", options_fastforward, NULL, 0, NULL},
     {"Input", options_input, NULL, 0, NULL},
 };
 
@@ -274,6 +275,14 @@ int options_sound(void) {
 
     saveFileOptions();
 #endif
+    return D_OK;
+}
+
+int options_fastforward(void) {
+    consoleClear();
+    tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
+    printf("Fastforward %s\n", tVBOpt.FASTFORWARD ? "enabled" : "disabled");
+    waitForInput();
     return D_OK;
 }
 
