@@ -302,6 +302,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
             inst_cache[i].PC = cur_PC;
             inst_cache[i].save_flags = false;
             inst_cache[i].busywait = false;
+            inst_cache[i].is_branch_target = false;
 
             inst_cache[i].opcode = highB >> 2;
             if ((highB & 0xE0) == 0x80)              // Special opcode format for
@@ -442,6 +443,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
             if (optable[inst_cache[j].opcode].addr_mode != AM_III && inst_cache[j].opcode != V810_OP_JR)
                 continue;
             if (inst_cache[j].opcode != V810_OP_JR || abs(inst_cache[j].branch_offset) < 1024) {
+                // binary search for the branch target
                 int left = 0, right = i;
                 WORD target = inst_cache[j].PC + inst_cache[j].branch_offset;
                 if (inst_cache[j].branch_offset < 0)
@@ -455,12 +457,16 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                     else if (inst_cache[pivot].PC > target) right = pivot;
                     else break;
                 }
+                // left == right, namely either the target or the instruction after
                 if (inst_cache[pivot].PC != target) {
-                    // left == right, namely the instruction just after our target
+                    // target is in the middle of an instruction, restart decoding from there
                     i = left - 1;
                     cur_PC = target;
                     finished = false;
                     break;
+                } else {
+                    // it's a valid target, so mark it as such
+                    inst_cache[pivot].is_branch_target = true;
                 }
             }
         }
@@ -565,6 +571,10 @@ int drc_translateBlock(exec_block *block) {
 
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
+        if (cycles != 0 && inst_cache[i].is_branch_target) {
+            ADDCYCLES();
+        }
+
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         inst_ptr_start = inst_ptr;
         drc_setEntry(inst_cache[i].PC, cache_start + block->phys_offset + inst_cache[i].start_pos, block);

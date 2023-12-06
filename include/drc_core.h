@@ -61,6 +61,7 @@ typedef struct {
     int branch_offset;
     bool save_flags;
     bool busywait;
+    bool is_branch_target;
 } v810_instruction;
 #pragma pack()
 
