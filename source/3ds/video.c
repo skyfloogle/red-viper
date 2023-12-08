@@ -286,7 +286,9 @@ void sceneRender() {
 	u16 *windows = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
 
 	uint8_t object_group_id = 3;
-	int cache_id = 0;
+
+	int cached_backgrounds[AFFINE_CACHE_SIZE];
+	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) cached_backgrounds[i] = -1;
 
 	for (int8_t wnd = 31; wnd >= 0; wnd--) {
 		if (windows[wnd * 16] & 0x40)
@@ -393,75 +395,84 @@ void sceneRender() {
 			} else {
 				// hbias or affine world
 				for (uint8_t sub_bg = 0; sub_bg < scx * scy; sub_bg++) {
-					int cache_y1, cache_y2;
-					if ((windows[wnd * 16] & 0x3000) == 0x1000) {
-						cache_y1 = (sub_bg & (scy - 1)) == 0 ? my & ~7 : 0;
-						cache_y2 = (sub_bg & (scy - 1)) == scy - 1 ?  my + h : 64 * 8;
-					} else {
-						cache_y1 = 0;
-						cache_y2 = 64 * 8;
-					}
-					// first, render a cache
-					// set up cache vertices
-
-					u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid + sub_bg)) + 64 * (cache_y1 >> 3);
-					for (int y = cache_y1; y < cache_y2; y += 8) {
-						for (int x = 0; x < 64 * 8; x += 8) {
-							uint16_t tile = *tilemap++;
-							uint16_t tileid = tile & 0x07ff;
-							if (!tileVisible[tileid]) continue;
-							bool hflip = (tile & 0x2000) != 0;
-							bool vflip = (tile & 0x1000) != 0;
-							short u = (tileid % 32) * 8;
-							short v = (tileid / 32) * 8;
-
-							vcur->x1 = x + 8 * hflip;
-							vcur->y1 = y + 8 * vflip;
-							vcur->x2 = x + 8 * !hflip;
-							vcur->y2 = y + 8 * !vflip;
-							vcur->u = u;
-							vcur->v = v;
-							vcur++->palette = tile >> 14;
-
-							vcount++;
+					int cache_id = (mapid + sub_bg) % AFFINE_CACHE_SIZE;
+					if (cached_backgrounds[cache_id] != mapid + sub_bg) {
+						cached_backgrounds[cache_id] = mapid + sub_bg;
+						int cache_y1, cache_y2;
+						if ((windows[wnd * 16] & 0x3000) == 0x1000) {
+							// with this caching thing, scanning only part of it isn't really viable
+							/*
+							cache_y1 = (sub_bg & (scy - 1)) == 0 ? my & ~7 : 0;
+							cache_y2 = (sub_bg & (scy - 1)) == scy - 1 ?  my + h : 64 * 8;
+							*/
+							cache_y1 = 0;
+							cache_y2 = 64 * 8;
+						} else {
+							cache_y1 = 0;
+							cache_y2 = 64 * 8;
 						}
+						// first, render a cache
+						// set up cache vertices
+
+						u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid + sub_bg)) + 64 * (cache_y1 >> 3);
+						for (int y = cache_y1; y < cache_y2; y += 8) {
+							for (int x = 0; x < 64 * 8; x += 8) {
+								uint16_t tile = *tilemap++;
+								uint16_t tileid = tile & 0x07ff;
+								if (!tileVisible[tileid]) continue;
+								bool hflip = (tile & 0x2000) != 0;
+								bool vflip = (tile & 0x1000) != 0;
+								short u = (tileid % 32) * 8;
+								short v = (tileid / 32) * 8;
+
+								vcur->x1 = x + 8 * hflip;
+								vcur->y1 = y + 8 * vflip;
+								vcur->x2 = x + 8 * !hflip;
+								vcur->y2 = y + 8 * !vflip;
+								vcur->u = u;
+								vcur->v = v;
+								vcur++->palette = tile >> 14;
+
+								vcount++;
+							}
+						}
+						if (vcount == 0) {
+							// bail
+							continue;
+						}
+						if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
+
+						// set up cache texture
+						C3D_FrameDrawOn(tileMapCacheTarget[cache_id]);
+						C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
+						C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+
+						// clear
+						C3D_BindProgram(&sFinal);
+						C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+						C3D_AlphaTest(false, GPU_GREATER, 0);
+
+						C3D_TexEnv *env = C3D_GetTexEnv(0);
+						C3D_TexEnvInit(env);
+						C3D_TexEnvColor(env, 0);
+						C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
+						C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+
+						C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
+						C3D_ImmSendAttrib(1, 1, -1, 1);
+						C3D_ImmSendAttrib(0, 0, 0, 0);
+						C3D_ImmSendAttrib(-1, -1, -1, 1);
+						C3D_ImmSendAttrib(1, 1, 0, 0);
+						C3D_ImmDrawEnd();
+
+						// reset and draw cache
+						C3D_BindProgram(&sChar);
+						C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+						C3D_AlphaTest(true, GPU_GREATER, 0);
+						setRegularTexEnv();
+						
+						C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 					}
-					if (vcount == 0) {
-						// bail
-						continue;
-					}
-					if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
-
-					// set up cache texture
-					C3D_FrameDrawOn(tileMapCacheTarget[cache_id]);
-					C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
-					C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
-
-					// clear
-					C3D_BindProgram(&sFinal);
-					C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-					C3D_AlphaTest(false, GPU_GREATER, 0);
-
-					C3D_TexEnv *env = C3D_GetTexEnv(0);
-					C3D_TexEnvInit(env);
-					C3D_TexEnvColor(env, 0);
-					C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
-					C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-
-					C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
-					C3D_ImmSendAttrib(1, 1, -1, 1);
-					C3D_ImmSendAttrib(0, 0, 0, 0);
-					C3D_ImmSendAttrib(-1, -1, -1, 1);
-					C3D_ImmSendAttrib(1, 1, 0, 0);
-					C3D_ImmDrawEnd();
-
-					// reset and draw cache
-					C3D_BindProgram(&sChar);
-					C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-					C3D_AlphaTest(true, GPU_GREATER, 0);
-					setRegularTexEnv();
-					
-					C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 					// set up wrapping for affine map
 					C3D_TexSetWrap(&tileMapCache[cache_id],
@@ -489,7 +500,7 @@ void sceneRender() {
 					BufInfo_Init(bufInfo);
 					BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 3, 0x210);
 
-					env = C3D_GetTexEnv(0);
+					C3D_TexEnv *env = C3D_GetTexEnv(0);
 					C3D_TexEnvInit(env);
 					C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
 					C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
@@ -580,9 +591,6 @@ void sceneRender() {
 					C3D_TexBind(0, &tileTexture);
 					setRegularDrawing();
 					vcount = 0;
-					if (++cache_id == AFFINE_CACHE_SIZE) {
-						cache_id = 0;
-					}
 				}
 			}
 		} else {
