@@ -519,22 +519,29 @@ void sceneRender() {
 						int base_u = -512 * (sub_bg & (scy - 1));
 						int base_v = -512 * (sub_bg >> scy_pow);
 
+						avertex *avstart = avcur;
+
 						if ((windows[wnd * 16] & 0x3000) == 0x1000) {
 							// hbias
 							base_u += mx;
 							base_v += my;
-							for (int y = 0; y < h; y++) {
-								s16 p = params[y * 2 + eye];
+							for (int y = 0; y < h;) {
+								int top_y = y;
+								int x_diff = 0;
+								while (++y < h) {
+									if (params[y * 2 + eye] - params[(y - 1) * 2 + eye] != x_diff) break;
+								}
+								s16 p = params[top_y * 2 + eye];
 								if (p & 0x1000)
 									p |= (s16)0xe000;
 								avcur->x1 = gx;
-								avcur->y1 = gy + y + 256 * eye;
+								avcur->y1 = gy + top_y + 256 * eye;
 								avcur->x2 = gx + w;
-								avcur->y2 = gy + y + 1 + 256 * eye;
+								avcur->y2 = gy + y + 256 * eye;
 								// we can do just one pass per bg for repeating multimap
 								// because hbias isn't downscaled
 								int u = base_u + p;
-								int v = base_v + y;
+								int v = base_v + top_y;
 								if (!over) {
 									u &= full_w - 1;
 									if (u & (full_w >> 1)) u -= full_w;
@@ -546,31 +553,43 @@ void sceneRender() {
 								avcur->ix = w * 8;
 								avcur->iy = 0;
 								avcur->jx = 0;
-								avcur++->jy = 1 * 8;
+								avcur++->jy = (y != top_y + 1) ? (y - top_y) * 8 : 0;
 							}
 						} else {
 							// affine
 							// TODO handle repeating multimap
-							for (int y = 0; y < h; y++) {
+							for (int y = 0; y < h;) {
+								int top_y = y;
 								mx = params[y * 8 + 0];
 								mp = params[y * 8 + 1];
 								my = params[y * 8 + 2];
 								s32 dx = params[y * 8 + 3];
 								s32 dy = params[y * 8 + 4];
+								int mx_diff = params[(y + 1) * 8 + 0] - mx;
+								int my_diff = params[(y + 1) * 8 + 2] - my;
+								while (++y < h) {
+									if (
+										params[y * 8 + 1] != mp ||
+										params[y * 8 + 3] != dx ||
+										params[y * 8 + 4] != dy ||
+										params[y * 8 + 0] - params[(y - 1) * 8 + 0] != mx_diff ||
+										params[y * 8 + 2] - params[(y - 1) * 8 + 2] != my_diff
+									) break;
+								}
 								avcur->x1 = gx;
-								avcur->y1 = gy + y + 256 * eye;
+								avcur->y1 = gy + top_y + 256 * eye;
 								avcur->x2 = gx + w;
-								avcur->y2 = gy + y + 1 + 256 * eye;
+								avcur->y2 = gy + y + 256 * eye;
 								avcur->u = base_u + mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
 								avcur->v = base_v + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
 								avcur->ix = dx * (w + mp) >> 6;
 								avcur->iy = dy * (w + mp) >> 6;
-								avcur->jx = params[y * 8 + 3] != 0 ? 0 : 1 * 8;
-								avcur++->jy = params[y * 8 + 3] == 0 ? 0 : 1 * 8;
+								avcur->jx = y != top_y + 1 ? mx_diff * (y - top_y) : 0;
+								avcur++->jy = y != top_y + 1 ? my_diff * (y - top_y) : 0;
 							}
 						}
 						if (avcur - avbuf > AVBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", avcur - avbuf, AVBUF_SIZE);
-						C3D_DrawArrays(GPU_GEOMETRY_PRIM, avcur - avbuf - h, h);
+						C3D_DrawArrays(GPU_GEOMETRY_PRIM, avstart - avbuf, avcur - avstart);
 					}
 
 					bufInfo = C3D_GetBufInfo();
