@@ -79,7 +79,7 @@ C3D_RenderTarget *screenTarget;
 C3D_Tex tileTexture;
 bool tileVisible[2048];
 
-#define AFFINE_CACHE_SIZE 3
+#define AFFINE_CACHE_SIZE 4
 C3D_Tex tileMapCache[AFFINE_CACHE_SIZE];
 C3D_RenderTarget *tileMapCacheTarget[AFFINE_CACHE_SIZE];
 
