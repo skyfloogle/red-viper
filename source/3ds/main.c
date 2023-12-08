@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <citro3d.h>
 
 #include "main.h"
 #include "periodic.h"
@@ -86,8 +87,11 @@ int main() {
     svcCreateTimer(&frameTimer, RESET_STICKY);
     svcSetTimer(frameTimer, 0, 20000000);
 
+    TickCounter drcTickCounter;
+    TickCounter frameTickCounter;
+
     while(aptMainLoop()) {
-        uint64_t startTime = osGetTime();
+        osTickCounterStart(&frameTickCounter);
 
         hidScanInput();
         int keys = hidKeysDown();
@@ -102,7 +106,9 @@ int main() {
 #if DEBUGLEVEL == 0
         consoleSelect(&debug_console);
 #endif
+        osTickCounterStart(&drcTickCounter);
         err = drc_run();
+        osTickCounterUpdate(&drcTickCounter);
         if (err) {
             dprintf(0, "[DRC]: error #%d @ PC=0x%08lX\n", err, v810_state->PC);
             printf("\nDumping debug info...\n");
@@ -124,6 +130,8 @@ int main() {
         skip++;
         frame++;
 
+        osTickCounterUpdate(&frameTickCounter);
+
         if (!tVBOpt.FASTFORWARD) {
             svcWaitSynchronization(frameTimer, 20000000);
             svcClearTimer(frameTimer);
@@ -131,7 +139,10 @@ int main() {
 
 #if DEBUGLEVEL == 0
         consoleSelect(&main_console);
-        printf("\x1b[1J\x1b[0;0HFPS: %.2f\nFrame: %i\nPC: 0x%lx\nDRC cache: %.2f%%", (1)*(1000./(osGetTime() - startTime)), frame, v810_state->PC, (cache_pos-cache_start)*4*100./CACHE_SIZE);
+        printf("\x1b[1J\x1b[0;0HFrame: %i\nTotal CPU: %5.2fms\tDRC: %5.2fms\nGFX-CPU: %5.2fms\tGFX-GPU: %5.2fms\nPC: 0x%lx\tDRC cache: %5.2f%%",
+            frame, osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter),
+            C3D_GetProcessingTime(), C3D_GetDrawingTime(),
+            v810_state->PC, (cache_pos-cache_start)*4*100./CACHE_SIZE);
 #else
         printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) v810_state->PC);
 #endif
