@@ -666,11 +666,15 @@ int drc_translateBlock(exec_block *block) {
 
                 POP(1 << 15);
                 break;
+            case V810_OP_BR:
+                if (inst_cache[i].branch_offset == 0) {
+                    HALT(inst_cache[i].PC);
+                    break;
+                }
             case V810_OP_BV:
             case V810_OP_BL:
             case V810_OP_BE:
             case V810_OP_BN:
-            case V810_OP_BR:
             case V810_OP_BLT:
             case V810_OP_BLE:
             case V810_OP_BNV:
