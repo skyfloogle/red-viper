@@ -288,6 +288,7 @@ void sceneRender() {
 	uint8_t object_group_id = 3;
 
 	int cached_backgrounds[AFFINE_CACHE_SIZE];
+	int cache_visible[AFFINE_CACHE_SIZE];
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) cached_backgrounds[i] = -1;
 
 	for (int8_t wnd = 31; wnd >= 0; wnd--) {
@@ -438,8 +439,10 @@ void sceneRender() {
 						}
 						if (vcount == 0) {
 							// bail
+							cache_visible[cache_id] = false;
 							continue;
 						}
+						cache_visible[cache_id] = true;
 						if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
 
 						// set up cache texture
@@ -472,7 +475,7 @@ void sceneRender() {
 						setRegularTexEnv();
 						
 						C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
-					}
+					} else if (!cache_visible[cache_id]) continue;
 
 					// set up wrapping for affine map
 					C3D_TexSetWrap(&tileMapCache[cache_id],
