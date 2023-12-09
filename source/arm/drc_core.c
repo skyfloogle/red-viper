@@ -59,6 +59,7 @@
 HWORD* rom_block_map;
 HWORD* rom_entry_map;
 BYTE* rom_data_code_map;
+WORD* profile;
 BYTE reg_usage[32];
 WORD* cache_start;
 WORD* cache_pos;
@@ -2419,6 +2420,7 @@ void drc_init(void) {
     rom_block_map = calloc(sizeof(rom_block_map[0]), BLOCK_MAP_COUNT);
     rom_entry_map = linearAlloc(sizeof(rom_entry_map[0]) * BLOCK_MAP_COUNT);
     rom_data_code_map = calloc(sizeof(rom_data_code_map[0]), BLOCK_MAP_COUNT >> 3);
+    profile = calloc(sizeof(WORD), MAX_ROM_SIZE);
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
     inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
@@ -2447,6 +2449,9 @@ void drc_exit(void) {
     free(rom_block_map);
     linearFree(rom_entry_map);
     free(rom_data_code_map);
+    FILE *f = fopen("/profile.bin", "wb");
+    fwrite(profile, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fclose(f);
     linearFree(block_ptr_start);
     linearFree(trans_cache);
     linearFree(inst_cache);
@@ -2521,7 +2526,11 @@ int drc_run(void) {
             return DRC_ERR_BAD_ENTRY;
         }
 
+        u64 start_time = svcGetSystemTick();
         drc_executeBlock(entrypoint, cur_block);
+        u64 end_time = svcGetSystemTick();
+        if ((entry_PC>>24) == 7)
+            profile[((entry_PC-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1] += end_time - start_time;
 
         vb_state->v810_state.PC &= V810_ROM1.highaddr;
 

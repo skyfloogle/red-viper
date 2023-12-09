@@ -74,6 +74,7 @@ typedef struct {
     bool is_branch_target;
 } v810_instruction;
 
+extern WORD* profile;
 extern WORD* cache_start;
 extern WORD* cache_pos;
 
