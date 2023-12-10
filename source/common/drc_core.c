@@ -1432,6 +1432,8 @@ int drc_run() {
 
     bool handled_timer_hack = false;
 
+    v810_state->ret = 0;
+
     while (!serviceDisplayInt(clocks, v810_state->PC)) {
         serviceInt(clocks, v810_state->PC);
 
@@ -1490,7 +1492,7 @@ int drc_run() {
         }
     }
 
-    return 0;
+        return 0;
 }
 
 void drc_loadSavedCache() {
