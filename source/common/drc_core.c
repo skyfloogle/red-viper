@@ -245,6 +245,12 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
                 // affects flags but is used in busywait
                 save_flags = false;
                 break;
+            case V810_OP_ADD_I:
+                // teleroboxer increments an otherwise unused memory value while busywaiting,
+                // which makes it not a busywait
+                // therefore we need to catch it manually
+                if (tVBOpt.CRC32 == 0x36103000 && inst_cache[i].PC == 0x702e9dc)
+                    break;
             case V810_OP_ADD:
             case V810_OP_OR:
                 // only certain operators are ok for busywait here, otherwise fallthrough
