@@ -359,6 +359,7 @@ int openMenu(menu_t* menu) {
                 char line[40];
 
                 strncpy(line, cur_menu->items[i].text, 38);
+                line[38] = 0;
 
                 if (i == pos)
                     printf("\x1b[1m>");
@@ -428,6 +429,7 @@ int fileSelect(const char* message, char* path, const char* ext) {
             //if(!strncmp("VB", (char*) entry.shortExt, 2)) {
             unicodeToChar(filenames[i], entry.name, 128);
             files[pos].text = filenames[i];
+            files[pos].proc = NULL;
             pos++;
             //}
         }

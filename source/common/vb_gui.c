@@ -13,6 +13,7 @@
 #include "vb_sound.h"
 #include "rom_db.h"
 #include "drc_core.h"
+#include "main.h"
 
 #ifdef __3DS__
 #define GUI_STUB() { \
@@ -180,14 +181,19 @@ void save_sram(void) {
 
 int file_loadrom(void) {
     int ret;
-    char rompath[256];
+    char rompath[128];
 
     ret = fileSelect("Load ROM", rompath, "vb");
     // Go back if the menu was cancelled
     if (ret < 0)
         return D_OK;
 
-    tVBOpt.ROM_NAME = rompath;
+    strncpy(rom_name, rompath, 128);
+    tVBOpt.ROM_NAME = rom_name;
+
+    strcpy(rom_path, "sdmc:/vb/");
+    strncat(rom_path, rom_name, 128);
+
     guiop = AKILL | VBRESET;
 //    cheat_reset_list();
 

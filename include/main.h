@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "v810_cpu.h"
 
-char rom_name[128];
+extern char rom_path[256];
+extern char rom_name[128];
 
 #endif

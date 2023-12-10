@@ -15,6 +15,9 @@
 #include "vb_gui.h"
 #include "rom_db.h"
 
+char rom_path[256] = "sdmc:/vb/";
+char rom_name[128];
+
 void doAllTheDrawing();
 
 int main() {
@@ -23,7 +26,6 @@ int main() {
     int err = 0;
     static int Left = 0;
     int skip = 0;
-    char full_path[256] = "sdmc:/vb/";
     PrintConsole main_console;
 #if DEBUGLEVEL == 0
     PrintConsole debug_console;
@@ -66,11 +68,11 @@ int main() {
     if (fileSelect("Load ROM", rom_name, "vb") < 0)
         goto exit;
 
-    strncat(full_path, rom_name, 255);
+    strncat(rom_path, rom_name, 255);
     #pragma GCC diagnostic pop
     tVBOpt.ROM_NAME = rom_name;
 
-    if (!v810_init(full_path)) {
+    if (!v810_init(rom_path)) {
         goto exit;
     }
 
@@ -98,9 +100,23 @@ int main() {
         int keys = hidKeysDown();
 
         if (keys & KEY_TOUCH) {
+            guiop = 0;
             openMenu(&main_menu);
             if (guiop & GUIEXIT) {
                 goto exit;
+            }
+            if (guiop & VBRESET) {
+                if (tVBOpt.SOUND) sound_close();
+                int oldSound = tVBOpt.SOUND;
+                tVBOpt.SOUND = false;
+                v810_exit();
+                if (!v810_init(rom_path))
+                    goto exit;
+                v810_reset();
+                drc_reset();
+                clearCache();
+                tVBOpt.SOUND = oldSound;
+                if (tVBOpt.SOUND) sound_init();
             }
         }
 

@@ -96,6 +96,7 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block);
 exec_block* drc_getNextBlockStruct();
 
 void drc_init();
+void drc_reset();
 void drc_exit();
 int drc_run();
 void drc_loadSavedCache();

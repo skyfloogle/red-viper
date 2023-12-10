@@ -1399,6 +1399,12 @@ void drc_init() {
     dprintf(0, "[DRC]: cache_start = %p\n", cache_start);
 }
 
+void drc_reset() {
+    rom_block_map = realloc(rom_block_map, sizeof(WORD) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    rom_entry_map = realloc(rom_entry_map, sizeof(WORD) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    drc_clearCache();
+}
+
 // Cleanup and exit
 void drc_exit() {
     if (tVBOpt.DYNAREC)
