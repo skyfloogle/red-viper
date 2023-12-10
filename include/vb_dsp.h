@@ -178,6 +178,9 @@ void World2Display(int wNum, VB_WORLD WORLD_Buff[], BITMAP *wPlane, int img_n);
 bool V810_DSP_Init();
 void V810_DSP_Quit();
 
+bool video_hard_init();
+void video_hard_quit();
+
 void V810_SetPal(int BRTA, int BRTB, int BRTC);
 
 void V810_Dsp_Frame(int left);

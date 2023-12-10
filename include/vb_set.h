@@ -53,6 +53,7 @@ typedef struct VB_OPT {
     int   SOUND;
     int   DYNAREC;
     int   FASTFORWARD;
+    int   HARDRENDER;
     char *ROM_NAME; // Path\Name of game to open
     char *PROG_NAME; // Path\Name of program
     unsigned long CRC32; // CRC32 of ROM

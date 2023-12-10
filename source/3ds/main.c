@@ -33,7 +33,8 @@ int main() {
     Handle nothingEvent = 0;
     svcCreateEvent(&nothingEvent, 0);
 
-    gfxInitDefault();
+    // gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false); // legacy renderer
+    gfxInitDefault(); // hardware renderer
     fsInit();
     archiveMountSdmc();
 
@@ -58,6 +59,7 @@ int main() {
 #endif
 
     V810_DSP_Init();
+    video_hard_init();
 
     if (tVBOpt.DSPMODE == DM_3D) {
         gfxSet3D(true);
@@ -139,7 +141,14 @@ int main() {
         if((tVIPREG.FRMCYC & 0x00FF) < skip) {
             skip = 0;
             if (tVIPREG.DPCTRL & 0x0002) {
-                doAllTheDrawing();
+                if (tVBOpt.HARDRENDER) {
+                    doAllTheDrawing();
+                } else {
+                    V810_Dsp_Frame(0);
+                    gfxFlushBuffers();
+                    gfxSwapBuffers();
+                }
+
             }
         }
 
@@ -169,6 +178,7 @@ exit:
     v810_exit();
     endThreads();
     V810_DSP_Quit();
+    video_hard_quit();
     if (tVBOpt.SOUND) sound_close();
     drc_exit();
 
