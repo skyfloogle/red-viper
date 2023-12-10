@@ -59,7 +59,7 @@ ICON := icon.png
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
 # FIXME: Remove -fcommon once all multiple definitions are fixed
-CFLAGS	:=	-g -Wall -O2 -mword-relocations \
+CFLAGS	:=	-g -Wall -Werror -O2 -mword-relocations \
 			-Wno-unused-variable \
 			-ffunction-sections -fcommon \
 			$(ARCH)
