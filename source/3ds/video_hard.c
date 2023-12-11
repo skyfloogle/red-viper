@@ -471,8 +471,8 @@ void sceneRender() {
 						
 						C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, 256 * eye + (gy >= 0 ? gy : 0), gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
 						
-						int base_u = -512 * (sub_bg & (scy - 1));
-						int base_v = -512 * (sub_bg >> scy_pow);
+						int base_u = -512 * (sub_bg & (scx - 1));
+						int base_v = -512 * (sub_bg >> scx_pow);
 
 						if ((windows[wnd * 16] & 0x3000) == 0x1000) {
 							// hbias
