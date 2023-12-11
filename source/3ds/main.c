@@ -120,6 +120,10 @@ int main() {
                 tVBOpt.SOUND = oldSound;
                 if (tVBOpt.SOUND) sound_init();
             }
+            if (guiop & AKILL) {
+                clearCache();
+                drc_clearCache();
+            }
         }
 
 #if DEBUGLEVEL == 0
