@@ -261,7 +261,7 @@ void sceneRender() {
 			if (my & 0x800) my |= 0xf000;
 			int16_t w = windows[wnd * 16 + 7] + 1;
 			int16_t h = windows[wnd * 16 + 8] + 1;
-			int16_t over_tile = windows[wnd * 16 + 10];
+			int16_t over_tile = windows[wnd * 16 + 10] & 0x7ff;
 
 			if (h == 0) continue;
 
@@ -294,7 +294,7 @@ void sceneRender() {
 						mapsx &= scx - 1;
 						mapy &= scy - 1;
 					}
-					bool over_visible = !over || tileVisible[tilemap[over_tile] & 0x07ff];
+					bool over_visible = !over || tileVisible[over_tile];
 
 					for (int y = gy - (my & 7); y < gy + h; y += 8) {
 						if (over_visible || (mapy & (scy - 1)) == mapy) {
