@@ -607,7 +607,7 @@ void doAllTheDrawing() {
 
 			int y = 63 - t / 32;
 			int x = t % 32;
-			uint16_t *dstbuf = texImage + ((y * 32 + x) * 8 * 8);
+			uint32_t *dstbuf = (uint32_t*)(texImage + ((y * 32 + x) * 8 * 8));
 			
 			for (int i = 2; i >= 0; i -= 2) {
 				uint32_t slice1 = tile[i + 1];
@@ -618,10 +618,8 @@ void doAllTheDrawing() {
 				#define SQUARE(x, i) { \
 					uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
 					uint32_t right = x >> (2 + 4*i) & 0x00030003; \
-					*dstbuf++ = colors[left  >> 16];              \
-					*dstbuf++ = colors[right >> 16];              \
-					*dstbuf++ = colors[(uint16_t)left];           \
-					*dstbuf++ = colors[(uint16_t)right];          \
+					*dstbuf++ = colors[left >> 16] | (colors[right >> 16] << 16); \
+					*dstbuf++ = colors[(uint16_t)left] | (colors[(uint16_t)right] << 16); \
 				}
 
 				SQUARE(slice1, 0);
