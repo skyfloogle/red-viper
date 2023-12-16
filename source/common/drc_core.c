@@ -341,6 +341,11 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                     inst_cache[i].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
                     inst_cache[i].branch_offset = sign_9(inst_cache[i].imm);
 
+                    // innsmouth no yakata speedhack
+                    if (tVBOpt.CRC32 == 0x83cb6a00 && cur_PC == 0x7019040) {
+                        inst_cache[i].branch_offset = -0x10;
+                    }
+
                     inst_cache[i].reg1 = 0xFF;
                     inst_cache[i].reg2 = 0xFF;
 
