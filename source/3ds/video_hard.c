@@ -160,11 +160,13 @@ void setRegularDrawing() {
 
 void processColumnTable() {
 	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
-	minRepeat = maxRepeat = table[0];
-	for (int i = 1; i < 512; i++) {
-		u8 r = table[i * 2];
-		if (r < minRepeat) minRepeat = r;
-		if (r > maxRepeat) maxRepeat = r;
+	minRepeat = maxRepeat = table[160];
+	for (int t = 0; t < 2; t++) {
+		for (int i = 161; i < 256; i++) {
+			u8 r = table[t * 512 + i * 2];
+			if (r < minRepeat) minRepeat = r;
+			if (r > maxRepeat) maxRepeat = r;
+		}
 	}
 	// if maxRepeat would be 3 or 5+, make sure it's divisible by 4
 	#ifdef COLTABLESCALE
