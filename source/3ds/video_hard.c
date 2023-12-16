@@ -423,10 +423,14 @@ void sceneRender() {
 						!over && scx == 1 ? GPU_REPEAT : GPU_CLAMP_TO_BORDER,
 						!over && scy == 1 ? GPU_REPEAT : GPU_CLAMP_TO_BORDER);
 					if (over && tileVisible[over_tile]) {
-						if ((windows[wnd * 16] & 0x3000) == 0x1000)
-							puts("WARN:Overplane for H-Bias not implemented");
-						else
-							puts("WARN:Overplane for Affine not implemented");
+						static bool warned = false;
+						if (!warned) {
+							warned = true;
+							if ((windows[wnd * 16] & 0x3000) == 0x1000)
+								puts("WARN:Can't do overplane in H-Bias yet");
+							else
+								puts("WARN:Can't do overplane in Affine yet");
+						}
 					}
 
 					// next, draw the affine map
