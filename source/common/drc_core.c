@@ -92,7 +92,8 @@ bool is_byte_getter(WORD start_PC) {
         0x46, 0xc1, 0x00, 0x00, // ld.b [r6], r10
         0x1f, 0x18,             // jmp  [lp] 
     };
-    BYTE* dest = (BYTE*)(V810_ROM1.off + start_PC);
+    BYTE* off = (BYTE*)((start_PC >> 24) == 7 ? V810_ROM1.off : V810_VB_RAM.off);
+    BYTE* dest = off + start_PC;
     return !memcmp(dest, byte_getter_func, sizeof(byte_getter_func));
 }
 
@@ -106,7 +107,8 @@ bool is_hword_getter(WORD start_PC) {
         0x00, 0xa8, 0x04, 0x00, // jr   +4
         0x1f, 0x18,             // jmp  [lp]
     };
-    BYTE* dest = (BYTE*)(V810_ROM1.off + start_PC);
+    BYTE* off = (BYTE*)((start_PC >> 24) == 7 ? V810_ROM1.off : V810_VB_RAM.off);
+    BYTE* dest = off + start_PC;
     return !memcmp(dest, hword_getter_func, sizeof(hword_getter_func))
         || !memcmp(dest, hword_getter_jr_func, sizeof(hword_getter_jr_func));
 }
