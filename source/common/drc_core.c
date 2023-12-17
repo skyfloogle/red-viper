@@ -287,9 +287,15 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
     WORD cur_PC = start_PC;
     bool finished;
 
+    WORD entry_PC = v810_state->PC;
+
     do {
         for (; (i < MAX_INST) && (cur_PC <= end_PC); i++) {
             cur_PC = (cur_PC &0x07FFFFFE);
+
+            if (i > 0 && cur_PC == entry_PC + 2 && inst_cache[i - 1].PC == entry_PC - 2) {
+                cur_PC = entry_PC;
+            }
 
             if ((cur_PC >>24) == 0x05) { // RAM
                 cur_PC = (cur_PC & V810_VB_RAM.highaddr);
