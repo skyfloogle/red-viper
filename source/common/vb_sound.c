@@ -145,6 +145,7 @@ void sound_init() {
     int i, index;
 
     if (-1 == install_sound(DIGI_AUTODETECT, MIDI_NONE, NULL)) {
+        puts("Error: couldn't install sound.\nDid you dump your DSP firmware?");
         dprintf(0, "[SND]: Error installing sound\n");
         tVBOpt.SOUND = 0;
         return;
