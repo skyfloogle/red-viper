@@ -719,7 +719,7 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     MOV_I(10, 0, 0); \
     LDR_IO(2, 11, 68 * 4); \
     BLX(ARM_COND_AL, 2); \
-    B(ARM_COND_AL, (-8) & 0xffffff); \
+    B(ARM_COND_AL, (-9) & 0xffffff); \
     cycles = 0; \
 }
 
