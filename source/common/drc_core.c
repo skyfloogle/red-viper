@@ -1339,7 +1339,7 @@ cleanup:
 // Clear and invalidate the dynarec cache
 void drc_clearCache() {
     dprintf(0, "[DRC]: clearing cache...\n");
-    cache_pos = cache_start;
+    cache_pos = cache_start + 1;
     block_pos = 0;
 
     memset(cache_start, 0, CACHE_SIZE);
@@ -1414,7 +1414,7 @@ void drc_init() {
         drc_loadSavedCache();
     }
 
-    cache_pos = cache_start;
+    cache_pos = cache_start + 1;
     dprintf(0, "[DRC]: cache_start = %p\n", cache_start);
 }
 
@@ -1481,7 +1481,7 @@ int drc_run() {
             entrypoint = drc_getEntry(entry_PC, NULL);
         }
         dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
-        if ((entrypoint < cache_start) || (entrypoint > cache_start + CACHE_SIZE))
+        if ((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE))
             return DRC_ERR_BAD_ENTRY;
 
         v810_state->cycles = clocks;
