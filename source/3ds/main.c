@@ -67,6 +67,8 @@ int main() {
         gfxSet3D(false);
     }
 
+    if (tVBOpt.SOUND) sound_init();
+
     if (fileSelect("Load ROM", rom_name, "vb") < 0)
         goto exit;
 
@@ -80,8 +82,6 @@ int main() {
 
     v810_reset();
     drc_init();
-
-    if (tVBOpt.SOUND) sound_init();
 
     clearCache();
     consoleClear();
