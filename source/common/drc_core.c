@@ -1011,12 +1011,11 @@ int drc_translateBlock(exec_block *block) {
                 ADD_I(1, 1, DRC_RELOC_RHWORD*4, 0);
                 BLX(ARM_COND_AL, 1);
 
-                if (inst_cache[i].opcode == V810_OP_LD_H) {
-                    // TODO: Implement sxth
+                if (inst_cache[i].opcode == V810_OP_IN_H) {
                     // lsl r0, r0, #16
                     new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_LSL, 0);
-                    // asr reg2, r0, #16
-                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 16, ARM_SHIFT_ASR, 0);
+                    // lsr reg2, r0, #16
+                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 16, ARM_SHIFT_LSR, 0);
                     reg2_modified = true;
                 } else {
                     SAVE_REG2(0);

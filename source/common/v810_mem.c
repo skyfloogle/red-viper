@@ -60,7 +60,7 @@ BYTE mem_rbyte(WORD addr) {
     return(0); //Stops a silly compiler error
 }
 
-HWORD mem_rhword(WORD addr) {
+SHWORD mem_rhword(WORD addr) {
     addr = addr & 0x07FFFFFE; // map to 24 bit address, mask first bit
 
     //~ if(dbg_watchpt_en)
@@ -68,39 +68,39 @@ HWORD mem_rhword(WORD addr) {
 
     switch((addr&0x7000000)) {
     case 0x7000000:
-        return ((HWORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0]; // does this work?
+        return ((SHWORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0]; // does this work?
         break;
     case 0:
         if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
-            return ((HWORD *)(V810_DISPLAY_RAM.off + addr))[0];
+            return ((SHWORD *)(V810_DISPLAY_RAM.off + addr))[0];
         } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
             return (*V810_VIPCREG.rfunch)(addr);
             // Mirror the Chr ram table to 078000-07FFFF
         } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
             if(addr < 0x0007A000) //CHR 0-511
-                return ((HWORD *)(V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0];
+                return ((SHWORD *)(V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0];
             else if(addr < 0x0007C000) //CHR 512-1023
-                return ((HWORD *)(V810_DISPLAY_RAM.off + (addr-0x0007A000 + 0x0000E000)))[0];
+                return ((SHWORD *)(V810_DISPLAY_RAM.off + (addr-0x0007A000 + 0x0000E000)))[0];
             else if(addr < 0x0007E000) //CHR 1024-1535
-                return ((HWORD *)(V810_DISPLAY_RAM.off + (addr-0x0007C000 + 0x00016000)))[0];
+                return ((SHWORD *)(V810_DISPLAY_RAM.off + (addr-0x0007C000 + 0x00016000)))[0];
             else //CHR 1536-2047
-                return ((HWORD *)(V810_DISPLAY_RAM.off + (addr-0x0007E000 + 0x0001E000)))[0];
+                return ((SHWORD *)(V810_DISPLAY_RAM.off + (addr-0x0007E000 + 0x0001E000)))[0];
         }
         break;
     case 0x1000000:
         if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
             //~ dtprintf(0,ferr,"\nRead  HWORD [%08x]:%04x  //SoundRam",addr,((HWORD *)(V810_SOUND_RAM.off + addr))[0]);
-            return ((HWORD *)(V810_SOUND_RAM.off + addr))[0];
+            return ((SHWORD *)(V810_SOUND_RAM.off + addr))[0];
         }
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nRead  HWORD [%08x]:%04x  //VBRam",addr,((HWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
-        return ((HWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0];
+        return ((SHWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0];
         break;
     case 0x6000000:
         is_sram = 1;
         //~ dtprintf(0,ferr,"\nRead  HWORD PC:%08x [%08x]:%04x  //GameRam",PC,addr,((HWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0]);
-        return ((HWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0];
+        return ((SHWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0];
         break;
     case 0x2000000:
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {

@@ -8,6 +8,10 @@
 #define HWORD uint16_t   //16bit
 #define BYTE  uint8_t    //8bit
 
+#define SWORD  int32_t
+#define SHWORD int16_t
+#define SBYTE  int8_t
+
 #define VB_INLINE inline //Let Allegro handle the INLINE statements
 
 #define INT64 int64_t //64 bit int

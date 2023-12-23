@@ -70,9 +70,9 @@ V810_HREGDAT   tHReg;
 extern int is_sram; //Flag if writes to sram...
 
 // Memory read functions
-BYTE  mem_rbyte(WORD addr);
-HWORD mem_rhword(WORD addr);
-WORD  mem_rword(WORD addr);
+BYTE   mem_rbyte(WORD addr);
+SHWORD mem_rhword(WORD addr);
+WORD   mem_rword(WORD addr);
 
 // Memory write functions
 void mem_wbyte(WORD addr, BYTE data);
