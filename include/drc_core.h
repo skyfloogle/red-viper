@@ -34,8 +34,6 @@ enum {
 };
 
 #define END_BLOCK 0xFF
-
-#pragma pack(1)
 typedef struct {
     WORD phys_offset;
     WORD virt_loc;
@@ -63,7 +61,6 @@ typedef struct {
     bool busywait;
     bool is_branch_target;
 } v810_instruction;
-#pragma pack()
 
 WORD* rom_block_map;
 WORD* ram_block_map;
