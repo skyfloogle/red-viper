@@ -272,13 +272,6 @@ int voice_get_frequency(int voice) {
 
 // The following is not exactly allegro stuff
 
-void toggle3D() {
-    tVBOpt.DSPMODE = !tVBOpt.DSPMODE;
-#ifdef __3DS__
-    gfxSet3D(tVBOpt.DSPMODE);
-#endif
-}
-
 // Returns the position of the selected item or -1 if the menu was cancelled
 int openMenu(menu_t* menu) {
 #ifdef __3DS__
@@ -347,10 +340,6 @@ int openMenu(menu_t* menu) {
                     break;
                 }
                 break;
-            } else if ((CONFIG_3D_SLIDERSTATE > 0.0f) && !tVBOpt.DSPMODE) {
-                toggle3D();
-            } else if ((CONFIG_3D_SLIDERSTATE == 0.0f) && tVBOpt.DSPMODE) {
-                toggle3D();
             }
 
             printf("\x1b[;H\x1b[7m%s:\n\x1b[0m", cur_menu->title);

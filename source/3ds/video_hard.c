@@ -64,6 +64,7 @@ typedef struct {
 vertex *vbuf, *vcur;
 #define AVBUF_SIZE 4096
 avertex *avbuf, *avcur;
+int eye_count;
 
 #define DISPLAY_TRANSFER_FLAGS                                                                     \
 	(GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |               \
@@ -269,7 +270,7 @@ void sceneRender() {
 
 			if ((windows[wnd * 16] & 0x3000) == 0) {
 				// normal world
-				for (int eye = 0; eye < 2; eye++) {
+				for (int eye = 0; eye < eye_count; eye++) {
 					if (!(windows[wnd * 16] & (0x8000 >> eye)))
 						continue;
 
@@ -460,7 +461,7 @@ void sceneRender() {
 					int full_w = 512 * scx;
 					int full_h = 512 * scy;
 
-					for (int eye = 0; eye < 2; eye++) {
+					for (int eye = 0; eye < eye_count; eye++) {
 						if (!(windows[wnd * 16] & (0x8000 >> eye)))
 							continue;
 
@@ -545,7 +546,7 @@ void sceneRender() {
 			}
 		} else {
 			// object world
-			for (int eye = 0; eye < 2; eye++) {
+			for (int eye = 0; eye < eye_count; eye++) {
 				C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 				int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
 				int end_index = tVIPREG.SPT[object_group_id];
@@ -642,6 +643,8 @@ void doAllTheDrawing() {
 		}
 	}
 
+	eye_count = CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
+
 	C3D_FrameBegin(0);
 
 	vcur = vbuf;
@@ -672,7 +675,8 @@ void doAllTheDrawing() {
 		#endif
 	}
 
-	for (int eye = 0; eye < 2; eye++) {
+
+	for (int eye = 0; eye < eye_count; eye++) {
 		C3D_RenderTargetClear(finalScreen[eye], C3D_CLEAR_ALL, 0, 0);
 		C3D_FrameDrawOn(finalScreen[eye]);
 		C3D_SetViewport((240 - 224) / 2, (400 - 384) / 2, 224, 384);
