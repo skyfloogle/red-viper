@@ -42,6 +42,8 @@ int Noise_Opt_Size[8] = {OPT0LEN, OPT1LEN, OPT2LEN, OPT3LEN, OPT4LEN, OPT5LEN, O
 // Noise FRQ reg converted to sampling frq for allegro
 #define RAND_FRQ_REG_TO_SAMP_FREQ(v) (500000/(2048-(v)))
 
+#define RBYTE(x) ((BYTE)mem_rbyte(x))
+
 uint8_t shutoff_intervals[6];
 uint8_t envelope_intervals[6];
 uint8_t envelope_values[6];
@@ -54,10 +56,10 @@ void sound_thread() {
     static int shutoff_divider = 0;
     static int envelope_divider = 0;
     // do sweep
-    if (modulation_enabled && mem_rbyte(S5INT) & 0x80) {
-        int env = mem_rbyte(S5EV1);
+    if (modulation_enabled && RBYTE(S5INT) & 0x80) {
+        int env = RBYTE(S5EV1);
         if ((env & 0x40) && --sweep_interval < 0) {
-            int swp = mem_rbyte(S5SWP);
+            int swp = RBYTE(S5SWP);
             int interval = (swp >> 4) & 7;
             sweep_interval = interval * ((swp & 0x80) ? 8 : 1);
             if (sweep_interval != 0) {
@@ -96,7 +98,7 @@ void sound_thread() {
     // do shutoff
     for (int i = 0; i < 6; i++) {
         int addr = S1INT + 0x40 * i;
-        int data = mem_rbyte(addr);
+        int data = RBYTE(addr);
         if ((data & 0xa0) == 0xa0) {
             if ((--shutoff_intervals[i] & 0x1f) == 0x1f) {
                 voice_stop(voice[i]);
@@ -110,10 +112,10 @@ void sound_thread() {
     if (--envelope_divider >= 0) return;
     envelope_divider += 4;
     for (int i = 0; i < 6; i++) {
-        int data1 = mem_rbyte(S1EV1 + 0x40 * i);
+        int data1 = RBYTE(S1EV1 + 0x40 * i);
         if (data1 & 1) {
             if (--envelope_intervals[i] & 8) {
-                int data0 = mem_rbyte(S1EV0 + 0x40 * i);
+                int data0 = RBYTE(S1EV0 + 0x40 * i);
                 envelope_intervals[i] = data0 & 7;
                 envelope_values[i] += (data0 & 8) ? 1 : -1;
                 if (envelope_values[i] & 0x10) {
@@ -130,7 +132,7 @@ void sound_thread() {
                         }
                     }
                 }
-                int lr = mem_rbyte(S1LRV + 0x40 * i);
+                int lr = RBYTE(S1LRV + 0x40 * i);
                 int left = (lr >> 4) * envelope_values[i];
                 int right = (lr & 0x0F) * envelope_values[i];
                 voice_set_volume(voice[i], left, right);
@@ -175,7 +177,7 @@ void sound_init() {
     // Initialize cache and sound thread
     for (int i = 0; i < 6; i++) {
         snd_ram_changed[i] = true;
-        envelope_values[i] = mem_rbyte(S1EV0 + 0x40 * i) >> 4;
+        envelope_values[i] = RBYTE(S1EV0 + 0x40 * i) >> 4;
     }
 }
 
@@ -231,20 +233,20 @@ void sound_update(int reg) {
     switch (reg) {
         // Channel 1
         case S1INT:
-            reg1 = mem_rbyte(reg);
+            reg1 = RBYTE(reg);
             if (reg1 & 0x80) {
                 // Can only change RAM when disabled, so re-copy on enable in case sound RAM contents are changed
-                if (snd_ram_changed[mem_rbyte(S1RAM)]) {
+                if (snd_ram_changed[RBYTE(S1RAM)]) {
                     for (i = 0; i < 32; i++)
                         // Make 8 bit samples out of 6 bit samples
-                        waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(S1RAM)] + (i << 2)) << 2) ^ ((char)0x80);
+                        waveram[i] = (char) (RBYTE(wavelut[RBYTE(S1RAM)] + (i << 2)) << 2) ^ ((char)0x80);
                     memcpy(channel[CH1]->data, waveram, 32);
-                    snd_ram_changed[mem_rbyte(S1RAM)] = 0;
+                    snd_ram_changed[RBYTE(S1RAM)] = 0;
                     // Output according to interval data
                 }
                 shutoff_intervals[0] = reg1 & 0x1f;
                 voice_set_position(voice[CH1], 0);
-                reg2 = mem_rbyte(S1EV0);
+                reg2 = RBYTE(S1EV0);
                 envelope_intervals[0] = reg2 & 7;
                 voice_start(voice[CH1]);
             } else {
@@ -253,41 +255,41 @@ void sound_update(int reg) {
             break;
         case S1LRV:
         case S1EV0:
-            reg1 = mem_rbyte(S1LRV);
+            reg1 = RBYTE(S1LRV);
             if (reg == S1EV0) {
-                reg2 = mem_rbyte(S1EV0);
+                reg2 = RBYTE(S1EV0);
                 envelope_values[0] = reg2 >> 4;
             }
             voice_set_volume(voice[CH1], (reg1 >> 4) * envelope_values[0], (reg1 & 0x0F) * envelope_values[0]);
             break;
         case S1FQL:
         case S1FQH:
-            reg1 = mem_rbyte(S1FQL);
-            reg2 = mem_rbyte(S1FQH);
+            reg1 = RBYTE(S1FQL);
+            reg2 = RBYTE(S1FQH);
             voice_set_frequency(voice[CH1], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S1RAM:
             for (i = 0; i < 32; i++)
                 // Make 8 bit samples out of 6 bit samples
-                waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(reg)] + (i << 2)) << 2) ^ ((char)0x80);
+                waveram[i] = (char) (RBYTE(wavelut[RBYTE(reg)] + (i << 2)) << 2) ^ ((char)0x80);
             memcpy(channel[CH1]->data, waveram, 32);
             break;
 
             // Channel 2
         case S2INT:
-            reg1 = mem_rbyte(reg);
+            reg1 = RBYTE(reg);
             if (reg1 & 0x80) {
                 // Can only change RAM when disabled, so re-copy on enable in case sound RAM contents are changed
-                if (snd_ram_changed[mem_rbyte(S2RAM)]) {
+                if (snd_ram_changed[RBYTE(S2RAM)]) {
                     for (i = 0; i < 32; i++)
                         // Make 8 bit samples out of 6 bit samples
-                        waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(S2RAM)] + (i << 2)) << 2) ^ ((char)0x80);
+                        waveram[i] = (char) (RBYTE(wavelut[RBYTE(S2RAM)] + (i << 2)) << 2) ^ ((char)0x80);
                     memcpy(channel[CH2]->data, waveram, 32);
-                    snd_ram_changed[mem_rbyte(S2RAM)] = 0;
+                    snd_ram_changed[RBYTE(S2RAM)] = 0;
                 }
                 shutoff_intervals[1] = reg1 & 0x1f;
                 voice_set_position(voice[CH2], 0);
-                reg2 = mem_rbyte(S2EV0);
+                reg2 = RBYTE(S2EV0);
                 envelope_intervals[1] = reg2 & 7;
                 voice_start(voice[CH2]);
             } else {
@@ -296,41 +298,41 @@ void sound_update(int reg) {
             break;
         case S2LRV:
         case S2EV0:
-            reg1 = mem_rbyte(S2LRV);
+            reg1 = RBYTE(S2LRV);
             if (reg == S2EV0) {
-                reg2 = mem_rbyte(S2EV0);
+                reg2 = RBYTE(S2EV0);
                 envelope_values[1] = reg2 >> 4;
             }
             voice_set_volume(voice[CH2], (reg1 >> 4) * envelope_values[1], (reg1 & 0x0F) * envelope_values[1]);
             break;
         case S2FQL:
         case S2FQH:
-            reg1 = mem_rbyte(S2FQL);
-            reg2 = mem_rbyte(S2FQH);
+            reg1 = RBYTE(S2FQL);
+            reg2 = RBYTE(S2FQH);
             voice_set_frequency(voice[CH2], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S2RAM:
             for (i = 0; i < 32; i++)
                 // Make 8 bit samples out of 6 bit samples
-                waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(reg)] + (i << 2)) << 2) ^ ((char)0x80);
+                waveram[i] = (char) (RBYTE(wavelut[RBYTE(reg)] + (i << 2)) << 2) ^ ((char)0x80);
             memcpy(channel[CH2]->data, waveram, 32);
             break;
 
             // Channel 3
         case S3INT:
-            reg1 = mem_rbyte(reg);
+            reg1 = RBYTE(reg);
             if (reg1 & 0x80) {
                 // Can only change RAM when disabled, so re-copy on enable in case sound RAM contents are changed
-                if (snd_ram_changed[mem_rbyte(S3RAM)]) {
+                if (snd_ram_changed[RBYTE(S3RAM)]) {
                     for (i = 0; i < 32; i++)
                         // Make 8 bit samples out of 6 bit samples
-                        waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(S3RAM)] + (i << 2)) << 2) ^ ((char)0x80);
+                        waveram[i] = (char) (RBYTE(wavelut[RBYTE(S3RAM)] + (i << 2)) << 2) ^ ((char)0x80);
                     memcpy(channel[CH3]->data, waveram, 32);
-                    snd_ram_changed[mem_rbyte(S3RAM)] = 0;
+                    snd_ram_changed[RBYTE(S3RAM)] = 0;
                 }
                 shutoff_intervals[2] = reg1 & 0x1f;
                 voice_set_position(voice[CH3], 0);
-                reg2 = mem_rbyte(S3EV0);
+                reg2 = RBYTE(S3EV0);
                 envelope_intervals[2] = reg2 & 7;
                 voice_start(voice[CH3]);
             } else {
@@ -339,41 +341,41 @@ void sound_update(int reg) {
             break;
         case S3LRV:
         case S3EV0:
-            reg1 = mem_rbyte(S3LRV);
+            reg1 = RBYTE(S3LRV);
             if (reg == S3EV0) {
-                reg2 = mem_rbyte(S3EV0);
+                reg2 = RBYTE(S3EV0);
                 envelope_values[2] = reg2 >> 4;
             }
             voice_set_volume(voice[CH3], (reg1 >> 4) * envelope_values[2], (reg1 & 0x0F) * envelope_values[2]);
             break;
         case S3FQL:
         case S3FQH:
-            reg1 = mem_rbyte(S3FQL);
-            reg2 = mem_rbyte(S3FQH);
+            reg1 = RBYTE(S3FQL);
+            reg2 = RBYTE(S3FQH);
             voice_set_frequency(voice[CH3], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S3RAM:
             for (i = 0; i < 32; i++)
                 // Make 8 bit samples out of 6 bit samples
-                waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(reg)] + (i << 2)) << 2) ^ ((char)0x80);
+                waveram[i] = (char) (RBYTE(wavelut[RBYTE(reg)] + (i << 2)) << 2) ^ ((char)0x80);
             memcpy(channel[CH3]->data, waveram, 32);
             break;
 
             // Channel 4
         case S4INT:
-            reg1 = mem_rbyte(reg);
+            reg1 = RBYTE(reg);
             if (reg1 & 0x80) {
                 // Can only change RAM when disabled, so re-copy on enable in case sound RAM contents are changed
-                if (snd_ram_changed[mem_rbyte(S4RAM)]) {
+                if (snd_ram_changed[RBYTE(S4RAM)]) {
                     for (i = 0; i < 32; i++)
                         // Make 8 bit samples out of 6 bit samples
-                        waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(S4RAM)] + (i << 2)) << 2) ^ ((char)0x80);
+                        waveram[i] = (char) (RBYTE(wavelut[RBYTE(S4RAM)] + (i << 2)) << 2) ^ ((char)0x80);
                     memcpy(channel[CH4]->data, waveram, 32);
-                    snd_ram_changed[mem_rbyte(S4RAM)] = 0;
+                    snd_ram_changed[RBYTE(S4RAM)] = 0;
                 }
                 shutoff_intervals[3] = reg1 & 0x1f;
                 voice_set_position(voice[CH4], 0);
-                reg2 = mem_rbyte(S4EV0);
+                reg2 = RBYTE(S4EV0);
                 envelope_intervals[3] = reg2 & 7;
                 voice_start(voice[CH4]);
             } else {
@@ -382,53 +384,53 @@ void sound_update(int reg) {
             break;
         case S4LRV:
         case S4EV0:
-            reg1 = mem_rbyte(S4LRV);
+            reg1 = RBYTE(S4LRV);
             if (reg == S4EV0) {
-                reg2 = mem_rbyte(S4EV0);
+                reg2 = RBYTE(S4EV0);
                 envelope_values[3] = reg2 >> 4;
             }
             voice_set_volume(voice[CH4], (reg1 >> 4) * envelope_values[3], (reg1 & 0x0F) * envelope_values[3]);
             break;
         case S4FQL:
         case S4FQH:
-            reg1 = mem_rbyte(S4FQL);
-            reg2 = mem_rbyte(S4FQH);
+            reg1 = RBYTE(S4FQL);
+            reg2 = RBYTE(S4FQH);
             voice_set_frequency(voice[CH4], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S4RAM:
             for (i = 0; i < 32; i++)
                 // Make 8 bit samples out of 6 bit samples
-                waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(reg)] + (i << 2)) << 2) ^ ((char)0x80);
+                waveram[i] = (char) (RBYTE(wavelut[RBYTE(reg)] + (i << 2)) << 2) ^ ((char)0x80);
             memcpy(channel[CH4]->data, waveram, 32);
             break;
 
             // Channel 5
         case S5INT:
-            reg1 = mem_rbyte(reg);
+            reg1 = RBYTE(reg);
             if (reg1 & 0x80) {
                 // Can only change RAM when disabled, so re-copy on enable in case sound RAM contents are changed
-                if (snd_ram_changed[mem_rbyte(S5RAM)]) {
+                if (snd_ram_changed[RBYTE(S5RAM)]) {
                     for (i = 0; i < 32; i++)
                         // Make 8 bit samples out of 6 bit samples
-                        waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(S5RAM)] + (i << 2)) << 2) ^ ((char)0x80);
+                        waveram[i] = (char) (RBYTE(wavelut[RBYTE(S5RAM)] + (i << 2)) << 2) ^ ((char)0x80);
                     memcpy(channel[CH5]->data, waveram, 32);
-                    snd_ram_changed[mem_rbyte(S5RAM)] = 0;
+                    snd_ram_changed[RBYTE(S5RAM)] = 0;
                 }
                 shutoff_intervals[4] = reg1 & 0x1f;
                 voice_set_position(voice[CH5], 0);
-                reg2 = mem_rbyte(S5EV0);
+                reg2 = RBYTE(S5EV0);
                 envelope_intervals[4] = reg2 & 7;
-                reg2 = mem_rbyte(S5EV1);
+                reg2 = RBYTE(S5EV1);
                 if (reg2 & 0x40) {
                     // sweep/modulation
-                    reg2 = mem_rbyte(S5SWP);
+                    reg2 = RBYTE(S5SWP);
                     int interval = (reg2 >> 4) & 7;
                     sweep_interval = interval * ((reg2 & 0x80) ? 8 : 1);
-                    sweep_frequency = ((mem_rbyte(S5FQH) << 8) | mem_rbyte(S5FQL)) & 0x7ff;
+                    sweep_frequency = ((RBYTE(S5FQH) << 8) | RBYTE(S5FQL)) & 0x7ff;
                     modulation_enabled = true;
                     if (reg2 & 0x10) {
                         for (int i = 0; i < 32; i++) {
-                            modulation_values[i] = mem_rbyte(MODDATA + i * 4);
+                            modulation_values[i] = RBYTE(MODDATA + i * 4);
                         }
                     }
                 }
@@ -441,33 +443,33 @@ void sound_update(int reg) {
         case S5EV0:
         case S5EV1:
         case S5SWP:
-            reg1 = mem_rbyte(S5LRV);
+            reg1 = RBYTE(S5LRV);
             if (reg == S5EV0) {
-                reg2 = mem_rbyte(S5EV0);
+                reg2 = RBYTE(S5EV0);
                 envelope_values[4] = reg2 >> 4;
             }
             voice_set_volume(voice[CH5], (reg1 >> 4) * envelope_values[4], (reg1 & 0x0F) * envelope_values[4]);
             break;
         case S5FQL:
         case S5FQH:
-            reg1 = mem_rbyte(S5FQL);
-            reg2 = mem_rbyte(S5FQH);
+            reg1 = RBYTE(S5FQL);
+            reg2 = RBYTE(S5FQH);
             voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S5RAM:
             for (i = 0; i < 32; i++)
                 // Make 8 bit samples out of 6 bit samples
-                waveram[i] = (char) (mem_rbyte(wavelut[mem_rbyte(reg)] + (i << 2)) << 2) ^ ((char)0x80);
+                waveram[i] = (char) (RBYTE(wavelut[RBYTE(reg)] + (i << 2)) << 2) ^ ((char)0x80);
             memcpy(channel[CH5]->data, waveram, 32);
             break;
 
             // Channel 6
         case S6INT:
-            reg1 = mem_rbyte(reg);
+            reg1 = RBYTE(reg);
             if (reg1 & 0x80) {
                 shutoff_intervals[5] = reg1 & 0x1f;
                 voice_set_position(Curr_C6V, 0);
-                reg2 = mem_rbyte(S6EV0);
+                reg2 = RBYTE(S6EV0);
                 envelope_intervals[5] = reg2 & 7;
                 voice_start(Curr_C6V);
                 C6V_playing = 1;
@@ -478,9 +480,9 @@ void sound_update(int reg) {
             break;
         case S6LRV:
         case S6EV0:
-            reg1 = mem_rbyte(S6LRV);
+            reg1 = RBYTE(S6LRV);
             if (reg == S6EV0) {
-                reg2 = mem_rbyte(S6EV0);
+                reg2 = RBYTE(S6EV0);
                 envelope_values[5] = reg2 >> 4;
             }
             voice_set_volume(voice[Curr_C6V], (reg1 >> 4) * envelope_values[5], (reg1 & 0x0F) * envelope_values[5]);
@@ -488,7 +490,7 @@ void sound_update(int reg) {
             // Changing LFSR voice?  Rather than recopy LFSR sequence and
             // handle sequences of different lengths, just switch between
             // pre-allocated LFSR voices
-            reg1 = mem_rbyte(S6EV1);
+            reg1 = RBYTE(S6EV1);
             temp1 = ((reg1 >> 4) & 0x07);
             temp1 += CH6_0;
             // temp1 is one of ch6_0 to ch_6_7
@@ -501,8 +503,8 @@ void sound_update(int reg) {
             break;
         case S6FQL:
         case S6FQH:
-            reg1 = mem_rbyte(S6FQL);
-            reg2 = mem_rbyte(S6FQH);
+            reg1 = RBYTE(S6FQL);
+            reg2 = RBYTE(S6FQH);
             voice_set_frequency(Curr_C6V, RAND_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
 

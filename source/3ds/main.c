@@ -26,6 +26,7 @@ int main() {
     int err = 0;
     static int Left = 0;
     int skip = 0;
+    bool loaded = false;
     PrintConsole main_console;
 #if DEBUGLEVEL == 0
     PrintConsole debug_console;
@@ -67,8 +68,6 @@ int main() {
         gfxSet3D(false);
     }
 
-    if (tVBOpt.SOUND) sound_init();
-
     if (fileSelect("Load ROM", rom_name, "vb") < 0)
         goto exit;
 
@@ -79,6 +78,9 @@ int main() {
     if (!v810_init(rom_path)) {
         goto exit;
     }
+    loaded = true;
+
+    if (tVBOpt.SOUND) sound_init();
 
     v810_reset();
     drc_init();
@@ -183,7 +185,7 @@ exit:
     endThreads();
     V810_DSP_Quit();
     video_hard_quit();
-    if (tVBOpt.SOUND) sound_close();
+    if (tVBOpt.SOUND && loaded) sound_close();
     drc_exit();
 
     fsExit();
