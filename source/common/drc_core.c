@@ -865,6 +865,10 @@ int drc_translateBlock(exec_block *block) {
                 else
                     MOV(phys_regs[30], 0);
 
+                // flags
+                LOAD_REG2();
+                ORRS(arm_reg2, arm_reg2, arm_reg2);
+
                 break;
             case V810_OP_DIVU: // divu reg1, reg2
                 RELOAD_REG2(0);
@@ -886,6 +890,11 @@ int drc_translateBlock(exec_block *block) {
                     STR_IO(0, 11, 30 * 4);
                 else
                     MOV(phys_regs[30], 0);
+
+                // flags
+                LOAD_REG2();
+                ORRS(arm_reg2, arm_reg2, arm_reg2);
+
                 break;
             case V810_OP_OR: // or reg1, reg2
                 LOAD_REG1();
