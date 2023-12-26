@@ -13,11 +13,10 @@
 #include "final_shbin.h"
 #include "affine_shbin.h"
 
-C3D_Tex screenTex;
+C3D_Tex screenTexHard;
 C3D_RenderTarget *screenTarget;
 
 C3D_Tex tileTexture;
-bool tileVisible[2048];
 
 #define AFFINE_CACHE_SIZE 4
 C3D_Tex tileMapCache[AFFINE_CACHE_SIZE];
@@ -75,8 +74,8 @@ void video_hard_init() {
 	params.height = 512;
 	params.format = GPU_RGBA4;
 	params.onVram = true;
-	C3D_TexInitWithParams(&screenTex, NULL, params);
-	screenTarget = C3D_RenderTargetCreateFromTex(&screenTex, GPU_TEX_2D, 0, GPU_RB_DEPTH16);
+	C3D_TexInitWithParams(&screenTexHard, NULL, params);
+	screenTarget = C3D_RenderTargetCreateFromTex(&screenTexHard, GPU_TEX_2D, 0, GPU_RB_DEPTH16);
 
 	params.width = 512;
 	params.height = 512;

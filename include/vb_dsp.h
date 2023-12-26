@@ -180,7 +180,7 @@ bool V810_DSP_Init();
 void V810_DSP_Quit();
 
 void video_init();
-void video_render();
+void video_render(int alt_buf);
 void video_quit();
 
 void V810_SetPal(int BRTA, int BRTB, int BRTC);
@@ -209,11 +209,18 @@ extern int eye_count;
 
 extern shaderProgram_s sFinal;
 
+extern bool tileVisible[2048];
+
 // video_hard
-extern C3D_Tex screenTex;
-extern C3D_RenderTarget *screenTarget;
+extern C3D_Tex screenTexHard;
 void video_hard_init();
 void video_hard_render();
 void update_texture_cache_hard();
+
+// video_soft
+extern C3D_Tex screenTexSoft;
+void video_soft_init();
+void video_soft_render(int alt_buf);
+void update_texture_cache_soft();
 
 #endif

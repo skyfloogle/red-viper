@@ -22,7 +22,7 @@ int main() {
     int qwe;
     int frame = 0;
     int err = 0;
-    static int Left = 0;
+    int alt_buf = 1; // 1 is required for red alarm
     int skip = 0;
     bool loaded = false;
     PrintConsole main_console;
@@ -145,14 +145,8 @@ int main() {
         if((tVIPREG.FRMCYC & 0x00FF) < skip) {
             skip = 0;
             if (tVIPREG.DPCTRL & 0x0002) {
-                if (tVBOpt.HARDRENDER) {
-                    video_render();
-                } else {
-                    V810_Dsp_Frame(0);
-                    gfxFlushBuffers();
-                    gfxSwapBuffers();
-                }
-
+                video_render(alt_buf);
+                alt_buf = !alt_buf;
             }
         }
 

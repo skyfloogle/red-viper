@@ -9,9 +9,8 @@
 #include "v810_mem.h"
 #include "vb_set.h"
 
-#include "char_shbin.h"
 #include "final_shbin.h"
-#include "affine_shbin.h"
+#include "soft_shbin.h"
 
 // some stuff copied from vb_dsp.c
 
@@ -90,6 +89,11 @@ int eye_count;
 DVLB_s *sFinal_dvlb;
 shaderProgram_s sFinal;
 
+DVLB_s *sSoft_dvlb;
+shaderProgram_s sSoft;
+
+bool tileVisible[2048];
+
 void processColumnTable() {
 	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
 	uint8_t newMaxRepeat, newMinRepeat;
@@ -142,6 +146,11 @@ void video_init() {
 	shaderProgramSetVsh(&sFinal, &sFinal_dvlb->DVLE[0]);
 	shaderProgramSetGsh(&sFinal, &sFinal_dvlb->DVLE[1], 4);
 
+	sSoft_dvlb = DVLB_ParseFile((u32 *)soft_shbin, soft_shbin_size);
+	shaderProgramInit(&sSoft);
+	shaderProgramSetVsh(&sSoft, &sSoft_dvlb->DVLE[0]);
+	shaderProgramSetGsh(&sSoft, &sSoft_dvlb->DVLE[1], 4);
+
 	C3D_TexInitParams params;
 	params.width = 128;
 	params.height = 8;
@@ -154,12 +163,16 @@ void video_init() {
 	}
 
     video_hard_init();
+	video_soft_init();
 }
 
-void video_render() {
+void video_render(int alt_buf) {
 	if (tDSPCACHE.CharCacheInvalid) {
 		tDSPCACHE.CharCacheInvalid = false;
-		update_texture_cache_hard();
+		if (tVBOpt.HARDRENDER)
+			update_texture_cache_hard();
+		else
+			update_texture_cache_soft();
 	}
 
 	eye_count = CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
@@ -169,10 +182,21 @@ void video_render() {
 	if (tDSPCACHE.ColumnTableInvalid)
 		processColumnTable();
 
-	video_hard_render();
+	if (tVBOpt.HARDRENDER) {
+		video_hard_render();
+	} else {
+		video_soft_render(alt_buf);
+		video_hard_render();
+		// these won't be initialized when soft rendering
+		C3D_FrameDrawOn(finalScreen[0]);
+		C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
+		AttrInfo_Init(attrInfo);
+		AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
+		AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
+	}
 	
-	C3D_TexBind(0, &screenTex);
-	C3D_BindProgram(&sFinal);
+	C3D_TexBind(0, tVBOpt.HARDRENDER ? &screenTexHard : &screenTexSoft);
+	C3D_BindProgram(tVBOpt.HARDRENDER ? &sFinal : &sSoft);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
@@ -199,11 +223,19 @@ void video_render() {
 		C3D_TexBind(1, &columnTableTexture[eye]);
 
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
-		C3D_ImmSendAttrib(1, 1, -1, 1);
-		C3D_ImmSendAttrib(0, eye ? 0.5 : 0, 0, 0);
-		C3D_ImmSendAttrib(-1, -1, -1, 1);
-		C3D_ImmSendAttrib(384.0 / 512, (eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
-		C3D_ImmDrawEnd();
+		if (tVBOpt.HARDRENDER) {
+			C3D_ImmSendAttrib(1, 1, -1, 1);
+			C3D_ImmSendAttrib(0, eye ? 0.5 : 0, 0, 0);
+			C3D_ImmSendAttrib(-1, -1, -1, 1);
+			C3D_ImmSendAttrib(384.0 / 512, (eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
+			C3D_ImmDrawEnd();
+		} else {
+			C3D_ImmSendAttrib(1, 1, -1, 1);
+			C3D_ImmSendAttrib(eye ? 0.5 : 0, 0, 0, 0);
+			C3D_ImmSendAttrib(-1, -1, -1, 1);
+			C3D_ImmSendAttrib((eye ? 0.5 : 0) + 224.0 / 512, 384.0 / 512, 0, 0);
+			C3D_ImmDrawEnd();
+		}
 	}
 
 	if (minRepeat != maxRepeat) {

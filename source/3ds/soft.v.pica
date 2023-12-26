@@ -1,0 +1,11 @@
+.out outpos position
+.out outtc0 texcoord0
+
+; basic passthrough, no transforming at all
+
+.entry vmain
+.proc vmain
+    mov outpos, v0
+    mov outtc0, v1
+    end
+.end

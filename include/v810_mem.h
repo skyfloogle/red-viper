@@ -1,6 +1,8 @@
 #ifndef V810_MEM_H
 #define V810_MEM_H
 
+#include "v810_cpu.h"
+
 // Memory Structure for the VIP Reg (Could have done it with an array
 // but this is pretier...)
 typedef struct {
