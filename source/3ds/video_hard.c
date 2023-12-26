@@ -87,6 +87,8 @@ void video_hard_init() {
 
 	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
 
+	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
+
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 
@@ -321,7 +323,7 @@ void video_hard_render() {
 
 						// clear
 						C3D_BindProgram(&sFinal);
-						C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+						C3D_ColorLogicOp(GPU_LOGICOP_CLEAR);
 						C3D_AlphaTest(false, GPU_GREATER, 0);
 
 						C3D_TexEnv *env = C3D_GetTexEnv(0);
@@ -339,7 +341,7 @@ void video_hard_render() {
 
 						// reset and draw cache
 						C3D_BindProgram(&sChar);
-						C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+						C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 						C3D_AlphaTest(true, GPU_GREATER, 0);
 						setRegularTexEnv();
 						
