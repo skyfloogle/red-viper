@@ -18,8 +18,6 @@
 char rom_path[256] = "sdmc:/vb/";
 char rom_name[128];
 
-void doAllTheDrawing();
-
 int main() {
     int qwe;
     int frame = 0;
@@ -60,7 +58,7 @@ int main() {
 #endif
 
     V810_DSP_Init();
-    video_hard_init();
+    video_init();
 
     if (tVBOpt.DSPMODE == DM_3D) {
         gfxSet3D(true);
@@ -148,7 +146,7 @@ int main() {
             skip = 0;
             if (tVIPREG.DPCTRL & 0x0002) {
                 if (tVBOpt.HARDRENDER) {
-                    doAllTheDrawing();
+                    video_render();
                 } else {
                     V810_Dsp_Frame(0);
                     gfxFlushBuffers();
@@ -184,7 +182,7 @@ exit:
     v810_exit();
     endThreads();
     V810_DSP_Quit();
-    video_hard_quit();
+    video_quit();
     if (tVBOpt.SOUND && loaded) sound_close();
     drc_exit();
 

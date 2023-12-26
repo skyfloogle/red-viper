@@ -4,6 +4,7 @@
 #ifndef V810_DISP_H_
 #define V810_DISP_H_
 
+#include <citro3d.h>
 #include "vb_types.h"
 #include "allegro_compat.h"
 
@@ -178,8 +179,9 @@ void World2Display(int wNum, VB_WORLD WORLD_Buff[], BITMAP *wPlane, int img_n);
 bool V810_DSP_Init();
 void V810_DSP_Quit();
 
-bool video_hard_init();
-void video_hard_quit();
+void video_init();
+void video_render();
+void video_quit();
 
 void V810_SetPal(int BRTA, int BRTB, int BRTC);
 
@@ -189,5 +191,29 @@ void clearCache();
 extern VB_DSPCACHE tDSPCACHE;
 extern BITMAP *dsp_bmp;
 uint16_t *framebuffer;
+
+
+// We have two ways of dealing with the colours:
+// 1. multiply base colours by max repeat, and scale down in postprocessing
+//  -> lighter darks, less saturated lights
+// 2. same but delay up to a factor of 4 until postprocessing using texenv scale
+//  -> more saturated lights, barely (if at all) visible darks
+// Method 2 would be more accurate if we had gamma correction,
+// but I don't know how to do that.
+// So for now, we'll use method 1, as it looks better IMO.
+// To use method 2, uncomment the following line:
+//#define COLTABLESCALE
+extern uint8_t maxRepeat;
+
+extern int eye_count;
+
+extern shaderProgram_s sFinal;
+
+// video_hard
+extern C3D_Tex screenTex;
+extern C3D_RenderTarget *screenTarget;
+void video_hard_init();
+void video_hard_render();
+void update_texture_cache_hard();
 
 #endif

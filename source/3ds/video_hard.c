@@ -13,7 +13,6 @@
 #include "final_shbin.h"
 #include "affine_shbin.h"
 
-C3D_RenderTarget *finalScreen[2];
 C3D_Tex screenTex;
 C3D_RenderTarget *screenTarget;
 
@@ -30,24 +29,8 @@ s8 uLoc_posscale;
 s8 uLoc_palettes;
 C3D_FVec palettes[8];
 
-DVLB_s *sFinal_dvlb;
-shaderProgram_s sFinal;
-
 DVLB_s *sAffine_dvlb;
 shaderProgram_s sAffine;
-
-// We have two ways of dealing with the colours:
-// 1. multiply base colours by max repeat, and scale down in postprocessing
-//  -> lighter darks, less saturated lights
-// 2. same but delay up to a factor of 4 until postprocessing using texenv scale
-//  -> more saturated lights, barely (if at all) visible darks
-// Method 2 would be more accurate if we had gamma correction,
-// but I don't know how to do that.
-// So for now, we'll use method 1, as it looks better IMO.
-// To use method 2, uncomment the following line:
-//#define COLTABLESCALE
-static uint8_t maxRepeat = 0, minRepeat = 0;
-C3D_Tex columnTableTexture[2];
 
 typedef struct {
 	short x1, y1, x2, y2;
@@ -64,20 +47,8 @@ typedef struct {
 vertex *vbuf, *vcur;
 #define AVBUF_SIZE 4096
 avertex *avbuf, *avcur;
-int eye_count;
 
-#define DISPLAY_TRANSFER_FLAGS                                                                     \
-	(GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |               \
-	 GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
-	 GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
-
-bool video_hard_init() {
-	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
-	finalScreen[0] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, GPU_RB_DEPTH16);
-	C3D_RenderTargetSetOutput(finalScreen[0], GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
-	finalScreen[1] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, GPU_RB_DEPTH16);
-	C3D_RenderTargetSetOutput(finalScreen[1], GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
-
+void video_hard_init() {
 	char_dvlb = DVLB_ParseFile((u32 *)char_shbin, char_shbin_size);
 	shaderProgramInit(&sChar);
 	shaderProgramSetVsh(&sChar, &char_dvlb->DVLE[0]);
@@ -85,11 +56,6 @@ bool video_hard_init() {
 
 	uLoc_posscale = shaderInstanceGetUniformLocation(sChar.vertexShader, "posscale");
 	uLoc_palettes = shaderInstanceGetUniformLocation(sChar.vertexShader, "palettes");
-
-	sFinal_dvlb = DVLB_ParseFile((u32 *)final_shbin, final_shbin_size);
-	shaderProgramInit(&sFinal);
-	shaderProgramSetVsh(&sFinal, &sFinal_dvlb->DVLE[0]);
-	shaderProgramSetGsh(&sFinal, &sFinal_dvlb->DVLE[1], 4);
 
 	sAffine_dvlb = DVLB_ParseFile((u32 *)affine_shbin, affine_shbin_size);
 	shaderProgramInit(&sAffine);
@@ -120,14 +86,6 @@ bool video_hard_init() {
 		C3D_RenderTargetClear(tileMapCacheTarget[i], C3D_CLEAR_ALL, 0, 0);
 	}
 
-	params.width = 128;
-	params.height = 8;
-	params.format = GPU_L8;
-	params.onVram = false;
-	for (int i = 0; i < 2; i++) {
-		C3D_TexInitWithParams(&columnTableTexture[i], NULL, params);
-	}
-
 	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
 
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
@@ -135,8 +93,6 @@ bool video_hard_init() {
 
 	vbuf = linearAlloc(sizeof(vertex) * VBUF_SIZE);
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
-
-	return true;
 }
 
 void setRegularTexEnv() {
@@ -159,40 +115,7 @@ void setRegularDrawing() {
 	memcpy(C3D_FVUnifWritePtr(GPU_VERTEX_SHADER, uLoc_palettes, 8), palettes, sizeof(palettes));
 }
 
-void processColumnTable() {
-	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
-	minRepeat = maxRepeat = table[160];
-	for (int t = 0; t < 2; t++) {
-		for (int i = 161; i < 256; i++) {
-			u8 r = table[t * 512 + i * 2];
-			if (r < minRepeat) minRepeat = r;
-			if (r > maxRepeat) maxRepeat = r;
-		}
-	}
-	// if maxRepeat would be 3 or 5+, make sure it's divisible by 4
-	#ifdef COLTABLESCALE
-	if (maxRepeat == 2 || maxRepeat > 3) {
-		minRepeat += 4 - (maxRepeat & 3);
-		maxRepeat += 4 - (maxRepeat & 3);
-	} else
-	#endif
-	{
-		minRepeat++;
-		maxRepeat++;
-	}
-	if (minRepeat != maxRepeat) {
-		// populate the bottom row of the textures
-		for (int t = 0; t < 2; t++) {
-			uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture[t], 0, NULL);
-			for (int i = 0; i < 96; i++) {
-				tex[((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)
-					] = 255 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
-			}
-		}
-	}
-}
-
-void sceneRender() {
+void video_hard_render() {
 	#ifdef COLTABLESCALE
 	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
 	#else
@@ -214,6 +137,9 @@ void sceneRender() {
 		palettes[i + 4].y = cols[(pal >> 4) & 3];
 		palettes[i + 4].z = cols[(pal >> 2) & 3];
 	}
+
+	vcur = vbuf;
+	avcur = avbuf;
 
 	C3D_FrameDrawOn(screenTarget);
 	setRegularDrawing();
@@ -258,7 +184,7 @@ void sceneRender() {
 			int16_t gp = windows[wnd * 16 + 2];
 			int16_t gy = windows[wnd * 16 + 3];
 			int16_t base_mx = windows[wnd * 16 + 4] & 0xfff;
-			if (base_mx & 0x800) base_mx |= 0xf000; 
+			if (base_mx & 0x800) base_mx |= 0xf000;
 			int16_t mp = windows[wnd * 16 + 5];
 			int16_t my = windows[wnd * 16 + 6] & 0xfff;
 			if (my & 0x800) my |= 0xf000;
@@ -592,112 +518,51 @@ void sceneRender() {
 	}
 }
 
-void doAllTheDrawing() {
-	if (tDSPCACHE.CharCacheInvalid) {
-		tDSPCACHE.CharCacheInvalid = false;
-		uint16_t *texImage = C3D_Tex2DGetImagePtr(&tileTexture, 0, NULL);
-		for (int t = 0; t < 2048; t++) {
-			// skip if this tile wasn't modified
-			if (tDSPCACHE.CharacterCache[t])
-				tDSPCACHE.CharacterCache[t] = false;
-			else
-				continue;
+void update_texture_cache_hard() {
+	uint16_t *texImage = C3D_Tex2DGetImagePtr(&tileTexture, 0, NULL);
+	for (int t = 0; t < 2048; t++) {
+		// skip if this tile wasn't modified
+		if (tDSPCACHE.CharacterCache[t])
+			tDSPCACHE.CharacterCache[t] = false;
+		else
+			continue;
 
-			uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
+		uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
 
-			// optimize invisible tiles
-			{
-				bool tv = ((uint64_t*)tile)[0] | ((uint64_t*)tile)[1];
-				tileVisible[t] = tv;
-				if (!tv) continue;
-			}
+		// optimize invisible tiles
+		{
+			bool tv = ((uint64_t*)tile)[0] | ((uint64_t*)tile)[1];
+			tileVisible[t] = tv;
+			if (!tv) continue;
+		}
 
-			int y = 63 - t / 32;
-			int x = t % 32;
-			uint32_t *dstbuf = (uint32_t*)(texImage + ((y * 32 + x) * 8 * 8));
-			
-			for (int i = 2; i >= 0; i -= 2) {
-				uint32_t slice1 = tile[i + 1];
-				uint32_t slice2 = tile[i];
+		int y = 63 - t / 32;
+		int x = t % 32;
+		uint32_t *dstbuf = (uint32_t*)(texImage + ((y * 32 + x) * 8 * 8));
 		
-				const static uint16_t colors[4] = {0, 0x88ff, 0x8f8f, 0xf88f};
+		for (int i = 2; i >= 0; i -= 2) {
+			uint32_t slice1 = tile[i + 1];
+			uint32_t slice2 = tile[i];
+	
+			const static uint16_t colors[4] = {0, 0x88ff, 0x8f8f, 0xf88f};
 
-				#define SQUARE(x, i) { \
-					uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
-					uint32_t right = x >> (2 + 4*i) & 0x00030003; \
-					*dstbuf++ = colors[left >> 16] | (colors[right >> 16] << 16); \
-					*dstbuf++ = colors[(uint16_t)left] | (colors[(uint16_t)right] << 16); \
-				}
-
-				SQUARE(slice1, 0);
-				SQUARE(slice1, 1);
-				SQUARE(slice2, 0);
-				SQUARE(slice2, 1);
-				SQUARE(slice1, 2);
-				SQUARE(slice1, 3);
-				SQUARE(slice2, 2);
-				SQUARE(slice2, 3);
-
-				#undef SQUARE
+			#define SQUARE(x, i) { \
+				uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
+				uint32_t right = x >> (2 + 4*i) & 0x00030003; \
+				*dstbuf++ = colors[left >> 16] | (colors[right >> 16] << 16); \
+				*dstbuf++ = colors[(uint16_t)left] | (colors[(uint16_t)right] << 16); \
 			}
+
+			SQUARE(slice1, 0);
+			SQUARE(slice1, 1);
+			SQUARE(slice2, 0);
+			SQUARE(slice2, 1);
+			SQUARE(slice1, 2);
+			SQUARE(slice1, 3);
+			SQUARE(slice2, 2);
+			SQUARE(slice2, 3);
+
+			#undef SQUARE
 		}
 	}
-
-	eye_count = CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
-
-	C3D_FrameBegin(0);
-
-	vcur = vbuf;
-	avcur = avbuf;
-	
-	if (tDSPCACHE.ColumnTableInvalid)
-		processColumnTable();
-
-	sceneRender();
-	
-	C3D_TexBind(0, &screenTex);
-	C3D_BindProgram(&sFinal);
-	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
-
-	C3D_TexEnv *env = C3D_GetTexEnv(0);
-	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, 0xff0000ff);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
-	C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
-	if (minRepeat != maxRepeat) {
-		env = C3D_GetTexEnv(0);
-		env = C3D_GetTexEnv(1);
-		C3D_TexEnvInit(env);
-		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE1, 0);
-		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
-		#ifdef COLTABLESCALE
-		C3D_TexEnvScale(env, C3D_RGB, maxRepeat <= 2 ? maxRepeat - 1 : GPU_TEVSCALE_4);
-		#endif
-	}
-
-
-	for (int eye = 0; eye < eye_count; eye++) {
-		C3D_RenderTargetClear(finalScreen[eye], C3D_CLEAR_ALL, 0, 0);
-		C3D_FrameDrawOn(finalScreen[eye]);
-		C3D_SetViewport((240 - 224) / 2, (400 - 384) / 2, 224, 384);
-		C3D_TexBind(1, &columnTableTexture[eye]);
-
-		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
-		C3D_ImmSendAttrib(1, 1, -1, 1);
-		C3D_ImmSendAttrib(0, eye ? 0.5 : 0, 0, 0);
-		C3D_ImmSendAttrib(-1, -1, -1, 1);
-		C3D_ImmSendAttrib(384.0 / 512, (eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
-		C3D_ImmDrawEnd();
-	}
-
-	if (minRepeat != maxRepeat) {
-		env = C3D_GetTexEnv(1);
-		C3D_TexEnvInit(env);
-	}
-
-	C3D_FrameEnd(0);
-}
-
-void video_hard_quit() {
-	C3D_Fini();
 }

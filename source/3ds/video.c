@@ -13,7 +13,7 @@
 #include "final_shbin.h"
 #include "affine_shbin.h"
 
-// stuff copied from vb_dsp.c
+// some stuff copied from vb_dsp.c
 
 VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
 // Keybd Fn's. Had to put it somewhere!
@@ -68,4 +68,152 @@ void clearCache() {
 	for (i = 0; i < 2048; i++)
 		tDSPCACHE.CharacterCache[i] = true;
 	tDSPCACHE.ColumnTableInvalid = true;
+}
+
+C3D_RenderTarget *finalScreen[2];
+
+// We have two ways of dealing with the colours:
+// 1. multiply base colours by max repeat, and scale down in postprocessing
+//  -> lighter darks, less saturated lights
+// 2. same but delay up to a factor of 4 until postprocessing using texenv scale
+//  -> more saturated lights, barely (if at all) visible darks
+// Method 2 would be more accurate if we had gamma correction,
+// but I don't know how to do that.
+// So for now, we'll use method 1, as it looks better IMO.
+// To use method 2, uncomment the following line:
+//#define COLTABLESCALE
+uint8_t maxRepeat = 0, minRepeat = 0;
+C3D_Tex columnTableTexture[2];
+
+int eye_count;
+
+DVLB_s *sFinal_dvlb;
+shaderProgram_s sFinal;
+
+void processColumnTable() {
+	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
+	uint8_t newMaxRepeat, newMinRepeat;
+	newMinRepeat = newMaxRepeat = table[160];
+	for (int t = 0; t < 2; t++) {
+		for (int i = 161; i < 256; i++) {
+			u8 r = table[t * 512 + i * 2];
+			if (r < newMinRepeat) newMinRepeat = r;
+			if (r > newMaxRepeat) newMaxRepeat = r;
+		}
+	}
+	// if maxRepeat would be 3 or 5+, make sure it's divisible by 4
+	#ifdef COLTABLESCALE
+	if (newMaxRepeat == 2 || newMaxRepeat > 3) {
+		minRepeat += 4 - (newMaxRepeat & 3);
+		newMaxRepeat += 4 - (newMaxRepeat & 3);
+	} else
+	#endif
+	{
+		newMinRepeat++;
+		newMaxRepeat++;
+	}
+	minRepeat = newMinRepeat;
+	maxRepeat = newMaxRepeat;
+	if (minRepeat != maxRepeat) {
+		// populate the bottom row of the textures
+		for (int t = 0; t < 2; t++) {
+			uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture[t], 0, NULL);
+			for (int i = 0; i < 96; i++) {
+				tex[((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)
+					] = 255 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
+			}
+		}
+	}
+}
+
+void video_init() {
+    #define DISPLAY_TRANSFER_FLAGS                                                                     \
+        (GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |               \
+        GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
+        GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
+	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
+	finalScreen[0] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, GPU_RB_DEPTH16);
+	C3D_RenderTargetSetOutput(finalScreen[0], GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
+	finalScreen[1] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, GPU_RB_DEPTH16);
+	C3D_RenderTargetSetOutput(finalScreen[1], GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
+
+	sFinal_dvlb = DVLB_ParseFile((u32 *)final_shbin, final_shbin_size);
+	shaderProgramInit(&sFinal);
+	shaderProgramSetVsh(&sFinal, &sFinal_dvlb->DVLE[0]);
+	shaderProgramSetGsh(&sFinal, &sFinal_dvlb->DVLE[1], 4);
+
+	C3D_TexInitParams params;
+	params.width = 128;
+	params.height = 8;
+	params.format = GPU_L8;
+	params.type = GPU_TEX_2D;
+	params.onVram = false;
+	params.maxLevel = 0;
+	for (int i = 0; i < 2; i++) {
+		C3D_TexInitWithParams(&columnTableTexture[i], NULL, params);
+	}
+
+    video_hard_init();
+}
+
+void video_render() {
+	if (tDSPCACHE.CharCacheInvalid) {
+		tDSPCACHE.CharCacheInvalid = false;
+		update_texture_cache_hard();
+	}
+
+	eye_count = CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
+
+	C3D_FrameBegin(0);
+	
+	if (tDSPCACHE.ColumnTableInvalid)
+		processColumnTable();
+
+	video_hard_render();
+	
+	C3D_TexBind(0, &screenTex);
+	C3D_BindProgram(&sFinal);
+	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+
+	C3D_TexEnv *env = C3D_GetTexEnv(0);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvColor(env, 0xff0000ff);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
+	C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+	if (minRepeat != maxRepeat) {
+		env = C3D_GetTexEnv(0);
+		env = C3D_GetTexEnv(1);
+		C3D_TexEnvInit(env);
+		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE1, 0);
+		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+		#ifdef COLTABLESCALE
+		C3D_TexEnvScale(env, C3D_RGB, maxRepeat <= 2 ? maxRepeat - 1 : GPU_TEVSCALE_4);
+		#endif
+	}
+
+
+	for (int eye = 0; eye < eye_count; eye++) {
+		C3D_RenderTargetClear(finalScreen[eye], C3D_CLEAR_ALL, 0, 0);
+		C3D_FrameDrawOn(finalScreen[eye]);
+		C3D_SetViewport((240 - 224) / 2, (400 - 384) / 2, 224, 384);
+		C3D_TexBind(1, &columnTableTexture[eye]);
+
+		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
+		C3D_ImmSendAttrib(1, 1, -1, 1);
+		C3D_ImmSendAttrib(0, eye ? 0.5 : 0, 0, 0);
+		C3D_ImmSendAttrib(-1, -1, -1, 1);
+		C3D_ImmSendAttrib(384.0 / 512, (eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
+		C3D_ImmDrawEnd();
+	}
+
+	if (minRepeat != maxRepeat) {
+		env = C3D_GetTexEnv(1);
+		C3D_TexEnvInit(env);
+	}
+
+	C3D_FrameEnd(0);
+}
+
+void video_quit() {
+	C3D_Fini();
 }
