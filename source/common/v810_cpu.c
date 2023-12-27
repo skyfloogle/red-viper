@@ -304,11 +304,6 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             tVIPREG.tFrame++;
             if ((tVIPREG.tFrame < 1) || (tVIPREG.tFrame > 2)) tVIPREG.tFrame = 1;
             tVIPREG.XPSTTS = (0x1B00|(tVIPREG.tFrame<<2)|(tVIPREG.XPCTRL & 0x02));
-            //if (tVIPREG.XPSTTS&2) //clear screen buffer
-            //{
-            memset((BYTE *)(V810_DISPLAY_RAM.off+(tVIPREG.tFrame-1)*0x8000),0,0x6000);
-            memset((BYTE *)(V810_DISPLAY_RAM.off+((tVIPREG.tFrame-1)+2)*0x8000),0,0x6000);
-            //}
             lastfb=cycles;
         }
     }
