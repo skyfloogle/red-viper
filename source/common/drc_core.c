@@ -214,6 +214,29 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     *p_end_PC = end_PC;
 }
 
+// Finds an instruction in the given range at the given PC, or the one just after it.
+v810_instruction *drc_findInstruction(v810_instruction *left, v810_instruction *right, WORD goal_PC) {
+    while (left != right) {
+        v810_instruction *pivot = left + (right - left) / 2;
+        if (pivot->PC < goal_PC) left = pivot + 1;
+        else if (pivot->PC > goal_PC) right = pivot;
+        else return pivot;
+    }
+    return right;
+}
+
+// Finds the target of a branch, or the instruction just after it.
+v810_instruction *drc_findBranchTarget(v810_instruction *inst_cache, int size, int pos) {
+    int close = pos + inst_cache[pos].branch_offset / 4;
+    int far = pos + inst_cache[pos].branch_offset / 2;
+    if (far < 0) far = 0;
+    if (far >= size) far = size;
+    return drc_findInstruction(
+        &inst_cache[inst_cache[pos].branch_offset > 0 ? close : far],
+        &inst_cache[inst_cache[pos].branch_offset > 0 ? far : close],
+        inst_cache[pos].PC + inst_cache[pos].branch_offset);
+}
+
 // Workaround for an issue where the CPSR is modified outside of the block
 // before a conditional branch.
 // Sets save_flags for all unconditional instructions prior to a branch.
@@ -461,31 +484,21 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
         for (int j = 0; j < i; j++) {
             if (optable[inst_cache[j].opcode].addr_mode != AM_III && inst_cache[j].opcode != V810_OP_JR)
                 continue;
+            if (inst_cache[j].branch_offset == 0)
+                continue;
             if (inst_cache[j].opcode != V810_OP_JR || abs(inst_cache[j].branch_offset) < 1024) {
-                // binary search for the branch target
-                int left = 0, right = i;
-                WORD target = inst_cache[j].PC + inst_cache[j].branch_offset;
-                if (inst_cache[j].branch_offset < 0)
-                    right = j;
-                else
-                    left = j;
-                int pivot;
-                while (left < right) {
-                    pivot = (left + right) / 2;
-                    if (inst_cache[pivot].PC < target) left = pivot + 1;
-                    else if (inst_cache[pivot].PC > target) right = pivot;
-                    else break;
-                }
-                // left == right, namely either the target or the instruction after
-                if (inst_cache[pivot].PC != target) {
-                    // target is in the middle of an instruction, restart decoding from there
-                    i = left - 1;
-                    cur_PC = target;
+                // find the branch target
+                v810_instruction *target = drc_findBranchTarget(inst_cache, i, j);
+                WORD target_PC = inst_cache[j].PC + inst_cache[j].branch_offset;
+                if (target->PC != target_PC) {
+                    // the target is in the middle of an instruction, restart decoding from there
+                    i = target - inst_cache - 1;
+                    cur_PC = target_PC;
                     finished = false;
                     break;
                 } else {
                     // it's a valid target, so mark it as such
-                    inst_cache[pivot].is_branch_target = true;
+                    target->is_branch_target = true;
                 }
             }
         }
