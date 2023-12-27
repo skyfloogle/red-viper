@@ -237,6 +237,31 @@ v810_instruction *drc_findBranchTarget(v810_instruction *inst_cache, int size, i
         inst_cache[pos].PC + inst_cache[pos].branch_offset);
 }
 
+void drc_findWaterworldBusywait(v810_instruction *inst_cache, int size) {
+    for (int i = 3; i < size; i++) {
+        // scan for this pattern:
+        // ld.h <...>[gp], r10
+        // cmp <...>, r10
+        // b<...> +
+        // jr <...>
+        // + ...
+        if (inst_cache[i].opcode == V810_OP_JR && abs(inst_cache[i].branch_offset) < 1024 &&
+            inst_cache[i - 1].branch_offset == 6 &&
+            inst_cache[i - 2].opcode == V810_OP_CMP_I && inst_cache[i - 2].reg2 == 10 &&
+            inst_cache[i - 3].opcode == V810_OP_LD_H && inst_cache[i - 3].reg1 == 4 && inst_cache[i - 3].reg2 == 10
+        ) {
+            // check some known combinations
+            if ((inst_cache[i - 1].opcode == V810_OP_BNE && inst_cache[i - 2].imm == 0 && inst_cache[i - 3].imm == 0x8030) ||
+                (inst_cache[i - 1].opcode == V810_OP_BE && inst_cache[i - 2].imm == 1 && inst_cache[i - 3].imm == 0x8010)
+            ) {
+                // it's probably safe at this point
+                inst_cache[i].busywait = true;
+                printf("waterworld busywait at %lx\n", inst_cache[i].PC);
+            }
+        }
+    }
+}
+
 // Workaround for an issue where the CPSR is modified outside of the block
 // before a conditional branch.
 // Sets save_flags for all unconditional instructions prior to a branch.
@@ -553,6 +578,10 @@ int drc_translateBlock(exec_block *block) {
     num_v810_inst = drc_decodeInstructions(block, inst_cache, start_PC, end_PC);
     dprintf(3, "[DRC]: V810 block size - %d\n", num_v810_inst);
 
+    // Waterworld-excluive pass: find busywaits
+    if (tVBOpt.CRC32 == 0x82A95E51)
+        drc_findWaterworldBusywait(inst_cache, num_v810_inst);
+
     // Second pass: map the most used V810 registers to ARM registers
     drc_mapRegs(block);
     for (i = 0; i < 32; i++)
@@ -650,12 +679,16 @@ int drc_translateBlock(exec_block *block) {
                 break;
             case V810_OP_JR: // jr imm26
                 if (abs(inst_cache[i].branch_offset) < 1024) {
-                    if (inst_cache[i].branch_offset <= 0) {
-                        HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
+                    if (inst_cache[i].busywait) {
+                        HALT(inst_cache[i].PC + inst_cache[i].branch_offset);
                     } else {
-                        ADDCYCLES();
+                        if (inst_cache[i].branch_offset <= 0) {
+                            HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
+                        } else {
+                            ADDCYCLES();
+                        }
+                        B(ARM_COND_AL, 0);
                     }
-                    B(ARM_COND_AL, 0);
                 } else {
                     ADDCYCLES();
                     LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
