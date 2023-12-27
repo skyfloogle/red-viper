@@ -169,7 +169,7 @@ void video_init() {
 void video_render(int alt_buf) {
 	if (tDSPCACHE.CharCacheInvalid) {
 		tDSPCACHE.CharCacheInvalid = false;
-		if (tVBOpt.HARDRENDER)
+		if (tVBOpt.RENDERMODE < 2)
 			update_texture_cache_hard();
 		else
 			update_texture_cache_soft();
@@ -182,30 +182,54 @@ void video_render(int alt_buf) {
 	if (tDSPCACHE.ColumnTableInvalid)
 		processColumnTable();
 
-	if (tVBOpt.HARDRENDER) {
+	if (tVBOpt.RENDERMODE < 2) {
 		video_hard_render();
 	} else {
-		video_soft_render(alt_buf);
-		video_hard_render();
-		// these won't be initialized when soft rendering
-		C3D_FrameDrawOn(finalScreen[0]);
+		C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, 0, 0);
 		C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 		AttrInfo_Init(attrInfo);
 		AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
 		AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
 	}
-	
-	C3D_TexBind(0, tVBOpt.HARDRENDER ? &screenTexHard : &screenTexSoft);
-	C3D_BindProgram(tVBOpt.HARDRENDER ? &sFinal : &sSoft);
+
+	if (tVBOpt.RENDERMODE > 0) {
+		// postproc
+		video_soft_render(alt_buf);
+		C3D_TexBind(0, &screenTexSoft);
+		C3D_FrameDrawOn(screenTarget);
+		C3D_BindProgram(&sFinal);
+
+		// It seems very difficult to get the softbuf colours to match
+		// those of the hard render for some reason.
+		// The closest I got was trying to emulate the same dot product.
+		// Note that it's dotted with 0xff8080ff: 0xffffffff was too bright.
+		C3D_TexEnv *env = C3D_GetTexEnv(0);
+		C3D_TexEnvInit(env);
+		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
+		C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, 0, 0);
+		C3D_TexEnvColor(env, 0xff8080ff);
+		C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
+
+		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
+		C3D_ImmSendAttrib(1, 1, -1, 1);
+		C3D_ImmSendAttrib(1, 1, 0, 0);
+		C3D_ImmSendAttrib(-1, -1, -1, 1);
+		C3D_ImmSendAttrib(0, 0, 0, 0);
+		C3D_ImmDrawEnd();
+	}
+
+	// final render
+	C3D_TexBind(0, &screenTexHard);
+	C3D_BindProgram(&sFinal);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
 	C3D_TexEnvColor(env, 0xff0000ff);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
-	C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+	C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_CONSTANT, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
+	C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
 	if (minRepeat != maxRepeat) {
-		env = C3D_GetTexEnv(0);
 		env = C3D_GetTexEnv(1);
 		C3D_TexEnvInit(env);
 		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE1, 0);
@@ -223,19 +247,11 @@ void video_render(int alt_buf) {
 		C3D_TexBind(1, &columnTableTexture[eye]);
 
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
-		if (tVBOpt.HARDRENDER) {
-			C3D_ImmSendAttrib(1, 1, -1, 1);
-			C3D_ImmSendAttrib(0, eye ? 0.5 : 0, 0, 0);
-			C3D_ImmSendAttrib(-1, -1, -1, 1);
-			C3D_ImmSendAttrib(384.0 / 512, (eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
-			C3D_ImmDrawEnd();
-		} else {
-			C3D_ImmSendAttrib(1, 1, -1, 1);
-			C3D_ImmSendAttrib(eye ? 0.5 : 0, 0, 0, 0);
-			C3D_ImmSendAttrib(-1, -1, -1, 1);
-			C3D_ImmSendAttrib((eye ? 0.5 : 0) + 224.0 / 512, 384.0 / 512, 0, 0);
-			C3D_ImmDrawEnd();
-		}
+		C3D_ImmSendAttrib(1, 1, -1, 1);
+		C3D_ImmSendAttrib(0, eye ? 0.5 : 0, 0, 0);
+		C3D_ImmSendAttrib(-1, -1, -1, 1);
+		C3D_ImmSendAttrib(384.0 / 512, (eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
+		C3D_ImmDrawEnd();
 	}
 
 	if (minRepeat != maxRepeat) {

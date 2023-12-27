@@ -74,7 +74,15 @@ void update_texture_cache_soft() {
 void video_soft_render(int alt_buf) {
     // copy framebuffer
     uint32_t *out_fb = C3D_Tex2DGetImagePtr(&screenTexSoft, 0, NULL);
-    uint8_t colors[4] = {0, tVIPREG.BRTA * 2, tVIPREG.BRTB * 2, (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * 2};
+	#ifdef COLTABLESCALE
+	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
+	#else
+	int col_scale = maxRepeat;
+	#endif
+    int16_t colors[4] = {0, tVIPREG.BRTA * col_scale + 0x80, tVIPREG.BRTB * col_scale + 0x80, (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale + 0x80};
+    if (colors[1] > 255) colors[1] = 255;
+    if (colors[2] > 255) colors[2] = 255;
+    if (colors[3] > 255) colors[3] = 255;
     for (int eye = 0; eye < eye_count; eye++) {
         for (int tx = 0; tx < 384 / 8; tx++) {
             for (int ty = 0; ty < 224 / 8; ty++) {

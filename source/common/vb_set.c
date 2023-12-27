@@ -31,7 +31,7 @@ void setDefaults(void) {
     tVBOpt.DSP2X    = 0;
     tVBOpt.DYNAREC  = 1;
     tVBOpt.FASTFORWARD = 0;
-    tVBOpt.HARDRENDER = 1;
+    tVBOpt.RENDERMODE = 0;
 
     // Default keys
 #ifdef __3DS__

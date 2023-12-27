@@ -213,6 +213,7 @@ extern bool tileVisible[2048];
 
 // video_hard
 extern C3D_Tex screenTexHard;
+extern C3D_RenderTarget *screenTarget;
 void video_hard_init();
 void video_hard_render();
 void update_texture_cache_hard();
