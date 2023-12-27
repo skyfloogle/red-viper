@@ -119,6 +119,9 @@ int main() {
                 clearCache();
                 tVBOpt.SOUND = oldSound;
                 if (tVBOpt.SOUND) sound_init();
+                frame = 0;
+                skip = 0;
+                alt_buf = 1;
             }
             if (guiop & AKILL) {
                 clearCache();
