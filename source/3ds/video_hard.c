@@ -450,8 +450,8 @@ void video_hard_render() {
 								avcur->y1 = gy + y + 256 * eye;
 								avcur->x2 = gx + w;
 								avcur->y2 = gy + y + 1 + 256 * eye;
-								avcur->u = base_u + mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
-								avcur->v = base_v + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
+								avcur->u = base_u * 8 + mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
+								avcur->v = base_v * 8 + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
 								avcur->ix = dx * (w + mp) >> 6;
 								avcur->iy = dy * (w + mp) >> 6;
 								avcur->jx = params[y * 8 + 3] != 0 ? 0 : 1 * 8;
