@@ -632,7 +632,10 @@ int drc_translateBlock(exec_block *block) {
 
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
-        if (cycles != 0 && inst_cache[i].is_branch_target) {
+
+        if (cycles >= 200) {
+            HANDLEINT(inst_cache[i].PC);
+        } else if (cycles != 0 && inst_cache[i].is_branch_target) {
             ADDCYCLES();
         }
 
@@ -755,9 +758,7 @@ int drc_translateBlock(exec_block *block) {
                     if (inst_cache[i].branch_offset <= 0) {
                         HANDLEINT(inst_cache[i].PC);
                     } else {
-                        MRS(0);
                         ADDCYCLES();
-                        MSR(0);
                     }
                     B(arm_cond, 0);
                 }
@@ -767,9 +768,7 @@ int drc_translateBlock(exec_block *block) {
                 if (inst_cache[i].branch_offset <= 0) {
                     HANDLEINT(inst_cache[i].PC);
                 } else {
-                    MRS(0);
                     ADDCYCLES();
-                    MSR(0);
                 }
                 // Branch if C == 1 or Z == 1
                 B(ARM_COND_CS, 0);
@@ -779,9 +778,7 @@ int drc_translateBlock(exec_block *block) {
                 if (inst_cache[i].branch_offset <= 0) {
                     HANDLEINT(inst_cache[i].PC);
                 } else {
-                    MRS(0);
                     ADDCYCLES();
-                    MSR(0);
                 }
                 // Branch if C == 0 and Z == 0
                 Boff(ARM_COND_CS, 3);
@@ -1548,15 +1545,6 @@ int drc_run() {
             printf("Last entry: 0x%lx\n", entry_PC);
             return DRC_ERR_BAD_PC;
         }
-        
-        // hack for games like wario land with 20ms timers
-        if ((tHReg.TCR & 0x11) == 0x01 && tHReg.tTHW == 200 && !handled_timer_hack) {
-            handled_timer_hack = true;
-            tHReg.TCR |= 0x02; //Zero Status
-            if (tHReg.TCR & 0x08) {
-                v810_int(1, v810_state->PC);
-            }
-        }
 
         if (v810_state->ret) {
             v810_state->ret = 0;
@@ -1564,7 +1552,7 @@ int drc_run() {
         }
     }
 
-        return 0;
+    return 0;
 }
 
 void drc_loadSavedCache() {

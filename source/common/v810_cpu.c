@@ -193,24 +193,20 @@ int serviceInt(unsigned int cycles, WORD PC) {
     //}
 
     if (tHReg.TCR & 0x01) { // Timer Enabled
-        if ((tHReg.TCR & 0x10) && tHReg.tTHW == 200) {
-            // hack, see drc_run
-            return 0;
-        }
-        if ((cycles-lasttime) > tHReg.tTRC) {
-            if (tHReg.tCount)
-                tHReg.tCount--;
-            tHReg.TLB = (tHReg.tCount&0xFF);
-            tHReg.THB = ((tHReg.tCount>>8)&0xFF);
-            lasttime=cycles;
-            if (tHReg.tCount == 0) {
-                tHReg.tCount = tHReg.tTHW; //reset counter
+        if ((cycles-lasttime) >= tHReg.tTRC) {
+            int steps = (cycles - lasttime) / tHReg.tTRC;
+            lasttime += tHReg.tTRC * steps;
+            tHReg.tCount -= steps;
+            if (tHReg.tCount <= 0) {
+                tHReg.tCount += tHReg.tTHW; //reset counter
                 tHReg.TCR |= 0x02; //Zero Status
                 if (tHReg.TCR & 0x08) {
                     v810_int(1, PC);
                     return 1;
                 }
             }
+            tHReg.TLB = (tHReg.tCount&0xFF);
+            tHReg.THB = ((tHReg.tCount>>8)&0xFF);
         }
     }
 
@@ -251,7 +247,7 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
         } else if (tfb > 0x0A00) {
             tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
             rowcount++;
-            lastfb=cycles;
+            lastfb+=0x0A00;
         } else if ((rowcount == 0x12) && (tfb > 0x670)) {
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL & 0x0302) | (tVIPREG.tFrame & 1 ? 0xD0 : 0xC4));
         }
@@ -298,13 +294,13 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
         } else if ((rowcount == 0x20) && (tfb > 0x38000)) {     //0x33FD8
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0x40);
             rowcount++;
-        } else if ((rowcount == 0x21) && (tfb > 0x42000)) {
+        } else if ((rowcount == 0x21) && (tfb > 0x50280)) {
             tmp1=0;
             rowcount=0;
             tVIPREG.tFrame++;
             if ((tVIPREG.tFrame < 1) || (tVIPREG.tFrame > 2)) tVIPREG.tFrame = 1;
             tVIPREG.XPSTTS = (0x1B00|(tVIPREG.tFrame<<2)|(tVIPREG.XPCTRL & 0x02));
-            lastfb=cycles;
+            lastfb+=0x50280;
         }
     }
 

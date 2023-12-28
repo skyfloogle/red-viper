@@ -14,7 +14,7 @@ int     vbkey[15];
 
 void setDefaults(void) {
     // Set up the Defaults
-    tVBOpt.MAXCYCLES = 512;
+    tVBOpt.MAXCYCLES = 400;
     tVBOpt.FRMSKIP  = 0;
     tVBOpt.DSPMODE  = DM_NORMAL;
     tVBOpt.DSPSWAP  = 0;
