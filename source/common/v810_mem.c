@@ -511,8 +511,7 @@ void hcreg_wbyte(WORD addr, BYTE data) {
             tHReg.tTRC = 400;
         }
         else { //100us timer
-            if (tVBOpt.CRC32 == 0xFA44402D) tHReg.tTRC = 20000; //Space Invaders hack! 1ms
-            else tHReg.tTRC = 2000; //100us
+            tHReg.tTRC = 2000;
         }
 
         tHReg.TCR = (((data|0xE4)&0xFD)|(tHReg.TCR&0x02));
