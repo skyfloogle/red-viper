@@ -235,13 +235,15 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
                 framestart = 0x0010;
                 tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
             }
-            if ((tVIPREG.XPCTRL & 0x02) && ++frames > tVIPREG.FRMCYC) {
-                drawing = true;
+            if (++frames > tVIPREG.FRMCYC) {
                 frames = 0;
                 gamestart = 8;
-                tVIPREG.tFrame++;
-                if ((tVIPREG.tFrame < 1) || (tVIPREG.tFrame > 2)) tVIPREG.tFrame = 1;
-                tVIPREG.XPSTTS = (0x0002|(tVIPREG.tFrame<<2));
+                if (tVIPREG.XPCTRL & 0x02) {
+                    drawing = true;
+                    tVIPREG.tFrame++;
+                    if ((tVIPREG.tFrame < 1) || (tVIPREG.tFrame > 2)) tVIPREG.tFrame = 1;
+                    tVIPREG.XPSTTS = (0x0002|(tVIPREG.tFrame<<2));
+                }
             }
             if (tVIPREG.INTENB&(framestart|gamestart)) {
                 v810_int(4, PC);
