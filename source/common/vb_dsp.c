@@ -1079,8 +1079,8 @@ void V810_Dsp_Frame(int dNum) {
 
 #ifdef FBHACK
     //FIX ME!
-    //dNum = (tVIPREG.tFrame & 1);
-    dNum = (tVIPREG.tFrame - 1);
+    //dNum = (tVIPREG.tFrameBuffer & 1);
+    dNum = (tVIPREG.tFrameBuffer - 1);
 #endif // FBHACK
 
     // Normalize the Palette, Is this to slow??? (tVIPREG.BRTA*64)/MaxBrt

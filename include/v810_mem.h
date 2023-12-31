@@ -19,7 +19,8 @@ typedef struct {
     HWORD CTA;
     HWORD XPSTTS;
     HWORD XPCTRL;
-    HWORD tFrame;   //not publicly visible
+    HWORD tFrameBuffer;   //not publicly visible
+    HWORD tFrame;
     HWORD VER;
     HWORD SPT[4];
     HWORD GPLT[4];

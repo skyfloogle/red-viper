@@ -22,8 +22,6 @@ int main() {
     int qwe;
     int frame = 0;
     int err = 0;
-    int alt_buf = 1; // 1 is required for golf
-    int skip = 0;
     bool loaded = false;
     PrintConsole main_console;
 #if DEBUGLEVEL == 0
@@ -120,8 +118,8 @@ int main() {
                 tVBOpt.SOUND = oldSound;
                 if (tVBOpt.SOUND) sound_init();
                 frame = 0;
-                skip = 0;
-                alt_buf = 1;
+                tVIPREG.tFrame = 0;
+                tVIPREG.tFrameBuffer = 0;
             }
             if (guiop & AKILL) {
                 clearCache();
@@ -145,20 +143,18 @@ int main() {
         }
 
         // Display a frame, only after the right number of 'skips'
-        if((tVIPREG.FRMCYC & 0x00FF) < skip) {
-            skip = 0;
+        if(tVIPREG.tFrame == tVIPREG.FRMCYC) {
+            int alt_buf = (tVIPREG.tFrameBuffer) % 2;
             if (tVIPREG.DPCTRL & 0x0002) {
                 video_render(alt_buf);
             }
             if (tVIPREG.XPCTRL & 0x0002) {
                 memset(V810_DISPLAY_RAM.pmemory + 0x8000 * alt_buf, 0, 0x6000);
                 memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
-                alt_buf = !alt_buf;
             }
         }
 
-        // Increment skip
-        skip++;
+        // Increment frame
         frame++;
 
         osTickCounterUpdate(&frameTickCounter);

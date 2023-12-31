@@ -215,7 +215,7 @@ int serviceInt(unsigned int cycles, WORD PC) {
 
 int serviceDisplayInt(unsigned int cycles, WORD PC) {
     static unsigned int lastfb=0;
-    static int rowcount,frames=0;
+    static int rowcount=0;
     static bool drawing = false;
     static bool newframe = true;
     int gamestart,framestart;
@@ -235,14 +235,14 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
                 framestart = 0x0010;
                 tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
             }
-            if (++frames > tVIPREG.FRMCYC) {
-                frames = 0;
+            if (++tVIPREG.tFrame > tVIPREG.FRMCYC) {
+                tVIPREG.tFrame = 0;
                 gamestart = 8;
                 if (tVIPREG.XPCTRL & 0x02) {
                     drawing = true;
-                    tVIPREG.tFrame++;
-                    if ((tVIPREG.tFrame < 1) || (tVIPREG.tFrame > 2)) tVIPREG.tFrame = 1;
-                    tVIPREG.XPSTTS = (0x0002|(tVIPREG.tFrame<<2));
+                    tVIPREG.tFrameBuffer++;
+                    if ((tVIPREG.tFrameBuffer < 1) || (tVIPREG.tFrameBuffer > 2)) tVIPREG.tFrameBuffer = 1;
+                    tVIPREG.XPSTTS = (0x0002|(tVIPREG.tFrameBuffer<<2));
                 }
             }
             if (tVIPREG.INTENB&(framestart|gamestart)) {
@@ -258,7 +258,7 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             rowcount++;
             lastfb+=0x0A00;
         } else if ((rowcount == 0x12) && (tfb > 0x670)) {
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL & 0x0302) | (tVIPREG.tFrame & 1 ? 0xD0 : 0xC4));
+            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL & 0x0302) | (tVIPREG.tFrameBuffer & 1 ? 0xD0 : 0xC4));
             pending_int = 1;
         }
     } else {
@@ -294,8 +294,8 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             pending_int = 1;
             rowcount++;
         } else if ((rowcount == 0x1F) && (tfb > 0x28000)) {     //0x1FAD8
-            //tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x48:0x60));
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrame&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
+            //tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrameBuffer&1)?0x48:0x60));
+            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrameBuffer&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
             if (tVIPREG.INTENB&0x2000) {
                 v810_int(4, PC);                    //SBHIT
             }

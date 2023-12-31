@@ -363,6 +363,7 @@ int emulation_sstate(void) {
     fwrite(&tVIPREG.JPLT[2], 2, 1, state_file);
     fwrite(&tVIPREG.JPLT[3], 2, 1, state_file);
     fwrite(&tVIPREG.BKCOL, 2, 1, state_file);
+    fwrite(&tVIPREG.tFrameBuffer, 2, 1, state_file); //not publicly visible
     fwrite(&tVIPREG.tFrame, 2, 1, state_file); //not publicly visible
 
     // Write hardware control registers
@@ -452,6 +453,7 @@ int emulation_lstate(void) {
     fread(&tVIPREG.JPLT[2], 2, 1, state_file);
     fread(&tVIPREG.JPLT[3], 2, 1, state_file);
     fread(&tVIPREG.BKCOL, 2, 1, state_file);
+    fread(&tVIPREG.tFrameBuffer, 2, 1, state_file); //not publicly visible
     fread(&tVIPREG.tFrame, 2, 1, state_file); //not publicly visible
 
     //Load hardware control registers
