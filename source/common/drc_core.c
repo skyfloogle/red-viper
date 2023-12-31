@@ -1503,7 +1503,8 @@ int drc_run() {
 
     v810_state->ret = 0;
 
-    while (!serviceDisplayInt(clocks, v810_state->PC)) {
+    while (true) {
+        serviceDisplayInt(clocks, v810_state->PC);
         serviceInt(clocks, v810_state->PC);
 
         v810_state->PC &= V810_ROM1.highaddr;

@@ -782,6 +782,8 @@ void vipcreg_whword(WORD addr, HWORD data) {
         if(data & 0x0001) {
             tVIPREG.INTPND &= 0x001F;
             tVIPREG.INTENB &= 0x001F;
+            tVIPREG.XPCTRL &= ~0x0002;
+            tVIPREG.XPSTTS &= ~0x0002;
         }
         break;
     case 0x0005F844:    //VER

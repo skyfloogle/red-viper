@@ -22,7 +22,7 @@ int main() {
     int qwe;
     int frame = 0;
     int err = 0;
-    int alt_buf = 1; // 1 is required for red alarm
+    int alt_buf = 0;
     int skip = 0;
     bool loaded = false;
     PrintConsole main_console;
@@ -149,6 +149,8 @@ int main() {
             skip = 0;
             if (tVIPREG.DPCTRL & 0x0002) {
                 video_render(alt_buf);
+            }
+            if (tVIPREG.XPCTRL & 0x0002) {
                 memset(V810_DISPLAY_RAM.pmemory + 0x8000 * alt_buf, 0, 0x6000);
                 memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
                 alt_buf = !alt_buf;
