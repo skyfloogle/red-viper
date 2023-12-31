@@ -728,4 +728,17 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     HALT(ret_PC); \
 }
 
+#define BUSYWAIT_BNH(ret_PC) { \
+    Boff(ARM_COND_CS, 3); \
+    Boff(ARM_COND_EQ, 2); \
+    B(ARM_COND_AL, 8); \
+    HALT(ret_PC); \
+}
+
+#define BUSYWAIT_BH(ret_PC) { \
+    B(ARM_COND_CS, 9); \
+    B(ARM_COND_EQ, 8); \
+    HALT(ret_PC); \
+}
+
 #endif

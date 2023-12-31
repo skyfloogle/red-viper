@@ -765,25 +765,33 @@ int drc_translateBlock(exec_block *block) {
                 break;
             // Special case: bnh and bh can't be directly translated to ARM
             case V810_OP_BNH:
-                if (inst_cache[i].branch_offset <= 0) {
-                    HANDLEINT(inst_cache[i].PC);
+                if (inst_cache[i].busywait) {
+                    BUSYWAIT_BNH(inst_cache[i].PC + inst_cache[i].branch_offset);
                 } else {
-                    ADDCYCLES();
+                    if (inst_cache[i].branch_offset <= 0) {
+                        HANDLEINT(inst_cache[i].PC);
+                    } else {
+                        ADDCYCLES();
+                    }
+                    // Branch if C == 1 or Z == 1
+                    B(ARM_COND_CS, 0);
+                    B(ARM_COND_EQ, 0);
                 }
-                // Branch if C == 1 or Z == 1
-                B(ARM_COND_CS, 0);
-                B(ARM_COND_EQ, 0);
                 break;
             case V810_OP_BH:
-                if (inst_cache[i].branch_offset <= 0) {
-                    HANDLEINT(inst_cache[i].PC);
+                if (inst_cache[i].busywait) {
+                    BUSYWAIT_BH(inst_cache[i].PC + inst_cache[i].branch_offset);
                 } else {
-                    ADDCYCLES();
+                    if (inst_cache[i].branch_offset <= 0) {
+                        HANDLEINT(inst_cache[i].PC);
+                    } else {
+                        ADDCYCLES();
+                    }
+                    // Branch if C == 0 and Z == 0
+                    Boff(ARM_COND_CS, 3);
+                    Boff(ARM_COND_EQ, 2);
+                    B(ARM_COND_AL, 0);
                 }
-                // Branch if C == 0 and Z == 0
-                Boff(ARM_COND_CS, 3);
-                Boff(ARM_COND_EQ, 2);
-                B(ARM_COND_AL, 0);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
