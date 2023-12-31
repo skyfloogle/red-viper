@@ -22,7 +22,7 @@ int main() {
     int qwe;
     int frame = 0;
     int err = 0;
-    int alt_buf = 0;
+    int alt_buf = 1; // 1 is required for golf
     int skip = 0;
     bool loaded = false;
     PrintConsole main_console;
