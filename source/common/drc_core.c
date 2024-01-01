@@ -205,10 +205,18 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     } while (start_PC < last_start_PC);
 
     exec_block *otherBlock;
-    if (drc_getEntry(start_PC, &otherBlock) != cache_start && otherBlock->start_pc < start_PC)
-        start_PC = otherBlock->start_pc;
-    if (drc_getEntry(end_PC, &otherBlock) != cache_start && otherBlock->end_pc > end_PC)
-        end_PC = otherBlock->end_pc;
+    if (drc_getEntry(start_PC, &otherBlock) != cache_start) {
+        if (otherBlock->start_pc < start_PC)
+            start_PC = otherBlock->start_pc;
+        if (otherBlock->end_pc > end_PC)
+            end_PC = otherBlock->end_pc;
+    }
+    if (drc_getEntry(end_PC, &otherBlock) != cache_start) {
+        if (otherBlock->start_pc < start_PC)
+            start_PC = otherBlock->start_pc;
+        if (otherBlock->end_pc > end_PC)
+            end_PC = otherBlock->end_pc;
+    }
 
     *p_start_PC = start_PC;
     *p_end_PC = end_PC;
