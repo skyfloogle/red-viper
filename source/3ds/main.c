@@ -68,7 +68,6 @@ int main() {
         goto exit;
 
     strncat(rom_path, rom_name, 255);
-    #pragma GCC diagnostic pop
     tVBOpt.ROM_NAME = rom_name;
 
     if (!v810_init(rom_path)) {
