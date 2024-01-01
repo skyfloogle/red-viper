@@ -916,52 +916,50 @@ int drc_translateBlock(exec_block *block) {
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_DIVSI*4, 0);
-                BLX(ARM_COND_AL, 2);
-
-                RELOAD_REG2(1);
-                SAVE_REG2(0);
-                MOV(0, 1);
-                RELOAD_REG1(1);
-
-                LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_MODSI*4, 0);
                 BLX(ARM_COND_AL, 2);
 
+                RELOAD_REG1(1);
+                RELOAD_REG2(2);
                 if (!phys_regs[30])
                     STR_IO(0, 11, 30 * 4);
                 else
                     MOV(phys_regs[30], 0);
+                MOV(0, 2);
+
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, DRC_RELOC_DIVSI*4, 0);
+                BLX(ARM_COND_AL, 2);
+
+                SAVE_REG2(0);
 
                 // flags
-                LOAD_REG2();
-                ORRS(arm_reg2, arm_reg2, arm_reg2);
+                ORRS(0, 0, 0);
 
                 break;
             case V810_OP_DIVU: // divu reg1, reg2
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_UDIVSI*4, 0);
-                BLX(ARM_COND_AL, 2);
-
-                RELOAD_REG2(1);
-                SAVE_REG2(0);
-                MOV(0, 1);
-                RELOAD_REG1(1);
-
-                LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_UMODSI*4, 0);
                 BLX(ARM_COND_AL, 2);
 
+                RELOAD_REG1(1);
+                RELOAD_REG2(2);
                 if (!phys_regs[30])
                     STR_IO(0, 11, 30 * 4);
                 else
                     MOV(phys_regs[30], 0);
+                MOV(0, 2);
+
+                LDR_IO(2, 11, 69 * 4);
+                ADD_I(2, 2, DRC_RELOC_UDIVSI*4, 0);
+                BLX(ARM_COND_AL, 2);
+
+                SAVE_REG2(0);
 
                 // flags
-                LOAD_REG2();
-                ORRS(arm_reg2, arm_reg2, arm_reg2);
+                ORRS(0, 0, 0);
 
                 break;
             case V810_OP_OR: // or reg1, reg2
