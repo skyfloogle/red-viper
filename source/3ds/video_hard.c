@@ -476,34 +476,39 @@ void video_hard_render() {
 			}
 		} else {
 			// object world
-			for (int eye = 0; eye < eye_count; eye++) {
-				C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
-				int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
-				int end_index = tVIPREG.SPT[object_group_id];
-				for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
-					u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
-					u16 x = obj_ptr[0];
-					u16 cw1 = obj_ptr[1];
-					u16 y = obj_ptr[2];
-					u16 cw3 = obj_ptr[3];
+			C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+			int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
+			int end_index = tVIPREG.SPT[object_group_id] & 1023;
+			for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
+				u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
 
+				u16 cw3 = obj_ptr[3];
+				u16 tileid = cw3 & 0x07ff;
+				if (!tileVisible[tileid]) continue;
+
+				u16 x = obj_ptr[0];
+				u16 cw1 = obj_ptr[1];
+				s16 y = *(u8*)&obj_ptr[2];
+				if (y > 224) y = (s8)y;
+
+				bool hflip = (cw3 & 0x2000) != 0;
+				bool vflip = (cw3 & 0x1000) != 0;
+				short u = (tileid % 32) * 8;
+				short v = (tileid / 32) * 8;
+
+				short palette = (cw3 >> 14) | 4;
+
+				s16 jp = cw1 & 0x1ff;
+				if (jp & 0x100)
+					jp |= 0xfe00;
+
+				for (int eye = 0; eye < eye_count; eye++) {
 					if (!(cw1 & (0x8000 >> eye)))
 						continue;
-
-					s16 jp = cw1 & 0x1ff;
-					if (jp & 0x100)
-						jp |= 0xfe00;
 					if (eye == 0)
 						x -= jp;
 					else
 						x += jp;
-
-					u16 tileid = cw3 & 0x07ff;
-					if (!tileVisible[tileid]) continue;
-					bool hflip = (cw3 & 0x2000) != 0;
-					bool vflip = (cw3 & 0x1000) != 0;
-					short u = (tileid % 32) * 8;
-					short v = (tileid / 32) * 8;
 
 					vcur->x1 = x + 8 * hflip;
 					vcur->y1 = y + 8 * vflip + 256 * eye;
@@ -511,7 +516,7 @@ void video_hard_render() {
 					vcur->y2 = y + 8 * !vflip + 256 * eye;
 					vcur->u = u;
 					vcur->v = v;
-					vcur++->palette = (cw3 >> 14) | 4;
+					vcur++->palette = palette;
 					vcount++;
 				}
 			}
