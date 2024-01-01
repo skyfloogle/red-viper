@@ -181,17 +181,12 @@ void video_hard_render() {
 			uint8_t scx = 1 << scx_pow;
 			uint8_t scy = 1 << scy_pow;
 			bool over = windows[wnd * 16] & 0x80;
-			int16_t base_gx = windows[wnd * 16 + 1] & 0x3ff;
-			if (base_gx & 0x200) base_gx |= 0xfc00;
-			int16_t gp = windows[wnd * 16 + 2] & 0x3ff;
-			if (gp & 0x200) gp |= 0xfc00;
+			int16_t base_gx = (s16)(windows[wnd * 16 + 1] << 6) >> 6;
+			int16_t gp = (s16)(windows[wnd * 16 + 2] << 6) >> 6;
 			int16_t gy = windows[wnd * 16 + 3];
-			int16_t base_mx = windows[wnd * 16 + 4] & 0x1fff;
-			if (base_mx & 0x1000) base_mx |= 0xe000;
-			int16_t mp = windows[wnd * 16 + 5] & 0x7fff;
-			if (mp & 0x4000) mp |= 0x8000;
-			int16_t my = windows[wnd * 16 + 6] & 0x1fff;
-			if (my & 0x800) my |= 0xe000;
+			int16_t base_mx = (s16)(windows[wnd * 16 + 4] << 3) >> 3;
+			int16_t mp = (s16)(windows[wnd * 16 + 5] << 1) >> 3;
+			int16_t my = (s16)(windows[wnd * 16 + 6] << 3) >> 3;
 			int16_t w = windows[wnd * 16 + 7] + 1;
 			int16_t h = windows[wnd * 16 + 8] + 1;
 			int16_t over_tile = windows[wnd * 16 + 10] & 0x7ff;
@@ -416,9 +411,7 @@ void video_hard_render() {
 							base_u += mx;
 							base_v += my;
 							for (int y = 0; y < h; y++) {
-								s16 p = params[y * 2 + eye];
-								if (p & 0x1000)
-									p |= (s16)0xe000;
+								s16 p = (s16)(params[y * 2 + eye] << 3) >> 3;
 								avcur->x1 = gx;
 								avcur->y1 = gy + y + 256 * eye;
 								avcur->x2 = gx + w;
@@ -498,9 +491,7 @@ void video_hard_render() {
 
 				short palette = (cw3 >> 14) | 4;
 
-				s16 jp = cw1 & 0x1ff;
-				if (jp & 0x100)
-					jp |= 0xfe00;
+				s16 jp = (s16)(cw1 << 6) >> 6;
 
 				for (int eye = 0; eye < eye_count; eye++) {
 					if (!(cw1 & (0x8000 >> eye)))
