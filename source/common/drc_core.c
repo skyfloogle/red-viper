@@ -235,14 +235,23 @@ v810_instruction *drc_findInstruction(v810_instruction *left, v810_instruction *
 
 // Finds the target of a branch, or the instruction just after it.
 v810_instruction *drc_findBranchTarget(v810_instruction *inst_cache, int size, int pos) {
+    // attempt to narrow down
     int close = pos + inst_cache[pos].branch_offset / 4;
     int far = pos + inst_cache[pos].branch_offset / 2;
-    if (far < 0) far = 0;
-    if (far >= size) far = size;
-    return drc_findInstruction(
-        &inst_cache[inst_cache[pos].branch_offset > 0 ? close : far],
-        &inst_cache[inst_cache[pos].branch_offset > 0 ? far : close],
-        inst_cache[pos].PC + inst_cache[pos].branch_offset);
+    int left = close < far ? close : far;
+    int right = close < far ? far : close;
+    if (left < 0) left = 0;
+    if (right >= size) right = size - 1;
+    // if it's somehow outside our guessed range, look at the rest of it
+    WORD goal_PC = inst_cache[pos].PC + inst_cache[pos].branch_offset;
+    if (inst_cache[left].PC > goal_PC) {
+        right = left;
+        left = left > pos ? pos : 0;
+    } else if (inst_cache[right].PC < goal_PC) {
+        left = right;
+        right = right < pos ? pos : size - 1;
+    }
+    return drc_findInstruction(&inst_cache[left], &inst_cache[right], goal_PC);
 }
 
 void drc_findWaterworldBusywait(v810_instruction *inst_cache, int size) {
