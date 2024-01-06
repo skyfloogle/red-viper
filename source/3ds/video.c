@@ -62,7 +62,8 @@ void clearCache() {
     tDSPCACHE.ObjCacheInvalid = 1;          // Object Cache Is invalid
     for(i = 0; i < 14; i++)
         tDSPCACHE.BGCacheInvalid[i] = 1;    // Object Cache Is invalid
-    tDSPCACHE.DDSPDataWrite = 1;            // Direct Screen Draw changed
+    for (i = 0; i < 2; i++)
+		tDSPCACHE.DDSPDataState[i] = CPU_CLEAR; // Direct Screen Draw changed
 	tDSPCACHE.CharCacheInvalid = true;
 	for (i = 0; i < 2048; i++)
 		tDSPCACHE.CharacterCache[i] = true;
@@ -213,7 +214,7 @@ void video_render(int alt_buf) {
 	if (tVBOpt.RENDERMODE > 0) {
 		// postproc
 		video_soft_render(alt_buf);
-		C3D_TexBind(0, &screenTexSoft);
+		C3D_TexBind(0, &screenTexSoft[alt_buf]);
 		C3D_FrameDrawOn(screenTarget);
 		C3D_BindProgram(&sFinal);
 

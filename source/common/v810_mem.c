@@ -195,7 +195,7 @@ void mem_wbyte(WORD addr, BYTE data) {
                     tDSPCACHE.CharCacheInvalid=1;
                     tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
-                    //tDSPCACHE.DDSPDataWrite=1;
+                    tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
                 }
             } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
                 tDSPCACHE.ColumnTableInvalid=1;
@@ -272,7 +272,7 @@ void mem_whword(WORD addr, HWORD data) {
                     tDSPCACHE.CharCacheInvalid=1;
                     tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
-                    //tDSPCACHE.DDSPDataWrite=1;
+                    tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
                 }
             } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
                 tDSPCACHE.ColumnTableInvalid=1;
@@ -349,7 +349,7 @@ void mem_wword(WORD addr, WORD data) {
                     tDSPCACHE.CharCacheInvalid=1;
                     tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
-                    //tDSPCACHE.DDSPDataWrite=1;
+                    tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
                 }
             } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
                 tDSPCACHE.ColumnTableInvalid=1;

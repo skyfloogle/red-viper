@@ -112,6 +112,13 @@ typedef struct {
 void getAffine(int y, int pBase,AFFINE_MAP* AFN_MP);
 
 
+typedef enum {
+    CPU_WROTE,
+    GPU_WROTE,
+    CPU_CLEAR,
+    GPU_CLEAR,
+} DDSPSTATE;
+
 // Struct to encapsulate all the Cache Stuff... I know its not necesary
 // But it helps me contain the ever spreading cache
 typedef struct {
@@ -130,7 +137,7 @@ typedef struct {
     BITMAP  *BGCacheBMP[14];        // BGMap Cache Bitmaps
 	bool		CharCacheInvalid;
 	bool	CharacterCache[2048];	//Character chace
-    bool    DDSPDataWrite;          // Direct DisplayDraws True
+    DDSPSTATE DDSPDataState[2];     // Direct DisplayDraws True
     bool    ColumnTableInvalid;     // Column Table is invalid
 } VB_DSPCACHE;
 
@@ -221,7 +228,7 @@ void video_hard_render();
 void update_texture_cache_hard();
 
 // video_soft
-extern C3D_Tex screenTexSoft;
+extern C3D_Tex screenTexSoft[2];
 void video_soft_init();
 void video_soft_render(int alt_buf);
 void update_texture_cache_soft();

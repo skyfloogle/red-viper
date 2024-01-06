@@ -14,7 +14,7 @@ typedef union {
 
 CachedTile tileCache[2048];
 
-C3D_Tex screenTexSoft;
+C3D_Tex screenTexSoft[2];
 
 void video_soft_init() {
 	C3D_TexInitParams params;
@@ -24,7 +24,8 @@ void video_soft_init() {
 	params.type = GPU_TEX_2D;
 	params.onVram = false;
 	params.maxLevel = 0;
-	C3D_TexInitWithParams(&screenTexSoft, NULL, params);
+	for (int i = 0; i < 2; i++)
+        C3D_TexInitWithParams(&screenTexSoft[i], NULL, params);
 }
 
 void update_texture_cache_soft() {
@@ -72,8 +73,18 @@ void update_texture_cache_soft() {
 }
 
 void video_soft_render(int alt_buf) {
+    uint32_t fb_size;
+    uint32_t *out_fb = C3D_Tex2DGetImagePtr(&screenTexSoft[alt_buf], 0, &fb_size);
+    if (tDSPCACHE.DDSPDataState[alt_buf] == CPU_WROTE) {
+        tDSPCACHE.DDSPDataState[alt_buf] = GPU_WROTE;
+    } else {
+        if (tDSPCACHE.DDSPDataState[alt_buf] == CPU_CLEAR) {
+            tDSPCACHE.DDSPDataState[alt_buf] = GPU_CLEAR;
+            memset(out_fb, 0, fb_size);
+        }
+        return;
+    }
     // copy framebuffer
-    uint32_t *out_fb = C3D_Tex2DGetImagePtr(&screenTexSoft, 0, NULL);
     for (int eye = 0; eye < eye_count; eye++) {
         for (int tx = 0; tx < 384 / 8; tx++) {
             for (int ty = 0; ty < 224 / 8; ty++) {
