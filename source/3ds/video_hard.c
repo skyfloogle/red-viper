@@ -99,7 +99,13 @@ void video_hard_init() {
 void setRegularTexEnv() {
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
+	C3D_TexEnvColor(env, 0x808080);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
+
+	env = C3D_GetTexEnv(1);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PRIMARY_COLOR, 0);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
 	C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
 }
@@ -321,6 +327,9 @@ void video_hard_render() {
 						C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
 						C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 
+						env = C3D_GetTexEnv(1);
+						C3D_TexEnvInit(env);
+
 						C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
 						C3D_ImmSendAttrib(1, 1, -1, 1);
 						C3D_ImmSendAttrib(0, 0, 0, 0);
@@ -371,6 +380,9 @@ void video_hard_render() {
 					C3D_TexEnvInit(env);
 					C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
 					C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+
+					env = C3D_GetTexEnv(1);
+					C3D_TexEnvInit(env);
 
 					s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + windows[wnd * 16 + 9] * 2]);
 
@@ -535,7 +547,7 @@ void update_texture_cache_hard() {
 			uint32_t slice1 = tile[i + 1];
 			uint32_t slice2 = tile[i];
 	
-			const static uint16_t colors[4] = {0, 0x88ff, 0x8f8f, 0xf88f};
+			const static uint16_t colors[4] = {0, 0x00ff, 0x0f0f, 0xf00f};
 
 			#define SQUARE(x, i) { \
 				uint32_t left  = x >> (0 + 4*i) & 0x00030003; \

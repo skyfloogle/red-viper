@@ -102,7 +102,7 @@ void video_soft_render(int alt_buf) {
                     slice1 |= (*in_fb_ptr << 16);
                     in_fb_ptr += 256 / 4 / 2;
 	
-                    const static uint16_t colors[4] = {0, 0x88ff, 0x8f8f, 0xf88f};
+                    const static uint16_t colors[4] = {0, 0x00ff, 0x0f0f, 0xf00f};
 
                     #define SQUARE(x, i) { \
                         uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
