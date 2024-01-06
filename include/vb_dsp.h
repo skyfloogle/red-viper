@@ -211,6 +211,8 @@ extern shaderProgram_s sFinal;
 
 extern bool tileVisible[2048];
 
+extern u8 brightness[4];
+
 // video_hard
 extern C3D_Tex screenTexHard;
 extern C3D_RenderTarget *screenTarget;

@@ -92,6 +92,8 @@ shaderProgram_s sFinal;
 DVLB_s *sSoft_dvlb;
 shaderProgram_s sSoft;
 
+u8 brightness[4];
+
 bool tileVisible[2048];
 
 void processColumnTable() {
@@ -169,6 +171,19 @@ void video_init() {
 void video_render(int alt_buf) {
 	C3D_FrameBegin(0);
 
+	#ifdef COLTABLESCALE
+	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
+	#else
+	int col_scale = maxRepeat;
+	#endif
+	brightness[0] = 0;
+	brightness[1] = tVIPREG.BRTA * col_scale;
+	if (brightness[1] > 127) brightness[1] = 127;
+	brightness[2] = tVIPREG.BRTB * col_scale;
+	if (brightness[2] > 127) brightness[2] = 127;
+	brightness[3] = (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale;
+	if (brightness[3] > 127) brightness[3] = 127;
+
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
@@ -202,15 +217,10 @@ void video_render(int alt_buf) {
 		C3D_FrameDrawOn(screenTarget);
 		C3D_BindProgram(&sFinal);
 
-		// It seems very difficult to get the softbuf colours to match
-		// those of the hard render for some reason.
-		// The closest I got was trying to emulate the same dot product.
-		// Note that it's dotted with 0xff8080ff: 0xffffffff was too bright.
 		C3D_TexEnv *env = C3D_GetTexEnv(0);
 		C3D_TexEnvInit(env);
 		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
-		C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, 0, 0);
-		C3D_TexEnvColor(env, 0xff8080ff);
+		C3D_TexEnvColor(env, (brightness[1] << 16) | (brightness[2] << 8) | (brightness[3]) | 0xff808080);
 		C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
 
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);

@@ -117,26 +117,17 @@ void setRegularDrawing() {
 }
 
 void video_hard_render() {
-	#ifdef COLTABLESCALE
-	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
-	#else
-	int col_scale = maxRepeat;
-	#endif
-	float cols[4] = {0,
-		(tVIPREG.BRTA * col_scale + 0x80) / 256.0,
-		(tVIPREG.BRTB * col_scale + 0x80) / 256.0,
-		((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale + 0x80) / 256.0};
-	u32 clearcol = (cols[tVIPREG.BKCOL] - 0.5) * 510;
-	C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, clearcol | (clearcol << 8) | (clearcol << 16) | 0xff000000, 0);
+	u8 clearcol = brightness[tVIPREG.BKCOL];
+	C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, ((clearcol | (clearcol << 8) | (clearcol << 16)) << 2) | 0xff000000, 0);
 	for (int i = 0; i < 4; i++) {
 		HWORD pal = tVIPREG.GPLT[i];
-		palettes[i].x = cols[(pal >> 6) & 3];
-		palettes[i].y = cols[(pal >> 4) & 3];
-		palettes[i].z = cols[(pal >> 2) & 3];
+		palettes[i].x = brightness[(pal >> 6) & 3] / 256.0 + 0.5;
+		palettes[i].y = brightness[(pal >> 4) & 3] / 256.0 + 0.5; 
+		palettes[i].z = brightness[(pal >> 2) & 3] / 256.0 + 0.5;
 		pal = tVIPREG.JPLT[i];
-		palettes[i + 4].x = cols[(pal >> 6) & 3];
-		palettes[i + 4].y = cols[(pal >> 4) & 3];
-		palettes[i + 4].z = cols[(pal >> 2) & 3];
+		palettes[i + 4].x = brightness[(pal >> 6) & 3] / 256.0 + 0.5;
+		palettes[i + 4].y = brightness[(pal >> 4) & 3] / 256.0 + 0.5;
+		palettes[i + 4].z = brightness[(pal >> 2) & 3] / 256.0 + 0.5;
 	}
 
 	vcur = vbuf;

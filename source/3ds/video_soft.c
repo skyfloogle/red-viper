@@ -20,7 +20,7 @@ void video_soft_init() {
 	C3D_TexInitParams params;
 	params.width = 512;
 	params.height = 512;
-	params.format = GPU_L8;
+	params.format = GPU_RGBA4;
 	params.type = GPU_TEX_2D;
 	params.onVram = false;
 	params.maxLevel = 0;
@@ -74,19 +74,10 @@ void update_texture_cache_soft() {
 void video_soft_render(int alt_buf) {
     // copy framebuffer
     uint32_t *out_fb = C3D_Tex2DGetImagePtr(&screenTexSoft, 0, NULL);
-	#ifdef COLTABLESCALE
-	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
-	#else
-	int col_scale = maxRepeat;
-	#endif
-    int16_t colors[4] = {0, tVIPREG.BRTA * col_scale + 0x80, tVIPREG.BRTB * col_scale + 0x80, (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale + 0x80};
-    if (colors[1] > 255) colors[1] = 255;
-    if (colors[2] > 255) colors[2] = 255;
-    if (colors[3] > 255) colors[3] = 255;
     for (int eye = 0; eye < eye_count; eye++) {
         for (int tx = 0; tx < 384 / 8; tx++) {
             for (int ty = 0; ty < 224 / 8; ty++) {
-                uint32_t *out_tile = &out_fb[8 * 8 / 4 * (1 + eye * 256 / 8 + 512 / 8 * (512 / 8 - 1 - tx) + ty)];
+                uint32_t *out_tile = &out_fb[8 * 8 / 4 * 2 * (1 + eye * 256 / 8 + 512 / 8 * (512 / 8 - 1 - tx) + ty)];
                 uint16_t *in_fb_ptr = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * alt_buf + tx * (256 / 4 * 8) + ty * 2);
 
                 for (int i = 0; i <= 2; i += 2) {
@@ -99,14 +90,14 @@ void video_soft_render(int alt_buf) {
                     in_fb_ptr += 256 / 4 / 2;
                     slice1 |= (*in_fb_ptr << 16);
                     in_fb_ptr += 256 / 4 / 2;
+	
+                    const static uint16_t colors[4] = {0, 0x88ff, 0x8f8f, 0xf88f};
 
                     #define SQUARE(x, i) { \
                         uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
                         uint32_t right = x >> (2 + 4*i) & 0x00030003; \
-                        *--out_tile = (colors[left >> 16]) | \
-                                    (colors[right >> 16] << 8) | \
-                                    (colors[(uint16_t)left] << 16) | \
-                                    (colors[(uint16_t)right] << 24); \
+                        *--out_tile = colors[(uint16_t)left] | (colors[(uint16_t)right] << 16); \
+                        *--out_tile = colors[left >> 16] | (colors[right >> 16] << 16); \
                     }
 
                     SQUARE(slice2, 3);
