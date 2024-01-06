@@ -1169,6 +1169,16 @@ int drc_translateBlock(exec_block *block) {
                 LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_WWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
+
+                // if we load the same thing immediately after saving it, skip the loading
+                if (i + 1 < num_v810_inst &&
+                    (inst_cache[i + 1].opcode == V810_OP_LD_W || inst_cache[i + 1].opcode == V810_OP_IN_W) &&
+                    inst_cache[i + 1].imm == inst_cache[i].imm && inst_cache[i + 1].reg1 == inst_cache[i].reg1 &&
+                    inst_cache[i + 1].reg2 == inst_cache[i].reg2
+                ) {
+                    inst_cache[i].branch_offset = 8;
+                    B(ARM_COND_AL, 0);
+                }
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
                 // Stores reg2 in v810_state->S_REG[regID]
