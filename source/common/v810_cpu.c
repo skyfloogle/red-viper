@@ -174,6 +174,12 @@ void v810_reset() {
     v810_state->S_REG[PSW]  =  0x00008000;
     v810_state->S_REG[PIR]  =  0x00005346;
     v810_state->S_REG[TKCW] =  0x000000E0;
+
+    tHReg.SCR = 0;
+    tHReg.TCR = 0;
+    tHReg.WCR = 0;
+    tVIPREG.INTENB = 0;
+    tVIPREG.XPSTTS &= ~2;
 }
 
 int serviceInt(unsigned int cycles, WORD PC) {
