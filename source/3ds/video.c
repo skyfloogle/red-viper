@@ -167,29 +167,32 @@ void video_init() {
 }
 
 void video_render(int alt_buf) {
-	if (tDSPCACHE.CharCacheInvalid) {
-		tDSPCACHE.CharCacheInvalid = false;
-		if (tVBOpt.RENDERMODE < 2)
-			update_texture_cache_hard();
-		else
-			update_texture_cache_soft();
-	}
+	C3D_FrameBegin(0);
+
+	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
+	AttrInfo_Init(attrInfo);
+	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
 
 	eye_count = CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
-
-	C3D_FrameBegin(0);
-	
+		
 	if (tDSPCACHE.ColumnTableInvalid)
 		processColumnTable();
+
+	if (tVIPREG.XPCTRL & 0x0002) {
+		if (tDSPCACHE.CharCacheInvalid) {
+			tDSPCACHE.CharCacheInvalid = false;
+			if (tVBOpt.RENDERMODE < 2)
+				update_texture_cache_hard();
+			else
+				update_texture_cache_soft();
+		}
+	}
 
 	if (tVBOpt.RENDERMODE < 2) {
 		video_hard_render();
 	} else {
 		C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, 0, 0);
-		C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
-		AttrInfo_Init(attrInfo);
-		AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
-		AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
 	}
 
 	if (tVBOpt.RENDERMODE > 0) {
