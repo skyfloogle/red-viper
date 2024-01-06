@@ -76,13 +76,13 @@ void video_hard_init() {
 	params.onVram = true;
 	C3D_TexInitWithParams(&screenTexHard, NULL, params);
 	screenTarget = C3D_RenderTargetCreateFromTex(&screenTexHard, GPU_TEX_2D, 0, GPU_RB_DEPTH16);
+	C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, 0, 0);
 
 	params.width = 512;
 	params.height = 512;
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		C3D_TexInitWithParams(&tileMapCache[i], NULL, params);
 		tileMapCacheTarget[i] = C3D_RenderTargetCreateFromTex(&tileMapCache[i], GPU_TEX_2D, 0, GPU_RB_DEPTH16);
-		C3D_RenderTargetClear(tileMapCacheTarget[i], C3D_CLEAR_ALL, 0, 0);
 	}
 
 	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
