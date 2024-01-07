@@ -283,7 +283,7 @@ void drc_findWaterworldBusywait(v810_instruction *inst_cache, int size) {
 // before a conditional branch.
 // Sets save_flags for all unconditional instructions prior to a branch.
 void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
-    bool save_flags = true, busywait = inst_cache[pos].branch_offset <= 0;
+    bool save_flags = true, busywait = inst_cache[pos].branch_offset <= 0 && inst_cache[pos].opcode != V810_OP_SETF;
     int i;
     for (i = pos - 1; i >= 0; i--) {
         switch (inst_cache[i].opcode) {
@@ -409,6 +409,10 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                     reg_usage[inst_cache[i].reg2]++;
 
                     inst_cache[i].reg1 = 0xFF;
+
+                    if (inst_cache[i].opcode == V810_OP_SETF) {
+                        drc_findLastConditionalInst(inst_cache, i);
+                    }
                     break;
                 case AM_III: // Branch instructions
                     inst_cache[i].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
