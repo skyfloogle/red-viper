@@ -55,24 +55,334 @@ void set_bitstr(WORD *str, WORD dst, WORD dstoff, WORD len) {
 }
 
 //Bitstring SubOpcodes
-void ins_sch0bsu (WORD src, WORD dst, WORD len, WORD offs) {
-    WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+bool ins_sch0bsu (WORD src, WORD skipped, WORD len, WORD offs) {
+    #define FLIP(x) ~(x)
+    bool searching = true;
+    if (offs != 0 && len > 32 - offs) {
+        WORD data = mem_rword(src) & ~((1 << offs) - 1);
+        data = FLIP(data) & ~((1 << offs) - 1);
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_ctz(data);
+            len -= trailing - offs;
+            skipped += trailing - offs;
+            offs = trailing - 1;
+            searching = false;
+        } else {
+            // not found, continue
+            src += 4;
+            skipped += 32 - offs;
+            len -= 32 - offs;
+            offs = 0;
+        }
+    }
+    if (searching) while (len >= 32) {
+        WORD data = FLIP(mem_rword(src));
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_ctz(data);
+            len -= trailing;
+            skipped += trailing;
+            if (trailing == 0) {
+                offs = 31;
+                src -= 4;
+            } else {
+                offs = trailing - 1;
+            }
+            searching = false;
+            break;
+        } else {
+            // not found, continue
+            src += 4;
+            skipped += 32;
+            len -= 32;
+        }
+    }
+    if (searching && len > 0) {
+        WORD data = mem_rword(src) & (((1 << len) - 1) << offs);
+        data = FLIP(data) & (((1 << len) - 1) << offs);
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_ctz(data);
+            len -= trailing;
+            skipped += trailing;
+            if (trailing == 0) {
+                offs = 31;
+            } else {
+                offs = trailing - 1;
+            }
+            searching = false;
+        } else {
+            // not found
+            skipped += len;
+            offs += len;
+            if (offs == 32) {
+                offs = 0;
+                src += 4;
+            }
+            len = 0;
+        }
+    }
+    #undef FLIP
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = skipped;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = offs;
+    return !searching;
 }
 
-void ins_sch0bsd (WORD src, WORD dst, WORD len, WORD offs) {
-    WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+bool ins_sch0bsd (WORD src, WORD skipped, WORD len, WORD offs) {
+    #define FLIP(x) ~(x)
+    bool searching = true;
+    if (offs != 31 && len > offs) {
+        WORD data = mem_rword(src) & ((1 << (offs + 1)) - 1);
+        data = FLIP(data) & ((1 << (offs + 1)) - 1);
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_clz(data) + 1;
+            len -= trailing - (33 - (offs + 1));
+            skipped += trailing - (33 - (offs + 1));
+            if (trailing == 0) {
+                offs = 31;
+            } else {
+                offs = 33 - trailing;
+            }
+            searching = false;
+        } else {
+            // not found, continue
+            src += -4;
+            skipped += offs;
+            len -= offs;
+            offs = 31;
+        }
+    }
+    if (searching) while (len >= 32) {
+        WORD data = FLIP(mem_rword(src));
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_clz(data) + 1;
+            len -= trailing;
+            skipped += trailing;
+            if (trailing == 1) {
+                offs = 0;
+                src -= -4;
+            } else {
+                if (trailing == 32) {
+                    len += 32;
+                    skipped -= 32;
+                }
+                offs = 33 - trailing;
+            }
+            searching = false;
+            break;
+        } else {
+            // not found, continue
+            src += -4;
+            skipped += 32;
+            len -= 32;
+        }
+    }
+    if (searching && len > 0) {
+        WORD data = mem_rword(src) & (((1 << len) - 1) << (32 - offs));
+        data = FLIP(data) & (((1 << len) - 1) << (32 - offs));
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_clz(data) + 1;
+            len -= trailing;
+            skipped += trailing;
+            if (trailing == 1) {
+                offs = 0;
+                src -= -4;
+            } else {
+                if (trailing == 32) {
+                    len += 32;
+                    skipped -= 32;
+                }
+                offs = 33 - trailing;
+            }
+            searching = false;
+        } else {
+            // not found
+            skipped += len;
+            offs -= len - 1;
+            if (offs == 0) {
+                offs = 31;
+                src += -4;
+            }
+            len = 0;
+        }
+    }
+    #undef FLIP
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = skipped;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = offs;
+    return !searching;
 }
 
-void ins_sch1bsu (WORD src, WORD dst, WORD len, WORD offs) {
-    WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+bool ins_sch1bsu (WORD src, WORD skipped, WORD len, WORD offs) {
+    #define FLIP(x) (x)
+    bool searching = true;
+    if (offs != 0 && len > 32 - offs) {
+        WORD data = mem_rword(src) & ~((1 << offs) - 1);
+        data = FLIP(data) & ~((1 << offs) - 1);
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_ctz(data);
+            len -= trailing - offs;
+            skipped += trailing - offs;
+            offs = trailing - 1;
+            searching = false;
+        } else {
+            // not found, continue
+            src += 4;
+            skipped += 32 - offs;
+            len -= 32 - offs;
+            offs = 0;
+        }
+    }
+    if (searching) while (len >= 32) {
+        WORD data = FLIP(mem_rword(src));
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_ctz(data);
+            len -= trailing;
+            skipped += trailing;
+            if (trailing == 0) {
+                offs = 31;
+                src -= 4;
+            } else {
+                offs = trailing - 1;
+            }
+            searching = false;
+            break;
+        } else {
+            // not found, continue
+            src += 4;
+            skipped += 32;
+            len -= 32;
+        }
+    }
+    if (searching && len > 0) {
+        WORD data = mem_rword(src) & (((1 << len) - 1) << offs);
+        data = FLIP(data) & (((1 << len) - 1) << offs);
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_ctz(data);
+            len -= trailing;
+            skipped += trailing;
+            if (trailing == 0) {
+                offs = 31;
+            } else {
+                offs = trailing - 1;
+            }
+            searching = false;
+        } else {
+            // not found
+            skipped += len;
+            offs += len;
+            if (offs == 32) {
+                offs = 0;
+                src += 4;
+            }
+            len = 0;
+        }
+    }
+    #undef FLIP
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = skipped;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = offs;
+    return !searching;
 }
 
-void ins_sch1bsd (WORD src, WORD dst, WORD len, WORD offs) {
-    WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+bool ins_sch1bsd (WORD src, WORD skipped, WORD len, WORD offs) {
+    #define FLIP(x) (x)
+    bool searching = true;
+    if (offs != 31 && len > offs) {
+        WORD data = mem_rword(src) & ((1 << (offs + 1)) - 1);
+        data = FLIP(data) & ((1 << (offs + 1)) - 1);
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_clz(data) + 1;
+            len -= trailing - (33 - (offs + 1));
+            skipped += trailing - (33 - (offs + 1));
+            if (trailing == 0) {
+                offs = 31;
+            } else {
+                offs = 33 - trailing;
+            }
+            searching = false;
+        } else {
+            // not found, continue
+            src += -4;
+            skipped += offs;
+            len -= offs;
+            offs = 31;
+        }
+    }
+    if (searching) while (len >= 32) {
+        WORD data = FLIP(mem_rword(src));
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_clz(data) + 1;
+            len -= trailing;
+            skipped += trailing;
+            if (trailing == 1) {
+                offs = 0;
+                src -= -4;
+            } else {
+                if (trailing == 32) {
+                    len += 32;
+                    skipped -= 32;
+                }
+                offs = 33 - trailing;
+            }
+            searching = false;
+            break;
+        } else {
+            // not found, continue
+            src += -4;
+            skipped += 32;
+            len -= 32;
+        }
+    }
+    if (searching && len > 0) {
+        WORD data = mem_rword(src) & (((1 << len) - 1) << (32 - offs));
+        data = FLIP(data) & (((1 << len) - 1) << (32 - offs));
+        if (data) {
+            // we found a zero bit
+            int trailing = __builtin_clz(data) + 1;
+            len -= trailing;
+            skipped += trailing;
+            if (trailing == 1) {
+                offs = 0;
+                src -= -4;
+            } else {
+                if (trailing == 32) {
+                    len += 32;
+                    skipped -= 32;
+                }
+                offs = 33 - trailing;
+            }
+            searching = false;
+        } else {
+            // not found
+            skipped += len;
+            offs -= len - 1;
+            if (offs == 0) {
+                offs = 31;
+                src += -4;
+            }
+            len = 0;
+        }
+    }
+    #undef FLIP
+    v810_state->P_REG[30] = src;
+    v810_state->P_REG[29] = skipped;
+    v810_state->P_REG[28] = len;
+    v810_state->P_REG[27] = offs;
+    return !searching;
 }
 
 #define OPT_XORBSU { \

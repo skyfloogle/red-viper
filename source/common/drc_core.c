@@ -1217,25 +1217,36 @@ int drc_translateBlock(exec_block *block) {
                 HALT(inst_cache[i].PC + 2);
                 break;
             case V810_OP_BSTR:
-                if (inst_cache[i].imm < 4) {
-                    dprintf(0, "[DRC]: %s (0x%lx) not implemented\n", bssuboptable[inst_cache[i].imm].opname, inst_cache[i].imm);
-                    break;
-                }
                 MOV_I(2, 31, 0);
-                // v810 r26 -> arm r3 hi
-                if (!phys_regs[26]) LDR_IO(0, 11, 26 * 4);
-                AND(3, phys_regs[26], 2);
-                MOV_IS(3, 3, ARM_SHIFT_LSL, 16);
-                // v810 r27 -> arm r3 lo
-                if (!phys_regs[27]) LDR_IO(0, 11, 27 * 4);
-                AND(0, phys_regs[27], 2);
-                ORR(3, 0, 3);
+                if (inst_cache[i].imm >= 4) {
+                    // non-search, we have a destination
+                    // v810 r26 -> arm r3 hi
+                    if (!phys_regs[26]) LDR_IO(0, 11, 26 * 4);
+                    AND(3, phys_regs[26], 2);
+                    // v810 r27 -> arm r3 lo
+                    if (!phys_regs[27]) LDR_IO(0, 11, 27 * 4);
+                    AND(0, phys_regs[27], 2);
+                    ORR_IS(3, 0, 3, ARM_SHIFT_LSL, 16);
+                } else {
+                    // search, we only have a source
+                    // v810 r27 -> arm r3 lo
+                    if (!phys_regs[27]) LDR_IO(0, 11, 27 * 4);
+                    AND(3, phys_regs[27], 2);
+                }
 
                 // mov r2, ~3
                 new_data_proc_imm(ARM_COND_AL, ARM_OP_MVN, 0, 0, 2, 0, 3);
-                // v810 r29 & (~3) -> arm r1
-                if (!phys_regs[29]) LDR_IO(0, 11, 29 * 4);
-                AND(1, phys_regs[29], 2);
+                if (inst_cache[i].imm >= 4) {
+                    // non-search, clear the bottom two bits
+                    // v810 r29 & (~3) -> arm r1
+                    if (!phys_regs[29]) LDR_IO(0, 11, 29 * 4);
+                    AND(1, phys_regs[29], 2);
+                } else {
+                    // search, leave as-is
+                    // v810 r29 -> arm r1
+                    if (!phys_regs[29]) LDR_IO(1, 11, 29 * 4);
+                    else MOV(1, phys_regs[29]);
+                }
 
                 // v810 r30 & (~3) -> arm r0
                 if (!phys_regs[30]) LDR_IO(0, 11, 30 * 4);
@@ -1252,9 +1263,13 @@ int drc_translateBlock(exec_block *block) {
                 BLX(ARM_COND_AL, 5);
                 POP(1<<5);
                 // reload registers
-                for (int i = 26; i <= 30; i++)
-                    if (phys_regs[i])
-                        LDR_IO(phys_regs[i], 11, i * 4);
+                for (int j = inst_cache[i].imm >= 4 ? 26 : 27; j <= 30; j++)
+                    if (phys_regs[j])
+                        LDR_IO(phys_regs[j], 11, j * 4);
+                // zero flag
+                if (inst_cache[i].imm < 4) {
+                    ORRS(0, 0, 0);
+                }
                 break;
             case V810_OP_FPP:
                 switch (inst_cache[i].imm) {

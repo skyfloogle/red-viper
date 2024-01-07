@@ -19,10 +19,10 @@
 extern void ins_err   (int arg1, int arg2); //Special handler?
 
 //Bitstring SubOpcodes
-extern void ins_sch0bsu (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_sch0bsd (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_sch1bsu (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_sch1bsd (WORD src, WORD dst, WORD len, WORD offs);
+extern bool ins_sch0bsu (WORD src, WORD dst, WORD len, WORD offs);
+extern bool ins_sch0bsd (WORD src, WORD dst, WORD len, WORD offs);
+extern bool ins_sch1bsu (WORD src, WORD dst, WORD len, WORD offs);
+extern bool ins_sch1bsd (WORD src, WORD dst, WORD len, WORD offs);
 extern void ins_orbsu   (WORD src, WORD dst, WORD len, WORD offs);
 extern void ins_andbsu  (WORD src, WORD dst, WORD len, WORD offs);
 extern void ins_xorbsu  (WORD src, WORD dst, WORD len, WORD offs);
