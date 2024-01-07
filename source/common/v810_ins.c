@@ -130,7 +130,7 @@ void ins_orbsu   (WORD src, WORD dst, WORD len, WORD offs) {
                     #ifndef CLEARDST
                     dstbuf = mem_rword(dst);
                     #endif
-                    mem_wword(dst, ADD(mem_rword(src)));
+                    mem_wword(dst, ADD(FILTER(mem_rword(src), -1)));
                     src += 4;
                     dst += 4;
                     len -= 32;
@@ -257,7 +257,7 @@ void ins_andbsu  (WORD src, WORD dst, WORD len, WORD offs) {
                     #ifndef CLEARDST
                     dstbuf = mem_rword(dst);
                     #endif
-                    mem_wword(dst, ADD(mem_rword(src)));
+                    mem_wword(dst, ADD(FILTER(mem_rword(src), -1)));
                     src += 4;
                     dst += 4;
                     len -= 32;
@@ -384,7 +384,7 @@ void ins_xorbsu  (WORD src, WORD dst, WORD len, WORD offs) {
                     #ifndef CLEARDST
                     dstbuf = mem_rword(dst);
                     #endif
-                    mem_wword(dst, ADD(mem_rword(src)));
+                    mem_wword(dst, ADD(FILTER(mem_rword(src), -1)));
                     src += 4;
                     dst += 4;
                     len -= 32;
@@ -512,7 +512,7 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
                     #ifndef CLEARDST
                     dstbuf = mem_rword(dst);
                     #endif
-                    mem_wword(dst, ADD(mem_rword(src)));
+                    mem_wword(dst, ADD(FILTER(mem_rword(src), -1)));
                     src += 4;
                     dst += 4;
                     len -= 32;
@@ -608,8 +608,8 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
 }
 
 void ins_ornbsu  (WORD src, WORD dst, WORD len, WORD offs) {
-    #define ADD(s) dstbuf | ~(s)
-    #define FILTER(s,f) s & f
+    #define ADD(s) dstbuf | (s)
+    #define FILTER(s,f) ~(s) & f
     #define OPTIMIZE
     if (len == 0) return;
     WORD srcoff = offs & 31;
@@ -639,7 +639,7 @@ void ins_ornbsu  (WORD src, WORD dst, WORD len, WORD offs) {
                     #ifndef CLEARDST
                     dstbuf = mem_rword(dst);
                     #endif
-                    mem_wword(dst, ADD(mem_rword(src)));
+                    mem_wword(dst, ADD(FILTER(mem_rword(src), -1)));
                     src += 4;
                     dst += 4;
                     len -= 32;
@@ -735,8 +735,8 @@ void ins_ornbsu  (WORD src, WORD dst, WORD len, WORD offs) {
 }
 
 void ins_andnbsu (WORD src, WORD dst, WORD len, WORD offs) {
-    #define ADD(s) dstbuf & ~(s)
-    #define FILTER(s,f) s | ~(f)
+    #define ADD(s) dstbuf & (s)
+    #define FILTER(s,f) ~(s) | ~(f)
     #define OPTIMIZE
     if (len == 0) return;
     WORD srcoff = offs & 31;
@@ -766,7 +766,7 @@ void ins_andnbsu (WORD src, WORD dst, WORD len, WORD offs) {
                     #ifndef CLEARDST
                     dstbuf = mem_rword(dst);
                     #endif
-                    mem_wword(dst, ADD(mem_rword(src)));
+                    mem_wword(dst, ADD(FILTER(mem_rword(src), -1)));
                     src += 4;
                     dst += 4;
                     len -= 32;
@@ -862,8 +862,8 @@ void ins_andnbsu (WORD src, WORD dst, WORD len, WORD offs) {
 }
 
 void ins_xornbsu (WORD src, WORD dst, WORD len, WORD offs) {
-    #define ADD(s) dstbuf ^ ~(s)
-    #define FILTER(s,f) s & f
+    #define ADD(s) dstbuf ^ (s)
+    #define FILTER(s,f) ~(s) & f
     #define OPTIMIZE
     if (len == 0) return;
     WORD srcoff = offs & 31;
@@ -893,7 +893,7 @@ void ins_xornbsu (WORD src, WORD dst, WORD len, WORD offs) {
                     #ifndef CLEARDST
                     dstbuf = mem_rword(dst);
                     #endif
-                    mem_wword(dst, ADD(mem_rword(src)));
+                    mem_wword(dst, ADD(FILTER(mem_rword(src), -1)));
                     src += 4;
                     dst += 4;
                     len -= 32;
@@ -989,8 +989,8 @@ void ins_xornbsu (WORD src, WORD dst, WORD len, WORD offs) {
 }
 
 void ins_notbsu  (WORD src, WORD dst, WORD len, WORD offs) {
-    #define ADD(s) dstbuf | ~(s)
-    #define FILTER(s,f) s & f
+    #define ADD(s) dstbuf | (s)
+    #define FILTER(s,f) ~(s) & f
     #define OPTIMIZE
     #define CLEARDST
     if (len == 0) return;
@@ -1021,7 +1021,7 @@ void ins_notbsu  (WORD src, WORD dst, WORD len, WORD offs) {
                     #ifndef CLEARDST
                     dstbuf = mem_rword(dst);
                     #endif
-                    mem_wword(dst, ADD(mem_rword(src)));
+                    mem_wword(dst, ADD(FILTER(mem_rword(src), -1)));
                     src += 4;
                     dst += 4;
                     len -= 32;
