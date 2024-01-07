@@ -510,8 +510,10 @@ void sound_update(int reg) {
 
         // Stop all sound output
         case SSTOP:
-            for (i = 0; i < CH_TOTAL; ++i) {
-                voice_stop(voice[i]);
+            if (RBYTE(SSTOP) & 1) {
+                for (i = 0; i < CH_TOTAL; ++i) {
+                    voice_stop(voice[i]);
+                }
             }
             break;
 
