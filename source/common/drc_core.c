@@ -113,8 +113,27 @@ bool is_hword_getter(WORD start_PC) {
         || !memcmp(dest, hword_getter_jr_func, sizeof(hword_getter_jr_func));
 }
 
+static void drc_markCode(WORD PC) {
+    if ((PC >> 24) == 7) {
+        rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> 1] = true;
+    } else if ((PC >> 24) == 5) {
+        ram_data_code_map[((PC - V810_VB_RAM.lowaddr) & V810_VB_RAM.highaddr) >> 1] = true;
+    }
+}
+
+static bool drc_isCode(WORD PC) {
+    if ((PC >> 24) == 7) {
+        return rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> 1];
+    } else if ((PC >> 24) == 5) {
+        return ram_data_code_map[((PC - V810_VB_RAM.lowaddr) & V810_VB_RAM.highaddr) >> 1];
+    } else {
+        return false;
+    }
+}
+
 // Finds the starting and ending address of a V810 code block. It stops after a
 // jmp, jal, reti or a long jr unless it branches further.
+// All code accessible from the entry point is accounted for.
 void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     WORD start_PC = *p_start_PC & V810_ROM1.highaddr;
     WORD end_PC = start_PC;
@@ -125,97 +144,129 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     bool finished;
     BYTE lowB, highB, lowB2, highB2;
 
-    WORD last_start_PC;
-    do {
-        last_start_PC = start_PC;
-        cur_PC = start_PC;
-        finished = false;
-        while(!finished) {
-            // TODO: implement reading from RAM
-            if ((cur_PC >>24) == 0x05) { // RAM
-                cur_PC = (cur_PC & V810_VB_RAM.highaddr);
-                lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
-                highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
-                lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
-                highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
-            } else if ((cur_PC >>24) >= 0x07) { // ROM
-                cur_PC = (cur_PC & V810_ROM1.highaddr);
-                lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
-                highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
-                lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
-                highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
-            } else {
-                return;
-            }
-            if ((highB & 0xE0) == 0x80)
-                opcode = highB>>1;
-            else
-                opcode = highB>>2;
+    cur_PC = start_PC;
+    finished = false;
+    while(!finished) {
+        bool potentiallyDone = false;
 
-            switch (opcode) {
-                case V810_OP_JR:
-                    branch_offset = (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                    if (abs(branch_offset) < 1024) {
-                        branch_addr = cur_PC + branch_offset;
-                        if (branch_addr < start_PC)
-                            start_PC = branch_addr;
-                        else if (branch_addr > end_PC)
-                            end_PC = branch_addr;
-                        break;
-                    }
-                case V810_OP_JAL:
-                    branch_addr = cur_PC + (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                    if (is_byte_getter(branch_addr) || is_hword_getter(branch_addr)) break;
-                case V810_OP_JMP:
-                case V810_OP_RETI:
-                    if (cur_PC >= end_PC) {
-                        end_PC = cur_PC;
-                        finished = true;
-                    }
-                    break;
-                case V810_OP_BV:
-                case V810_OP_BL:
-                case V810_OP_BE:
-                case V810_OP_BNH:
-                case V810_OP_BN:
-                case V810_OP_BR:
-                case V810_OP_BLT:
-                case V810_OP_BLE:
-                case V810_OP_BNV:
-                case V810_OP_BNL:
-                case V810_OP_BNE:
-                case V810_OP_BH:
-                case V810_OP_BP:
-                case V810_OP_BGE:
-                case V810_OP_BGT:
-                    branch_addr = cur_PC + sign_9(((highB & 0x1) << 8) + (lowB & 0xFE));
+        drc_markCode(cur_PC);
+        if (cur_PC > end_PC)
+            end_PC = cur_PC;
 
+        // TODO: implement reading from RAM
+        if ((cur_PC >>24) == 0x05) { // RAM
+            cur_PC = (cur_PC & V810_VB_RAM.highaddr);
+            lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
+            highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
+            lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
+            highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
+        } else if ((cur_PC >>24) >= 0x07) { // ROM
+            cur_PC = (cur_PC & V810_ROM1.highaddr);
+            lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
+            highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
+            lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
+            highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
+        } else {
+            return;
+        }
+        if ((highB & 0xE0) == 0x80)
+            opcode = highB>>1;
+        else
+            opcode = highB>>2;
+
+        switch (opcode) {
+            case V810_OP_JR:
+                branch_offset = (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
+                if (abs(branch_offset) < 1024) {
+                    branch_addr = cur_PC + branch_offset;
                     if (branch_addr < start_PC)
                         start_PC = branch_addr;
                     else if (branch_addr > end_PC)
                         end_PC = branch_addr;
+
+                    bool was_code = drc_isCode(branch_addr);
+                    drc_markCode(branch_addr);
+                    if (branch_offset < 0) {
+                        if (!was_code) {
+                            cur_PC = branch_addr;
+                            continue;
+                        } else if (drc_getEntry(branch_addr, NULL) != cache_start) {
+                            // Jumping backwards into code that was already decoded.
+                            // The existing code block is fine, but we should overwrite the
+                            // entrypoint so that we only do this once.
+                            drc_setEntry(branch_addr, cache_start, block_ptr_start);
+                            cur_PC = branch_addr;
+                            continue;
+                        }
+                    }
+                    
+                    potentiallyDone = true;
                     break;
-            }
+                }
+            case V810_OP_JAL:
+                branch_addr = cur_PC + (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
+                if (is_byte_getter(branch_addr) || is_hword_getter(branch_addr)) break;
+            case V810_OP_JMP:
+            case V810_OP_RETI:
+                potentiallyDone = true;
+                break;
+            case V810_OP_BV:
+            case V810_OP_BL:
+            case V810_OP_BE:
+            case V810_OP_BNH:
+            case V810_OP_BN:
+            case V810_OP_BR:
+            case V810_OP_BLT:
+            case V810_OP_BLE:
+            case V810_OP_BNV:
+            case V810_OP_BNL:
+            case V810_OP_BNE:
+            case V810_OP_BH:
+            case V810_OP_BP:
+            case V810_OP_BGE:
+            case V810_OP_BGT:
+                branch_offset = (signed)sign_9(((highB & 0x1) << 8) + (lowB & 0xFE));
+                branch_addr = cur_PC + branch_offset;
+                if (branch_addr < start_PC)
+                    start_PC = branch_addr;
+                else if (branch_addr > end_PC)
+                    end_PC = branch_addr;
+                
+                if (opcode == V810_OP_BR) {
+                    potentiallyDone = true;
+                }
 
-            if (cur_PC > end_PC)
+                bool was_code = drc_isCode(branch_addr);
+                drc_markCode(branch_addr);
+                if (branch_offset < 0) {
+                    if (!was_code) {
+                        cur_PC = branch_addr;
+                        continue;
+                    } else if (drc_getEntry(branch_addr, NULL) != cache_start) {
+                        // Jumping backwards into code that was already decoded.
+                        // The existing code block is fine, but we should overwrite the
+                        // entrypoint so that we only do this once.
+                        drc_setEntry(branch_addr, cache_start, block_ptr_start);
+                        cur_PC = branch_addr;
+                        continue;
+                    }
+                }
+                break;
+        }
+
+        if (potentiallyDone) {
+            if (cur_PC >= end_PC) {
                 end_PC = cur_PC;
-
+                finished = true;
+            } else {
+                // end_PC should always be marked as code, so we don't need to bounds check
+                do {
+                    cur_PC += 2;
+                } while (!drc_isCode(cur_PC));
+            }
+        } else {
             cur_PC += am_size_table[optable[opcode].addr_mode];
         }
-    } while (start_PC < last_start_PC);
-
-    exec_block *otherBlock;
-    if (drc_getEntry(start_PC, &otherBlock) != cache_start) {
-        if (otherBlock->start_pc < start_PC)
-            start_PC = otherBlock->start_pc;
-        if (otherBlock->end_pc > end_PC)
-            end_PC = otherBlock->end_pc;
-    }
-    if (drc_getEntry(end_PC, &otherBlock) != cache_start) {
-        if (otherBlock->start_pc < start_PC)
-            start_PC = otherBlock->start_pc;
-        if (otherBlock->end_pc > end_PC)
-            end_PC = otherBlock->end_pc;
     }
 
     *p_start_PC = start_PC;
@@ -236,7 +287,7 @@ v810_instruction *drc_findInstruction(v810_instruction *left, v810_instruction *
 // Finds the target of a branch, or the instruction just after it.
 v810_instruction *drc_findBranchTarget(v810_instruction *inst_cache, int size, int pos) {
     // attempt to narrow down
-    int close = pos + inst_cache[pos].branch_offset / 4;
+    int close = pos;
     int far = pos + inst_cache[pos].branch_offset / 2;
     int left = close < far ? close : far;
     int right = close < far ? far : close;
@@ -354,201 +405,196 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
 
     WORD entry_PC = v810_state->PC;
 
-    do {
-        for (; (i < MAX_INST) && (cur_PC <= end_PC); i++) {
-            cur_PC = (cur_PC &0x07FFFFFE);
+    for (; (i < MAX_INST) && (cur_PC <= end_PC); i++) {
+        cur_PC = (cur_PC &0x07FFFFFE);
 
-            if (i > 0 && cur_PC == entry_PC + 2 && inst_cache[i - 1].PC == entry_PC - 2) {
-                cur_PC = entry_PC;
-            }
+        if ((cur_PC >>24) == 0x05) { // RAM
+            cur_PC = (cur_PC & V810_VB_RAM.highaddr);
+            lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
+            highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
+            lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
+            highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
+        } else if ((cur_PC >>24) >= 0x07) { // ROM
+            cur_PC = (cur_PC & V810_ROM1.highaddr);
+            lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
+            highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
+            lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
+            highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
+        } else {
+            return 0;
+        }
 
-            if ((cur_PC >>24) == 0x05) { // RAM
-                cur_PC = (cur_PC & V810_VB_RAM.highaddr);
-                lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
-                highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
-                lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
-                highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
-            } else if ((cur_PC >>24) >= 0x07) { // ROM
-                cur_PC = (cur_PC & V810_ROM1.highaddr);
-                lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
-                highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
-                lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
-                highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
-            } else {
-                return 0;
-            }
+        inst_cache[i].PC = cur_PC;
+        inst_cache[i].save_flags = false;
+        inst_cache[i].busywait = false;
+        inst_cache[i].is_branch_target = false;
 
-            inst_cache[i].PC = cur_PC;
-            inst_cache[i].save_flags = false;
-            inst_cache[i].busywait = false;
-            inst_cache[i].is_branch_target = false;
+        inst_cache[i].opcode = highB >> 2;
+        if ((highB & 0xE0) == 0x80)              // Special opcode format for
+            inst_cache[i].opcode = (highB >> 1); // type III instructions.
 
-            inst_cache[i].opcode = highB >> 2;
-            if ((highB & 0xE0) == 0x80)              // Special opcode format for
-                inst_cache[i].opcode = (highB >> 1); // type III instructions.
+        if ((inst_cache[i].opcode > 0x4F) || (inst_cache[i].opcode < 0))
+            return 0;
 
-            if ((inst_cache[i].opcode > 0x4F) || (inst_cache[i].opcode < 0))
-                return 0;
+        switch (optable[inst_cache[i].opcode].addr_mode) {
+            case AM_I:
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                reg_usage[inst_cache[i].reg1]++;
 
-            switch (optable[inst_cache[i].opcode].addr_mode) {
-                case AM_I:
-                    inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
-                    reg_usage[inst_cache[i].reg1]++;
+                // jmp [reg1] doesn't use the second register
+                if (inst_cache[i].opcode != V810_OP_JMP) {
+                    inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                    reg_usage[inst_cache[i].reg2]++;
+                } else {
+                    inst_cache[i].reg2 = 0xFF;
+                }
+                break;
+            case AM_II:
+                inst_cache[i].imm = (unsigned)((lowB & 0x1F));
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                reg_usage[inst_cache[i].reg2]++;
 
-                    // jmp [reg1] doesn't use the second register
-                    if (inst_cache[i].opcode != V810_OP_JMP) {
-                        inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                        reg_usage[inst_cache[i].reg2]++;
-                    } else {
-                        inst_cache[i].reg2 = 0xFF;
+                inst_cache[i].reg1 = 0xFF;
+
+                if (inst_cache[i].opcode == V810_OP_SETF) {
+                    drc_findLastConditionalInst(inst_cache, i);
+                }
+                break;
+            case AM_III: // Branch instructions
+                inst_cache[i].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
+                inst_cache[i].branch_offset = sign_9(inst_cache[i].imm);
+
+                // innsmouth no yakata speedhack
+                if (tVBOpt.CRC32 == 0x83cb6a00 && cur_PC == 0x7019040) {
+                    inst_cache[i].branch_offset = -0x10;
+                }
+
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
+
+                if (inst_cache[i].opcode != V810_OP_BR &&
+                    inst_cache[i].opcode != V810_OP_NOP)
+                    drc_findLastConditionalInst(inst_cache, i);
+                break;
+            case AM_IV: // Middle distance jump
+                inst_cache[i].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
+                inst_cache[i].branch_offset = (signed)sign_26(inst_cache[i].imm);
+
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
+
+                // inlining
+                static BYTE hword_getter_func[] = {
+                    0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
+                    0x1f, 0x18,             // jmp  [lp] 
+                };
+                static BYTE hword_getter_jr_func[] = {
+                    0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
+                    0x00, 0xa8, 0x04, 0x00, // jr   +4
+                    0x1f, 0x18,             // jmp  [lp]
+                };
+                if (inst_cache[i].opcode == V810_OP_JAL) {
+                    if (is_hword_getter(inst_cache[i].PC + inst_cache[i].branch_offset)) {
+                        inst_cache[i].opcode = V810_OP_LD_H;
+                        inst_cache[i].imm = 0;
+                        inst_cache[i].reg1 = 6;
+                        inst_cache[i].reg2 = 10;
+                    } else if (is_byte_getter(inst_cache[i].PC + inst_cache[i].branch_offset)) {
+                        inst_cache[i].opcode = V810_OP_LD_B;
+                        inst_cache[i].imm = 0;
+                        inst_cache[i].reg1 = 6;
+                        inst_cache[i].reg2 = 10;
                     }
-                    break;
-                case AM_II:
-                    inst_cache[i].imm = (unsigned)((lowB & 0x1F));
-                    inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                    reg_usage[inst_cache[i].reg2]++;
+                }
+                break;
+            case AM_V:
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                inst_cache[i].imm = (highB2 << 8) + lowB2;
+                reg_usage[inst_cache[i].reg1]++;
+                reg_usage[inst_cache[i].reg2]++;
+                break;
+            case AM_VIa: // Mode6 form1
+                inst_cache[i].imm = (highB2 << 8) + lowB2;
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                reg_usage[inst_cache[i].reg1]++;
+                reg_usage[inst_cache[i].reg2]++;
+                break;
+            case AM_VIb: // Mode6 form2
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                inst_cache[i].imm = (highB2 << 8) + lowB2; // Whats the order??? 2,3,1 or 1,3,2
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                reg_usage[inst_cache[i].reg1]++;
+                reg_usage[inst_cache[i].reg2]++;
+                break;
+            case AM_VII: // Unhandled
+                break;
+            case AM_VIII: // Unhandled
+                break;
+            case AM_IX:
+                inst_cache[i].imm = (unsigned)((lowB & 0x1)); // Mode ID, Ignore for now
 
-                    inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
+                break;
+            case AM_BSTR: // Bit String Subopcodes
+                inst_cache[i].imm = (unsigned)((lowB & 0x1F));
+                reg_usage[26]++;
+                reg_usage[27]++;
+                reg_usage[28]++;
+                reg_usage[29]++;
+                reg_usage[30]++;
 
-                    if (inst_cache[i].opcode == V810_OP_SETF) {
-                        drc_findLastConditionalInst(inst_cache, i);
-                    }
-                    break;
-                case AM_III: // Branch instructions
-                    inst_cache[i].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
-                    inst_cache[i].branch_offset = sign_9(inst_cache[i].imm);
-
-                    // innsmouth no yakata speedhack
-                    if (tVBOpt.CRC32 == 0x83cb6a00 && cur_PC == 0x7019040) {
-                        inst_cache[i].branch_offset = -0x10;
-                    }
-
-                    inst_cache[i].reg1 = 0xFF;
-                    inst_cache[i].reg2 = 0xFF;
-
-                    if (inst_cache[i].opcode != V810_OP_BR &&
-                        inst_cache[i].opcode != V810_OP_NOP)
-                        drc_findLastConditionalInst(inst_cache, i);
-                    break;
-                case AM_IV: // Middle distance jump
-                    inst_cache[i].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                    inst_cache[i].branch_offset = (signed)sign_26(inst_cache[i].imm);
-
-                    inst_cache[i].reg1 = 0xFF;
-                    inst_cache[i].reg2 = 0xFF;
-
-                    // inlining
-                    static BYTE hword_getter_func[] = {
-                        0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
-                        0x1f, 0x18,             // jmp  [lp] 
-                    };
-                    static BYTE hword_getter_jr_func[] = {
-                        0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
-                        0x00, 0xa8, 0x04, 0x00, // jr   +4
-                        0x1f, 0x18,             // jmp  [lp]
-                    };
-                    if (inst_cache[i].opcode == V810_OP_JAL) {
-                        if (is_hword_getter(inst_cache[i].PC + inst_cache[i].branch_offset)) {
-                            inst_cache[i].opcode = V810_OP_LD_H;
-                            inst_cache[i].imm = 0;
-                            inst_cache[i].reg1 = 6;
-                            inst_cache[i].reg2 = 10;
-                        } else if (is_byte_getter(inst_cache[i].PC + inst_cache[i].branch_offset)) {
-                            inst_cache[i].opcode = V810_OP_LD_B;
-                            inst_cache[i].imm = 0;
-                            inst_cache[i].reg1 = 6;
-                            inst_cache[i].reg2 = 10;
-                        }
-                    }
-                    break;
-                case AM_V:
-                    inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                    inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
-                    inst_cache[i].imm = (highB2 << 8) + lowB2;
-                    reg_usage[inst_cache[i].reg1]++;
-                    reg_usage[inst_cache[i].reg2]++;
-                    break;
-                case AM_VIa: // Mode6 form1
-                    inst_cache[i].imm = (highB2 << 8) + lowB2;
-                    inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
-                    inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                    reg_usage[inst_cache[i].reg1]++;
-                    reg_usage[inst_cache[i].reg2]++;
-                    break;
-                case AM_VIb: // Mode6 form2
-                    inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                    inst_cache[i].imm = (highB2 << 8) + lowB2; // Whats the order??? 2,3,1 or 1,3,2
-                    inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
-                    reg_usage[inst_cache[i].reg1]++;
-                    reg_usage[inst_cache[i].reg2]++;
-                    break;
-                case AM_VII: // Unhandled
-                    break;
-                case AM_VIII: // Unhandled
-                    break;
-                case AM_IX:
-                    inst_cache[i].imm = (unsigned)((lowB & 0x1)); // Mode ID, Ignore for now
-
-                    inst_cache[i].reg1 = 0xFF;
-                    inst_cache[i].reg2 = 0xFF;
-                    break;
-                case AM_BSTR: // Bit String Subopcodes
-                    inst_cache[i].imm = (unsigned)((lowB & 0x1F));
-                    reg_usage[26]++;
-                    reg_usage[27]++;
-                    reg_usage[28]++;
-                    reg_usage[29]++;
-                    reg_usage[30]++;
-
-                    inst_cache[i].reg1 = 0xFF;
-                    inst_cache[i].reg2 = 0xFF;
-                    break;
-                case AM_FPP: // Floating Point Subcode
-                    inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
-                    inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
-                    inst_cache[i].imm = (unsigned)(((highB2 >> 2)&0x3F));
-                    reg_usage[inst_cache[i].reg1]++;
-                    reg_usage[inst_cache[i].reg2]++;
-                    break;
-                case AM_UDEF: // Invalid opcode.
-                    inst_cache[i].reg1 = 0xFF;
-                    inst_cache[i].reg2 = 0xFF;
-                    break;
-                default: // Invalid opcode.
-                    inst_cache[i].reg1 = 0xFF;
-                    inst_cache[i].reg2 = 0xFF;
-                    cur_PC += 2;
-                    break;
-            }
-            
-            cur_PC += am_size_table[optable[inst_cache[i].opcode].addr_mode];
-            block->cycles += opcycle[inst_cache[i].opcode];
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
+                break;
+            case AM_FPP: // Floating Point Subcode
+                inst_cache[i].reg2 = (BYTE)((lowB >> 5) + ((highB & 0x3) << 3));
+                inst_cache[i].reg1 = (BYTE)((lowB & 0x1F));
+                inst_cache[i].imm = (unsigned)(((highB2 >> 2)&0x3F));
+                reg_usage[inst_cache[i].reg1]++;
+                reg_usage[inst_cache[i].reg2]++;
+                break;
+            case AM_UDEF: // Invalid opcode.
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
+                break;
+            default: // Invalid opcode.
+                inst_cache[i].reg1 = 0xFF;
+                inst_cache[i].reg2 = 0xFF;
+                cur_PC += 2;
+                break;
         }
         
-        finished = true;
-        // check that all branches are valid (this can be broken by data inside code e.g. jump tables)
-        for (int j = 0; j < i; j++) {
-            if (optable[inst_cache[j].opcode].addr_mode != AM_III && inst_cache[j].opcode != V810_OP_JR)
-                continue;
-            if (inst_cache[j].branch_offset == 0)
-                continue;
-            if (inst_cache[j].opcode != V810_OP_JR || abs(inst_cache[j].branch_offset) < 1024) {
-                // find the branch target
-                v810_instruction *target = drc_findBranchTarget(inst_cache, i, j);
-                WORD target_PC = inst_cache[j].PC + inst_cache[j].branch_offset;
-                if (target->PC != target_PC) {
-                    // the target is in the middle of an instruction, restart decoding from there
-                    i = target - inst_cache - 1;
-                    cur_PC = target_PC;
-                    finished = false;
-                    break;
-                } else {
-                    // it's a valid target, so mark it as such
-                    target->is_branch_target = true;
-                }
+        cur_PC += am_size_table[optable[inst_cache[i].opcode].addr_mode];
+        block->cycles += opcycle[inst_cache[i].opcode];
+
+        while (!drc_isCode(cur_PC) && cur_PC < end_PC) {
+            cur_PC += 2;
+        }
+    }
+
+    // mark branch targets
+    for (int j = 0; j < i; j++) {
+        if (optable[inst_cache[j].opcode].addr_mode != AM_III && inst_cache[j].opcode != V810_OP_JR)
+            continue;
+        if (inst_cache[j].branch_offset == 0)
+            continue;
+        if (inst_cache[j].opcode != V810_OP_JR || abs(inst_cache[j].branch_offset) < 1024) {
+            // find the branch target
+            v810_instruction *target = drc_findBranchTarget(inst_cache, i, j);
+            WORD target_PC = inst_cache[j].PC + inst_cache[j].branch_offset;
+            if (target->PC != target_PC) {
+                // this really should not happen anymore
+                printf("Invalid jump from %lx to %lx (found %lx between %lx and %lx)\n", inst_cache[j].PC, target_PC, target->PC, inst_cache[0].PC, inst_cache[i-1].PC);
+                break;
+            } else {
+                // it's a valid target, so mark it as such
+                target->is_branch_target = true;
             }
         }
-    } while (!finished);
+    }
 
     if (i == MAX_INST) {
         printf("WARN:%lx-%lx exceeds max instrs", start_PC, end_PC);
@@ -1459,8 +1505,10 @@ void drc_clearCache() {
     memset(cache_start, 0, CACHE_SIZE);
     memset(rom_block_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     memset(rom_entry_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    // rom_data_code_map doesn't need to be reset here
     memset(ram_block_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
     memset(ram_entry_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
+    memset(ram_data_code_map, 0, sizeof(bool)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
 
     FlushInvalidateCache();
 }
@@ -1513,8 +1561,10 @@ void drc_init() {
     // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
     rom_block_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     rom_entry_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
+    rom_data_code_map = calloc(sizeof(bool), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     ram_block_map = calloc(sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1);
     ram_entry_map = calloc(sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1);
+    ram_data_code_map = calloc(sizeof(bool), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1);
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
     hbHaxInit();
@@ -1535,6 +1585,8 @@ void drc_init() {
 void drc_reset() {
     rom_block_map = realloc(rom_block_map, sizeof(WORD) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     rom_entry_map = realloc(rom_entry_map, sizeof(WORD) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    rom_data_code_map = realloc(rom_data_code_map, sizeof(bool) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    memset(rom_data_code_map, 0, sizeof(bool)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     drc_clearCache();
 }
 
