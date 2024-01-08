@@ -654,12 +654,6 @@ int drc_translateBlock(exec_block *block) {
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
 
-        if (cycles >= 200) {
-            HANDLEINT(inst_cache[i].PC);
-        } else if (cycles != 0 && inst_cache[i].is_branch_target) {
-            ADDCYCLES();
-        }
-
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         inst_ptr_start = inst_ptr;
         drc_setEntry(inst_cache[i].PC, cache_start + block->phys_offset + inst_cache[i].start_pos, block);
@@ -1378,6 +1372,14 @@ int drc_translateBlock(exec_block *block) {
                 STR_IO(arm_reg1, 11, inst_cache[i].reg1 * 4);
             if (arm_reg2 < 4 && reg2_modified)
                 STR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4);
+        }
+
+        if (i + 1 < num_v810_inst) {
+            if (cycles >= 200) {
+                HANDLEINT(inst_cache[i + 1].PC);
+            } else if (cycles != 0 && inst_cache[i + 1].is_branch_target) {
+                ADDCYCLES();
+            }
         }
 
         inst_cache[i].trans_size = (BYTE) (inst_ptr - inst_ptr_start);
