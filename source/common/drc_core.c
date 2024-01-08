@@ -273,7 +273,7 @@ void drc_findWaterworldBusywait(v810_instruction *inst_cache, int size) {
             ) {
                 // it's probably safe at this point
                 inst_cache[i].busywait = true;
-                printf("waterworld busywait at %lx\n", inst_cache[i].PC);
+                dprintf(0, "waterworld busywait at %lx\n", inst_cache[i].PC);
             }
         }
     }
@@ -330,14 +330,14 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
                 }
             default:
                 if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
-                    printf("busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+                    dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
                     inst_cache[pos].busywait = true;
                 }
                 return;
         }
     }
     if (busywait && inst_cache[0].PC <= inst_cache[pos].PC + inst_cache[pos].branch_offset) {
-        printf("busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+        dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
         inst_cache[pos].busywait = true;
     }
 }
