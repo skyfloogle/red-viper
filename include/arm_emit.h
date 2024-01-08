@@ -397,6 +397,11 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define ADDS_I(Rd, Rn, imm8, rot) \
     new_data_proc_imm(ARM_COND_AL, ARM_OP_ADD, 1, Rn, Rd, rot, imm8)
 
+// sub Rd, Rn, imm8, ror #rot
+// Subtract immediate
+#define SUB_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_SUB, 0, Rn, Rd, rot, imm8)
+
 // orr Rd, imm, ror #rot
 // Or immediate
 // imm8 can be rotated an even number of times

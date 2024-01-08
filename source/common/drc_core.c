@@ -833,6 +833,8 @@ int drc_translateBlock(exec_block *block) {
                     }
                     B(arm_cond, 0);
                 }
+                // branch not taken, so it only took 1 cycle
+                SUB_I(10, 10, 2, 0);
                 break;
             // Special case: bnh and bh can't be directly translated to ARM
             case V810_OP_BNH:
@@ -848,6 +850,8 @@ int drc_translateBlock(exec_block *block) {
                     B(ARM_COND_CS, 0);
                     B(ARM_COND_EQ, 0);
                 }
+                // branch not taken, so it only took 1 cycle
+                SUB_I(10, 10, 2, 0);
                 break;
             case V810_OP_BH:
                 if (inst_cache[i].busywait) {
@@ -863,6 +867,8 @@ int drc_translateBlock(exec_block *block) {
                     Boff(ARM_COND_EQ, 2);
                     B(ARM_COND_AL, 0);
                 }
+                // branch not taken, so it only took 1 cycle
+                SUB_I(10, 10, 2, 0);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
@@ -1126,6 +1132,15 @@ int drc_translateBlock(exec_block *block) {
                 } else {
                     SAVE_REG2(0);
                 }
+
+                if (i > 0 && (inst_cache[i - 1].opcode & 0x34) == 0x30 && (inst_cache[i - 1].opcode & 3) != 2) {
+                    // load immediately following another load takes 4 cycles instead of 5
+                    cycles -= 1;
+                } else if (i > 0 && opcycle[inst_cache[i - 1].opcode] > 4) {
+                    // load following instruction taking "many" cycles only takes 1 cycles
+                    // guessing "many" is 4 for now
+                    cycles -= 4;
+                }
                 break;
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
             case V810_OP_IN_H: // in.h disp16 [reg1], reg2
@@ -1148,6 +1163,15 @@ int drc_translateBlock(exec_block *block) {
                 } else {
                     SAVE_REG2(0);
                 }
+
+                if (i > 0 && (inst_cache[i - 1].opcode & 0x34) == 0x30 && (inst_cache[i - 1].opcode & 3) != 2) {
+                    // load immediately following another load takes 4 cycles instead of 5
+                    cycles -= 1;
+                } else if (i > 0 && opcycle[inst_cache[i - 1].opcode] > 4) {
+                    // load following instruction taking "many" cycles only takes 1 cycles
+                    // guessing "many" is 4 for now
+                    cycles -= 4;
+                }
                 break;
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
             case V810_OP_IN_W: // in.w disp16 [reg1], reg2
@@ -1162,6 +1186,15 @@ int drc_translateBlock(exec_block *block) {
                 BLX(ARM_COND_AL, 1);
 
                 SAVE_REG2(0);
+
+                if (i > 0 && (inst_cache[i - 1].opcode & 0x34) == 0x30 && (inst_cache[i - 1].opcode & 3) != 2) {
+                    // load immediately following another load takes 4 cycles instead of 5
+                    cycles -= 1;
+                } else if (i > 0 && opcycle[inst_cache[i - 1].opcode] > 4) {
+                    // load following instruction taking "many" cycles only takes 1 cycles
+                    // guessing "many" is 4 for now
+                    cycles -= 4;
+                }
                 break;
             case V810_OP_ST_B:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_B: // out.h reg2, disp16 [reg1]
@@ -1179,6 +1212,13 @@ int drc_translateBlock(exec_block *block) {
                 LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_WBYTE*4, 0);
                 BLX(ARM_COND_AL, 2);
+
+                if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
+                    && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
+                ) {
+                    // with three consecutive stores, the third takes 4 cycles instead of 1
+                    cycles += 3;
+                }
                 break;
             case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_H: // out.h reg2, disp16 [reg1]
@@ -1196,6 +1236,13 @@ int drc_translateBlock(exec_block *block) {
                 LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_WHWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
+
+                if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
+                    && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
+                ) {
+                    // with three consecutive stores, the third takes 4 cycles instead of 1
+                    cycles += 3;
+                }
                 break;
             case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_W: // out.h reg2, disp16 [reg1]
@@ -1214,12 +1261,20 @@ int drc_translateBlock(exec_block *block) {
                 ADD_I(2, 2, DRC_RELOC_WWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
+                if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
+                    && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
+                ) {
+                    // with three consecutive stores, the third takes 4 cycles instead of 1
+                    cycles += 3;
+                }
+
                 // if we load the same thing immediately after saving it, skip the loading
                 if (i + 1 < num_v810_inst &&
                     (inst_cache[i + 1].opcode == V810_OP_LD_W || inst_cache[i + 1].opcode == V810_OP_IN_W) &&
                     inst_cache[i + 1].imm == inst_cache[i].imm && inst_cache[i + 1].reg1 == inst_cache[i].reg1 &&
                     inst_cache[i + 1].reg2 == inst_cache[i].reg2
                 ) {
+                    cycles += 5;
                     inst_cache[i].branch_offset = 8;
                     B(ARM_COND_AL, 0);
                 }
