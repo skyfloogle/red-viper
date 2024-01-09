@@ -182,7 +182,7 @@ void video_hard_render() {
 			int16_t gp = (s16)(windows[wnd * 16 + 2] << 6) >> 6;
 			int16_t gy = windows[wnd * 16 + 3];
 			int16_t base_mx = (s16)(windows[wnd * 16 + 4] << 3) >> 3;
-			int16_t mp = (s16)(windows[wnd * 16 + 5] << 1) >> 3;
+			int16_t mp = (s16)(windows[wnd * 16 + 5] << 1) >> 1;
 			int16_t my = (s16)(windows[wnd * 16 + 6] << 3) >> 3;
 			int16_t w = windows[wnd * 16 + 7] + 1;
 			int16_t h = windows[wnd * 16 + 8] + 1;
@@ -482,7 +482,7 @@ void video_hard_render() {
 				u16 tileid = cw3 & 0x07ff;
 				if (!tileVisible[tileid]) continue;
 
-				u16 x = obj_ptr[0];
+				u16 base_x = obj_ptr[0];
 				u16 cw1 = obj_ptr[1];
 				s16 y = *(u8*)&obj_ptr[2];
 				if (y > 224) y = (s8)y;
@@ -499,6 +499,7 @@ void video_hard_render() {
 				for (int eye = 0; eye < eye_count; eye++) {
 					if (!(cw1 & (0x8000 >> eye)))
 						continue;
+					u16 x = base_x;
 					if (eye == 0)
 						x -= jp;
 					else
