@@ -16,7 +16,7 @@ void setDefaults(void) {
     // Set up the Defaults
     tVBOpt.MAXCYCLES = 400;
     tVBOpt.FRMSKIP  = 0;
-    tVBOpt.DSPMODE  = DM_NORMAL;
+    tVBOpt.DSPMODE  = DM_3D;
     tVBOpt.DSPSWAP  = 0;
     tVBOpt.PALMODE  = PAL_NORMAL;
     tVBOpt.DEBUG    = DEBUGLEVEL != 0;
