@@ -120,7 +120,7 @@ void v810_exit();
 void v810_reset();
 
 // Generate Interupt #n
-void v810_int(WORD iNum, WORD PC);
+bool v810_int(WORD iNum, WORD PC);
 
 // Generate Exception #n
 void v810_exp(WORD iNum, WORD eCode);

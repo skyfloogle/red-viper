@@ -206,14 +206,17 @@ int serviceInt(unsigned int cycles, WORD PC) {
             if (tHReg.tCount <= 0) {
                 tHReg.tCount += tHReg.tTHW; //reset counter
                 tHReg.TCR |= 0x02; //Zero Status
-                if (tHReg.TCR & 0x08) {
-                    v810_int(1, PC);
-                    return 1;
-                }
             }
             tHReg.TLB = (tHReg.tCount&0xFF);
             tHReg.THB = ((tHReg.tCount>>8)&0xFF);
         }
+        if ((tHReg.TCR & 0x02) && (tHReg.TCR & 0x08)) {
+            // zero & interrupt enabled
+            return v810_int(1, PC);
+        }
+    } else {
+        // don't get too overzealous if we turn it off and on again
+        lasttime = cycles;
     }
 
     return 0;
@@ -332,12 +335,12 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
 }
 
 // Generate Interupt #n
-void v810_int(WORD iNum, WORD PC) {
-    if (iNum > 0x0F) return;  // Invalid Interupt number...
-    if((v810_state->S_REG[PSW] & PSW_NP)) return;
-    if((v810_state->S_REG[PSW] & PSW_EP)) return; // Exception pending?
-    if((v810_state->S_REG[PSW] & PSW_ID)) return; // Interupt disabled
-    if(iNum < ((v810_state->S_REG[PSW] & PSW_IA)>>16)) return; // Interupt to low on the chain
+bool v810_int(WORD iNum, WORD PC) {
+    if (iNum > 0x0F) return false;  // Invalid Interupt number...
+    if((v810_state->S_REG[PSW] & PSW_NP)) return false;
+    if((v810_state->S_REG[PSW] & PSW_EP)) return false; // Exception pending?
+    if((v810_state->S_REG[PSW] & PSW_ID)) return false; // Interupt disabled
+    if(iNum < ((v810_state->S_REG[PSW] & PSW_IA)>>16)) return false; // Interupt to low on the chain
 
     dprintf(1, "[INT]: iNum=0x%lx\n", iNum);
 
@@ -354,6 +357,7 @@ void v810_int(WORD iNum, WORD PC) {
     if((iNum+=1) > 0x0F)
         (iNum = 0x0F);
     v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | (iNum << 16); //Set the Interupt
+    return true;
 }
 
 // Generate exception #n
