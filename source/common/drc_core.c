@@ -804,7 +804,7 @@ int drc_translateBlock(exec_block *block) {
                 // it just continuously loops through entities, doing nothing more when each one done
                 // so let's just artificially skip a bunch of time so that the game isn't slow
                 if ((tVBOpt.CRC32 == 0x4C32BA5E || tVBOpt.CRC32 == 0x9E9B8B92) && inst_cache[i].PC == 0x07000c08) {
-                    MOV_I(0, 1, 23);
+                    MOV_I(0, 1, 25);
                     ADD(10, 10, 0);
                     HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
                     B(ARM_COND_AL, 0);
