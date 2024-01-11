@@ -227,7 +227,7 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
     static int rowcount=0;
     static bool drawing = false;
     static bool newframe = true;
-    int gamestart,framestart;
+    int gamestart;
     unsigned int tfb = (cycles-lastfb);
     bool pending_int = 0;
     
@@ -238,10 +238,8 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
         if (newframe) {
             // new frame
             newframe = false;
-            framestart = 0;
             gamestart = 0;
             if (tVIPREG.DPCTRL & 0x02) {
-                framestart = 0x0010;
                 tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
             }
             if (++tVIPREG.tFrame > tVIPREG.FRMCYC) {
@@ -254,10 +252,10 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
                     tVIPREG.XPSTTS = (0x0002|(tVIPREG.tFrameBuffer<<2));
                 }
             }
-            if (tVIPREG.INTENB&(framestart|gamestart)) {
+            if (tVIPREG.INTENB&(0x0010|gamestart)) {
                 v810_int(4, PC);
             }
-            tVIPREG.INTPND |= (framestart|gamestart);
+            tVIPREG.INTPND |= (0x0010|gamestart);
             pending_int = 1;
         } else if ((tfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000))) {
             tVIPREG.XPSTTS |= 0x8000;
