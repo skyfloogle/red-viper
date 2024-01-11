@@ -515,7 +515,7 @@ void hcreg_wbyte(WORD addr, BYTE data) {
         }
 
         tHReg.TCR = (((data|0xE4)&0xFD)|(tHReg.TCR&0x02));
-        if ((data & 0x05) == 0x04 || !(data & 0x08)) {
+        if ((data & 0x05) == 0x05 || !(data & 0x08)) {
             tHReg.TCR &= 0xFD; // Clear the ZStat Flag...
         }
         break;
