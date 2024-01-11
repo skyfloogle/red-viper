@@ -411,7 +411,7 @@ int fileSelect(const char* message, char* path, const char* ext) {
         return -1;
     }
 
-    for(i = 0; i < 32 && entries_read; i++) {
+    for(i = 0; i < 64 && entries_read; i++) {
         memset(&entry, 0, sizeof(FS_DirectoryEntry));
         FSDIR_Read(dirHandle, &entries_read, 1, &entry);
         if(entries_read && !(entry.attributes & FS_ATTRIBUTE_DIRECTORY)) {
