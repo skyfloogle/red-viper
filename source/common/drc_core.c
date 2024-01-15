@@ -37,6 +37,7 @@
 #endif
 
 #include "utils.h"
+#include "drc_alloc.h"
 #include "drc_core.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"
@@ -702,7 +703,6 @@ int drc_translateBlock(exec_block *block) {
 
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         inst_ptr_start = inst_ptr;
-        drc_setEntry(inst_cache[i].PC, cache_start + block->phys_offset + inst_cache[i].start_pos, block);
         cycles += opcycle[inst_cache[i].opcode];
 
         reg1_modified = false;
@@ -1502,12 +1502,19 @@ int drc_translateBlock(exec_block *block) {
     }
 
     num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
-    if ((cache_pos - cache_start + num_arm_inst)*4 > CACHE_SIZE) {
+
+    // Fourth pass: align to new memory block
+    WORD *cache_ptr = drc_alloc(num_arm_inst);
+    if (cache_ptr == NULL) {
         err = DRC_ERR_CACHE_FULL;
         goto cleanup;
     }
+    block->phys_offset = (uint32_t)cache_ptr;
+    for (i = 0; i < num_v810_inst; i++) {
+        drc_setEntry(inst_cache[i].PC, cache_ptr + inst_cache[i].start_pos, block);
+    }
 
-    // Fourth pass: assemble and link
+    // Fifth pass: assemble and link
     for (i = 0; i < num_v810_inst; i++) {
         HWORD start_pos = inst_cache[i].start_pos;
         for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
@@ -1522,7 +1529,7 @@ int drc_translateBlock(exec_block *block) {
             if (trans_cache[j].needs_branch) {
                 WORD v810_dest = inst_cache[i].PC + inst_cache[i].branch_offset;
                 WORD* arm_dest = drc_getEntry(v810_dest, NULL);
-                int arm_offset = (int)(arm_dest - &((cache_start + block->phys_offset)[j]) - 2);
+                int arm_offset = (int)(arm_dest - (cache_ptr + j) - 2);
 
                 if (arm_dest == cache_start) {
                     // TODO fix
@@ -1534,7 +1541,7 @@ int drc_translateBlock(exec_block *block) {
                 trans_cache[j].b_bl.imm = arm_offset & 0xffffff;
             }
 
-            drc_assemble(&((cache_start + block->phys_offset)[j]), &trans_cache[j]);
+            drc_assemble(cache_ptr + j, &trans_cache[j]);
         }
     }
 
@@ -1688,7 +1695,6 @@ int drc_run() {
             cur_block = drc_getNextBlockStruct();
             if (!cur_block)
                 return DRC_ERR_NO_BLOCKS;
-            cur_block->phys_offset = (uint32_t) (cache_pos - cache_start);
 
             if (drc_translateBlock(cur_block) == DRC_ERR_CACHE_FULL) {
                 drc_clearCache();
@@ -1699,7 +1705,6 @@ int drc_run() {
 //            drc_dumpCache("cache_dump_rf.bin");
             FlushInvalidateCache();
 
-            cache_pos += cur_block->size;
             entrypoint = drc_getEntry(entry_PC, NULL);
         }
         dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
