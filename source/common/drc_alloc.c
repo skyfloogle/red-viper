@@ -8,3 +8,7 @@ WORD *drc_alloc(uint32_t inst_count) {
     cache_pos += inst_count;
     return new_block;
 }
+
+void drc_free(exec_block *p_block) {
+    p_block->free = true;
+}

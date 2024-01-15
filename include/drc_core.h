@@ -39,8 +39,7 @@ typedef struct {
     WORD virt_loc;
     WORD size;
     WORD cycles;
-    // Unused. TODO: Remove me!
-    BYTE jmp_reg;
+    bool free;
     // We can use ARM_NUM_CACHE_REGS registers at a time, r4-r10, and r11 will
     // have the address of v810_state
     // reg_map[0] would have the VB register that is mapped to r4
@@ -84,7 +83,7 @@ BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]);
 
 void drc_scanBlockBounds(WORD *p_start_PC, WORD *p_end_PC);
 unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_cache, WORD start_PC, WORD end_PC);
-int drc_translateBlock(exec_block* block);
+int drc_translateBlock();
 void drc_executeBlock(WORD* entrypoint, exec_block* block);
 int drc_handleInterrupts(WORD cpsr, WORD* PC);
 void drc_relocTable(void);
