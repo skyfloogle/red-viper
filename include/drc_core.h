@@ -4,7 +4,7 @@
 #include "vb_types.h"
 #include "arm_emit.h"
 
-#define CACHE_SIZE  0x100000
+#define CACHE_SIZE  0x200000
 #define MAX_INST    4096
 #define ARM_CACHE_REG_START 4
 #define ARM_NUM_CACHE_REGS 6
