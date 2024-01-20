@@ -67,7 +67,23 @@ void drc_free(exec_block *p_block) {
         }
         block_found = true;
         free_blocks[last_block].size += 1 + p_block->size;
-        mark_block(free_blocks[last_block].start, free_blocks[last_block].size, last_block);
+        /*
+        // optimization for when the last block is freed
+        // currently breaks guns in red alarm for some reason
+        if (free_blocks[last_block].start + free_blocks[last_block].size + 1 == cache_pos) {
+            cache_pos = free_blocks[last_block].start + free_blocks[last_block].size + 1;
+            free_blocks[last_block] = free_blocks[--free_block_count];
+            if (last_block == free_block_count) {
+                ((SHWORD*)(cache_pos - 1))[1] = -1;
+            }
+        }
+        */
+        if (last_block < free_block_count)
+            mark_block(free_blocks[last_block].start, free_blocks[last_block].size, last_block);
+    } else if (p_block->phys_offset + p_block->size + 1 == cache_pos) {
+        // optimization for when the last block is freed
+        cache_pos = p_block->phys_offset;
+        return;
     }
     if (next_block >= 0) {
         if (next_block >= free_block_count) {
