@@ -35,7 +35,7 @@ enum {
 
 #define END_BLOCK 0xFF
 typedef struct {
-    WORD phys_offset;
+    WORD *phys_offset;
     WORD virt_loc;
     WORD size;
     WORD cycles;

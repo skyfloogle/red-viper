@@ -1540,7 +1540,7 @@ int drc_translateBlock() {
         err = DRC_ERR_CACHE_FULL;
         goto cleanup;
     }
-    block->phys_offset = (uint32_t)cache_ptr;
+    block->phys_offset = cache_ptr;
     for (i = 0; i < num_v810_inst; i++) {
         drc_setEntry(inst_cache[i].PC, cache_ptr + inst_cache[i].start_pos, block);
     }
@@ -1594,6 +1594,7 @@ void drc_clearCache() {
     dprintf(0, "[DRC]: clearing cache...\n");
     cache_pos = cache_start + 1;
     block_pos = 1;
+    free_block_count = 0;
 
     memset(cache_start, 0, CACHE_SIZE);
     memset(rom_block_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
@@ -1602,6 +1603,8 @@ void drc_clearCache() {
     memset(ram_block_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
     memset(ram_entry_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
     memset(ram_data_code_map, 0, sizeof(bool)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
+
+    *cache_start = -1;
 
     FlushInvalidateCache();
 }
@@ -1622,11 +1625,6 @@ WORD* drc_getEntry(WORD loc, exec_block **p_block) {
         case 7:
             map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
             block = block_ptr_start + rom_block_map[map_pos];
-            if (rom_entry_map[map_pos] != 0) {
-                if (block == block_ptr_start) {
-                    printf("start %lx\n", loc);
-                }
-            }
             if (block == block_ptr_start || block->free) return cache_start;
             if (p_block)
                 *p_block = block;
@@ -1679,6 +1677,7 @@ void drc_init() {
         drc_loadSavedCache();
     }
 
+    *cache_start = -1;
     cache_pos = cache_start + 1;
     dprintf(0, "[DRC]: cache_start = %p\n", cache_start);
 }
