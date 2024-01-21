@@ -1599,7 +1599,7 @@ void drc_clearCache() {
     memset(cache_start, 0, CACHE_SIZE);
     memset(rom_block_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     memset(rom_entry_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    // rom_data_code_map doesn't need to be reset here
+    memset(rom_data_code_map, 0, sizeof(bool)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     memset(ram_block_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
     memset(ram_entry_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
     memset(ram_data_code_map, 0, sizeof(bool)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
