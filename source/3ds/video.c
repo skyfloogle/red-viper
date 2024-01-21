@@ -22,14 +22,20 @@ extern int arm_keys;
 HWORD V810_RControll() {
     int ret_keys = 0;
     int key = 0;
+	bool battery_low = false;
 
 #ifdef __3DS__
     key = hidKeysHeld();
+	u8 charging, battery_level;
+	PTMU_GetBatteryChargeState(&charging);
+	PTMU_GetBatteryLevel(&battery_level);
+	battery_low = !charging && battery_level <= 2;
+
 #else
     ret_keys = arm_keys;
     arm_keys = 0;
 #endif
-    if (key & vbkey[14])        ret_keys |= VB_BATERY_LOW;  // Batery Low
+    if (battery_low)            ret_keys |= VB_BATERY_LOW;  // Batery Low
     if (key & vbkey[13])        ret_keys |= VB_KEY_L;       // L Trigger
     if (key & vbkey[12])        ret_keys |= VB_KEY_R;       // R Trigger
     if (key & vbkey[11])        ret_keys |= VB_KEY_SELECT;  // Select Button

@@ -34,6 +34,7 @@ int main() {
     gfxInitDefault(); // hardware renderer
     fsInit();
     archiveMountSdmc();
+    ptmuInit();
 
 #if DEBUGLEVEL == 0
     consoleInit(GFX_BOTTOM, &debug_console);
@@ -183,6 +184,7 @@ exit:
     if (tVBOpt.SOUND && loaded) sound_close();
     drc_exit();
 
+    ptmuExit();
     fsExit();
     gfxExit();
     return 0;
