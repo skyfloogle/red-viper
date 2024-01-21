@@ -1507,7 +1507,12 @@ int drc_translateBlock() {
         }
 
         if (i + 1 < num_v810_inst) {
-            if (cycles >= 200) {
+            if (tVBOpt.CRC32 == 0x8989FE0A && inst_cache[i + 1].PC == 0x07002446) {
+                // virtual lab hack
+                // interrupts don't save registers, and clearing levels relies on
+                // registers getting dirty
+                HALT(0x07002466);
+            } else if (cycles >= 200) {
                 HANDLEINT(inst_cache[i + 1].PC);
             } else if (cycles != 0 && inst_cache[i + 1].is_branch_target) {
                 ADDCYCLES();
