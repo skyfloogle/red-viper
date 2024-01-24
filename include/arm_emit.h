@@ -626,9 +626,13 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define VDIV_F32(Sd, Sn, Sm) \
     new_floating_point(ARM_COND_AL, 0b1000|((Sd&1)<<2), Sn>>1, Sd>>1, 0, (Sn&1)<<1, (Sm&1)<<1, Sm>>1)
 
-// vcmp.f32 Sd, Sn, Sm
+// vcmp.f32 Sd, Sm
 #define VCMP_F32(Sd, Sm) \
     new_floating_point(ARM_COND_AL, 0b1011|((Sd&1)<<2), 0b0100, Sd>>1, 0, 1, (Sm&1)<<1, Sm>>1)
+
+// vcmp.f32 Sd, #0.0
+#define VCMP_F32_0(Sd) \
+    new_floating_point(ARM_COND_AL, 0b1011|((Sd&1)<<2), 0b0101, Sd>>1, 0, 1, 0, 0)
 
 // vmrs APSR_nzcv, FPSCR
 #define VMRS() \

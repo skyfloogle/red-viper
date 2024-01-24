@@ -1403,6 +1403,9 @@ int drc_translateBlock() {
                     LOAD_REG1();
                     VMOV_SR(0, arm_reg1);
                     VCVT_F32_S32(0, 0);
+                    VCMP_F32_0(0);
+                    VMRS();
+                    INV_CARRY();
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
@@ -1411,6 +1414,7 @@ int drc_translateBlock() {
                     VMOV_SR(0, arm_reg1);
                     VCVT_S32_F32(0, 0);
                     VMOV_RS(arm_reg2, 0);
+                    ORRS(arm_reg2, arm_reg2, arm_reg2);
                     reg2_modified = true;
                     break;
                 case V810_OP_CMPF_S:
@@ -1420,6 +1424,7 @@ int drc_translateBlock() {
                     VMOV_SR(1, arm_reg2);
                     VCMP_F32(1, 0);
                     VMRS();
+                    INV_CARRY();
                     break;
                 case V810_OP_ADDF_S:
                     LOAD_REG1();
@@ -1427,7 +1432,9 @@ int drc_translateBlock() {
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
                     VADD_F32(0, 1, 0);
+                    VCMP_F32_0(0);
                     VMRS();
+                    INV_CARRY();
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
@@ -1437,7 +1444,9 @@ int drc_translateBlock() {
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
                     VSUB_F32(0, 1, 0);
+                    VCMP_F32_0(0);
                     VMRS();
+                    INV_CARRY();
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
@@ -1447,7 +1456,9 @@ int drc_translateBlock() {
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
                     VMUL_F32(0, 1, 0);
+                    VCMP_F32_0(0);
                     VMRS();
+                    INV_CARRY();
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
@@ -1457,7 +1468,9 @@ int drc_translateBlock() {
                     VMOV_SR(0, arm_reg1);
                     VMOV_SR(1, arm_reg2);
                     VDIV_F32(0, 1, 0);
+                    VCMP_F32_0(0);
                     VMRS();
+                    INV_CARRY();
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
@@ -1466,6 +1479,7 @@ int drc_translateBlock() {
                     VMOV_SR(0, arm_reg1);
                     TRUNC(0, 0);
                     VMOV_RS(arm_reg2, 0);
+                    ORRS(arm_reg2, arm_reg2, arm_reg2);
                     reg2_modified = true;
                     break;
                 default:
