@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <citro2d.h>
+#include "vb_gui.h"
 #include "vb_set.h"
 #include "vb_types.h"
 
@@ -59,6 +60,16 @@ static Button main_menu_buttons[] = {
     {"Quit", 112, 192, 96, 48},
 };
 
+static void game_menu();
+static Button game_menu_buttons[] = {
+    {"Load ROM", 224, 64, 80, 80},
+    {"Controls", 0, 176, 80, 64},
+    {"Options", 240, 176, 80, 64},
+    {"Quit", 112, 192, 96, 48},
+    {"Resume", 0, 0, 320, 48},
+    {"Reset", 16, 64, 80, 80},
+};
+
 static void rom_loader();
 static Button rom_loader_buttons[] = {
     {"Up", 0, 0, 32, 32},
@@ -73,6 +84,7 @@ static Button controls_buttons[] = {
 
 #define SETUP_ALL_BUTTONS \
     SETUP_BUTTONS(main_menu_buttons); \
+    SETUP_BUTTONS(game_menu_buttons); \
     SETUP_BUTTONS(rom_loader_buttons); \
     SETUP_BUTTONS(controls_buttons);
 
@@ -87,6 +99,30 @@ static void main_menu() {
         case 2:
             return;
         case 3:
+            return;
+    }
+}
+
+static void game_menu() {
+    LOOP_BEGIN(game_menu_buttons);
+    LOOP_END(game_menu_buttons);
+    switch (button) {
+        case 0: // Load ROM
+            guiop = AKILL | VBRESET;
+            return rom_loader();
+        case 1: // Controls
+            return controls();
+        case 2: // Options
+            guiop = 0;
+            return;
+        case 3: // Quit
+            guiop = AKILL | GUIEXIT;
+            return;
+        case 4: // Resume
+            guiop = 0;
+            return;
+        case 5: // Reset
+            guiop = AKILL | VBRESET;
             return;
     }
 }
@@ -150,7 +186,7 @@ static void rom_loader() {
 
     int entry_count = dirCount + fileCount;
     const float entry_height = 32;
-    float scroll_top = 32;
+    float scroll_top = -entry_height;
     float scroll_bottom = entry_count * entry_height - 240;
     if (scroll_bottom < scroll_top) scroll_bottom = scroll_top;
     float scroll_pos = scroll_top;
@@ -317,9 +353,22 @@ void guiInit() {
 }
 
 void openMenu(bool rom_loaded) {
+    if (rom_loaded) {
+        gfxSetDoubleBuffering(GFX_TOP, false);
+        if (tVBOpt.SOUND)
+            ndspSetMasterVol(0.0);
+    }
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    main_menu();
+    if (rom_loaded)
+        game_menu();
+    else
+        main_menu();
+    if (rom_loaded) {
+        gfxSetDoubleBuffering(GFX_TOP, true);
+        if (tVBOpt.SOUND)
+            ndspSetMasterVol(1.0);
+    }
 }
 
 void guiUpdate() {
@@ -329,7 +378,13 @@ void guiUpdate() {
 
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
 
+    C2D_DrawRectSolid(320/2 - 100, 240/2 - 100, 0, 200, 200, C2D_Color32(64, 64, 64, 255));
+
     C2D_Flush();
 
 	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
+}
+
+bool guiShouldPause() {
+    return true;
 }

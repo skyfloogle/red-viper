@@ -80,9 +80,9 @@ int main() {
         hidScanInput();
         int keys = hidKeysDown();
 
-        if (keys & KEY_TOUCH) {
+        if ((keys & KEY_TOUCH) && guiShouldPause()) {
             guiop = 0;
-            //openMenu(&main_menu);
+            openMenu(true);
             if (guiop & GUIEXIT) {
                 goto exit;
             }

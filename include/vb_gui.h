@@ -15,24 +15,6 @@
 
 int guiop;
 
-extern menu_item_t main_menu_items[];
-extern menu_item_t file_menu_items[];
-extern menu_item_t options_menu_items[];
-extern menu_item_t emulation_menu_items[];
-extern menu_item_t debug_menu_items[];
-extern menu_item_t debug_view_menu_items[];
-extern menu_item_t emulation_cheat_menu_items[];
-extern menu_item_t help_menu_items[];
-
-extern menu_t main_menu;
-extern menu_t file_menu;
-extern menu_t options_menu;
-extern menu_t emulation_menu;
-extern menu_t debug_menu;
-extern menu_t debug_view_menu;
-extern menu_t emulation_cheat_menu;
-extern menu_t help_menu;
-
 u32 waitForInput();
 void save_sram(void);
 int file_loadrom(void);
@@ -73,5 +55,7 @@ int help_about(void);
 void guiInit();
 void guiUpdate();
 void openMenu(bool);
+
+bool guiShouldPause();
 
 #endif //VB_GUI_H
