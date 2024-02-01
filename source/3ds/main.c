@@ -48,9 +48,11 @@ int main() {
 
     gfxSet3D(true);
 
-    //if (fileSelect("Load ROM", rom_name, "vb") < 0)
-    //    goto exit;
+    guiop = 0;
     openMenu(false);
+    if (guiop & GUIEXIT) {
+        goto exit;
+    }
 
     if (!v810_init()) {
         goto exit;

@@ -93,6 +93,7 @@ static Button controls_buttons[] = {
 static void main_menu() {
     LOOP_BEGIN(main_menu_buttons);
     LOOP_END(main_menu_buttons);
+    guiop = 0;
     switch (button) {
         case 0:
             return rom_loader();
@@ -100,7 +101,8 @@ static void main_menu() {
             return controls();
         case 2:
             return;
-        case 3:
+        case 3: // Quit
+            guiop = GUIEXIT;
             return;
     }
 }
