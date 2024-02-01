@@ -6,6 +6,18 @@
 static C3D_RenderTarget *screen;
 
 static C2D_TextBuf static_textbuf;
+static C2D_TextBuf dynamic_textbuf;
+
+// helpers
+static inline int sqr(int i) {
+    return i * i;
+}
+
+static inline int u16len(const u16 *s) {
+    const u16 *e = s;
+    while (*e) e++;
+    return e - s;
+}
 
 typedef struct {
     char *str;
@@ -83,10 +95,15 @@ static void rom_loader() {
     FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (uint8_t*)"/"});
 
     static u16 *path = NULL;
-    static int path_len = 128;
+    static int path_cap = 128;
     if (!path) {
-        path = calloc(path_len, 2);
+        path = calloc(path_cap, 2);
         path[0] = '/';
+    }
+    // cut filename from path if we reload mid-game
+    {
+        u16 *path_end = path + u16len(path) - 1;
+        while (*path_end != '/') *path_end-- = 0;
     }
 
     Handle dirHandle;
@@ -101,6 +118,7 @@ static void rom_loader() {
     int dirCount = 0, fileCount = 0;
     int dirCap = 8, fileCap = 8;
 
+    // read .vb files and directories
     while (true) {
         u32 entriesRead;
         FS_DirectoryEntry thisEntry;
@@ -114,7 +132,9 @@ static void rom_loader() {
             dirs[dirCount++] = thisEntry;
         } else {
             // check the file extension
-            if (strcmp(thisEntry.shortExt, "VB") == 0) {
+            bool length_2 = (thisEntry.shortExt[2] == 0 || thisEntry.shortExt[2] == ' ')
+                 && (thisEntry.shortExt[3] == 0 || thisEntry.shortExt[3] == ' ');
+            if (length_2 && strncmp(thisEntry.shortExt, "VB", 2) == 0) {
                 if (fileCount == fileCap) {
                     fileCap *= 2;
                     files = realloc(files, fileCap * sizeof(FS_DirectoryEntry));
@@ -126,17 +146,111 @@ static void rom_loader() {
 
     FSDIR_Close(dirHandle);
     FSUSER_CloseArchive(sdmcArchive);
+
+    int entry_count = dirCount + fileCount;
+    const float entry_height = 32;
+    float scroll_top = 32;
+    float scroll_bottom = entry_count * entry_height - 240;
+    if (scroll_bottom < scroll_top) scroll_bottom = scroll_top;
+    float scroll_pos = scroll_top;
+
+    int last_py = 0;
+    int clicked_entry = -1;
+    bool dragging = false;
+
     LOOP_BEGIN(rom_loader_buttons);
+        // process rom list
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
+        if ((hidKeysDown() & KEY_TOUCH) && touch_pos.px >= 48) {
+            last_py = touch_pos.py;
+            clicked_entry = floorf((touch_pos.py + scroll_pos) / entry_height);
+            if (clicked_entry < 0 || clicked_entry >= entry_count)
+                clicked_entry = -1;
+            dragging = false;
+        } else if (clicked_entry >= 0 && (hidKeysHeld() & KEY_TOUCH)) {
+            if (!dragging && abs(touch_pos.py - last_py) >= 5) {
+                clicked_entry = -1;
+                dragging = true;
+            }
+        }
+        if (dragging) {
+            if (!(hidKeysHeld() & KEY_TOUCH)) {
+                dragging = false;
+            } else {
+                scroll_pos -= touch_pos.py - last_py;
+                last_py = touch_pos.py;
+                scroll_pos = C2D_Clamp(scroll_pos, scroll_top, scroll_bottom);
+            }
+        } else if (clicked_entry >= 0) {
+            if (!(hidKeysHeld() & KEY_TOUCH)) {
+                bool clicked_dir = clicked_entry < dirCount;
+                const u16 *new_entry = clicked_dir ? dirs[clicked_entry].name : files[clicked_entry - dirCount].name;
+                int old_path_len = u16len(path);
+                int suffix_len = u16len(dirs[clicked_entry].name) + clicked_dir;
+                int new_path_len = old_path_len + suffix_len;
+                if (new_path_len + 1 > path_cap) {
+                    path = realloc(path, path_cap *= 2);
+                }
+                memcpy(path + old_path_len, dirs[clicked_entry].name, (suffix_len + 1) * 2);
+                if (clicked_entry < dirCount) {
+                    // clicked on directory, so add a slash
+                    path[new_path_len - 1] = '/';
+                    path[new_path_len] = 0;
+                }
+                loop = false;
+            }
+        }
+        // draw
+        C2D_TextBufClear(dynamic_textbuf);
+        float y = -scroll_pos;
+        C2D_Text text;
+        char ascii[128];
+        ascii[127] = 0;
+        // entries
+        for (int i = 0; i < entry_count; i++) {
+            if (y + entry_height >= 0 && y < 240) {
+                for (int j = 0; j < 127; j++) {
+                    ascii[j] = (i < dirCount ? dirs : files - dirCount)[i].name[j];
+                    if (!ascii[j]) break;
+                }
+                C2D_TextParse(&text, dynamic_textbuf, ascii);
+                C2D_TextOptimize(&text);
+                C2D_DrawRectSolid(56, y, 0, 264, entry_height, C2D_Color32(clicked_entry == i ? 144 : 255, 0, 0, 255));
+                C2D_DrawText(&text, C2D_AlignLeft, 64, y + 8, 0, 0.5, 0.5);
+            }
+            y += entry_height;
+        }
+        // path
+        for (int i = 0; i < 127; i++) {
+            ascii[i] = path[i];
+            if (!ascii[i]) break;
+        }
+        C2D_TextParse(&text, dynamic_textbuf, ascii);
+        C2D_TextOptimize(&text);
+        C2D_DrawRectSolid(0, 0, 0, 320, 32, C2D_Color32(0, 0, 0, 255));
+        C2D_DrawText(&text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, C2D_Color32(255, 0, 0, 255));
     LOOP_END(rom_loader_buttons);
 
     free(dirs);
     free(files);
 
-    switch (button) {
-        case 0: return rom_loader();
-        case 1: return main_menu();
+    if (clicked_entry < 0) {
+        switch (button) {
+            case 0:
+                int len = u16len(path);
+                if (len > 1) {
+                    // the stuff at the start of the file will get rid of everything after the last slash
+                    // so we can just get rid of the slash at the end
+                    path[len - 1] = 0;
+                }
+                return rom_loader();
+            case 1: return main_menu();
+        }
+    } else if (clicked_entry < dirCount) {
+        return rom_loader();
+    } else {
+        return;
     }
 }
 
@@ -190,6 +304,7 @@ void guiInit() {
     screen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
     static_textbuf = C2D_TextBufNew(1024);
+    dynamic_textbuf = C2D_TextBufNew(4096);
     #define SETUP_BUTTONS(arr) \
         for (int i = 0; i < sizeof(arr) / sizeof(arr[0]); i++) { \
             C2D_TextParse(&arr[i].text, static_textbuf, arr[i].str); \
