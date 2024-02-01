@@ -14,6 +14,8 @@
 #include "rom_db.h"
 #include "drc_core.h"
 
+#include "3ds/services/fs.h"
+
 #define NEG(n) ((n) >> 31)
 #define POS(n) ((~(n)) >> 31)
 
@@ -28,22 +30,29 @@ const BYTE opcycle[0x50] = {
     0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x01,0x03,0x03
 };
 
-int v810_init(char *rom_name) {
+int v810_init() {
     char ram_name[32];
-    unsigned int rom_size = 0;
+    u64 rom_size = 0;
     unsigned int ram_size = 0;
 
     // Open VB Rom
-    FILE* f = fopen(rom_name, "r");
-    if (f) {
-        fseek(f , 0 , SEEK_END);
-        rom_size = ftell(f);
-        rewind(f);
+    Handle f;
+    Result res = FSUSER_OpenFileDirectly(&f, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (uint8_t*)"/"}, fsMakePath(PATH_UTF16, tVBOpt.ROM_PATH), FS_OPEN_READ, 0);
+
+    if (!res) {
+        FSFILE_GetSize(f, &rom_size);
 
         V810_ROM1.pmemory = malloc(rom_size);
-        fread(V810_ROM1.pmemory, 1, rom_size, f);
 
-        fclose(f);
+        // loop-read just in case
+        u32 total_read = 0;
+        while (total_read < rom_size) {
+            u32 bytes_read;
+            FSFILE_Read(f, &bytes_read, total_read, V810_ROM1.pmemory + total_read, rom_size - total_read);
+            total_read += bytes_read;
+        }
+
+        FSFILE_Close(f);
     } else {
         return 0;
     }

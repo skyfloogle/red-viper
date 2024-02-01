@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <citro2d.h>
+#include "vb_set.h"
 #include "vb_types.h"
 
 static C3D_RenderTarget *screen;
@@ -97,7 +98,7 @@ static void rom_loader() {
     static u16 *path = NULL;
     static int path_cap = 128;
     if (!path) {
-        path = calloc(path_cap, 2);
+        path = calloc(path_cap, sizeof(u16));
         path[0] = '/';
     }
     // cut filename from path if we reload mid-game
@@ -187,12 +188,12 @@ static void rom_loader() {
                 bool clicked_dir = clicked_entry < dirCount;
                 const u16 *new_entry = clicked_dir ? dirs[clicked_entry].name : files[clicked_entry - dirCount].name;
                 int old_path_len = u16len(path);
-                int suffix_len = u16len(dirs[clicked_entry].name) + clicked_dir;
+                int suffix_len = u16len(new_entry) + clicked_dir;
                 int new_path_len = old_path_len + suffix_len;
                 if (new_path_len + 1 > path_cap) {
-                    path = realloc(path, path_cap *= 2);
+                    path = realloc(path, (path_cap *= 2) * sizeof(u16));
                 }
-                memcpy(path + old_path_len, dirs[clicked_entry].name, (suffix_len + 1) * 2);
+                memcpy(path + old_path_len, new_entry, (suffix_len + 1) * sizeof(u16));
                 if (clicked_entry < dirCount) {
                     // clicked on directory, so add a slash
                     path[new_path_len - 1] = '/';
@@ -250,6 +251,8 @@ static void rom_loader() {
     } else if (clicked_entry < dirCount) {
         return rom_loader();
     } else {
+        tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_cap * sizeof(u16));
+        memcpy(tVBOpt.ROM_PATH, path, path_cap * sizeof(u16));
         return;
     }
 }

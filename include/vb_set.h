@@ -1,6 +1,8 @@
 #ifndef VB_SET_H_
 #define VB_SET_H_
 
+#include "3ds/types.h"
+
 #define D_VGA       0
 #define D_VESA1     1
 #define D_VESA2     2
@@ -54,6 +56,7 @@ typedef struct VB_OPT {
     int   DYNAREC;
     int   FASTFORWARD;
     int   RENDERMODE; // 0 - hard only, 1 - hard + postproc, 2 - full soft
+    u16  *ROM_PATH;
     char *ROM_NAME; // Path\Name of game to open
     char *PROG_NAME; // Path\Name of program
     unsigned long CRC32; // CRC32 of ROM

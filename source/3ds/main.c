@@ -51,12 +51,8 @@ int main() {
     //if (fileSelect("Load ROM", rom_name, "vb") < 0)
     //    goto exit;
     openMenu(false);
-    return 0;
 
-    strncat(rom_path, rom_name, 255);
-    tVBOpt.ROM_NAME = rom_name;
-
-    if (!v810_init(rom_path)) {
+    if (!v810_init()) {
         goto exit;
     }
     loaded = true;
@@ -95,7 +91,7 @@ int main() {
                 int oldSound = tVBOpt.SOUND;
                 tVBOpt.SOUND = false;
                 v810_exit();
-                if (!v810_init(rom_path))
+                if (!v810_init())
                     goto exit;
                 v810_reset();
                 drc_reset();
