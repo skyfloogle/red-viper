@@ -1,5 +1,7 @@
+#include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <citro2d.h>
 #include "vb_gui.h"
 #include "vb_set.h"
@@ -128,61 +130,60 @@ static void game_menu() {
 }
 
 static void rom_loader() {
-    FS_Archive sdmcArchive;
-    FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (uint8_t*)"/"});
-
-    static u16 *path = NULL;
+    static char *path = NULL;
     static int path_cap = 128;
     if (!path) {
-        path = calloc(path_cap, sizeof(u16));
-        path[0] = '/';
+        path = calloc(path_cap, 1);
+        strcpy(path, "sdmc:/");
     }
     // cut filename from path if we reload mid-game
     {
-        u16 *path_end = path + u16len(path) - 1;
-        while (*path_end != '/') *path_end-- = 0;
+        strrchr(path, '/')[1] = 0;
     }
 
-    Handle dirHandle;
-    Result res = FSUSER_OpenDirectory(&dirHandle, sdmcArchive, fsMakePath(PATH_UTF16, path));
-    if (res) {
+    DIR *dirHandle = opendir(path);
+    if (!dirHandle) {
         // TODO error
         return;
     }
 
-    FS_DirectoryEntry *dirs = malloc(8 * sizeof(FS_DirectoryEntry));
-    FS_DirectoryEntry *files = malloc(8 * sizeof(FS_DirectoryEntry));
+    char **dirs = malloc(8 * sizeof(char*));
+    char **files = malloc(8 * sizeof(char*));
     int dirCount = 0, fileCount = 0;
     int dirCap = 8, fileCap = 8;
 
+    struct dirent *dp;
+
     // read .vb files and directories
-    while (true) {
-        u32 entriesRead;
-        FS_DirectoryEntry thisEntry;
-        FSDIR_Read(dirHandle, &entriesRead, 1, &thisEntry);
-        if (!entriesRead) break;
-        if (thisEntry.attributes & FS_ATTRIBUTE_DIRECTORY) {
+    while ((dp = readdir(dirHandle))) {
+        archive_dir_t* dirSt = (archive_dir_t*)dirHandle->dirData->dirStruct;
+        FS_DirectoryEntry *thisEntry = &dirSt->entry_data[dirSt->index];
+        if ((thisEntry->attributes & FS_ATTRIBUTE_HIDDEN) || dp->d_name[0] == '.')
+            continue;
+        if (thisEntry->attributes & FS_ATTRIBUTE_DIRECTORY) {
             if (dirCount == dirCap) {
                 dirCap *= 2;
-                dirs = realloc(dirs, dirCap * sizeof(FS_DirectoryEntry));
+                dirs = realloc(dirs, dirCap * sizeof(char*));
             }
-            dirs[dirCount++] = thisEntry;
+            int len = strlen(dp->d_name) + 1;
+            dirs[dirCount] = malloc(len);
+            memcpy(dirs[dirCount++], dp->d_name, len);
         } else {
             // check the file extension
-            bool length_2 = (thisEntry.shortExt[2] == 0 || thisEntry.shortExt[2] == ' ')
-                 && (thisEntry.shortExt[3] == 0 || thisEntry.shortExt[3] == ' ');
-            if (length_2 && strncmp(thisEntry.shortExt, "VB", 2) == 0) {
+            char *dot = strrchr(dp->d_name, '.');
+            if (dot && strcasecmp(dot, ".vb") == 0) {
                 if (fileCount == fileCap) {
                     fileCap *= 2;
-                    files = realloc(files, fileCap * sizeof(FS_DirectoryEntry));
+                    files = realloc(files, fileCap * sizeof(char*));
                 }
-                files[fileCount++] = thisEntry;
+                int len = strlen(dp->d_name) + 1;
+                files[fileCount] = malloc(len);
+                memcpy(files[fileCount++], dp->d_name, len);
             }
         }
     }
 
-    FSDIR_Close(dirHandle);
-    FSUSER_CloseArchive(sdmcArchive);
+    closedir(dirHandle);
 
     int entry_count = dirCount + fileCount;
     const float entry_height = 32;
@@ -222,14 +223,14 @@ static void rom_loader() {
         } else if (clicked_entry >= 0) {
             if (!(hidKeysHeld() & KEY_TOUCH)) {
                 bool clicked_dir = clicked_entry < dirCount;
-                const u16 *new_entry = clicked_dir ? dirs[clicked_entry].name : files[clicked_entry - dirCount].name;
-                int old_path_len = u16len(path);
-                int suffix_len = u16len(new_entry) + clicked_dir;
-                int new_path_len = old_path_len + suffix_len;
+                const char *new_entry = clicked_dir ? dirs[clicked_entry] : files[clicked_entry - dirCount];
+                int new_path_len = strlen(path) + strlen(new_entry) + clicked_dir;
                 if (new_path_len + 1 > path_cap) {
-                    path = realloc(path, (path_cap *= 2) * sizeof(u16));
+                    while (new_path_len + 1 > path_cap)
+                        path_cap *= 2;
+                    path = realloc(path, path_cap);
                 }
-                memcpy(path + old_path_len, new_entry, (suffix_len + 1) * sizeof(u16));
+                strcat(path, new_entry);
                 if (clicked_entry < dirCount) {
                     // clicked on directory, so add a slash
                     path[new_path_len - 1] = '/';
@@ -242,16 +243,10 @@ static void rom_loader() {
         C2D_TextBufClear(dynamic_textbuf);
         float y = -scroll_pos;
         C2D_Text text;
-        char ascii[128];
-        ascii[127] = 0;
         // entries
         for (int i = 0; i < entry_count; i++) {
             if (y + entry_height >= 0 && y < 240) {
-                for (int j = 0; j < 127; j++) {
-                    ascii[j] = (i < dirCount ? dirs : files - dirCount)[i].name[j];
-                    if (!ascii[j]) break;
-                }
-                C2D_TextParse(&text, dynamic_textbuf, ascii);
+                C2D_TextParse(&text, dynamic_textbuf, i < dirCount ? dirs[i] : files[i - dirCount]);
                 C2D_TextOptimize(&text);
                 C2D_DrawRectSolid(56, y, 0, 264, entry_height, C2D_Color32(clicked_entry == i ? 144 : 255, 0, 0, 255));
                 C2D_DrawText(&text, C2D_AlignLeft, 64, y + 8, 0, 0.5, 0.5);
@@ -259,24 +254,23 @@ static void rom_loader() {
             y += entry_height;
         }
         // path
-        for (int i = 0; i < 127; i++) {
-            ascii[i] = path[i];
-            if (!ascii[i]) break;
-        }
-        C2D_TextParse(&text, dynamic_textbuf, ascii);
+        C2D_TextParse(&text, dynamic_textbuf, path);
         C2D_TextOptimize(&text);
         C2D_DrawRectSolid(0, 0, 0, 320, 32, C2D_Color32(0, 0, 0, 255));
         C2D_DrawText(&text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, C2D_Color32(255, 0, 0, 255));
     LOOP_END(rom_loader_buttons);
 
+    for (int i = 0; i < dirCount; i++) free(dirs[i]);
+    for (int i = 0; i < fileCount; i++) free(files[i]);
     free(dirs);
     free(files);
 
     if (clicked_entry < 0) {
         switch (button) {
-            case 0:
-                int len = u16len(path);
-                if (len > 1) {
+            case 0: // Up
+                int len = strlen(path);
+                // don't get shorter than sdmc:/
+                if (len > 6) {
                     // the stuff at the start of the file will get rid of everything after the last slash
                     // so we can just get rid of the slash at the end
                     path[len - 1] = 0;
@@ -287,8 +281,8 @@ static void rom_loader() {
     } else if (clicked_entry < dirCount) {
         return rom_loader();
     } else {
-        tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_cap * sizeof(u16));
-        memcpy(tVBOpt.ROM_PATH, path, path_cap * sizeof(u16));
+        tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_cap);
+        memcpy(tVBOpt.ROM_PATH, path, path_cap);
         return;
     }
 }

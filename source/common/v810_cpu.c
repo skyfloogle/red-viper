@@ -36,23 +36,16 @@ int v810_init() {
     unsigned int ram_size = 0;
 
     // Open VB Rom
-    Handle f;
-    Result res = FSUSER_OpenFileDirectly(&f, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (uint8_t*)"/"}, fsMakePath(PATH_UTF16, tVBOpt.ROM_PATH), FS_OPEN_READ, 0);
-
-    if (!res) {
-        FSFILE_GetSize(f, &rom_size);
+    FILE* f = fopen(tVBOpt.ROM_PATH, "r");
+    if (f) {
+        fseek(f , 0 , SEEK_END);
+        rom_size = ftell(f);
+        rewind(f);
 
         V810_ROM1.pmemory = malloc(rom_size);
+        fread(V810_ROM1.pmemory, 1, rom_size, f);
 
-        // loop-read just in case
-        u32 total_read = 0;
-        while (total_read < rom_size) {
-            u32 bytes_read;
-            FSFILE_Read(f, &bytes_read, total_read, V810_ROM1.pmemory + total_read, rom_size - total_read);
-            total_read += bytes_read;
-        }
-
-        FSFILE_Close(f);
+        fclose(f);
     } else {
         return 0;
     }
