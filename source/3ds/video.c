@@ -167,8 +167,6 @@ void video_init() {
 }
 
 void video_render(int alt_buf) {
-	C3D_FrameBegin(0);
-
 	#ifdef COLTABLESCALE
 	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
 	#else
@@ -278,8 +276,6 @@ void video_render(int alt_buf) {
 		env = C3D_GetTexEnv(1);
 		C3D_TexEnvInit(env);
 	}
-
-	C3D_FrameEnd(0);
 }
 
 void video_quit() {

@@ -86,7 +86,7 @@ typedef struct _menu_s {
     struct _menu_item_s* items;
 } menu_t;
 
-int openMenu(menu_t* menu);
+//int openMenu(menu_t* menu);
 // Similar to file_select_ex in allegro
 int fileSelect(const char* message, char* path, const char* ext);
 

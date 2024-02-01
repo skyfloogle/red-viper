@@ -36,33 +36,22 @@ int main() {
     archiveMountSdmc();
     ptmuInit();
 
-#if DEBUGLEVEL == 0
-    consoleInit(GFX_BOTTOM, &debug_console);
-    consoleSetWindow(&debug_console, 0, 4, 40, 26);
-    debug_console.flags = CONSOLE_COLOR_FAINT;
-#endif
-    consoleInit(GFX_BOTTOM, &main_console);
-
     setDefaults();
     if (loadFileOptions() < 0)
         saveFileOptions();
 
-#if DEBUGLEVEL == 0
-    if (tVBOpt.DEBUG)
-        consoleDebugInit(debugDevice_CONSOLE);
-    else
-        consoleDebugInit(debugDevice_NULL);
-#else
     consoleDebugInit(debugDevice_3DMOO);
-#endif
 
     V810_DSP_Init();
     video_init();
+    guiInit();
 
     gfxSet3D(true);
 
-    if (fileSelect("Load ROM", rom_name, "vb") < 0)
-        goto exit;
+    //if (fileSelect("Load ROM", rom_name, "vb") < 0)
+    //    goto exit;
+    openMenu(false);
+    return 0;
 
     strncat(rom_path, rom_name, 255);
     tVBOpt.ROM_NAME = rom_name;
@@ -97,7 +86,7 @@ int main() {
 
         if (keys & KEY_TOUCH) {
             guiop = 0;
-            openMenu(&main_menu);
+            //openMenu(&main_menu);
             if (guiop & GUIEXIT) {
                 goto exit;
             }
@@ -143,6 +132,10 @@ int main() {
             goto exit;
         }
 
+        C3D_FrameBegin(0);
+
+        guiUpdate();
+
         // Display a frame, only after the right number of 'skips'
         if(tVIPREG.tFrame == tVIPREG.FRMCYC) {
             int alt_buf = (tVIPREG.tFrameBuffer) % 2;
@@ -155,6 +148,8 @@ int main() {
                 tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
             }
         }
+
+        C3D_FrameEnd(0);
 
         // Increment frame
         frame++;

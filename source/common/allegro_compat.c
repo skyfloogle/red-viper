@@ -272,6 +272,7 @@ int voice_get_frequency(int voice) {
 
 // The following is not exactly allegro stuff
 
+/*
 // Returns the position of the selected item or -1 if the menu was cancelled
 int openMenu(menu_t* menu) {
 #ifdef __3DS__
@@ -373,6 +374,7 @@ int openMenu(menu_t* menu) {
     return -1;
 #endif
 }
+*/
 
 // Taken from github.com/smealum/3ds_hb_menu
 static inline void unicodeToChar(char* dst, uint16_t* src, int max) {
@@ -427,7 +429,7 @@ int fileSelect(const char* message, char* path, const char* ext) {
     FSDIR_Close(dirHandle);
     FSUSER_CloseArchive(sdmcArchive);
 
-    item = openMenu(&(menu_t){message, NULL, pos, files});
+    item = 0;//openMenu(&(menu_t){message, NULL, pos, files});
     if (item >= 0 && item < pos)
         strncpy(path, files[item].text, 128);
 

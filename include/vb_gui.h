@@ -70,4 +70,8 @@ int debug_cheat_search_comp(void);
 int debug_cheat_view(void);
 int help_about(void);
 
+void guiInit();
+void guiUpdate();
+void openMenu(bool);
+
 #endif //VB_GUI_H
