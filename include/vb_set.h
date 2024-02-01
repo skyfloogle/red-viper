@@ -56,6 +56,7 @@ typedef struct VB_OPT {
     int   DYNAREC;
     int   FASTFORWARD;
     int   RENDERMODE; // 0 - hard only, 1 - hard + postproc, 2 - full soft
+    int   PAUSE_RIGHT; // right side of pause block on touch screen
     u16  *ROM_PATH;
     char *ROM_NAME; // Path\Name of game to open
     char *PROG_NAME; // Path\Name of program

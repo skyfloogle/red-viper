@@ -378,7 +378,16 @@ void guiUpdate() {
 
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
 
-    C2D_DrawRectSolid(320/2 - 100, 240/2 - 100, 0, 200, 200, C2D_Color32(64, 64, 64, 255));
+    C2D_DrawLine(
+        tVBOpt.PAUSE_RIGHT, 0, C2D_Color32(64, 64, 64, 255),
+        tVBOpt.PAUSE_RIGHT, 240, C2D_Color32(64, 64, 64, 255),
+        1, 0);
+
+    int pause_square_height = 70;
+    C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
+        pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+    C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
+        pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
 
     C2D_Flush();
 
@@ -386,5 +395,7 @@ void guiUpdate() {
 }
 
 bool guiShouldPause() {
-    return true;
+    touchPosition touch_pos;
+    hidTouchRead(&touch_pos);
+    return touch_pos.px < tVBOpt.PAUSE_RIGHT;
 }

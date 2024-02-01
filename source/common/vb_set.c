@@ -32,6 +32,7 @@ void setDefaults(void) {
     tVBOpt.DYNAREC  = 1;
     tVBOpt.FASTFORWARD = 0;
     tVBOpt.RENDERMODE = 1;
+    tVBOpt.PAUSE_RIGHT = 160;
 
     // Default keys
 #ifdef __3DS__
