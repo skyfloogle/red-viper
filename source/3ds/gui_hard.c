@@ -140,16 +140,25 @@ static void rom_loader() {
     static int path_cap = 128;
     if (!path) {
         path = calloc(path_cap, 1);
-        strcpy(path, "sdmc:/");
-    }
-    // cut filename from path if we reload mid-game
-    {
-        strrchr(path, '/')[1] = 0;
     }
 
-    DIR *dirHandle = opendir(path);
+    // in case we broke it somehow
+    if (strlen(path) < 6) {
+        strcpy(path, "sdmc:/");
+    }
+
+    DIR *dirHandle;
+    // cut filename from path if we reload mid-game
+    // also go up a directory if we can't load this directory
+    do {
+        strrchr(path, '/')[1] = 0;
+        dirHandle = opendir(path);
+        if (!dirHandle) path[strlen(path) - 1] = 0;
+    } while (!dirHandle && strlen(path) > 6);
+
     if (!dirHandle) {
         // TODO error
+        guiop = 0;
         return;
     }
 
