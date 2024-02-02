@@ -170,6 +170,12 @@ static void rom_loader() {
             int len = strlen(dp->d_name) + 1;
             dirs[dirCount] = malloc(len);
             memcpy(dirs[dirCount++], dp->d_name, len);
+            // insertion sort
+            for (int i = dirCount - 1; i > 0 && strcasecmp(dirs[i - 1], dirs[i]) > 0; i--) {
+                char *tmp = dirs[i];
+                dirs[i] = dirs[i - 1];
+                dirs[i - 1] = tmp;
+            }
         } else {
             // check the file extension
             char *dot = strrchr(dp->d_name, '.');
@@ -181,6 +187,12 @@ static void rom_loader() {
                 int len = strlen(dp->d_name) + 1;
                 files[fileCount] = malloc(len);
                 memcpy(files[fileCount++], dp->d_name, len);
+                // insertion sort
+                for (int i = fileCount - 1; i > 0 && strcasecmp(files[i - 1], files[i]) > 0; i--) {
+                    char *tmp = files[i];
+                    files[i] = files[i - 1];
+                    files[i - 1] = tmp;
+                }
             }
         }
     }
