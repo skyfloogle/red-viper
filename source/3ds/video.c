@@ -102,6 +102,7 @@ shaderProgram_s sSoft;
 u8 brightness[4];
 
 bool tileVisible[2048];
+int blankTile;
 
 void processColumnTable() {
 	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;

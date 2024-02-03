@@ -217,6 +217,7 @@ extern int eye_count;
 extern shaderProgram_s sFinal;
 
 extern bool tileVisible[2048];
+extern int blankTile;
 
 extern u8 brightness[4];
 
