@@ -508,10 +508,13 @@ void update_texture_cache_hard() {
 	blankTile = -1;
 	for (int t = 0; t < 2048; t++) {
 		// skip if this tile wasn't modified
-		if (tDSPCACHE.CharacterCache[t])
+		if (tDSPCACHE.CharacterCache[t]) {
 			tDSPCACHE.CharacterCache[t] = false;
-		else
+		} else {
+			if (blankTile < 0 && !tileVisible[t])
+				blankTile = t;
 			continue;
+		}
 
 		uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
 
@@ -526,11 +529,10 @@ void update_texture_cache_hard() {
 			if (!tv) {
 				if (blankTile < 0) {
 					blankTile = t;
-					memset(dstbuf, 0, 8 * 8 * 2);
 				}
+				memset(dstbuf, 0, 8 * 8 * 2);
 				continue;
 			}
-			if (!tv) continue;
 		}
 		
 		for (int i = 2; i >= 0; i -= 2) {
