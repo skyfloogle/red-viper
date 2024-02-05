@@ -341,15 +341,65 @@ void video_hard_render() {
 				}
 			} else {
 				// hbias or affine world
+				s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + windows[wnd * 16 + 9] * 2]);
+				int umin, vmin, umax, vmax;
+				if (windows[wnd * 16] & 0x1000) {
+					// h-bias
+					vmin = my;
+					vmax = my + h;
+					umin = umax = params[0];
+					for (int i = 1; i < h * 2; h++) {
+						if (params[i] < umin) umin = params[i];
+						if (params[i] > umax) umax = params[i];
+					}
+					umax += w;
+				} else {
+					// affine
+					umin = umax = params[0];
+					vmin = vmax = params[2];
+					for (int i = 0; i < h * 8; i += 8) {
+						int mx = params[i + 0];
+						int mp = params[i + 1];
+						int my = params[i + 2];
+						int dx = params[i + 3];
+						int dy = params[i + 4];
+						int mxleft = mx + (dx * abs(mp) >> 6);
+						int mxright = mx + (dx * (w + mp) >> 6);
+						int myleft = my + (dy * abs(mp) >> 6);
+						int myright = my + (dy * (w + mp) >> 6);
+						if (mx < umin) umin = mx;
+						if (mx > umax) umax = mx;
+						if (mxleft < umin) umin = mxleft;
+						if (mxleft > umax) umax = mxleft;
+						if (mxright < umin) umin = mxright;
+						if (mxright > umax) umax = mxright;
+						if (my < vmin) vmin = my;
+						if (my > vmax) vmax = my;
+						if (myleft < vmin) vmin = myleft;
+						if (myleft > vmax) vmax = myleft;
+						if (myright < vmin) vmin = myright;
+						if (myright > vmax) vmax = myright;
+					}
+					umin = umin / 8;
+					umax = umax / 8;
+					vmin = vmin / 8;
+					vmax = vmax / 8;
+				}
+				
 				for (uint8_t sub_bg = 0; sub_bg < scx * scy; sub_bg++) {
 					if (sub_bg % AFFINE_CACHE_SIZE == 0) {
 						// on first and every nth sub-bg, re-flush cache
 						for (int i = mapid + sub_bg; i < mapid + sub_bg + AFFINE_CACHE_SIZE && i < mapid + scx * scy; i++) {
+							int sub_x = ((i - mapid) & (scx - 1)) + (umin / (scx * 512) - (umin < 0));
+							int sub_y = ((i - mapid) >> scx_pow) + (vmin / (scy * 512) - (vmin < 0));
+							if (sub_x * 512 > umax || (sub_x + 1) * 512 < umin || sub_y * 512 > vmax || (sub_y + 1) * 512 < vmin) {
+								continue;
+							}
 							vcur += render_affine_cache(i, vbuf, vcur);
 						}
 					}
 					int cache_id = (mapid + sub_bg) % AFFINE_CACHE_SIZE;
-					if (!tileMapCache[cache_id].visible) continue;
+					if (tileMapCache[cache_id].bg != mapid + sub_bg || !tileMapCache[cache_id].visible) continue;
 
 					// set up wrapping for affine map
 					C3D_TexSetWrap(&tileMapCache[cache_id].tex,
@@ -388,8 +438,6 @@ void video_hard_render() {
 
 					env = C3D_GetTexEnv(1);
 					C3D_TexEnvInit(env);
-
-					s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + windows[wnd * 16 + 9] * 2]);
 
 					int full_w = 512 * scx;
 					int full_h = 512 * scy;
@@ -445,9 +493,9 @@ void video_hard_render() {
 							// affine
 							// TODO handle repeating multimap
 							for (int y = 0; y < h; y++) {
-								mx = params[y * 8 + 0];
-								mp = params[y * 8 + 1];
-								my = params[y * 8 + 2];
+								s16 mx = params[y * 8 + 0];
+								s16 mp = params[y * 8 + 1];
+								s16 my = params[y * 8 + 2];
 								s32 dx = params[y * 8 + 3];
 								s32 dy = params[y * 8 + 4];
 								avcur->x1 = gx;
