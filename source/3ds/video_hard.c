@@ -18,6 +18,9 @@ C3D_RenderTarget *screenTarget;
 
 C3D_Tex tileTexture;
 
+// O3DS, 32-bit: 4 available
+// O3DS, 16-bit: 7 available
+// Virtual Bowling needs at least 4 for good performance
 #define AFFINE_CACHE_SIZE 4
 typedef struct {
 	C3D_Tex tex;
