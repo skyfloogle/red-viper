@@ -88,6 +88,7 @@ void video_hard_init() {
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		C3D_TexInitWithParams(&tileMapCache[i].tex, NULL, params);
 		tileMapCache[i].target = C3D_RenderTargetCreateFromTex(&tileMapCache[i].tex, GPU_TEX_2D, 0, -1);
+		tileMapCache[i].bg = -1;
 	}
 
 	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
@@ -132,7 +133,8 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur) {
 	int vcount = 0;
 
 	int cache_id = mapid % AFFINE_CACHE_SIZE;
-	if (tileMapCache[cache_id].bg == mapid) return 0;
+	if (tileMapCache[cache_id].bg == mapid && !tDSPCACHE.BGCacheInvalid[mapid]) return 0;
+	tDSPCACHE.BGCacheInvalid[mapid] = false;
 	tileMapCache[cache_id].bg = mapid;
 
 	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid));
@@ -236,8 +238,6 @@ void video_hard_render() {
 	u16 *windows = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
 
 	uint8_t object_group_id = 3;
-
-	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) tileMapCache[i].bg = -1;
 
 	for (int8_t wnd = 31; wnd >= 0; wnd--) {
 		if (windows[wnd * 16] & 0x40)

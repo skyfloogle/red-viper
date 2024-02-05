@@ -744,20 +744,29 @@ void vipcreg_whword(WORD addr, HWORD data) {
     case 0x0005F824:    //BRTA
         //if (debuglog) dbg_addtrc("\nWrite  HWORD VIP BRTA [%08x]:%04x ",addr,data);
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP BRTA [%08x]:%04x ",addr,data);
-        tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
-        tVIPREG.BRTA = data & 0xFF;
+        if ((data & 0xFF) != tVIPREG.BRTA) {
+            tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
+            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+            tVIPREG.BRTA = data & 0xFF;
+        }
         break;
     case 0x0005F826:    //BRTB
         //if (debuglog) dbg_addtrc("\nWrite  HWORD VIP BRTB [%08x]:%04x ",addr,data);
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP BRTB [%08x]:%04x ",addr,data);
-        tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
-        tVIPREG.BRTB = data & 0xFF;
+        if ((data & 0xFF) != tVIPREG.BRTB) {
+            tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
+            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+            tVIPREG.BRTB = data & 0xFF;
+        }
         break;
     case 0x0005F828:    //BRTC
         //if (debuglog) dbg_addtrc("\nWrite  HWORD VIP BRTC [%08x]:%04x ",addr,data);
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP BRTC [%08x]:%04x ",addr,data);
-        tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
-        tVIPREG.BRTC = data & 0xFF;
+        if ((data & 0xFF) != tVIPREG.BRTC) {
+            tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
+            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+            tVIPREG.BRTC = data & 0xFF;
+        }
         break;
     case 0x0005F82A:    //REST
         //~ dtprintf(8,ferr,"\nWrite  HWORD VIP REST [%08x]:%04x ",addr,data);
