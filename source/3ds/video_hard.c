@@ -181,8 +181,33 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur) {
 }
 
 void video_hard_render() {
+	C3D_FrameDrawOn(screenTarget);
+
+	// clear
 	u8 clearcol = brightness[tVIPREG.BKCOL];
-	C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, ((clearcol | (clearcol << 8) | (clearcol << 16)) << 2) | 0xff000000, 0);
+	C3D_BindProgram(&sFinal);
+	C3D_AlphaTest(false, GPU_GREATER, 0);
+
+	C3D_TexEnv *env = C3D_GetTexEnv(0);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvColor(env, 0x808080ff);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
+	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+
+	env = C3D_GetTexEnv(1);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvColor(env, clearcol | 0x80808080);
+	C3D_TexEnvSrc(env, C3D_RGB, GPU_PREVIOUS, GPU_CONSTANT, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
+
+	C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
+	C3D_ImmSendAttrib(1, 1, -1, 1);
+	C3D_ImmSendAttrib(0, 0, 0, 0);
+	C3D_ImmSendAttrib(-1, -1, -1, 1);
+	C3D_ImmSendAttrib(1, 1, 0, 0);
+	C3D_ImmDrawEnd();
+	C3D_AlphaTest(true, GPU_GREATER, 0);
+
 	for (int i = 0; i < 4; i++) {
 		HWORD pal = tVIPREG.GPLT[i];
 		palettes[i].x = brightness[(pal >> 6) & 3] / 256.0 + 0.5;
@@ -197,7 +222,6 @@ void video_hard_render() {
 	vcur = vbuf;
 	avcur = avbuf;
 
-	C3D_FrameDrawOn(screenTarget);
 	setRegularDrawing();
 
 	C3D_TexBind(0, &tileTexture);
