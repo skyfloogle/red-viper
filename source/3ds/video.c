@@ -233,7 +233,12 @@ void video_render(int alt_buf) {
 		C3D_ImmDrawEnd();
 	}
 
-	// final render
+	video_flush(eye_count);
+}
+
+void video_flush(bool left_for_both) {
+	if (eye_count == 2) left_for_both = false;
+
 	C3D_TexBind(0, &screenTexHard);
 	C3D_BindProgram(&sFinal);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
@@ -258,7 +263,7 @@ void video_render(int alt_buf) {
 	}
 
 
-	for (int eye = 0; eye < eye_count; eye++) {
+	for (int eye = 0; eye < (left_for_both ? 2 : eye_count); eye++) {
 		C3D_RenderTargetClear(finalScreen[eye], C3D_CLEAR_ALL, 0, 0);
 		C3D_FrameDrawOn(finalScreen[eye]);
 		C3D_SetViewport((240 - 224) / 2, (400 - 384) / 2, 224, 384);
@@ -266,9 +271,9 @@ void video_render(int alt_buf) {
 
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
 		C3D_ImmSendAttrib(1, 1, -1, 1);
-		C3D_ImmSendAttrib(0, eye ? 0.5 : 0, 0, 0);
+		C3D_ImmSendAttrib(0, eye && !left_for_both ? 0.5 : 0, 0, 0);
 		C3D_ImmSendAttrib(-1, -1, -1, 1);
-		C3D_ImmSendAttrib(384.0 / 512, (eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
+		C3D_ImmSendAttrib(384.0 / 512, (eye && !left_for_both ? 0.5 : 0) + 224.0 / 512, 0, 0);
 		C3D_ImmDrawEnd();
 	}
 

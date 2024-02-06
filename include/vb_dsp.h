@@ -188,6 +188,7 @@ void V810_DSP_Quit();
 
 void video_init();
 void video_render(int alt_buf);
+void video_flush(bool left_for_both);
 void video_quit();
 
 void V810_SetPal(int BRTA, int BRTB, int BRTC);

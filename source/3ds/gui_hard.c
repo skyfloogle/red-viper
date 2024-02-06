@@ -3,6 +3,7 @@
 #include <string.h>
 #include <strings.h>
 #include <citro2d.h>
+#include "vb_dsp.h"
 #include "vb_gui.h"
 #include "vb_set.h"
 #include "vb_types.h"
@@ -366,6 +367,9 @@ void guiInit() {
 
 void openMenu(bool rom_loaded) {
     if (rom_loaded) {
+        C3D_FrameBegin(0);
+        video_flush(true);
+        C3D_FrameEnd(0);
         gfxSetDoubleBuffering(GFX_TOP, false);
         if (tVBOpt.SOUND)
             ndspSetMasterVol(0.0);
