@@ -226,6 +226,7 @@ static void rom_loader() {
             if (clicked_entry < 0 || clicked_entry >= entry_count)
                 clicked_entry = -1;
             dragging = false;
+            scroll_speed = 0;
         } else if (clicked_entry >= 0 && (hidKeysHeld() & KEY_TOUCH)) {
             if (!dragging && abs(touch_pos.py - last_py) >= 3) {
                 clicked_entry = -1;
