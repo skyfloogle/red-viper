@@ -210,6 +210,7 @@ static void rom_loader() {
     float scroll_bottom = entry_count * entry_height - 240;
     if (scroll_bottom < scroll_top) scroll_bottom = scroll_top;
     float scroll_pos = scroll_top;
+    float scroll_speed = 0;
 
     int last_py = 0;
     int clicked_entry = -1;
@@ -226,7 +227,7 @@ static void rom_loader() {
                 clicked_entry = -1;
             dragging = false;
         } else if (clicked_entry >= 0 && (hidKeysHeld() & KEY_TOUCH)) {
-            if (!dragging && abs(touch_pos.py - last_py) >= 5) {
+            if (!dragging && abs(touch_pos.py - last_py) >= 3) {
                 clicked_entry = -1;
                 dragging = true;
             }
@@ -235,9 +236,9 @@ static void rom_loader() {
             if (!(hidKeysHeld() & KEY_TOUCH)) {
                 dragging = false;
             } else {
-                scroll_pos -= touch_pos.py - last_py;
+                // negated
+                scroll_speed = -(touch_pos.py - last_py);
                 last_py = touch_pos.py;
-                scroll_pos = C2D_Clamp(scroll_pos, scroll_top, scroll_bottom);
             }
         } else if (clicked_entry >= 0) {
             if (!(hidKeysHeld() & KEY_TOUCH)) {
@@ -257,7 +258,31 @@ static void rom_loader() {
                 }
                 loop = false;
             }
+        } else if (scroll_speed != 0) {
+            scroll_speed += scroll_speed > 0 ? -1 : 1;
+            if (abs(scroll_speed) < 1) scroll_speed = 0;
         }
+        // inertia
+        int top_pos = scroll_top;
+        if (dragging) {
+            top_pos -= 8;
+        } else if (scroll_pos > scroll_top) {
+            top_pos -= 8;
+        } else {
+            if (scroll_speed < 0) scroll_speed = 0;
+            top_pos = scroll_pos < scroll_top ? scroll_pos + 0.25 : scroll_top;
+        }
+        int bottom_pos = scroll_bottom;
+        if (dragging) {
+            bottom_pos += 8;
+        } else if (scroll_pos < scroll_bottom) {
+            bottom_pos += 8;
+        } else {
+            if (scroll_speed > 0) scroll_speed = 0;
+            bottom_pos = scroll_pos > scroll_bottom ? scroll_pos - 0.25 : scroll_bottom;
+        }
+        scroll_pos += scroll_speed;
+        scroll_pos = C2D_Clamp(scroll_pos, top_pos, bottom_pos);
         // draw
         C2D_TextBufClear(dynamic_textbuf);
         float y = -scroll_pos;
