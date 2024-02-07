@@ -34,16 +34,17 @@ typedef struct {
     BYTE TCR;       //Timer Controll Reg,   0x02000020
     BYTE THB;       //Timer Higher Byte,    0x0200001C
     BYTE TLB;       //Timer Lower Byte,     0x02000018
+    BYTE tReset;    //Timer Reset register, not publicly visible
     HWORD tTHW;     //Timer TempHWord, 	not publicly visible
     WORD tTRC;      //Timer TempResolutionCount, not publicly visible
     SHWORD tCount;  //Timer Counter register, not publicly visible
-    BYTE tReset;    //Timer Reset register, not publicly visible
     BYTE SHB;       //Serial Higher Byte,   0x02000014  //Read Only
     BYTE SLB;       //Serial Lower Byte,    0x02000010  //Read Only
     BYTE CDRR;      //Com Recv Data Reg,    0x0200000C  //Read Only
     BYTE CDTR;      //Com Trans Data Reg,   0x02000008
     BYTE CCSR;      //Com Cnt Stat Reg,     0x02000004
     BYTE CCR;       //Com Controll Reg,     0x02000000
+    HWORD hwRead;   //Hardware input read timer
 } V810_HREGDAT;
 
 //Export some data structs...

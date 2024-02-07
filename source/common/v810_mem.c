@@ -531,6 +531,8 @@ void hcreg_wbyte(WORD addr, BYTE data) {
         }
         if(data & 0x04) { //Hardware Read
             if(!(data&0x01)) { //Hardware Read Disabled
+                tHReg.SCR |= 2;
+                tHReg.hwRead = 10240;
                 HWORD r = V810_RControll();   //Read the Keybd
                 tHReg.SLB =(BYTE)(r&0xFF);    //And stor the results...
                 tHReg.SHB =(BYTE)((r>>8)&0xFF);

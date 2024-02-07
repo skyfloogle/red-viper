@@ -147,6 +147,8 @@ int v810_init(char *rom_name) {
     tHReg.tCount = 0xFFFF;
     tHReg.tReset = 0;
 
+    tHReg.hwRead = 0;
+
     v810_state = calloc(1, sizeof(cpu_state));
 
     return 1;
@@ -184,6 +186,7 @@ void v810_reset() {
 
 int serviceInt(unsigned int cycles, WORD PC) {
     static unsigned int lasttime=0;
+    static unsigned int lastinput=0;
 
     //OK, this is a strange muck of code... basically it attempts to hit interrupts and
     //handle the VIP regs at the correct time. The timing needs a LOT of work. Right now,
@@ -197,6 +200,15 @@ int serviceInt(unsigned int cycles, WORD PC) {
     //if ((!(tHReg.SCR & 0x80)) && (handle_input()&0xFFFC)) {
     //  v810_int(0);
     //}
+
+    // hardware read timing
+    if (tHReg.hwRead > cycles - lastinput) {
+        tHReg.hwRead -= cycles - lastinput;
+    } else {
+        tHReg.hwRead = 0;
+        tHReg.SCR &= ~2;
+    }
+    lastinput = cycles;
 
     if (tHReg.TCR & 0x01) { // Timer Enabled
         if ((cycles-lasttime) >= tHReg.tTRC) {
