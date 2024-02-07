@@ -145,6 +145,7 @@ typedef struct {
 // Keybd Fn's. Had to put it somewhere!
 // Read the Controller
 HWORD V810_RControll(void);
+extern bool battery_low;
 
 void screen_blit(BITMAP *bitmap, int src_x, int src_y, int screen);
 

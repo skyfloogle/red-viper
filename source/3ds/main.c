@@ -127,6 +127,12 @@ int main() {
             }
         }
 
+        // battery level
+        u8 charging, battery_level;
+        PTMU_GetBatteryChargeState(&charging);
+        PTMU_GetBatteryLevel(&battery_level);
+        battery_low = !charging && battery_level <= 2;
+
 #if DEBUGLEVEL == 0
         consoleSelect(&debug_console);
 #endif
