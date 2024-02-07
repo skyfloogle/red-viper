@@ -351,7 +351,7 @@ void video_hard_render() {
 					vmin = my;
 					vmax = my + h;
 					umin = umax = params[0];
-					for (int i = 1; i < h * 2; h++) {
+					for (int i = 1; i < h * 2; i++) {
 						if (params[i] < umin) umin = params[i];
 						if (params[i] > umax) umax = params[i];
 					}
