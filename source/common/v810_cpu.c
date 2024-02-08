@@ -184,9 +184,11 @@ void v810_reset() {
     tVIPREG.XPSTTS &= ~2;
 }
 
+// Returns number of cycles until next timer interrupt.
 int serviceInt(unsigned int cycles, WORD PC) {
     static unsigned int lasttime=0;
     static unsigned int lastinput=0;
+    const static int MAXCYCLES = 1024;
 
     //OK, this is a strange muck of code... basically it attempts to hit interrupts and
     //handle the VIP regs at the correct time. The timing needs a LOT of work. Right now,
@@ -200,6 +202,11 @@ int serviceInt(unsigned int cycles, WORD PC) {
     //if ((!(tHReg.SCR & 0x80)) && (handle_input()&0xFFFC)) {
     //  v810_int(0);
     //}
+
+    int next_timer = tHReg.TCR & 0x01 ? tHReg.tCount * tHReg.tTRC + lasttime - cycles : MAXCYCLES;
+    int next_input = tHReg.SCR & 2 ? tHReg.hwRead : MAXCYCLES;
+    int next_interrupt = next_timer < next_input ? next_timer : next_input;
+    next_interrupt = next_interrupt < MAXCYCLES ? next_interrupt : MAXCYCLES;
 
     // hardware read timing
     if (tHReg.hwRead > cycles - lastinput) {
@@ -224,14 +231,13 @@ int serviceInt(unsigned int cycles, WORD PC) {
         }
         if ((tHReg.TCR & 0x02) && (tHReg.TCR & 0x08)) {
             // zero & interrupt enabled
-            return v810_int(1, PC);
+            return v810_int(1, PC) ? 0 : next_input;
         }
     } else {
         // don't get too overzealous if we turn it off and on again
         lasttime = cycles;
     }
-
-    return 0;
+    return next_interrupt;
 }
 
 int serviceDisplayInt(unsigned int cycles, WORD PC) {

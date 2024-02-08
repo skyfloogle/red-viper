@@ -116,13 +116,14 @@ drc_handleInterrupts:
     mov     r1, r5
     bl      serviceInt
     cmp     r0, #0
-    bne     exit_block
+    ble     exit_block
 
 ret_to_block:
+    @ MAXCYCLES = serviceInt()
     @ r10 = -MAXCYCLES
     ldr     r10, =tVBOpt
-    ldr     r10, [r10]
-    neg     r10, r10
+    str     r0, [r10]
+    neg     r10, r0
 
     @ Return to the block
     mov     r0, r4
