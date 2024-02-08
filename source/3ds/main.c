@@ -127,11 +127,10 @@ int main() {
             }
         }
 
-        // battery level
-        u8 charging, battery_level;
-        PTMU_GetBatteryChargeState(&charging);
-        PTMU_GetBatteryLevel(&battery_level);
-        battery_low = !charging && battery_level <= 2;
+        // read inputs once per frame
+        HWORD inputs = V810_RControll();
+        tHReg.SLB =(BYTE)(inputs&0xFF);
+        tHReg.SHB =(BYTE)((inputs>>8)&0xFF);
 
 #if DEBUGLEVEL == 0
         consoleSelect(&debug_console);

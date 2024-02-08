@@ -18,7 +18,6 @@ VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
 // Keybd Fn's. Had to put it somewhere!
 
 extern int arm_keys;
-bool battery_low;
 // Read the Controller, Fix Me....
 HWORD V810_RControll() {
     int ret_keys = 0;
@@ -27,6 +26,11 @@ HWORD V810_RControll() {
 
 #ifdef __3DS__
     key = hidKeysHeld();
+	u8 charging, battery_level;
+	PTMU_GetBatteryChargeState(&charging);
+	PTMU_GetBatteryLevel(&battery_level);
+	battery_low = !charging && battery_level <= 2;
+
 #else
     ret_keys = arm_keys;
     arm_keys = 0;
