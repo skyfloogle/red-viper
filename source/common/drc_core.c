@@ -93,8 +93,7 @@ bool is_byte_getter(WORD start_PC) {
         0x46, 0xc1, 0x00, 0x00, // ld.b [r6], r10
         0x1f, 0x18,             // jmp  [lp] 
     };
-    BYTE* off = (BYTE*)((start_PC >> 24) == 7 ? V810_ROM1.off : V810_VB_RAM.off);
-    BYTE* dest = off + start_PC;
+    BYTE* dest = (BYTE*)V810_ROM1.off + start_PC;
     return !memcmp(dest, byte_getter_func, sizeof(byte_getter_func));
 }
 
@@ -108,28 +107,17 @@ bool is_hword_getter(WORD start_PC) {
         0x00, 0xa8, 0x04, 0x00, // jr   +4
         0x1f, 0x18,             // jmp  [lp]
     };
-    BYTE* off = (BYTE*)((start_PC >> 24) == 7 ? V810_ROM1.off : V810_VB_RAM.off);
-    BYTE* dest = off + start_PC;
+    BYTE* dest = (BYTE*)V810_ROM1.off + start_PC;
     return !memcmp(dest, hword_getter_func, sizeof(hword_getter_func))
         || !memcmp(dest, hword_getter_jr_func, sizeof(hword_getter_jr_func));
 }
 
 static void drc_markCode(WORD PC) {
-    if ((PC >> 24) == 7) {
-        rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> 1] = true;
-    } else if ((PC >> 24) == 5) {
-        ram_data_code_map[((PC - V810_VB_RAM.lowaddr) & V810_VB_RAM.highaddr) >> 1] = true;
-    }
+    rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> 1] = true;
 }
 
 static bool drc_isCode(WORD PC) {
-    if ((PC >> 24) == 7) {
-        return rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> 1];
-    } else if ((PC >> 24) == 5) {
-        return ram_data_code_map[((PC - V810_VB_RAM.lowaddr) & V810_VB_RAM.highaddr) >> 1];
-    } else {
-        return false;
-    }
+    return rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> 1];
 }
 
 // Finds the starting and ending address of a V810 code block. It stops after a
@@ -154,22 +142,12 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
         if (cur_PC > end_PC)
             end_PC = cur_PC;
 
-        // TODO: implement reading from RAM
-        if ((cur_PC >>24) == 0x05) { // RAM
-            cur_PC = (cur_PC & V810_VB_RAM.highaddr);
-            lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
-            highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
-            lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
-            highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
-        } else if ((cur_PC >>24) >= 0x07) { // ROM
-            cur_PC = (cur_PC & V810_ROM1.highaddr);
-            lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
-            highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
-            lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
-            highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
-        } else {
-            return;
-        }
+        cur_PC = (cur_PC & V810_ROM1.highaddr);
+        lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
+        highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
+        lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
+        highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
+
         if ((highB & 0xE0) == 0x80)
             opcode = highB>>1;
         else
@@ -413,23 +391,11 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
     WORD entry_PC = v810_state->PC;
 
     for (; (i < MAX_INST) && (cur_PC <= end_PC); i++) {
-        cur_PC = (cur_PC &0x07FFFFFE);
-
-        if ((cur_PC >>24) == 0x05) { // RAM
-            cur_PC = (cur_PC & V810_VB_RAM.highaddr);
-            lowB   = ((BYTE *)(V810_VB_RAM.off + cur_PC))[0];
-            highB  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[1];
-            lowB2  = ((BYTE *)(V810_VB_RAM.off + cur_PC))[2];
-            highB2 = ((BYTE *)(V810_VB_RAM.off + cur_PC))[3];
-        } else if ((cur_PC >>24) >= 0x07) { // ROM
-            cur_PC = (cur_PC & V810_ROM1.highaddr);
-            lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
-            highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
-            lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
-            highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
-        } else {
-            return 0;
-        }
+        cur_PC = (cur_PC & V810_ROM1.highaddr);
+        lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
+        highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
+        lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
+        highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
 
         inst_cache[i].PC = cur_PC;
         inst_cache[i].save_flags = false;
@@ -1619,9 +1585,6 @@ void drc_clearCache() {
     memset(rom_block_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     memset(rom_entry_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     memset(rom_data_code_map, 0, sizeof(bool)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    memset(ram_block_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
-    memset(ram_entry_map, 0, sizeof(WORD)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
-    memset(ram_data_code_map, 0, sizeof(bool)*((V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1));
 
     *cache_start = -1;
 
@@ -1635,43 +1598,20 @@ WORD* drc_getEntry(WORD loc, exec_block **p_block) {
     unsigned int map_pos;
     exec_block *block;
 
-    switch (loc>>24) {
-        case 5:
-            map_pos = ((loc-V810_VB_RAM.lowaddr)&V810_VB_RAM.highaddr)>>1;
-            if (p_block)
-                *p_block = block_ptr_start + ram_block_map[map_pos];
-            return cache_start + ram_entry_map[map_pos];
-        case 7:
-            map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
-            block = block_ptr_start + rom_block_map[map_pos];
-            if (block == block_ptr_start || block->free) return cache_start;
-            if (p_block)
-                *p_block = block;
-            return cache_start + rom_entry_map[map_pos];
-        default:
-            return cache_start;
-    }
+    map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
+    block = block_ptr_start + rom_block_map[map_pos];
+    if (block == block_ptr_start || block->free) return cache_start;
+    if (p_block)
+        *p_block = block;
+    return cache_start + rom_entry_map[map_pos];
 }
 
 // Sets a new entrypoint for the V810 instruction in location loc and the
 // corresponding block
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
-    unsigned int map_pos;
-
-    switch (loc>>24) {
-        case 5:
-            map_pos = ((loc-V810_VB_RAM.lowaddr)&V810_VB_RAM.highaddr)>>1;
-            ram_block_map[map_pos] = block - block_ptr_start;
-            ram_entry_map[map_pos] = entry - cache_start;
-            break;
-        case 7:
-            map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
-            rom_block_map[map_pos] = block - block_ptr_start;
-            rom_entry_map[map_pos] = entry - cache_start;
-            break;
-        default:
-            return;
-    }
+    unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
+    rom_block_map[map_pos] = block - block_ptr_start;
+    rom_entry_map[map_pos] = entry - cache_start;
 }
 
 // Initialize the dynarec
@@ -1680,9 +1620,6 @@ void drc_init() {
     rom_block_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     rom_entry_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     rom_data_code_map = calloc(sizeof(bool), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
-    ram_block_map = calloc(sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1);
-    ram_entry_map = calloc(sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1);
-    ram_data_code_map = calloc(sizeof(bool), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1);
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
     hbHaxInit();
@@ -1715,8 +1652,6 @@ void drc_exit() {
         free(cache_start);
     free(rom_block_map);
     free(rom_entry_map);
-    free(ram_block_map);
-    free(ram_entry_map);
     linearFree(block_ptr_start);
     hbHaxExit();
 }
@@ -1774,7 +1709,7 @@ int drc_run() {
         clocks = v810_state->cycles;
 
         dprintf(4, "[DRC]: end - 0x%lx\n", v810_state->PC);
-        if (v810_state->PC < V810_VB_RAM.lowaddr || v810_state->PC > V810_ROM1.highaddr) {
+        if (v810_state->PC < V810_ROM1.lowaddr || v810_state->PC > V810_ROM1.highaddr) {
             printf("Last entry: 0x%lx\n", entry_PC);
             return DRC_ERR_BAD_PC;
         }
@@ -1796,12 +1731,6 @@ void drc_loadSavedCache() {
     f = fopen("rom_entry_map", "r");
     fread(rom_entry_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
     fclose(f);
-    f = fopen("ram_block_map", "r");
-    fread(ram_block_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
-    fclose(f);
-    f = fopen("ram_entry_map", "r");
-    fread(ram_entry_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
-    fclose(f);
     f = fopen("block_heap", "r");
     fread(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
     fclose(f);
@@ -1818,12 +1747,6 @@ void drc_dumpCache(char* filename) {
     fclose(f);
     f = fopen("rom_entry_map", "w");
     fwrite(rom_entry_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
-    fclose(f);
-    f = fopen("ram_block_map", "w");
-    fwrite(ram_block_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
-    fclose(f);
-    f = fopen("ram_entry_map", "w");
-    fwrite(ram_entry_map, sizeof(WORD), (V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr) >> 1, f);
     fclose(f);
     f = fopen("block_heap", "w");
     fwrite(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);

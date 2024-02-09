@@ -62,11 +62,8 @@ typedef struct {
 } v810_instruction;
 
 WORD* rom_block_map;
-WORD* ram_block_map;
 WORD* rom_entry_map;
-WORD* ram_entry_map;
 bool* rom_data_code_map;
-bool* ram_data_code_map;
 BYTE reg_usage[32];
 extern WORD* cache_start;
 extern WORD* cache_pos;
