@@ -26,6 +26,7 @@ typedef struct {
 	C3D_Tex tex;
 	C3D_RenderTarget *target;
 	int bg;
+	short umin, umax, vmin, vmax;
 	bool visible;
 } AffineCacheEntry;
 AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
@@ -91,6 +92,7 @@ void video_hard_init() {
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		C3D_TexInitWithParams(&tileMapCache[i].tex, NULL, params);
 		tileMapCache[i].target = C3D_RenderTargetCreateFromTex(&tileMapCache[i].tex, GPU_TEX_2D, 0, -1);
+		C3D_RenderTargetClear(tileMapCache[i].target, C3D_CLEAR_ALL, 0xffffffff, 0);
 		tileMapCache[i].bg = -1;
 	}
 
@@ -132,32 +134,53 @@ void setRegularDrawing() {
 }
 
 // returns vertex count
-int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur) {
+int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int umax, int vmin, int vmax) {
 	int vcount = 0;
 
 	int cache_id = mapid % AFFINE_CACHE_SIZE;
-	if (tileMapCache[cache_id].bg == mapid && !tDSPCACHE.BGCacheInvalid[mapid]) return 0;
+	bool new_cache = tileMapCache[cache_id].bg != mapid || tDSPCACHE.BGCacheInvalid[mapid];
+	if (!new_cache) {
+		if (tileMapCache[cache_id].umin <= umin && tileMapCache[cache_id].umax >= umax &&
+			tileMapCache[cache_id].vmin <= vmin && tileMapCache[cache_id].vmax >= vmax
+		) return 0;
+	}
 	tDSPCACHE.BGCacheInvalid[mapid] = false;
 	tileMapCache[cache_id].bg = mapid;
+	// increase the range only if new cache or if bigger
+	if (tileMapCache[cache_id].umin > umin || new_cache)
+		tileMapCache[cache_id].umin = umin;
+	if (tileMapCache[cache_id].umax < umax || new_cache)
+		tileMapCache[cache_id].umax = umax;
+	if (tileMapCache[cache_id].vmin > vmin || new_cache)
+		tileMapCache[cache_id].vmin = vmin;
+	if (tileMapCache[cache_id].vmax < vmax || new_cache)
+		tileMapCache[cache_id].vmax = vmax;
+
+	int visible_count = 0;
 
 	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid));
-	for (int y = 0; y < 64 * 8; y += 8) {
-		for (int x = 0; x < 64 * 8; x += 8) {
-			uint16_t tile = *tilemap++;
+	for (int y = tileMapCache[cache_id].vmin & ~7; y <= tileMapCache[cache_id].vmax; y += 8) {
+		if (y - (tileMapCache[cache_id].vmin & ~7) >= 512) break;
+		for (int x = tileMapCache[cache_id].umin & ~7; x <= tileMapCache[cache_id].umax; x += 8) {
+			if (x - (tileMapCache[cache_id].umin & ~7) >= 512) break;
+			int xx = x & 0x1f8;
+			int yy = y & 0x1f8;
+			uint16_t tile = tilemap[(yy << 3) + (xx >> 3)];
 			uint16_t tileid = tile & 0x07ff;
 			// it's faster to draw everything including blank tiles with alpha test off
 			// than to clear the surface and then draw any visible tiles onto it
 			// maybe clearing with a vbuf rather than immediate mode would help? idk
 			if (!tileVisible[tileid]) tileid = blankTile;
+			else visible_count++;
 			bool hflip = (tile & 0x2000) != 0;
 			bool vflip = (tile & 0x1000) != 0;
 			short u = (tileid % 32) * 8;
 			short v = (tileid / 32) * 8;
 
-			vcur->x1 = x + 8 * hflip;
-			vcur->y1 = y + 8 * vflip;
-			vcur->x2 = x + 8 * !hflip;
-			vcur->y2 = y + 8 * !vflip;
+			vcur->x1 = xx + 8 * hflip;
+			vcur->y1 = yy + 8 * vflip;
+			vcur->x2 = xx + 8 * !hflip;
+			vcur->y2 = yy + 8 * !vflip;
 			vcur->u = u;
 			vcur->v = v;
 			vcur++->palette = tile >> 14;
@@ -165,7 +188,7 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur) {
 			vcount++;
 		}
 	}
-	if (vcount == 0) {
+	if (visible_count == 0) {
 		// bail
 		tileMapCache[cache_id].visible = false;
 		return 0;
@@ -366,10 +389,10 @@ void video_hard_render() {
 						int my = params[i + 2];
 						int dx = params[i + 3];
 						int dy = params[i + 4];
-						int mxleft = mx + (dx * abs(mp) >> 6);
-						int mxright = mx + (dx * (w + mp) >> 6);
-						int myleft = my + (dy * abs(mp) >> 6);
-						int myright = my + (dy * (w + mp) >> 6);
+						int mxleft = mx + ((dx * abs(mp)) >> 6);
+						int mxright = (mx > mxleft ? mx : mxleft) + ((dx * (w + mp)) >> 6);
+						int myleft = my + ((dy * abs(mp)) >> 6);
+						int myright = (my > myleft ? my : myleft) + ((dy * (w + mp)) >> 6);
 						if (mx < umin) umin = mx;
 						if (mx > umax) umax = mx;
 						if (mxleft < umin) umin = mxleft;
@@ -383,10 +406,10 @@ void video_hard_render() {
 						if (myright < vmin) vmin = myright;
 						if (myright > vmax) vmax = myright;
 					}
-					umin = umin / 8;
-					umax = umax / 8;
-					vmin = vmin / 8;
-					vmax = vmax / 8;
+					umin = umin / 8 - (umin < 0);
+					umax = umax / 8 - (umax < 0);
+					vmin = vmin / 8 - (vmin < 0);
+					vmax = vmax / 8 - (vmax < 0);
 				}
 				
 				for (uint8_t sub_bg = 0; sub_bg < scx * scy; sub_bg++) {
@@ -398,7 +421,7 @@ void video_hard_render() {
 							if (sub_x * 512 > umax || (sub_x + 1) * 512 < umin || sub_y * 512 > vmax || (sub_y + 1) * 512 < vmin) {
 								continue;
 							}
-							vcur += render_affine_cache(i, vbuf, vcur);
+							vcur += render_affine_cache(i, vbuf, vcur, umin, umax, vmin, vmax);
 						}
 					}
 					int cache_id = (mapid + sub_bg) % AFFINE_CACHE_SIZE;
@@ -490,7 +513,7 @@ void video_hard_render() {
 								avcur->ix = w * 8;
 								avcur->iy = 0;
 								avcur->jx = 0;
-								avcur++->jy = 1 * 8;
+								avcur++->jy = 0;
 							}
 						} else {
 							// affine
@@ -509,8 +532,8 @@ void video_hard_render() {
 								avcur->v = base_v * 8 + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
 								avcur->ix = dx * (w + mp) >> 6;
 								avcur->iy = dy * (w + mp) >> 6;
-								avcur->jx = params[y * 8 + 3] != 0 ? 0 : 1 * 8;
-								avcur++->jy = params[y * 8 + 3] == 0 ? 0 : 1 * 8;
+								avcur->jx = 0;
+								avcur++->jy = 0;
 							}
 						}
 						if (avcur - avbuf > AVBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", avcur - avbuf, AVBUF_SIZE);
