@@ -188,7 +188,7 @@ void v810_reset() {
 int serviceInt(unsigned int cycles, WORD PC) {
     static unsigned int lasttime=0;
     static unsigned int lastinput=0;
-    const static int MAXCYCLES = 1024;
+    const static int MAXCYCLES = 512;
 
     //OK, this is a strange muck of code... basically it attempts to hit interrupts and
     //handle the VIP regs at the correct time. The timing needs a LOT of work. Right now,
