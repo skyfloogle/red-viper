@@ -9,4 +9,6 @@
 extern char rom_path[256];
 extern char rom_name[128];
 
+extern bool game_running;
+
 #endif

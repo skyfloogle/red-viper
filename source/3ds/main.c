@@ -18,11 +18,12 @@
 char rom_path[256] = "sdmc:/vb/";
 char rom_name[128];
 
+bool game_running = false;
+
 int main() {
     int qwe;
     int frame = 0;
     int err = 0;
-    bool loaded = false;
     PrintConsole main_console;
 #if DEBUGLEVEL == 0
     PrintConsole debug_console;
@@ -49,7 +50,7 @@ int main() {
     gfxSet3D(true);
 
     guiop = 0;
-    openMenu(false);
+    openMenu();
     if (guiop & GUIEXIT) {
         goto exit;
     }
@@ -57,7 +58,7 @@ int main() {
     if (!v810_init()) {
         goto exit;
     }
-    loaded = true;
+    game_running = true;
 
     if (tVBOpt.SOUND) sound_init();
 
@@ -84,7 +85,7 @@ int main() {
 
         if ((keys & KEY_TOUCH) && guiShouldPause()) {
             guiop = 0;
-            openMenu(true);
+            openMenu();
             if (guiop & GUIEXIT) {
                 goto exit;
             }
@@ -175,7 +176,7 @@ exit:
     endThreads();
     V810_DSP_Quit();
     video_quit();
-    if (tVBOpt.SOUND && loaded) sound_close();
+    if (tVBOpt.SOUND && game_running) sound_close();
     drc_exit();
 
     ptmuExit();

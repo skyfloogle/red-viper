@@ -54,7 +54,7 @@ int help_about(void);
 
 void guiInit();
 void guiUpdate();
-void openMenu(bool);
+void openMenu();
 
 bool guiShouldPause();
 int guiGetInput();

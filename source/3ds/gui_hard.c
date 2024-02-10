@@ -7,6 +7,7 @@
 #include "vb_gui.h"
 #include "vb_set.h"
 #include "vb_types.h"
+#include "main.h"
 
 static bool buttons_on_screen = false;
 
@@ -57,8 +58,8 @@ static inline int handle_buttons(Button buttons[], int count);
         C3D_FrameEnd(0); \
     }
 
-static void main_menu();
-static Button main_menu_buttons[] = {
+static void first_menu();
+static Button first_menu_buttons[] = {
     {"Load ROM", 16, 16, 288, 144},
     {"Controls", 0, 176, 80, 64},
     {"Options", 240, 176, 80, 64},
@@ -88,14 +89,14 @@ static Button controls_buttons[] = {
 };
 
 #define SETUP_ALL_BUTTONS \
-    SETUP_BUTTONS(main_menu_buttons); \
+    SETUP_BUTTONS(first_menu_buttons); \
     SETUP_BUTTONS(game_menu_buttons); \
     SETUP_BUTTONS(rom_loader_buttons); \
     SETUP_BUTTONS(controls_buttons);
 
-static void main_menu() {
-    LOOP_BEGIN(main_menu_buttons);
-    LOOP_END(main_menu_buttons);
+static void first_menu() {
+    LOOP_BEGIN(first_menu_buttons);
+    LOOP_END(first_menu_buttons);
     guiop = 0;
     switch (button) {
         case 0:
@@ -132,6 +133,11 @@ static void game_menu() {
             guiop = AKILL | VBRESET;
             return;
     }
+}
+
+static void main_menu() {
+    if (game_running) game_menu();
+    else first_menu();
 }
 
 int strptrcmp(const void *s1, const void *s2) {
@@ -389,16 +395,11 @@ void guiInit() {
 
     static_textbuf = C2D_TextBufNew(1024);
     dynamic_textbuf = C2D_TextBufNew(4096);
-    #define SETUP_BUTTONS(arr) \
-        for (int i = 0; i < sizeof(arr) / sizeof(arr[0]); i++) { \
-            C2D_TextParse(&arr[i].text, static_textbuf, arr[i].str); \
-            C2D_TextOptimize(&arr[i].text); \
-        }
     SETUP_ALL_BUTTONS;
 }
 
-void openMenu(bool rom_loaded) {
-    if (rom_loaded) {
+void openMenu() {
+    if (game_running) {
         C3D_FrameBegin(0);
         video_flush(true);
         C3D_FrameEnd(0);
@@ -408,11 +409,8 @@ void openMenu(bool rom_loaded) {
     }
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    if (rom_loaded)
-        game_menu();
-    else
-        main_menu();
-    if (rom_loaded) {
+    main_menu();
+    if (game_running) {
         gfxSetDoubleBuffering(GFX_TOP, true);
         if (tVBOpt.SOUND)
             ndspSetMasterVol(1.0);
