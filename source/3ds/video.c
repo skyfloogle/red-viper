@@ -10,6 +10,7 @@
 #include "v810_cpu.h"
 #include "v810_mem.h"
 #include "vb_set.h"
+#include "vb_gui.h"
 
 #include "final_shbin.h"
 #include "soft_shbin.h"
@@ -44,6 +45,13 @@ HWORD V810_RControll() {
 	for (int i = 0; i < 32; i++) {
 		if (key & BIT(i)) ret_keys |= vbkey[i];
 	}
+
+	if (key & KEY_TOUCH) ret_keys |= guiGetInput();
+
+	if ((ret_keys & VB_LPAD_L) && (ret_keys & VB_LPAD_R)) ret_keys &= ~(VB_LPAD_L | VB_LPAD_R);
+	if ((ret_keys & VB_LPAD_U) && (ret_keys & VB_LPAD_D)) ret_keys &= ~(VB_LPAD_U | VB_LPAD_D);
+	if ((ret_keys & VB_RPAD_L) && (ret_keys & VB_RPAD_R)) ret_keys &= ~(VB_RPAD_L | VB_RPAD_R);
+	if ((ret_keys & VB_RPAD_U) && (ret_keys & VB_RPAD_D)) ret_keys &= ~(VB_RPAD_U | VB_RPAD_D);
 
     ret_keys = ret_keys|0x0002; // Always set bit1, ctrl ID
     return ret_keys;

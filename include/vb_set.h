@@ -57,6 +57,13 @@ typedef struct VB_OPT {
     int   FASTFORWARD;
     int   RENDERMODE; // 0 - hard only, 1 - hard + postproc, 2 - full soft
     int   PAUSE_RIGHT; // right side of pause block on touch screen
+    int   TOUCH_AX;
+    int   TOUCH_AY;
+    int   TOUCH_BX;
+    int   TOUCH_BY;
+    int   TOUCH_PADX;
+    int   TOUCH_PADY;
+    int   ABXY_MODE; // 0: A=A B=B, 1: B=A Y=B, 2: A=B B=A, 3: B=B Y=A
     char *ROM_PATH;
     char *ROM_NAME; // Path\Name of game to open
     char *PROG_NAME; // Path\Name of program

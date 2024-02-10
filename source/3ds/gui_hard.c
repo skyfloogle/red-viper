@@ -8,6 +8,8 @@
 #include "vb_set.h"
 #include "vb_types.h"
 
+static bool buttons_on_screen = false;
+
 static C3D_RenderTarget *screen;
 
 static C2D_TextBuf static_textbuf;
@@ -377,9 +379,13 @@ static inline int handle_buttons(Button buttons[], int count) {
     return ret;
 }
 
+void setTouchControls(bool button);
+
 void guiInit() {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     screen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+
+    setTouchControls(buttons_on_screen);
 
     static_textbuf = C2D_TextBufNew(1024);
     dynamic_textbuf = C2D_TextBufNew(4096);
@@ -413,6 +419,27 @@ void openMenu(bool rom_loaded) {
     }
 }
 
+void setTouchControls(bool buttons) {
+    buttons_on_screen = buttons;
+    if (buttons) {
+        vbkey[__builtin_ctz(KEY_A)] = VB_RPAD_R;
+        vbkey[__builtin_ctz(KEY_X)] = VB_RPAD_U;
+        vbkey[__builtin_ctz(KEY_B)] = VB_RPAD_D;
+        vbkey[__builtin_ctz(KEY_Y)] = VB_RPAD_L;
+    } else {
+        vbkey[__builtin_ctz(KEY_A)] = tVBOpt.ABXY_MODE < 2 ? VB_KEY_A : VB_KEY_B;
+        vbkey[__builtin_ctz(KEY_Y)] = tVBOpt.ABXY_MODE < 2 ? VB_KEY_B : VB_KEY_A;
+        vbkey[__builtin_ctz(KEY_B)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? VB_KEY_B : VB_KEY_A;
+        vbkey[__builtin_ctz(KEY_X)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? VB_KEY_A : VB_KEY_B;
+    }
+}
+
+bool guiShouldSwitch() {
+    touchPosition touch_pos;
+    hidTouchRead(&touch_pos);
+    return touch_pos.px >= 320 - 64 && touch_pos.py < 32;
+}
+
 void guiUpdate() {
     C2D_Prepare();
     C2D_TargetClear(screen, 0);
@@ -431,6 +458,16 @@ void guiUpdate() {
     C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
         pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
 
+    if (buttons_on_screen) {
+        C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, C2D_Color32(128, 0, 0, 255));
+        C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, C2D_Color32(128, 0, 0, 255));
+    } else {
+        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, C2D_Color32(128, 0, 0, 255));
+        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, C2D_Color32(128, 0, 0, 255));
+    }
+
+    C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, C2D_Color32(128, 0, 0, 255));
+
     C2D_Flush();
 
 	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
@@ -440,4 +477,32 @@ bool guiShouldPause() {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
     return touch_pos.px < tVBOpt.PAUSE_RIGHT;
+}
+
+int guiGetInput() {
+    if ((hidKeysHeld() & KEY_TOUCH) && guiShouldSwitch()) {
+        if (hidKeysDown() & KEY_TOUCH) setTouchControls(!buttons_on_screen);
+        return 0;
+    }
+    touchPosition touch_pos;
+    hidTouchRead(&touch_pos);
+    if (touch_pos.px < tVBOpt.PAUSE_RIGHT) return 0;
+    if (buttons_on_screen) {
+        int axdist = touch_pos.px - tVBOpt.TOUCH_AX;
+        int aydist = touch_pos.py - tVBOpt.TOUCH_AY;
+        int bxdist = touch_pos.px - tVBOpt.TOUCH_BX;
+        int bydist = touch_pos.py - tVBOpt.TOUCH_BY;
+        if (axdist*axdist + aydist*aydist < bxdist*bxdist + bydist*bydist)
+            return VB_KEY_A;
+        else
+            return VB_KEY_B;
+    } else {
+        int xdist = touch_pos.px - tVBOpt.TOUCH_PADX;
+        int ydist = touch_pos.py - tVBOpt.TOUCH_PADY;
+        if (abs(xdist) >= abs(ydist)) {
+            return xdist >= 0 ? VB_RPAD_R : VB_RPAD_L;
+        } else {
+            return ydist <= 0 ? VB_RPAD_U : VB_RPAD_D;
+        }
+    }
 }

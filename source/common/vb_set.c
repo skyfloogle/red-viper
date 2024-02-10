@@ -33,6 +33,13 @@ void setDefaults(void) {
     tVBOpt.FASTFORWARD = 0;
     tVBOpt.RENDERMODE = 1;
     tVBOpt.PAUSE_RIGHT = 160;
+    tVBOpt.TOUCH_AX = 250;
+    tVBOpt.TOUCH_AY = 64;
+    tVBOpt.TOUCH_BX = 250;
+    tVBOpt.TOUCH_BY = 160;
+    tVBOpt.TOUCH_PADX = 240;
+    tVBOpt.TOUCH_PADY = 128;
+    tVBOpt.ABXY_MODE = 0;
 
     // Default keys
 #ifdef __3DS__

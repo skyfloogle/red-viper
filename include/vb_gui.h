@@ -57,5 +57,6 @@ void guiUpdate();
 void openMenu(bool);
 
 bool guiShouldPause();
+int guiGetInput();
 
 #endif //VB_GUI_H
