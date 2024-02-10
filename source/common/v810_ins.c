@@ -1498,7 +1498,6 @@ float ins_divf_s(float reg1, float reg2) {
 }
 
 int ins_trnc_sw(float reg1, int reg2) {
-    dprintf(0, "[FP]: %s - %f %f\n", __func__, (float)reg1, (float)reg2);
     int flags = 0; // Set Flags, CY unchanged, OV set to Zero
     reg2 = (int)trunc(reg1);
     if (reg2 == 0) flags = flags | PSW_Z;

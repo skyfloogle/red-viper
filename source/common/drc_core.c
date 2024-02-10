@@ -311,7 +311,7 @@ void drc_findWaterworldBusywait(v810_instruction *inst_cache, int size) {
             ) {
                 // it's probably safe at this point
                 inst_cache[i].busywait = true;
-                dprintf(0, "waterworld busywait at %lx\n", inst_cache[i].PC);
+                dprintf(1, "waterworld busywait at %lx\n", inst_cache[i].PC);
             }
         }
     }
@@ -368,14 +368,14 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
                 }
             default:
                 if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
-                    dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+                    dprintf(1, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
                     inst_cache[pos].busywait = true;
                 }
                 return;
         }
     }
     if (busywait && inst_cache[0].PC <= inst_cache[pos].PC + inst_cache[pos].branch_offset) {
-        dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+        dprintf(1, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
         inst_cache[pos].busywait = true;
     }
 }
@@ -562,7 +562,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
             WORD target_PC = inst_cache[j].PC + inst_cache[j].branch_offset;
             if (target->PC != target_PC) {
                 // this really should not happen anymore
-                printf("Invalid jump from %lx to %lx (found %lx between %lx and %lx)\n", inst_cache[j].PC, target_PC, target->PC, inst_cache[0].PC, inst_cache[i-1].PC);
+                dprintf(0, "Invalid jump from %lx to %lx (found %lx between %lx and %lx)\n", inst_cache[j].PC, target_PC, target->PC, inst_cache[0].PC, inst_cache[i-1].PC);
                 break;
             } else {
                 // it's a valid target, so mark it as such
@@ -572,7 +572,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
     }
 
     if (i == MAX_INST) {
-        printf("WARN:%lx-%lx exceeds max instrs", start_PC, end_PC);
+        dprintf(0, "WARN:%lx-%lx exceeds max instrs", start_PC, end_PC);
     }
 
     return i;
@@ -613,7 +613,7 @@ int drc_translateBlock() {
     WORD pool_offset = 0;
 
     drc_scanBlockBounds(&start_PC, &end_PC);
-    dprintf(0, "[DRC]: new block - 0x%lx->0x%lx\n", start_PC, end_PC);
+    dprintf(3, "[DRC]: new block - 0x%lx->0x%lx\n", start_PC, end_PC);
 
     // Clear previous block register stats
     memset(reg_usage, 0, 32);
@@ -1549,10 +1549,8 @@ int drc_translateBlock() {
                 int arm_offset = (int)(arm_dest - (cache_ptr + j) - 2);
 
                 if (arm_dest == cache_start) {
-                    // TODO fix
-                    // This is caused by "instructions" from a jump table leaking into actual instructions
-                    // Affects V-Tetris
-                    printf("WARN:can't jump from %lx to %lx\n", inst_cache[i].PC, v810_dest);
+                    // Should be fixed, but just in case
+                    dprintf(0, "WARN:can't jump from %lx to %lx\n", inst_cache[i].PC, v810_dest);
                 }
 
                 trans_cache[j].b_bl.imm = arm_offset & 0xffffff;
@@ -1711,7 +1709,7 @@ int drc_run() {
 
         dprintf(4, "[DRC]: end - 0x%lx\n", v810_state->PC);
         if (v810_state->PC < V810_ROM1.lowaddr || v810_state->PC > V810_ROM1.highaddr) {
-            printf("Last entry: 0x%lx\n", entry_PC);
+            dprintf(0, "Last entry: 0x%lx\n", entry_PC);
             return DRC_ERR_BAD_PC;
         }
 

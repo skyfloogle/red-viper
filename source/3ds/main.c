@@ -163,10 +163,12 @@ int main() {
 
 #if DEBUGLEVEL == 0
         consoleSelect(&main_console);
+        /*
         printf("\x1b[1J\x1b[0;0HFrame: %i\nTotal CPU: %5.2fms\tDRC: %5.2fms\nGFX-CPU: %5.2fms\tGFX-GPU: %5.2fms\nPC: 0x%lx\tDRC cache: %5.2f%%",
             frame, osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter),
             C3D_GetProcessingTime(), C3D_GetDrawingTime(),
             v810_state->PC, (cache_pos-cache_start)*4*100./CACHE_SIZE);
+        */
 #else
         printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) v810_state->PC);
 #endif
