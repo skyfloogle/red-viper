@@ -179,22 +179,37 @@ u32 waitForInput() {
 #endif
 }
 
-void save_sram(void) {
-    FILE *nvramf;
-    char ram_name[131];
+Thread save_thread = NULL;
 
-    // Do not save sram if it's not required!
-    if (!is_sram) return;
-
-    snprintf(ram_name, 131, "%s.ram", tVBOpt.ROM_NAME);
+static void save_sram_thread(void *sram) {
+    FILE *nvramf = fopen(tVBOpt.RAM_PATH, "wb");
 
     // Save out the sram ram
-    if((nvramf = fopen(ram_name, "wb")) == NULL) {
+    if (nvramf == NULL) {
         printf("\nError opening sram.bin");
         return;
     }
-    fwrite(V810_GAME_RAM.pmemory, 1, V810_GAME_RAM.highaddr - V810_GAME_RAM.lowaddr, nvramf);
+    fwrite(sram, 1, V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr, nvramf);
     fclose(nvramf);
+
+    free(sram);
+
+    save_thread = NULL;
+}
+
+void save_sram(void) {
+    // Do not save sram if it's not required!
+    if (!is_sram) return;
+    // Don't save if we're already saving
+    if (save_thread) return;
+    void *sram_copy = malloc(V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr);
+    memcpy(sram_copy, V810_GAME_RAM.pmemory, V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr);
+    // Saving on the same thread is slow, but saving in another thread happens instantly
+    APT_SetAppCpuTimeLimit(30);
+    save_thread = threadCreate(save_sram_thread, sram_copy, 4000, 0x18, 1, true);
+    if (!save_thread) {
+        puts("oh no");
+    }
 }
 
 int file_loadrom(void) {

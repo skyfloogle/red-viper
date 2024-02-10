@@ -84,6 +84,7 @@ int main() {
         int keys = hidKeysDown();
 
         if ((keys & KEY_TOUCH) && guiShouldPause()) {
+            save_sram();
             guiop = 0;
             openMenu();
             if (guiop & GUIEXIT) {
@@ -171,7 +172,11 @@ int main() {
 #endif
     }
 
+    // home menu, so try and save
+    save_sram();
+
 exit:
+    if (save_thread) threadJoin(save_thread, U64_MAX);
     v810_exit();
     endThreads();
     V810_DSP_Quit();

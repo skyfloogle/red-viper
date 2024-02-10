@@ -95,19 +95,6 @@ int v810_init() {
     // Offset + Lowaddr = pmemory
     V810_VB_RAM.off = (unsigned)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
 
-    // Try to load up the saveRam file...
-    // First, copy the rom path and concatenate .ram to it
-    // strcpy(ram_name, rom_name);
-    // strcat(ram_name, ".ram");
-
-    // V810_GAME_RAM.pmemory = readFile(ram_name, (uint64_t*)&ram_size);
-
-    if (!ram_size) {
-        is_sram = 0;
-    } else {
-        is_sram = 1;
-    }
-
     // Initialize our GameRam tables.... (Cartrige Ram)
     V810_GAME_RAM.lowaddr  = 0x06000000;
     V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
@@ -116,9 +103,15 @@ int v810_init() {
     // Offset + Lowaddr = pmemory
     V810_GAME_RAM.off = (unsigned)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
 
-    if(ram_size > (V810_GAME_RAM.highaddr+1) - V810_GAME_RAM.lowaddr) {
-        ram_size = (V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr;
+    // Try to load up the saveRam file...
+    f = fopen(tVBOpt.RAM_PATH, "r");
+    if (f) {
+        fread(V810_GAME_RAM.pmemory, 1, ((V810_GAME_RAM.highaddr + 1) - V810_GAME_RAM.lowaddr), f);
+        fclose(f);
     }
+    
+    // If we need to save, we'll find out later
+    is_sram = false;
 
     // Initialize our HCREG tables.... // realy reg01
     V810_HCREG.lowaddr  = 0x02000000;

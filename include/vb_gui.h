@@ -56,6 +56,8 @@ void guiInit();
 void guiUpdate();
 void openMenu();
 
+extern Thread save_thread;
+
 bool guiShouldPause();
 int guiGetInput();
 

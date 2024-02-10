@@ -17,7 +17,7 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
-static C2D_Text text_A, text_B, text_switch;
+static C2D_Text text_A, text_B, text_switch, text_saving;
 
 // helpers
 static inline int sqr(int i) {
@@ -257,8 +257,8 @@ static void rom_loader() {
                 bool clicked_dir = clicked_entry < dirCount;
                 const char *new_entry = clicked_dir ? dirs[clicked_entry] : files[clicked_entry - dirCount];
                 int new_path_len = strlen(path) + strlen(new_entry) + clicked_dir;
-                if (new_path_len + 1 > path_cap) {
-                    while (new_path_len + 1 > path_cap)
+                if (new_path_len + 2 > path_cap) {
+                    while (new_path_len + 2 > path_cap)
                         path_cap *= 2;
                     path = realloc(path, path_cap);
                 }
@@ -339,6 +339,9 @@ static void rom_loader() {
     } else {
         tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_cap);
         memcpy(tVBOpt.ROM_PATH, path, path_cap);
+        tVBOpt.RAM_PATH = realloc(tVBOpt.RAM_PATH, path_cap);
+        memcpy(tVBOpt.RAM_PATH, path, path_cap);
+        strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
         return;
     }
 }
@@ -414,6 +417,7 @@ static inline int handle_buttons(Button buttons[], int count) {
         C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h, pressed == i ? pressed_colour : normal_colour);
         C2D_DrawText(&buttons[i].text, C2D_AlignCenter, buttons[i].x + buttons[i].w / 2, buttons[i].y + buttons[i].h / 2 - 6, 0, 0.7, 0.7);
     }
+    if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);
     if (ret >= 0) pressed = -1;
     return ret;
 }
@@ -433,10 +437,13 @@ void guiInit() {
     C2D_TextOptimize(&text_B);
     C2D_TextParse(&text_switch, static_textbuf, "Switch");
     C2D_TextOptimize(&text_switch);
+    C2D_TextParse(&text_saving, static_textbuf, "Saving...");
+    C2D_TextOptimize(&text_saving);
 }
 
 void openMenu() {
     if (game_running) {
+        save_sram();
         C3D_FrameBegin(0);
         video_flush(true);
         C3D_FrameEnd(0);
@@ -505,6 +512,8 @@ void guiUpdate() {
 
     C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, C2D_Color32(128, 0, 0, 255));
     C2D_DrawText(&text_switch, C2D_AlignLeft, 320 - 60, 4, 0, 0.5, 0.5);
+
+    if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);
 
     C2D_Flush();
 

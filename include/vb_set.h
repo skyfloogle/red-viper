@@ -65,6 +65,7 @@ typedef struct VB_OPT {
     int   TOUCH_PADY;
     int   ABXY_MODE; // 0: A=A B=B, 1: B=A Y=B, 2: A=B B=A, 3: B=B Y=A
     char *ROM_PATH;
+    char *RAM_PATH;
     char *ROM_NAME; // Path\Name of game to open
     char *PROG_NAME; // Path\Name of program
     unsigned long CRC32; // CRC32 of ROM
