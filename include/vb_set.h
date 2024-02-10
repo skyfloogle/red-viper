@@ -64,6 +64,6 @@ int loadFileOptions(void);
 int saveFileOptions(void);
 
 extern VB_OPT tVBOpt;
-extern int vbkey[15];
+extern int vbkey[32];
 
 #endif

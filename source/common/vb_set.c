@@ -8,9 +8,10 @@
 #include "inih/ini.h"
 #include "vb_types.h"
 #include "vb_set.h"
+#include "vb_dsp.h"
 
 VB_OPT  tVBOpt;
-int     vbkey[15];
+int     vbkey[32] = {0};
 
 void setDefaults(void) {
     // Set up the Defaults
@@ -35,24 +36,31 @@ void setDefaults(void) {
 
     // Default keys
 #ifdef __3DS__
-    vbkey[VB_KCFG_LUP] = KEY_DUP;
-    vbkey[VB_KCFG_LDOWN] = KEY_DDOWN;
-    vbkey[VB_KCFG_LLEFT] = KEY_DLEFT;
-    vbkey[VB_KCFG_LRIGHT] = KEY_DRIGHT;
+    vbkey[__builtin_ctz(KEY_DUP)] = VB_LPAD_U;
+    vbkey[__builtin_ctz(KEY_DDOWN)] = VB_LPAD_D;
+    vbkey[__builtin_ctz(KEY_DLEFT)] = VB_LPAD_L;
+    vbkey[__builtin_ctz(KEY_DRIGHT)] = VB_LPAD_R;
 
-    vbkey[VB_KCFG_RUP] = KEY_CSTICK_UP;
-    vbkey[VB_KCFG_RDOWN] = KEY_CSTICK_DOWN;
-    vbkey[VB_KCFG_RLEFT] = KEY_CSTICK_LEFT;
-    vbkey[VB_KCFG_RRIGHT] = KEY_CSTICK_RIGHT;
+    vbkey[__builtin_ctz(KEY_CPAD_UP)] = VB_LPAD_U;
+    vbkey[__builtin_ctz(KEY_CPAD_DOWN)] = VB_LPAD_D;
+    vbkey[__builtin_ctz(KEY_CPAD_LEFT)] = VB_LPAD_L;
+    vbkey[__builtin_ctz(KEY_CPAD_RIGHT)] = VB_LPAD_R;
 
-    vbkey[VB_KCFG_A] = KEY_A;
-    vbkey[VB_KCFG_B] = KEY_B;
+    vbkey[__builtin_ctz(KEY_CSTICK_UP)] = VB_RPAD_U;
+    vbkey[__builtin_ctz(KEY_CSTICK_DOWN)] = VB_RPAD_D;
+    vbkey[__builtin_ctz(KEY_CSTICK_LEFT)] = VB_RPAD_L;
+    vbkey[__builtin_ctz(KEY_CSTICK_RIGHT)] = VB_RPAD_R;
 
-    vbkey[VB_KCFG_START] = KEY_START;
-    vbkey[VB_KCFG_SELECT] = KEY_SELECT;
+    vbkey[__builtin_ctz(KEY_A)] = VB_KEY_A;
+    vbkey[__builtin_ctz(KEY_X)] = VB_KEY_A;
+    vbkey[__builtin_ctz(KEY_B)] = VB_KEY_B;
+    vbkey[__builtin_ctz(KEY_Y)] = VB_KEY_B;
 
-    vbkey[VB_KCFG_L] = KEY_L;
-    vbkey[VB_KCFG_R] = KEY_R;
+    vbkey[__builtin_ctz(KEY_START)] = VB_KEY_START;
+    vbkey[__builtin_ctz(KEY_SELECT)] = VB_KEY_SELECT;
+
+    vbkey[__builtin_ctz(KEY_L)] = VB_KEY_L;
+    vbkey[__builtin_ctz(KEY_R)] = VB_KEY_R;
 #endif
 }
 
@@ -63,7 +71,6 @@ static int handler(void* user, const char* section, const char* name,
 
     #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
     if (MATCH("vbopt", "maxcycles")) {
-        pconfig->MAXCYCLES = atoi(value);
     } else if (MATCH("vbopt", "frmskip")) {
         pconfig->FRMSKIP = atoi(value);
     } else if (MATCH("vbopt", "dspmode")) {
@@ -95,33 +102,19 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("vbopt", "dynarec")) {
         pconfig->DYNAREC = atoi(value);
     } else if (MATCH("keys", "lup")) {
-        vbkey[VB_KCFG_LUP] = atoi(value);
     } else if (MATCH("keys", "ldown")) {
-        vbkey[VB_KCFG_LDOWN] = atoi(value);
     } else if (MATCH("keys", "lleft")) {
-        vbkey[VB_KCFG_LLEFT] = atoi(value);
     } else if (MATCH("keys", "lright")) {
-        vbkey[VB_KCFG_LRIGHT] = atoi(value);
     } else if (MATCH("keys", "rup")) {
-        vbkey[VB_KCFG_RUP] = atoi(value);
     } else if (MATCH("keys", "rdown")) {
-        vbkey[VB_KCFG_RDOWN] = atoi(value);
     } else if (MATCH("keys", "rleft")) {
-        vbkey[VB_KCFG_RLEFT] = atoi(value);
     } else if (MATCH("keys", "rright")) {
-        vbkey[VB_KCFG_RRIGHT] = atoi(value);
     } else if (MATCH("keys", "a")) {
-        vbkey[VB_KCFG_A] = atoi(value);
     } else if (MATCH("keys", "b")) {
-        vbkey[VB_KCFG_B] = atoi(value);
     } else if (MATCH("keys", "start")) {
-        vbkey[VB_KCFG_START] = atoi(value);
     } else if (MATCH("keys", "select")) {
-        vbkey[VB_KCFG_SELECT] = atoi(value);
     } else if (MATCH("keys", "l")) {
-        vbkey[VB_KCFG_L] = atoi(value);
     } else if (MATCH("keys", "r")) {
-        vbkey[VB_KCFG_R] = atoi(value);
     } else {
         return 0;  // unknown section/name, error
     }
@@ -138,7 +131,6 @@ int saveFileOptions(void) {
         return 1;
 
     fprintf(f, "[vbopt]\n");
-    fprintf(f, "maxcycles=%d\n", tVBOpt.MAXCYCLES);
     fprintf(f, "frmskip=%d\n", tVBOpt.FRMSKIP);
     fprintf(f, "dspmode=%d\n", tVBOpt.DSPMODE);
     fprintf(f, "dspswap=%d\n", tVBOpt.DSPSWAP);
@@ -154,22 +146,6 @@ int saveFileOptions(void) {
     fprintf(f, "sound=%d\n", tVBOpt.SOUND);
     fprintf(f, "dsp2x=%d\n\n", tVBOpt.DSP2X);
     fprintf(f, "dynarec=%d\n\n", tVBOpt.DYNAREC);
-
-    fprintf(f, "[keys]\n");
-    fprintf(f, "lup=%d\n", vbkey[VB_KCFG_LUP]);
-    fprintf(f, "ldown=%d\n", vbkey[VB_KCFG_LDOWN]);
-    fprintf(f, "lleft=%d\n", vbkey[VB_KCFG_LLEFT]);
-    fprintf(f, "lright=%d\n", vbkey[VB_KCFG_LRIGHT]);
-    fprintf(f, "rup=%d\n", vbkey[VB_KCFG_RUP]);
-    fprintf(f, "rdown=%d\n", vbkey[VB_KCFG_RDOWN]);
-    fprintf(f, "rleft=%d\n", vbkey[VB_KCFG_RLEFT]);
-    fprintf(f, "rright=%d\n", vbkey[VB_KCFG_RRIGHT]);
-    fprintf(f, "a=%d\n", vbkey[VB_KCFG_A]);
-    fprintf(f, "b=%d\n", vbkey[VB_KCFG_B]);
-    fprintf(f, "start=%d\n", vbkey[VB_KCFG_START]);
-    fprintf(f, "select=%d\n", vbkey[VB_KCFG_SELECT]);
-    fprintf(f, "l=%d\n", vbkey[VB_KCFG_L]);
-    fprintf(f, "r=%d\n", vbkey[VB_KCFG_R]);
 
     fclose(f);
     return 0;
