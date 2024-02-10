@@ -10,11 +10,14 @@
 #include "main.h"
 
 static bool buttons_on_screen = false;
+void setTouchControls(bool button);
 
 static C3D_RenderTarget *screen;
 
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
+
+static C2D_Text text_A, text_B, text_switch;
 
 // helpers
 static inline int sqr(int i) {
@@ -341,7 +344,37 @@ static void rom_loader() {
 }
 
 static void controls() {
+    bool pressed = false;
+    const int FACEX = 160;
+    const int FACEY = 96;
+    const int FACEW = 128;
+    const int FACEH = 64;
+    const int OFFSET = 22;
     LOOP_BEGIN(controls_buttons);
+        touchPosition touch_pos;
+        hidTouchRead(&touch_pos);
+        if (hidKeysHeld() & KEY_TOUCH) {
+            if (touch_pos.px >= FACEX - FACEW/2 && touch_pos.px < FACEX + FACEW/2 && touch_pos.py >= FACEY - FACEH/2 && touch_pos.py < FACEY + FACEH/2) {
+                if (hidKeysDown() & KEY_TOUCH) {
+                    pressed = true;
+                }
+            } else {
+                pressed = false;
+            }
+        } else if (pressed) {
+            tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 4;
+            pressed = false;
+            setTouchControls(buttons_on_screen);
+        }
+        C2D_DrawRectSolid(FACEX - FACEW/2, FACEY - FACEH/2, 0, FACEW, FACEH, pressed ? C2D_Color32(144, 0, 0, 255) : C2D_Color32(255, 0, 0, 255));
+        C2D_DrawCircleSolid(FACEX + OFFSET, FACEY, 0, 12, C2D_Color32(64, 0, 0, 255));
+        C2D_DrawCircleSolid(FACEX - OFFSET, FACEY, 0, 12, C2D_Color32(64, 0, 0, 255));
+        C2D_DrawCircleSolid(FACEX, FACEY + OFFSET, 0, 12, C2D_Color32(64, 0, 0, 255));
+        C2D_DrawCircleSolid(FACEX, FACEY - OFFSET, 0, 12, C2D_Color32(64, 0, 0, 255));
+        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? &text_A : &text_B, C2D_AlignLeft | C2D_WithColor, FACEX, FACEY - OFFSET, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
+        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? &text_B : &text_A, C2D_AlignLeft | C2D_WithColor, FACEX, FACEY + OFFSET, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
+        C2D_DrawText(tVBOpt.ABXY_MODE < 2 ? &text_B : &text_A, C2D_AlignLeft | C2D_WithColor, FACEX - OFFSET, FACEY, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
+        C2D_DrawText(tVBOpt.ABXY_MODE < 2 ? &text_A : &text_B, C2D_AlignLeft | C2D_WithColor, FACEX + OFFSET, FACEY, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
     LOOP_END(controls_buttons);
     switch (button) {
         case 0: return;
@@ -385,8 +418,6 @@ static inline int handle_buttons(Button buttons[], int count) {
     return ret;
 }
 
-void setTouchControls(bool button);
-
 void guiInit() {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     screen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
@@ -396,6 +427,12 @@ void guiInit() {
     static_textbuf = C2D_TextBufNew(1024);
     dynamic_textbuf = C2D_TextBufNew(4096);
     SETUP_ALL_BUTTONS;
+    C2D_TextParse(&text_A, static_textbuf, "A");
+    C2D_TextOptimize(&text_A);
+    C2D_TextParse(&text_B, static_textbuf, "B");
+    C2D_TextOptimize(&text_B);
+    C2D_TextParse(&text_switch, static_textbuf, "Switch");
+    C2D_TextOptimize(&text_switch);
 }
 
 void openMenu() {
@@ -459,12 +496,15 @@ void guiUpdate() {
     if (buttons_on_screen) {
         C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, C2D_Color32(128, 0, 0, 255));
         C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, C2D_Color32(128, 0, 0, 255));
+        C2D_DrawText(&text_A, C2D_AlignCenter, tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 0.5, 0.5);
+        C2D_DrawText(&text_B, C2D_AlignCenter, tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 0.5, 0.5);
     } else {
         C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, C2D_Color32(128, 0, 0, 255));
         C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, C2D_Color32(128, 0, 0, 255));
     }
 
     C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, C2D_Color32(128, 0, 0, 255));
+    C2D_DrawText(&text_switch, C2D_AlignLeft, 320 - 60, 4, 0, 0.5, 0.5);
 
     C2D_Flush();
 
