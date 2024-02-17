@@ -98,7 +98,6 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("vbopt", "scr_mode")) {
         pconfig->SCR_MODE = atoi(value);
     } else if (MATCH("vbopt", "sound")) {
-        pconfig->SOUND = atoi(value);
     } else if (MATCH("vbopt", "dynarec")) {
         pconfig->DYNAREC = atoi(value);
     } else if (MATCH("keys", "lup")) {
@@ -143,7 +142,6 @@ int saveFileOptions(void) {
     fprintf(f, "scr_mode=%d\n", tVBOpt.SCR_MODE);
     fprintf(f, "fixpal=%d\n", tVBOpt.FIXPAL);
     fprintf(f, "disasm=%d\n", tVBOpt.DISASM);
-    fprintf(f, "sound=%d\n", tVBOpt.SOUND);
     fprintf(f, "dsp2x=%d\n\n", tVBOpt.DSP2X);
     fprintf(f, "dynarec=%d\n\n", tVBOpt.DYNAREC);
 
