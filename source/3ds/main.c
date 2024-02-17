@@ -59,11 +59,7 @@ int main() {
     V810_DSP_Init();
     video_init();
 
-    if (tVBOpt.DSPMODE == DM_3D) {
-        gfxSet3D(true);
-    } else {
-        gfxSet3D(false);
-    }
+    gfxSet3D(true);
 
     if (fileSelect("Load ROM", rom_name, "vb") < 0)
         goto exit;

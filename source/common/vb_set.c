@@ -17,7 +17,6 @@ void setDefaults(void) {
     // Set up the Defaults
     tVBOpt.MAXCYCLES = 400;
     tVBOpt.FRMSKIP  = 0;
-    tVBOpt.DSPMODE  = DM_3D;
     tVBOpt.DSPSWAP  = 0;
     tVBOpt.PALMODE  = PAL_NORMAL;
     tVBOpt.DEBUG    = DEBUGLEVEL != 0;
@@ -74,7 +73,6 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("vbopt", "frmskip")) {
         pconfig->FRMSKIP = atoi(value);
     } else if (MATCH("vbopt", "dspmode")) {
-        pconfig->DSPMODE = atoi(value);
     } else if (MATCH("vbopt", "dspswap")) {
         pconfig->DSPSWAP = atoi(value);
     } else if (MATCH("vbopt", "dsp2x")) {
@@ -131,7 +129,6 @@ int saveFileOptions(void) {
 
     fprintf(f, "[vbopt]\n");
     fprintf(f, "frmskip=%d\n", tVBOpt.FRMSKIP);
-    fprintf(f, "dspmode=%d\n", tVBOpt.DSPMODE);
     fprintf(f, "dspswap=%d\n", tVBOpt.DSPSWAP);
     fprintf(f, "palmode=%d\n", tVBOpt.PALMODE);
     fprintf(f, "debug=%d\n", tVBOpt.DEBUG);
