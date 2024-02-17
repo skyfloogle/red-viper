@@ -28,7 +28,7 @@ void setDefaults(void) {
     tVBOpt.SCR_MODE = 0;
     tVBOpt.FIXPAL   = 0;
     tVBOpt.DISASM   = 0;
-    tVBOpt.SOUND    = 0;
+    tVBOpt.SOUND    = 1;
     tVBOpt.DSP2X    = 0;
     tVBOpt.DYNAREC  = 1;
     tVBOpt.FASTFORWARD = 0;
