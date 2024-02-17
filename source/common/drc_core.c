@@ -158,24 +158,25 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
                 branch_offset = (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
                 if (abs(branch_offset) < 1024) {
                     branch_addr = cur_PC + branch_offset;
-                    if (branch_addr < start_PC)
+                    bool should_backjump = false;
+                    if (branch_addr < start_PC) {
                         start_PC = branch_addr;
-                    else if (branch_addr > end_PC)
+                        should_backjump = true;
+                    } else if (branch_addr > end_PC) {
                         end_PC = branch_addr;
+                    }
 
                     bool was_code = drc_isCode(branch_addr);
                     drc_markCode(branch_addr);
                     if (branch_offset < 0) {
                         if (!was_code) {
+                            // Not already scanned, so scan it.
                             cur_PC = branch_addr;
                             continue;
                         } else {
-                            exec_block *existing_block;
-                            if (drc_getEntry(branch_addr, &existing_block) != cache_start) {
-                                // Jumping backwards into code that was already decoded.
-                                // The existing code block is fine, but we should overwrite the
-                                // entrypoint so that we only do this once.
-                                drc_setEntry(branch_addr, cache_start, existing_block);
+                            // Was previously scanned, so as long as we scanned it just now,
+                            // anything following from it should be accounted for.
+                            if (should_backjump) {
                                 cur_PC = branch_addr;
                                 continue;
                             }
@@ -209,10 +210,13 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
             case V810_OP_BGT:
                 branch_offset = (signed)sign_9(((highB & 0x1) << 8) + (lowB & 0xFE));
                 branch_addr = cur_PC + branch_offset;
-                if (branch_addr < start_PC)
+                bool should_backjump = false;
+                if (branch_addr < start_PC) {
                     start_PC = branch_addr;
-                else if (branch_addr > end_PC)
+                    should_backjump = true;
+                } else if (branch_addr > end_PC) {
                     end_PC = branch_addr;
+                }
                 
                 if (opcode == V810_OP_BR) {
                     potentiallyDone = true;
@@ -222,15 +226,13 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
                 drc_markCode(branch_addr);
                 if (branch_offset < 0) {
                     if (!was_code) {
+                        // Not already scanned, so scan it.
                         cur_PC = branch_addr;
                         continue;
                     } else {
-                        exec_block *existing_block;
-                        if (drc_getEntry(branch_addr, &existing_block) != cache_start) {
-                            // Jumping backwards into code that was already decoded.
-                            // The existing code block is fine, but we should overwrite the
-                            // entrypoint so that we only do this once.
-                            drc_setEntry(branch_addr, cache_start, existing_block);
+                        // Was previously scanned, so as long as we scanned it just now,
+                        // anything following from it should be accounted for.
+                        if (should_backjump) {
                             cur_PC = branch_addr;
                             continue;
                         }
@@ -620,8 +622,7 @@ int drc_translateBlock() {
     for (WORD PC = start_PC; PC <= end_PC; PC += 2) {
         if (drc_isCode(PC)) {
             exec_block *existing_block = NULL;
-            drc_getEntry(PC, &existing_block);
-            if (existing_block && !existing_block->free) {
+            if (drc_getEntry(PC, &existing_block) != cache_start) {
                 // we don't need to re-scan because the code has already been traversed
                 if (start_PC > existing_block->start_pc)
                     start_PC = existing_block->start_pc;
@@ -1584,7 +1585,6 @@ void drc_clearCache() {
     memset(cache_start, 0, CACHE_SIZE);
     memset(rom_block_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     memset(rom_entry_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    memset(rom_data_code_map, 0, sizeof(bool)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
 
     *cache_start = -1;
 
