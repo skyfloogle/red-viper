@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include "utils.h"
 #include "vb_set.h"
+#include <stdio.h>
 
 s32 k_patchSVC() {
     __asm__ volatile("cpsid aif");
@@ -27,6 +28,18 @@ s32 k_flushCaches() {
     return 0;
 }
 
+static bool is_citra = false;
+void detectCitra(WORD *test_code) {
+    test_code[0] = 0xe3a00001; // mov r0, #1
+    test_code[1] = 0xe12fff1e; // bx lr
+    FlushInvalidateCache();
+    bool (*code_func)() = (bool(*)())test_code;
+    code_func();
+    test_code[0] = 0xe3a00000; // mov r0, #0
+    FlushInvalidateCache();
+    is_citra = code_func();
+}
+
 void hbHaxInit() {
     Handle tempHandle;
 
@@ -38,15 +51,23 @@ void hbHaxInit() {
     }
 }
 
+
 void hbHaxExit() {
 }
 
 void FlushInvalidateCache() {
-    if (tVBOpt.DYNAREC)
-        __asm__ volatile(
-            "ldr r0, =k_flushCaches\n\t"
-            "svc 0x80\n\t"
-        );
+    if (tVBOpt.DYNAREC) {
+        if (!is_citra) {
+            // works on hardware, does nothing on citra
+            __asm__ volatile(
+                "ldr r0, =k_flushCaches\n\t"
+                "svc 0x80\n\t"
+            );
+        } else {
+            // works on citra, crashes on hardware
+            __asm__ volatile("svc 0x94");
+        }
+    }
 }
 
 Result ReprotectMemory(u32* addr, u32 pages, u32 mode) {

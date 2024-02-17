@@ -1628,6 +1628,7 @@ void drc_init() {
         cache_start = memalign(0x1000, CACHE_SIZE);
         ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7);
         FlushInvalidateCache();
+        detectCitra(cache_start);
     } else {
         // cache_start = &cache_dump_bin;
         drc_loadSavedCache();
