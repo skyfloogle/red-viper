@@ -3,6 +3,8 @@
 
 #include "vb_types.h"
 
+extern bool is_citra;
+
 s32 k_patchSVC();
 s32 k_flushCaches();
 void hbHaxInit();

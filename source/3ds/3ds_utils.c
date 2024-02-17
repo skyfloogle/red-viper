@@ -28,8 +28,14 @@ s32 k_flushCaches() {
     return 0;
 }
 
-static bool is_citra = false;
+bool is_citra = false;
 void detectCitra(WORD *test_code) {
+    // only do the check once to prevent wackiness
+    static bool tested = false;
+    if (tested) return;
+    tested = true;
+
+    is_citra = false;
     test_code[0] = 0xe3a00001; // mov r0, #1
     test_code[1] = 0xe12fff1e; // bx lr
     FlushInvalidateCache();

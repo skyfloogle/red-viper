@@ -4,6 +4,8 @@
 #include <3ds.h>
 #include <citro3d.h>
 
+#include "utils.h"
+
 #include "vb_dsp.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"
@@ -26,10 +28,13 @@ HWORD V810_RControll() {
 
 #ifdef __3DS__
     key = hidKeysHeld();
-	u8 charging, battery_level;
-	PTMU_GetBatteryChargeState(&charging);
-	PTMU_GetBatteryLevel(&battery_level);
-	battery_low = !charging && battery_level <= 2;
+	// on citra checking the battery floods the logs
+	if (!is_citra) {
+		u8 charging, battery_level;
+		PTMU_GetBatteryChargeState(&charging);
+		PTMU_GetBatteryLevel(&battery_level);
+		battery_low = !charging && battery_level <= 2;
+	}
 
 #else
     ret_keys = arm_keys;
