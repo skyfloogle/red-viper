@@ -110,7 +110,7 @@ static void colour_filter();
 static Button colour_filter_buttons[] = {
     {"Back", 0, 208, 48, 32},
     {"Red", 16, 64, 48, 32},
-    {"White", 16, 128, 48, 32},
+    {"Grey", 16, 128, 48, 32},
 };
 
 #define SETUP_ALL_BUTTONS \
@@ -504,11 +504,12 @@ static void colour_filter() {
     LOOP_END(colour_filter_buttons);
     switch (button) {
         case 0: // Back
+            saveFileOptions();
             return options();
         case 1: // Red
             tVBOpt.TINT = 0xff0000ff;
             return colour_filter();
-        case 2: // White
+        case 2: // Grey
             tVBOpt.TINT = 0xffffffff;
             return colour_filter();
     }

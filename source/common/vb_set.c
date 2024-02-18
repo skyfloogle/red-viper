@@ -107,6 +107,8 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("vbopt", "sound")) {
     } else if (MATCH("vbopt", "dynarec")) {
         pconfig->DYNAREC = atoi(value);
+    } else if (MATCH("vbopt", "tint")) {
+        pconfig->TINT = atoi(value);
     } else if (MATCH("keys", "lup")) {
     } else if (MATCH("keys", "ldown")) {
     } else if (MATCH("keys", "lleft")) {
@@ -150,6 +152,7 @@ int saveFileOptions(void) {
     fprintf(f, "disasm=%d\n", tVBOpt.DISASM);
     fprintf(f, "dsp2x=%d\n\n", tVBOpt.DSP2X);
     fprintf(f, "dynarec=%d\n\n", tVBOpt.DYNAREC);
+    fprintf(f, "tint=%d\n\n", tVBOpt.TINT);
 
     fclose(f);
     return 0;
