@@ -535,6 +535,7 @@ static void options() {
             return options();
         case 3: // Performance info
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
+            saveFileOptions();
             return options();
         case 4: // About
             return options();

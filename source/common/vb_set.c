@@ -110,6 +110,8 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->DYNAREC = atoi(value);
     } else if (MATCH("vbopt", "tint")) {
         pconfig->TINT = atoi(value);
+    } else if (MATCH("vbopt", "perfinfo")) {
+        pconfig->PERF_INFO = atoi(value);
     } else if (MATCH("keys", "lup")) {
     } else if (MATCH("keys", "ldown")) {
     } else if (MATCH("keys", "lleft")) {
@@ -151,9 +153,10 @@ int saveFileOptions(void) {
     fprintf(f, "scr_mode=%d\n", tVBOpt.SCR_MODE);
     fprintf(f, "fixpal=%d\n", tVBOpt.FIXPAL);
     fprintf(f, "disasm=%d\n", tVBOpt.DISASM);
-    fprintf(f, "dsp2x=%d\n\n", tVBOpt.DSP2X);
-    fprintf(f, "dynarec=%d\n\n", tVBOpt.DYNAREC);
-    fprintf(f, "tint=%d\n\n", tVBOpt.TINT);
+    fprintf(f, "dsp2x=%d\n", tVBOpt.DSP2X);
+    fprintf(f, "dynarec=%d\n", tVBOpt.DYNAREC);
+    fprintf(f, "tint=%d\n", tVBOpt.TINT);
+    fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
 
     fclose(f);
     return 0;
