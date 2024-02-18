@@ -79,12 +79,12 @@ static Button first_menu_buttons[] = {
 
 static void game_menu();
 static Button game_menu_buttons[] = {
-    {"Load ROM", 224, 64, 80, 80},
+    {"Load ROM", 224 - 48, 64, 80 + 48, 80},
     {"Controls", 0, 176, 80, 64},
     {"Options", 240, 176, 80, 64},
     {"Quit", 112, 192, 96, 48},
     {"Resume", 0, 0, 320, 48},
-    {"Reset", 16, 64, 80, 80},
+    {"Reset", 16, 64, 80 + 48, 80},
 };
 
 static void rom_loader();
