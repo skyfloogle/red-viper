@@ -274,7 +274,7 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             tVIPREG.XPSTTS |= 0x8000;
             pending_int = 1;
         } else if (tfb > 0x0A00) {
-            if (drawing) tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xE0)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
+            if (drawing) tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xEC)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
             rowcount++;
             lastfb+=0x0A00;
         } else if ((rowcount == 0x12) && (tfb > 0x670)) {
