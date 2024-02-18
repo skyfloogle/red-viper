@@ -355,6 +355,11 @@ static void rom_loader() {
             }
             y += entry_height;
         }
+        // scrollbar
+        if (scroll_top != scroll_bottom) {
+            C2D_DrawRectSolid(320-2, 32, 0, 2, 240-32, C2D_Color32(0, 0, 0, 255));
+            C2D_DrawRectSolid(320-2, 32 + (240-32-8) * (scroll_pos - scroll_top) / (scroll_bottom - scroll_top), 0, 2, 8, C2D_Color32(255, 0, 0, 255));
+        }
         // path
         C2D_TextParse(&text, dynamic_textbuf, path);
         C2D_TextOptimize(&text);
