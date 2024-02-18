@@ -247,13 +247,18 @@ void video_render(int alt_buf) {
 void video_flush(bool left_for_both) {
 	if (eye_count == 2) left_for_both = false;
 
+	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
+	AttrInfo_Init(attrInfo);
+	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
+
 	C3D_TexBind(0, &screenTexHard);
 	C3D_BindProgram(&sFinal);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, 0xff0000ff);
+	C3D_TexEnvColor(env, tVBOpt.TINT);
 	C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_CONSTANT, 0);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
 	C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);

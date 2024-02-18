@@ -43,6 +43,7 @@ typedef struct VB_OPT {
     int   DSPMODE;  // Normal, 3D, etc
     int   DSPSWAP;  // Swap 3D effect, 0 normal, 1 swap
     int   DSP2X;    // Double screen size
+    int   TINT;     // Colour tint
     int   PALMODE;  // Select a palette Type: 0-normal, 1-red, etc...
     int   DEBUG;    // Release vs Debug
     int   STDOUT;   // File vs Screen (debug)

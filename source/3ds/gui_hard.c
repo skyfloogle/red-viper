@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -406,7 +407,56 @@ static void controls() {
 }
 
 static void colour_filter() {
+    bool dragging = false;
     LOOP_BEGIN(colour_filter_buttons);
+        touchPosition touch_pos;
+        hidTouchRead(&touch_pos);
+        float touch_dx = (touch_pos.px - colour_wheel_sprite.params.pos.x)
+            / (colour_wheel_sprite.params.pos.w / 2);
+        float touch_dy = (touch_pos.py - colour_wheel_sprite.params.pos.y)
+            / (colour_wheel_sprite.params.pos.h / 2);
+        float sat = sqrt(touch_dx * touch_dx + touch_dy * touch_dy);
+        if ((hidKeysDown() & KEY_TOUCH) && sat <= 1)
+            dragging = true;
+        if (hidKeysUp() & KEY_TOUCH)
+            dragging = false;
+        if (dragging) {
+            if (sat > 1) {
+                touch_dx /= sat;
+                touch_dy /= sat;
+                sat = 1;
+            }
+            float hue = atan2(touch_dy, touch_dx);
+            float hprime = fmod(hue / (M_PI / 3) + 6, 6);
+            float sub = sat * (1 - fabs(fmod(hprime, 2) - 1));
+            float col[3] = {0};
+            if (hprime < 1) {
+                col[0] = sat;
+                col[1] = sub;
+            } else if (hprime < 2) {
+                col[0] = sub;
+                col[1] = sat;
+            } else if (hprime < 3) {
+                col[1] = sat;
+                col[2] = sub;
+            } else if (hprime < 4) {
+                col[1] = sub;
+                col[2] = sat;
+            } else if (hprime < 5) {
+                col[0] = sub;
+                col[2] = sat;
+            } else {
+                col[0] = sat;
+                col[2] = sub;
+            }
+            tVBOpt.TINT = 0xff000000 |
+                ((int)((col[0] + 1 - sat) * 255)) |
+                ((int)((col[1] + 1 - sat) * 255) << 8) |
+                ((int)((col[2] + 1 - sat) * 255) << 16);
+            video_flush(true);
+            C2D_Prepare();
+            C2D_SceneBegin(screen);
+        }
         C2D_DrawSprite(&colour_wheel_sprite);
     LOOP_END(colour_filter_buttons);
     return options();
