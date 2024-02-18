@@ -37,9 +37,9 @@ SOURCES		:=	source/common source/3ds source/common/inih
 DATA		:=	data
 INCLUDES	:=	include source/common/inih
 GRAPHICS	:=	gfx
-#GFXBUILD	:=	$(BUILD)
+GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs
-GFXBUILD	:=	$(ROMFS)/gfx
+#GFXBUILD	:=	$(ROMFS)/gfx
 
 include $(TOPDIR)/resources/AppInfo
 
@@ -133,7 +133,18 @@ else
 endif
 #---------------------------------------------------------------------------------
 
-export T3XFILES		:=	$(GFXFILES:.t3s=.t3x)
+#---------------------------------------------------------------------------------
+ifeq ($(GFXBUILD),$(BUILD))
+#---------------------------------------------------------------------------------
+export T3XFILES :=  $(GFXFILES:.t3s=.t3x)
+#---------------------------------------------------------------------------------
+else
+#---------------------------------------------------------------------------------
+export ROMFS_T3XFILES	:=	$(patsubst %.t3s, $(GFXBUILD)/%.t3x, $(GFXFILES))
+export T3XHFILES		:=	$(patsubst %.t3s, $(BUILD)/%.h, $(GFXFILES))
+#---------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------
 
 export OFILES_SOURCES 	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
 
@@ -196,6 +207,12 @@ clean:
 
 
 #---------------------------------------------------------------------------------
+$(GFXBUILD)/%.t3x	$(BUILD)/%.h	:	%.t3s
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@tex3ds -i $< -H $(BUILD)/$*.h -d $(DEPSDIR)/$*.d -o $(GFXBUILD)/$*.t3x
+
+#---------------------------------------------------------------------------------
 else
 
 #---------------------------------------------------------------------------------
@@ -209,7 +226,7 @@ $(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
 
 $(OFILES_SOURCES) : $(HFILES)
 
-$(OUTPUT).elf	:	$(OFILES)
+$(OUTPUT).elf	:	$(OFILES) $(ROMFS_T3XFILES)
 
 banner.bnr: $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.wav
 	$(BANNERTOOL) makebanner -i $(TOPDIR)/resources/banner.png -a $(TOPDIR)/resources/audio.wav -o banner.bnr
@@ -264,12 +281,6 @@ endef
 %.shbin.o %_shbin.h : %.shlist
 	@echo $(notdir $<)
 	@$(call shader-as,$(foreach file,$(shell cat $<),$(dir $<)$(file)))
-
-#---------------------------------------------------------------------------------
-%.t3x	%.h	:	%.t3s
-#---------------------------------------------------------------------------------
-	@echo $(notdir $<)
-	@tex3ds -i $< -H $*.h -d $*.d -o $(TOPDIR)/$(GFXBUILD)/$*.t3x
 
 -include $(DEPSDIR)/*.d
 

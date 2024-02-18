@@ -8,6 +8,7 @@
 #include "vb_set.h"
 #include "vb_types.h"
 #include "main.h"
+#include "colour_wheel_t3x.h"
 
 static bool buttons_on_screen = false;
 void setTouchControls(bool button);
@@ -18,6 +19,9 @@ static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
 static C2D_Text text_A, text_B, text_switch, text_saving;
+
+static C2D_SpriteSheet colour_wheel_sheet;
+static C2D_Sprite colour_wheel_sprite;
 
 // helpers
 static inline int sqr(int i) {
@@ -91,11 +95,28 @@ static Button controls_buttons[] = {
     {"Back", 0, 208, 48, 32},
 };
 
+static void options();
+static Button options_buttons[] = {
+    {"Color filter", 16, 16, 288, 48},
+    {"Fastforward", 16, 80, 128, 48},
+    {"Sound", 176, 80, 128, 48},
+    {"Status bar", 16, 144, 128, 48},
+    {"About", 176, 144, 128, 48},
+    {"Back", 0, 208, 48, 32},
+};
+
+static void colour_filter();
+static Button colour_filter_buttons[] = {
+    {"Back", 0, 208, 48, 32},
+};
+
 #define SETUP_ALL_BUTTONS \
     SETUP_BUTTONS(first_menu_buttons); \
     SETUP_BUTTONS(game_menu_buttons); \
     SETUP_BUTTONS(rom_loader_buttons); \
-    SETUP_BUTTONS(controls_buttons);
+    SETUP_BUTTONS(controls_buttons); \
+    SETUP_BUTTONS(options_buttons); \
+    SETUP_BUTTONS(colour_filter_buttons);
 
 static void first_menu() {
     LOOP_BEGIN(first_menu_buttons);
@@ -107,7 +128,7 @@ static void first_menu() {
         case 1:
             return controls();
         case 2:
-            return;
+            return options();
         case 3: // Quit
             guiop = GUIEXIT;
             return;
@@ -124,8 +145,7 @@ static void game_menu() {
         case 1: // Controls
             return controls();
         case 2: // Options
-            guiop = 0;
-            return;
+            return options();
         case 3: // Quit
             guiop = AKILL | GUIEXIT;
             return;
@@ -385,6 +405,34 @@ static void controls() {
     }
 }
 
+static void colour_filter() {
+    LOOP_BEGIN(colour_filter_buttons);
+        C2D_DrawSprite(&colour_wheel_sprite);
+    LOOP_END(colour_filter_buttons);
+    return options();
+}
+
+static void options() {
+    LOOP_BEGIN(options_buttons);
+    LOOP_END(options_buttons);
+    switch (button) {
+        case 0: // Colour filter
+            return colour_filter();
+        case 1: // Fast forward
+            tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
+            return options();
+        case 2: // Sound
+            tVBOpt.SOUND = !tVBOpt.SOUND;
+            return options();
+        case 3: // Status bar
+            return options();
+        case 4: // About
+            return options();
+        case 5: // Back
+            return main_menu();
+    }
+}
+
 static inline int handle_buttons(Button buttons[], int count) {
     static int pressed = -1;
     int ret = -1;
@@ -425,6 +473,11 @@ static inline int handle_buttons(Button buttons[], int count) {
 void guiInit() {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     screen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+
+    colour_wheel_sheet = C2D_SpriteSheetLoadFromMem(colour_wheel_t3x, colour_wheel_t3x_size);
+    C2D_SpriteFromSheet(&colour_wheel_sprite, colour_wheel_sheet, 0);
+    C2D_SpriteSetCenter(&colour_wheel_sprite, 0.5, 0.5);
+    C2D_SpriteSetPos(&colour_wheel_sprite, 176, 112);
 
     setTouchControls(buttons_on_screen);
 
