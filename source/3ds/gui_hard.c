@@ -177,7 +177,14 @@ static void rom_loader() {
     static char *path = NULL;
     static int path_cap = 128;
     if (!path) {
-        path = calloc(path_cap, 1);
+        if (tVBOpt.ROM_PATH) {
+            int path_len = strlen(tVBOpt.ROM_PATH);
+            while (path_cap <= path_len) path_cap *= 2;
+            path = malloc(path_cap);
+            strcpy(path, tVBOpt.ROM_PATH);
+        } else {
+            path = calloc(path_cap, 1);
+        }
     }
 
     // in case we broke it somehow
@@ -248,6 +255,19 @@ static void rom_loader() {
     if (scroll_bottom < scroll_top) scroll_bottom = scroll_top;
     float scroll_pos = scroll_top;
     float scroll_speed = 0;
+
+    if (tVBOpt.ROM_PATH && strstr(tVBOpt.ROM_PATH, path) == tVBOpt.ROM_PATH) {
+        char *filename = strrchr(tVBOpt.ROM_PATH, '/');
+        // null check but also skip the slash
+        if (filename++) {
+            for (int i = 0; i < fileCount; i++) {
+                if (strcmp(files[i], filename) == 0) {
+                    int button_y = i * entry_height;
+                    scroll_pos = C2D_Clamp(button_y - (240 / 2), scroll_top, scroll_bottom);
+                }
+            }
+        }
+    }
 
     int last_py = 0;
     int clicked_entry = -1;
@@ -368,6 +388,7 @@ static void rom_loader() {
         tVBOpt.RAM_PATH = realloc(tVBOpt.RAM_PATH, path_cap);
         memcpy(tVBOpt.RAM_PATH, path, path_cap);
         strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
+        saveFileOptions();
         return;
     }
 }

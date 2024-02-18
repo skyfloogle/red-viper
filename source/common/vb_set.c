@@ -42,6 +42,7 @@ void setDefaults(void) {
     tVBOpt.ABXY_MODE = 0;
     tVBOpt.TINT = 0xff0000ff;
     tVBOpt.PERF_INFO = false;
+    tVBOpt.ROM_PATH = NULL;
 
     // Default keys
 #ifdef __3DS__
@@ -112,6 +113,9 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->TINT = atoi(value);
     } else if (MATCH("vbopt", "perfinfo")) {
         pconfig->PERF_INFO = atoi(value);
+    } else if (MATCH("vbopt", "lastrom")) {
+        pconfig->ROM_PATH = realloc(pconfig->ROM_PATH, strlen(value) + 1);
+        strcpy(pconfig->ROM_PATH, value);
     } else if (MATCH("keys", "lup")) {
     } else if (MATCH("keys", "ldown")) {
     } else if (MATCH("keys", "lleft")) {
@@ -157,6 +161,7 @@ int saveFileOptions(void) {
     fprintf(f, "dynarec=%d\n", tVBOpt.DYNAREC);
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
+    fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH ? tVBOpt.ROM_PATH : "");
 
     fclose(f);
     return 0;
