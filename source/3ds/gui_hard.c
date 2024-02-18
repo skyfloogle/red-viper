@@ -109,6 +109,8 @@ static Button options_buttons[] = {
 static void colour_filter();
 static Button colour_filter_buttons[] = {
     {"Back", 0, 208, 48, 32},
+    {"Red", 16, 64, 48, 32},
+    {"White", 16, 128, 48, 32},
 };
 
 #define SETUP_ALL_BUTTONS \
@@ -408,13 +410,15 @@ static void controls() {
 
 static void colour_filter() {
     bool dragging = false;
+    const float circle_x = colour_wheel_sprite.params.pos.x;
+    const float circle_y = colour_wheel_sprite.params.pos.y;
+    const float circle_w = colour_wheel_sprite.params.pos.w;
+    const float circle_h = colour_wheel_sprite.params.pos.h;
     LOOP_BEGIN(colour_filter_buttons);
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
-        float touch_dx = (touch_pos.px - colour_wheel_sprite.params.pos.x)
-            / (colour_wheel_sprite.params.pos.w / 2);
-        float touch_dy = (touch_pos.py - colour_wheel_sprite.params.pos.y)
-            / (colour_wheel_sprite.params.pos.h / 2);
+        float touch_dx = (touch_pos.px - circle_x) / (circle_w / 2);
+        float touch_dy = (touch_pos.py - circle_y) / (circle_h / 2);
         float sat = sqrt(touch_dx * touch_dx + touch_dy * touch_dy);
         if ((hidKeysDown() & KEY_TOUCH) && sat <= 1)
             dragging = true;
@@ -426,6 +430,7 @@ static void colour_filter() {
                 touch_dy /= sat;
                 sat = 1;
             }
+            // touch position to hue saturation, then to rgb
             float hue = atan2(touch_dy, touch_dx);
             float hprime = fmod(hue / (M_PI / 3) + 6, 6);
             float sub = sat * (1 - fabs(fmod(hprime, 2) - 1));
@@ -458,8 +463,55 @@ static void colour_filter() {
             C2D_SceneBegin(screen);
         }
         C2D_DrawSprite(&colour_wheel_sprite);
+        if (!dragging) {
+            // tint to hue saturation
+            float col[3] = {
+                (tVBOpt.TINT & 0xff) / 255.0,
+                ((tVBOpt.TINT >> 8) & 0xff) / 255.0,
+                ((tVBOpt.TINT >> 16) & 0xff) / 255.0,
+            };
+            float max = col[0] > col[1] ? col[0] : col[1];
+            max = max > col[2] ? max : col[2];
+            float min = col[0] < col[1] ? col[0] : col[1];
+            min = min < col[2] ? min : col[2];
+            if (max == min) {
+                // white
+                touch_dx = touch_dy = 0;
+            } else {
+                float chroma = max - min;
+                float hprime;
+                if (max == col[0]) {
+                    hprime = (col[1] - col[2]) / chroma;
+                } else if (max == col[1]) {
+                    hprime = (col[2] - col[0]) / chroma + 2;
+                } else {
+                    hprime = (col[0] - col[1]) / chroma + 4;
+                }
+                float hue = hprime * (M_PI / 3);
+                float sat = chroma / max;
+                touch_dx = sat * cos(hue);
+                touch_dy = sat * sin(hue);
+            }
+        }
+        C2D_DrawCircleSolid(
+            circle_x + touch_dx * (circle_w / 2),
+            circle_y + touch_dy * (circle_h / 2),
+            0, 4, 0xff000000);
+        C2D_DrawCircleSolid(
+            circle_x + touch_dx * (circle_w / 2),
+            circle_y + touch_dy * (circle_h / 2),
+            0, 2, tVBOpt.TINT);
     LOOP_END(colour_filter_buttons);
-    return options();
+    switch (button) {
+        case 0: // Back
+            return options();
+        case 1: // Red
+            tVBOpt.TINT = 0xff0000ff;
+            return colour_filter();
+        case 2: // White
+            tVBOpt.TINT = 0xffffffff;
+            return colour_filter();
+    }
 }
 
 static void options() {
