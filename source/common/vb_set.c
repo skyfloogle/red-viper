@@ -41,6 +41,7 @@ void setDefaults(void) {
     tVBOpt.TOUCH_PADY = 128;
     tVBOpt.ABXY_MODE = 0;
     tVBOpt.TINT = 0xff0000ff;
+    tVBOpt.PERF_INFO = false;
 
     // Default keys
 #ifdef __3DS__

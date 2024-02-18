@@ -53,7 +53,7 @@ int debug_cheat_view(void);
 int help_about(void);
 
 void guiInit();
-void guiUpdate();
+void guiUpdate(float total_time, float drc_time);
 void openMenu();
 
 extern Thread save_thread;

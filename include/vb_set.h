@@ -70,6 +70,7 @@ typedef struct VB_OPT {
     char *ROM_NAME; // Path\Name of game to open
     char *PROG_NAME; // Path\Name of program
     unsigned long CRC32; // CRC32 of ROM
+    bool  PERF_INFO;
 } VB_OPT;
 
 void setDefaults(void);

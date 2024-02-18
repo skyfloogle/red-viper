@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <time.h>
 #include <citro2d.h>
+#include "drc_core.h"
 #include "vb_dsp.h"
 #include "vb_gui.h"
 #include "vb_set.h"
@@ -19,7 +21,7 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
-static C2D_Text text_A, text_B, text_switch, text_saving;
+static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off;
 
 static C2D_SpriteSheet colour_wheel_sheet;
 static C2D_Sprite colour_wheel_sprite;
@@ -38,6 +40,7 @@ static inline int u16len(const u16 *s) {
 typedef struct {
     char *str;
     float x, y, w, h;
+    bool show_toggle, toggle;
     C2D_Text text;
 } Button;
 
@@ -99,9 +102,9 @@ static Button controls_buttons[] = {
 static void options();
 static Button options_buttons[] = {
     {"Color filter", 16, 16, 288, 48},
-    {"Fastforward", 16, 80, 128, 48},
-    {"Sound", 176, 80, 128, 48},
-    {"Status bar", 16, 144, 128, 48},
+    {"Fastforward", 16, 80, 128, 48, true},
+    {"Sound", 176, 80, 128, 48, true},
+    {"Perf. info", 16, 144, 128, 48, true},
     {"About", 176, 144, 128, 48},
     {"Back", 0, 208, 48, 32},
 };
@@ -516,6 +519,9 @@ static void colour_filter() {
 }
 
 static void options() {
+    options_buttons[1].toggle = tVBOpt.FASTFORWARD;
+    options_buttons[2].toggle = tVBOpt.SOUND;
+    options_buttons[3].toggle = tVBOpt.PERF_INFO;
     LOOP_BEGIN(options_buttons);
     LOOP_END(options_buttons);
     switch (button) {
@@ -527,7 +533,8 @@ static void options() {
         case 2: // Sound
             tVBOpt.SOUND = !tVBOpt.SOUND;
             return options();
-        case 3: // Status bar
+        case 3: // Performance info
+            tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
             return options();
         case 4: // About
             return options();
@@ -567,10 +574,49 @@ static inline int handle_buttons(Button buttons[], int count) {
         u32 pressed_colour = C2D_Color32(144, 0, 0, 255);
         C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h, pressed == i ? pressed_colour : normal_colour);
         C2D_DrawText(&buttons[i].text, C2D_AlignCenter, buttons[i].x + buttons[i].w / 2, buttons[i].y + buttons[i].h / 2 - 6, 0, 0.7, 0.7);
+        if (buttons[i].show_toggle) C2D_DrawText(buttons[i].toggle ? &text_on : &text_off, C2D_AlignLeft, buttons[i].x, buttons[i].y, 0, 0.5, 0.5);
     }
     if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);
     if (ret >= 0) pressed = -1;
     return ret;
+}
+
+static void draw_status_bar(float total_time, float drc_time) {
+    if (!tVBOpt.PERF_INFO) return;
+    C2D_DrawRectSolid(0, 240 - 12, 0, 320, 12, C2D_Color32(128, 128, 128, 255));
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_Text text;
+    char buf[32];
+
+    // All
+    sprintf(buf, "A:%5.2fms", total_time);
+    C2D_TextParse(&text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&text);
+    C2D_DrawText(&text, C2D_AlignLeft, 310-60*5, 240 - 12, 0, 0.35, 0.35);
+
+    // DRC
+    sprintf(buf, "D:%5.2fms", drc_time);
+    C2D_TextParse(&text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&text);
+    C2D_DrawText(&text, C2D_AlignLeft, 310-60*4, 240 - 12, 0, 0.35, 0.35);
+
+    // C3D
+    sprintf(buf, "C:%5.2fms", C3D_GetProcessingTime());
+    C2D_TextParse(&text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&text);
+    C2D_DrawText(&text, C2D_AlignLeft, 310-60*3, 240 - 12, 0, 0.35, 0.35);
+
+    // PICA
+    sprintf(buf, "P:%5.2fms", C3D_GetDrawingTime());
+    C2D_TextParse(&text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&text);
+    C2D_DrawText(&text, C2D_AlignLeft, 310-60*2, 240 - 12, 0, 0.35, 0.35);
+
+    // Memory
+    sprintf(buf, "M:%5.2f%%", (cache_pos-cache_start)*4*100./CACHE_SIZE);
+    C2D_TextParse(&text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&text);
+    C2D_DrawText(&text, C2D_AlignLeft, 310-60, 240 - 12, 0, 0.35, 0.35);
 }
 
 void guiInit() {
@@ -595,6 +641,10 @@ void guiInit() {
     C2D_TextOptimize(&text_switch);
     C2D_TextParse(&text_saving, static_textbuf, "Saving...");
     C2D_TextOptimize(&text_saving);
+    C2D_TextParse(&text_on, static_textbuf, "On");
+    C2D_TextOptimize(&text_on);
+    C2D_TextParse(&text_off, static_textbuf, "Off");
+    C2D_TextOptimize(&text_off);
 }
 
 void openMenu() {
@@ -638,7 +688,7 @@ bool guiShouldSwitch() {
     return touch_pos.px >= 320 - 64 && touch_pos.py < 32;
 }
 
-void guiUpdate() {
+void guiUpdate(float total_time, float drc_time) {
     C2D_Prepare();
     C2D_TargetClear(screen, 0);
     C2D_SceneBegin(screen);
@@ -668,6 +718,8 @@ void guiUpdate() {
 
     C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, C2D_Color32(128, 0, 0, 255));
     C2D_DrawText(&text_switch, C2D_AlignLeft, 320 - 60, 4, 0, 0.5, 0.5);
+    
+    draw_status_bar(total_time, drc_time);
 
     if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);
 

@@ -117,6 +117,8 @@ int main() {
         tHReg.SLB =(BYTE)(inputs&0xFF);
         tHReg.SHB =(BYTE)((inputs>>8)&0xFF);
 
+        float last_drc_time = osTickCounterRead(&drcTickCounter);
+
 #if DEBUGLEVEL == 0
         consoleSelect(&debug_console);
 #endif
@@ -136,7 +138,7 @@ int main() {
         if(tVIPREG.tFrame == tVIPREG.FRMCYC) {
             // pass C3D_FRAME_NONBLOCK to enable frameskip
             if (C3D_FrameBegin(0)) {
-                guiUpdate();
+                guiUpdate(osTickCounterRead(&frameTickCounter), last_drc_time);
 
                 int alt_buf = (tVIPREG.tFrameBuffer) % 2;
                 if (tVIPREG.DPCTRL & 0x0002) {
@@ -147,6 +149,12 @@ int main() {
                     memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
                     tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
                 }
+                C3D_FrameEnd(0);
+            }
+        } else {
+            // no game graphics, draw menu if posible
+            if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
+                guiUpdate(osTickCounterRead(&frameTickCounter), last_drc_time);
                 C3D_FrameEnd(0);
             }
         }
