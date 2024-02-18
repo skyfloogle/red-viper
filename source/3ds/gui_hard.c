@@ -113,7 +113,7 @@ static void colour_filter();
 static Button colour_filter_buttons[] = {
     {"Back", 0, 208, 48, 32},
     {"Red", 16, 64, 48, 32},
-    {"Grey", 16, 128, 48, 32},
+    {"Gray", 16, 128, 48, 32},
 };
 
 #define SETUP_ALL_BUTTONS \
@@ -417,6 +417,13 @@ static void colour_filter() {
     const float circle_y = colour_wheel_sprite.params.pos.y;
     const float circle_w = colour_wheel_sprite.params.pos.w;
     const float circle_h = colour_wheel_sprite.params.pos.h;
+
+    // in case we came here from the red/gray button
+    C3D_FrameBegin(0);
+    video_flush(true);
+    C3D_FrameEnd(0);
+    C2D_Prepare();
+
     LOOP_BEGIN(colour_filter_buttons);
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
@@ -512,7 +519,7 @@ static void colour_filter() {
         case 1: // Red
             tVBOpt.TINT = 0xff0000ff;
             return colour_filter();
-        case 2: // Grey
+        case 2: // Gray
             tVBOpt.TINT = 0xffffffff;
             return colour_filter();
     }
