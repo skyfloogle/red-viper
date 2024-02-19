@@ -67,5 +67,7 @@
 void sound_init();
 void sound_update(int reg);
 void sound_close();
+void sound_enable();
+void sound_disable();
 
 #endif //VB_SOUND_H_

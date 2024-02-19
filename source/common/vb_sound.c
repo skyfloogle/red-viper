@@ -4,6 +4,7 @@
 #include "allegro_compat.h"
 #include "periodic.h"
 #include "vb_types.h"
+#include "vb_gui.h"
 #include "vb_set.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"
@@ -142,16 +143,19 @@ void sound_thread() {
     }
 }
 
+static bool sound_initted = false;
+
 // Set up Allegro sound stuff
 void sound_init() {
     int i, index;
 
     if (-1 == install_sound(DIGI_AUTODETECT, MIDI_NONE, NULL)) {
-        puts("Error: couldn't install sound.\nDid you dump your DSP firmware?");
-        dprintf(0, "[SND]: Error installing sound\n");
+        showSoundError();
         tVBOpt.SOUND = 0;
         return;
     }
+
+    sound_initted = true;
 
     for (i = CH1; i <= CH5; ++i) {
         channel[i] = create_sample(8, 0, 0, 32);
@@ -170,29 +174,36 @@ void sound_init() {
 
     // Set default to 0
     Curr_C6V = voice[CH6_0];
+}
 
-    if (!startPeriodic(sound_thread, 960000))
-        puts("couldn't make sound thread");
-
-    // Initialize cache and sound thread
+void sound_enable() {
+    if (!sound_initted) sound_init();
+    if (!sound_initted) return;
+    startPeriodic(sound_thread, 96000);
     for (int i = 0; i < 6; i++) {
         snd_ram_changed[i] = true;
         envelope_values[i] = RBYTE(S1EV0 + 0x40 * i) >> 4;
     }
 }
 
+void sound_disable() {
+    endThread(sound_thread);
+    for (int i = 0; i < CH_TOTAL; ++i) {
+        voice_stop(voice[i]);
+    }
+}
+
 // Close Allegro sound stuff
 void sound_close() {
-    int i;
-
-    endThread(sound_thread);
-
-    for (i = 0; i < CH_TOTAL; ++i) {
+    if (!sound_initted) return;
+    sound_disable();
+    for (int i = 0; i < CH_TOTAL; ++i) {
         voice_stop(voice[i]);
         destroy_sample(channel[i]);
         deallocate_voice(voice[i]);
     }
     remove_sound();
+    sound_initted = false;
 }
 
 // Handles updating allegro sounds according VB sound regs

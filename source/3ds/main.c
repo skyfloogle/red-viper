@@ -49,6 +49,8 @@ int main() {
 
     gfxSet3D(true);
 
+    sound_init();
+
     guiop = 0;
     openMenu();
     if (guiop & GUIEXIT) {
@@ -60,7 +62,7 @@ int main() {
     }
     game_running = true;
 
-    if (tVBOpt.SOUND) sound_init();
+    if (tVBOpt.SOUND) sound_enable();
 
     v810_reset();
     drc_init();
@@ -91,7 +93,7 @@ int main() {
                 goto exit;
             }
             if (guiop & VBRESET) {
-                if (tVBOpt.SOUND) sound_close();
+                if (tVBOpt.SOUND) sound_disable();
                 int oldSound = tVBOpt.SOUND;
                 tVBOpt.SOUND = false;
                 v810_exit();
@@ -101,7 +103,7 @@ int main() {
                 drc_reset();
                 clearCache();
                 tVBOpt.SOUND = oldSound;
-                if (tVBOpt.SOUND) sound_init();
+                if (tVBOpt.SOUND) sound_enable();
                 frame = 0;
                 tVIPREG.tFrame = 0;
                 tVIPREG.tFrameBuffer = 0;
@@ -191,7 +193,7 @@ exit:
     endThreads();
     V810_DSP_Quit();
     video_quit();
-    if (tVBOpt.SOUND && game_running) sound_close();
+    sound_close();
     drc_exit();
 
     ptmuExit();

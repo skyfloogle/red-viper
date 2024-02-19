@@ -9,6 +9,7 @@
 #include "vb_dsp.h"
 #include "vb_gui.h"
 #include "vb_set.h"
+#include "vb_sound.h"
 #include "vb_types.h"
 #include "main.h"
 #include "colour_wheel_t3x.h"
@@ -21,7 +22,7 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
-static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off;
+static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off, text_sound_error;
 
 static C2D_SpriteSheet colour_wheel_sheet;
 static C2D_Sprite colour_wheel_sprite;
@@ -116,13 +117,19 @@ static Button colour_filter_buttons[] = {
     {"Gray", 16, 128, 48, 32},
 };
 
+static void sound_error();
+static Button sound_error_buttons[] = {
+    {"Continue without sound", 48, 130, 320-48*2, 32},
+};
+
 #define SETUP_ALL_BUTTONS \
     SETUP_BUTTONS(first_menu_buttons); \
     SETUP_BUTTONS(game_menu_buttons); \
     SETUP_BUTTONS(rom_loader_buttons); \
     SETUP_BUTTONS(controls_buttons); \
     SETUP_BUTTONS(options_buttons); \
-    SETUP_BUTTONS(colour_filter_buttons);
+    SETUP_BUTTONS(colour_filter_buttons); \
+    SETUP_BUTTONS(sound_error_buttons);
 
 static void first_menu() {
     LOOP_BEGIN(first_menu_buttons);
@@ -565,6 +572,8 @@ static void options() {
             return options();
         case 2: // Sound
             tVBOpt.SOUND = !tVBOpt.SOUND;
+            if (tVBOpt.SOUND) sound_enable();
+            else sound_disable();
             return options();
         case 3: // Performance info
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
@@ -575,6 +584,13 @@ static void options() {
         case 5: // Back
             return main_menu();
     }
+}
+
+static void sound_error() {
+    LOOP_BEGIN(sound_error_buttons);
+        C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
+    LOOP_END(sound_error_buttons);
+    return;
 }
 
 static inline int handle_buttons(Button buttons[], int count) {
@@ -679,6 +695,8 @@ void guiInit() {
     C2D_TextOptimize(&text_on);
     C2D_TextParse(&text_off, static_textbuf, "Off");
     C2D_TextOptimize(&text_off);
+    C2D_TextParse(&text_sound_error, static_textbuf, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
+    C2D_TextOptimize(&text_sound_error);
 }
 
 void openMenu() {
@@ -699,6 +717,12 @@ void openMenu() {
         if (tVBOpt.SOUND)
             ndspSetMasterVol(1.0);
     }
+}
+
+void showSoundError() {
+    C2D_Prepare();
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+    sound_error();
 }
 
 void setTouchControls(bool buttons) {
