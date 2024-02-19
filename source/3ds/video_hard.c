@@ -390,9 +390,9 @@ void video_hard_render() {
 						int dx = params[i + 3];
 						int dy = params[i + 4];
 						int mxleft = mx + ((dx * abs(mp)) >> 6);
-						int mxright = (mx > mxleft ? mx : mxleft) + ((dx * (w + mp)) >> 6);
+						int mxright = (mx > mxleft ? mx : mxleft) + ((dx * w) >> 6);
 						int myleft = my + ((dy * abs(mp)) >> 6);
-						int myright = (my > myleft ? my : myleft) + ((dy * (w + mp)) >> 6);
+						int myright = (my > myleft ? my : myleft) + ((dy * w) >> 6);
 						if (mx < umin) umin = mx;
 						if (mx > umax) umax = mx;
 						if (mxleft < umin) umin = mxleft;
@@ -530,8 +530,8 @@ void video_hard_render() {
 								avcur->y2 = gy + y + 1 + 256 * eye;
 								avcur->u = base_u * 8 + mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
 								avcur->v = base_v * 8 + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
-								avcur->ix = dx * (w + mp) >> 6;
-								avcur->iy = dy * (w + mp) >> 6;
+								avcur->ix = dx * w >> 6;
+								avcur->iy = dy * w >> 6;
 								avcur->jx = 0;
 								avcur++->jy = 0;
 							}
