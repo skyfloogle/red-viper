@@ -198,17 +198,15 @@ int serviceInt(unsigned int cycles, WORD PC) {
     //  v810_int(0);
     //}
 
-    int next_timer = tHReg.TCR & 0x01 ? tHReg.tCount * tHReg.tTRC + lasttime - cycles : MAXCYCLES;
-    int next_input = tHReg.SCR & 2 ? tHReg.hwRead : MAXCYCLES;
+    int next_timer = tHReg.TCR & 0x01 ? tHReg.tCount * tHReg.tTRC - (cycles - lasttime) : MAXCYCLES;
+    int next_input = tHReg.SCR & 2 ? tHReg.hwRead - (cycles - lastinput) : MAXCYCLES;
     int next_interrupt = next_timer < next_input ? next_timer : next_input;
-    next_interrupt = next_interrupt < MAXCYCLES ? next_interrupt : MAXCYCLES;
 
     // hardware read timing
-    if (tHReg.hwRead > cycles - lastinput) {
-        tHReg.hwRead -= cycles - lastinput;
-    } else {
-        tHReg.hwRead = 0;
-        tHReg.SCR &= ~2;
+    if (tHReg.SCR & 2) {
+        tHReg.hwRead = next_input;
+        if (next_input <= 0)
+            tHReg.SCR &= ~2;
     }
     lastinput = cycles;
 
