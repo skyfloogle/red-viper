@@ -128,10 +128,7 @@ int main() {
         err = drc_run();
         osTickCounterUpdate(&drcTickCounter);
         if (err) {
-            dprintf(0, "[DRC]: error #%d @ PC=0x%08lX\n", err, v810_state->PC);
-            printf("\nDumping debug info...\n");
-            drc_dumpDebugInfo();
-            printf("Press any key to exit\n");
+            showError(err);
             waitForInput();
             goto exit;
         }

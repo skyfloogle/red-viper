@@ -56,6 +56,7 @@ void guiInit();
 void guiUpdate(float total_time, float drc_time);
 void openMenu();
 void showSoundError();
+void showError(int code);
 
 extern Thread save_thread;
 

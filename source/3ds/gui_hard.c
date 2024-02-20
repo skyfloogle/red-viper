@@ -22,7 +22,7 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
-static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off, text_sound_error;
+static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off, text_sound_error, text_anykeyexit;
 
 static C2D_SpriteSheet colour_wheel_sheet;
 static C2D_Sprite colour_wheel_sprite;
@@ -697,6 +697,8 @@ void guiInit() {
     C2D_TextOptimize(&text_off);
     C2D_TextParse(&text_sound_error, static_textbuf, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
     C2D_TextOptimize(&text_sound_error);
+    C2D_TextParse(&text_anykeyexit, static_textbuf, "Press any key to exit");
+    C2D_TextOptimize(&text_anykeyexit);
 }
 
 void openMenu() {
@@ -723,6 +725,32 @@ void showSoundError() {
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     sound_error();
+}
+
+void showError(int code) {
+    gfxSetDoubleBuffering(GFX_BOTTOM, false);
+    C2D_Prepare();
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+    C2D_TextBufClear(dynamic_textbuf);
+    char buf[100];
+    sprintf(buf, "DRC error #%d\nPC=0x%08lx\nDumping debug info...", code, v810_state->PC);
+    C2D_Text text;
+    C2D_TextParse(&text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&text);
+    C3D_FrameBegin(0);
+    C2D_TargetClear(screen, 0);
+    C2D_SceneBegin(screen);
+    C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 60, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
+    C2D_Flush();
+    C3D_FrameEnd(0);
+
+    drc_dumpDebugInfo();
+
+    C3D_FrameBegin(0);
+    C3D_FrameDrawOn(screen);
+    C2D_DrawText(&text_anykeyexit, C2D_AlignCenter | C2D_WithColor, 320 / 2, 140, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
+    C2D_Flush();
+    C3D_FrameEnd(0);
 }
 
 void setTouchControls(bool buttons) {
