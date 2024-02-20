@@ -96,7 +96,7 @@ static Button rom_loader_buttons[] = {
 
 static void controls();
 static Button controls_buttons[] = {
-    {"Touchscreen\nsettings", 96, 144, 128, 64},
+    //{"Touchscreen\nsettings", 96, 144, 128, 64},
     {"Back", 0, 208, 48, 32},
 };
 
