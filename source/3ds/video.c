@@ -15,6 +15,10 @@
 #include "final_shbin.h"
 #include "soft_shbin.h"
 
+static inline u8 clamp127(u16 a) {
+	return a < 127 ? a : 127;
+}
+
 // some stuff copied from vb_dsp.c
 
 VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
@@ -181,12 +185,9 @@ void video_render(int alt_buf) {
 	int col_scale = maxRepeat;
 	#endif
 	brightness[0] = 0;
-	brightness[1] = tVIPREG.BRTA * col_scale;
-	if (brightness[1] > 127) brightness[1] = 127;
-	brightness[2] = tVIPREG.BRTB * col_scale;
-	if (brightness[2] > 127) brightness[2] = 127;
-	brightness[3] = (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale;
-	if (brightness[3] > 127) brightness[3] = 127;
+	brightness[1] = clamp127(tVIPREG.BRTA * col_scale);
+	brightness[2] = clamp127(tVIPREG.BRTB * col_scale);
+	brightness[3] = clamp127((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale);
 
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
