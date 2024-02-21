@@ -179,7 +179,7 @@ void sound_init() {
 void sound_enable() {
     if (!sound_initted) sound_init();
     if (!sound_initted) return;
-    startPeriodic(sound_thread, 96000);
+    startPeriodic(sound_thread, 960000);
     for (int i = 0; i < 6; i++) {
         snd_ram_changed[i] = true;
         envelope_values[i] = RBYTE(S1EV0 + 0x40 * i) >> 4;
