@@ -378,7 +378,8 @@ void video_hard_render() {
 						if (params[i] < umin) umin = params[i];
 						if (params[i] > umax) umax = params[i];
 					}
-					umax += w;
+					umin += base_mx - abs(mp);
+					umax += base_mx + abs(mp) + w;
 				} else {
 					// affine
 					umin = umax = params[0];
