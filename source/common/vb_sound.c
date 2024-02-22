@@ -9,7 +9,6 @@
 #include "v810_cpu.h"
 #include "v810_mem.h"
 #include "vb_sound.h"
-#include "vb_lfsr.h"
 
 #define CH1       0
 #define CH2       1
@@ -30,9 +29,6 @@ SAMPLE* channel[CH_TOTAL];
 int voice[CH_TOTAL];
 int Curr_C6V, C6V_playing = 0;
 int snd_ram_changed[6] = {0, 0, 0, 0, 0, 0};
-
-BYTE* Noise_Opt[8] = {Noise_Opt0, Noise_Opt1, Noise_Opt2, Noise_Opt3, Noise_Opt4, Noise_Opt5, Noise_Opt6, Noise_Opt7};
-int Noise_Opt_Size[8] = {OPT0LEN, OPT1LEN, OPT2LEN, OPT3LEN, OPT4LEN, OPT5LEN, OPT6LEN, OPT7LEN};
 
 // FRQ reg converted to sampling frq for allegro
 // manual says up to 2040, but any higher than 2038 crashes RB
@@ -161,10 +157,19 @@ void sound_init() {
         channel[i] = create_sample(8, 0, 0, 32);
     }
 
+    // generate noise samples
     for (i = CH6_0; i <= CH6_7; ++i) {
         index = i - CH6_0;
-        channel[i] = create_sample(8, 0, 0, Noise_Opt_Size[index]);
-        memcpy(channel[i]->data, Noise_Opt[index], Noise_Opt_Size[index]);
+        static const int bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
+        static const int sizes[8] = {32767, 1953, 254, 217, 73, 63, 42, 28};
+        channel[i] = create_sample(8, 0, 0, sizes[index]);
+        short shiftreg = 0;
+        for (int s = 0; s < sizes[index]; s++) {
+            int bit = ~(shiftreg >> 7) & 1;
+            bit ^= (shiftreg >> bits[index]) & 1;
+            shiftreg = (shiftreg << 1) | bit;
+            ((BYTE*)(channel[i]->data))[s] = bit ? 0x7c : 0x80;
+        }
     }
 
     for (i = 0; i < CH_TOTAL; ++i) {
@@ -491,13 +496,7 @@ void sound_update(int reg) {
             break;
         case S6LRV:
         case S6EV0:
-            reg1 = RBYTE(S6LRV);
-            if (reg == S6EV0) {
-                reg2 = RBYTE(S6EV0);
-                envelope_values[5] = reg2 >> 4;
-            }
-            voice_set_volume(voice[Curr_C6V], (reg1 >> 4) * envelope_values[5], (reg1 & 0x0F) * envelope_values[5]);
-
+        case S6EV1:
             // Changing LFSR voice?  Rather than recopy LFSR sequence and
             // handle sequences of different lengths, just switch between
             // pre-allocated LFSR voices
@@ -511,12 +510,20 @@ void sound_update(int reg) {
                 if (C6V_playing == 1)
                     voice_start(Curr_C6V);
             }
+
+            reg1 = RBYTE(S6LRV);
+            if (reg == S6EV0) {
+                reg2 = RBYTE(S6EV0);
+                envelope_values[5] = reg2 >> 4;
+            }
+            voice_set_volume(Curr_C6V, (reg1 >> 4) * envelope_values[5], (reg1 & 0x0F) * envelope_values[5]);
             break;
         case S6FQL:
         case S6FQH:
             reg1 = RBYTE(S6FQL);
             reg2 = RBYTE(S6FQH);
-            voice_set_frequency(Curr_C6V, RAND_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
+            for (int i = CH6_0; i <= CH6_7; i++)
+                voice_set_frequency(i, RAND_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
 
         // Stop all sound output
