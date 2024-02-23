@@ -135,20 +135,20 @@ int main() {
 
         // Display a frame, only after the right number of 'skips'
         if(tVIPREG.tFrame == tVIPREG.FRMCYC) {
+            int alt_buf = (tVIPREG.tFrameBuffer) % 2;
             // pass C3D_FRAME_NONBLOCK to enable frameskip
             if (C3D_FrameBegin(0)) {
                 guiUpdate(osTickCounterRead(&frameTickCounter), last_drc_time);
 
-                int alt_buf = (tVIPREG.tFrameBuffer) % 2;
                 if (tVIPREG.DPCTRL & 0x0002) {
                     video_render(alt_buf);
                 }
-                if (tVIPREG.XPCTRL & 0x0002) {
-                    memset(V810_DISPLAY_RAM.pmemory + 0x8000 * alt_buf, 0, 0x6000);
-                    memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
-                    tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
-                }
                 C3D_FrameEnd(0);
+            }
+            if (tVIPREG.XPCTRL & 0x0002) {
+                memset(V810_DISPLAY_RAM.pmemory + 0x8000 * alt_buf, 0, 0x6000);
+                memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
+                tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
             }
         } else {
             // no game graphics, draw menu if posible
