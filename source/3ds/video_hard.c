@@ -16,7 +16,7 @@
 C3D_Tex screenTexHard;
 C3D_RenderTarget *screenTarget;
 
-C3D_Tex tileTexture;
+static C3D_Tex tileTexture;
 
 // O3DS, 32-bit: 4 available
 // O3DS, 16-bit: 7 available
@@ -29,16 +29,16 @@ typedef struct {
 	short umin, umax, vmin, vmax;
 	bool visible;
 } AffineCacheEntry;
-AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
+static AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
 
-DVLB_s *char_dvlb;
-shaderProgram_s sChar;
-s8 uLoc_posscale;
-s8 uLoc_palettes;
-C3D_FVec palettes[8];
+static DVLB_s *char_dvlb;
+static shaderProgram_s sChar;
+static s8 uLoc_posscale;
+static s8 uLoc_palettes;
+static C3D_FVec palettes[8];
 
-DVLB_s *sAffine_dvlb;
-shaderProgram_s sAffine;
+static DVLB_s *sAffine_dvlb;
+static shaderProgram_s sAffine;
 
 typedef struct {
 	short x1, y1, x2, y2;
@@ -52,9 +52,9 @@ typedef struct {
 } avertex;
 
 #define VBUF_SIZE 64 * 64 * 2 * 32
-vertex *vbuf, *vcur;
+static vertex *vbuf, *vcur;
 #define AVBUF_SIZE 4096
-avertex *avbuf, *avcur;
+static avertex *avbuf, *avcur;
 
 void video_hard_init() {
 	char_dvlb = DVLB_ParseFile((u32 *)char_shbin, char_shbin_size);
@@ -107,7 +107,7 @@ void video_hard_init() {
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
 }
 
-void setRegularTexEnv() {
+static void setRegularTexEnv() {
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
 	C3D_TexEnvColor(env, 0x808080);
@@ -121,7 +121,7 @@ void setRegularTexEnv() {
 	C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
 }
 
-void setRegularDrawing() {
+static void setRegularDrawing() {
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
@@ -134,7 +134,7 @@ void setRegularDrawing() {
 }
 
 // returns vertex count
-int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int umax, int vmin, int vmax) {
+static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int umax, int vmin, int vmax) {
 	int vcount = 0;
 
 	int cache_id = mapid % AFFINE_CACHE_SIZE;
