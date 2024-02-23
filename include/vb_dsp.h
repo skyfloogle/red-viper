@@ -12,8 +12,8 @@
 
 // VB input defines
 #define VB_BATERY_LOW   0x0001 // Batery Low
-#define VB_KEY_L        0x0010 // L Trigger
-#define VB_KEY_R        0x0020 // R Trigger
+#define VB_KEY_L        0x0020 // L Trigger
+#define VB_KEY_R        0x0010 // R Trigger
 #define VB_KEY_SELECT   0x2000 // Select Button
 #define VB_KEY_START    0x1000 // Start Button
 #define VB_KEY_B        0x0008 // B Button
