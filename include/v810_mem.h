@@ -37,7 +37,7 @@ typedef struct {
     BYTE tReset;    //Timer Reset register, not publicly visible
     HWORD tTHW;     //Timer TempHWord, 	not publicly visible
     WORD tTRC;      //Timer TempResolutionCount, not publicly visible
-    SHWORD tCount;  //Timer Counter register, not publicly visible
+    SWORD tCount;  //Timer Counter register, not publicly visible
     BYTE SHB;       //Serial Higher Byte,   0x02000014  //Read Only
     BYTE SLB;       //Serial Lower Byte,    0x02000010  //Read Only
     BYTE CDRR;      //Com Recv Data Reg,    0x0200000C  //Read Only
