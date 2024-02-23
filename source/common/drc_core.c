@@ -1674,7 +1674,9 @@ int drc_run() {
 
     while (true) {
         serviceDisplayInt(clocks, v810_state->PC);
-        tVBOpt.MAXCYCLES = serviceInt(clocks, v810_state->PC);
+        do {
+            tVBOpt.MAXCYCLES = serviceInt(clocks, v810_state->PC);
+        } while (tVBOpt.MAXCYCLES <= 0);
 
         v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;
