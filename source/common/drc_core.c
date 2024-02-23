@@ -440,7 +440,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                 inst_cache[i].branch_offset = sign_9(inst_cache[i].imm);
 
                 // innsmouth no yakata speedhack
-                if (tVBOpt.CRC32 == 0x83cb6a00 && cur_PC == 0x7019040) {
+                if (cur_PC == 0x7019040 && (tVBOpt.CRC32 == 0x83CB6A00 || tVBOpt.CRC32 == 0xEFD0AC36 || tVBOpt.CRC32 == 0x04CCBE94)) {
                     inst_cache[i].branch_offset = -0x10;
                 }
 
