@@ -356,6 +356,9 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
                 // therefore we need to catch it manually
                 if (tVBOpt.CRC32 == 0x36103000 && inst_cache[i].PC == 0x702e9dc)
                     break;
+                // similar for wario land
+                if (tVBOpt.CRC32 == 0x133E9372 && inst_cache[i].PC == 0x71c2cda)
+                    break;
             case V810_OP_ADD:
             case V810_OP_OR:
                 // only certain operators are ok for busywait here, otherwise fallthrough
