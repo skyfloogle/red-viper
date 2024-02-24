@@ -1,27 +1,31 @@
-r3Ddragon
+Red Hydra
 =========
 
-A WIP Virtual Boy emulator for the 3DS based on Reality Boy / Red Dragon. You can see the current progress
-[here](https://github.com/mrdanielps/r3Ddragon/wiki/Current-progress) and a video of it working
-[here](https://youtu.be/xJ9323yaQJY).
+A Virtual Boy emulator for the Nintendo 3DS based on [r3Ddragon](https://github.com/mrdanielps/r3Ddragon) by mrdanielps,
+which is itself based on Reality Boy / Red Dragon.
 
-There's an experimental dynarec implemented but it still needs optimizing.
+## Features
+* All officially licensed games are playable at full speed, even on the original 3DS
+* 3D support
+* Game saves are supported
+* Map either the A/B buttons or the right D-Pad to the face buttons, with the other being on the touch screen
+* Configurable face button mapping
+* Configurable color filter
 
-### Usage
+Future additions:
+* Support for PCM samples
+* Savestates
+* Homebrew support
+* More versatile color filter
+* A way to load a specific game from the home screen
 
-You can place place ROMs in /vb/.
+## Usage
 
-If it doesn't exist, `rd_config.ini` will be created. Some relevant options you can change are:
+The latest release can be found [here](https://github.com/skyfloogle/r3Ddragon/releases),
+provided as a 3dsx (can be loaded with Homebrew Launcher) and as a cia (can be installed to the home menu with FBI).
+ROMs can be placed in any desired location on your SD card. The emulator will remember the location of the last ROM you loaded.
 
- * _maxcycles_: A lower value will improve compatibility, but it will run slower.
- * _frmskip_: Number of frames to skip before drawing.
- * _debug_: If set to 1, prints debug info.
- * _sound_: Enables sound.
- * _dynarec_: If set to 0, tries to load the dynarec cache from a file instead of recompiling.
-
-The 3dsx will only work on exploitable system versions (<=11.2) after running [fasthax](https://github.com/nedwill/fasthax/releases).
-
-### FAQs
+## FAQs
 
 > Why would you make a Virtual Boy emulator? Nobody asked for it.
 
@@ -40,13 +44,18 @@ Plus, it has a nice homebrew scene with gems such as Hyper Fighting, Snatcher an
 Unfortunately, yes. The old 3DS is too slow to run it at a playable speed. That might change in the future,
 but it's unlikely.
 
+> Why did it take so long for an emulator with good compatibility to come out?
+
+Making a fast emulator is no easy task. Simply porting an existing emulator wouldn't have worked, as none of the
+existing emulators were designed to run on systems as slow as the 3DS.
+
 > Where can I download it?
 
 You can find the latest release [here](https://github.com/mrdanielps/r3Ddragon/releases).
 
-### Building
+## Building
 
-Before building fetch the dependencies:
+Before building, fetch the dependencies:
 
 ```bash
 > git submodule update
@@ -55,14 +64,12 @@ Before building fetch the dependencies:
 Once you have [ctrulib installed](http://3dbrew.org/wiki/Setting_up_Development_Environment), you can choose
 between four different make targets:
 
-* **`make release`** adds `-O3` to CFLAGS. It's meant to be run on an actual 3DS and will output basic debug info to stdout only if enabled in `rd_config.ini`.
-* **`make testing`** adds `-O3` to CFLAGS. It's meant to be run on an emulator (citra or 3dmoo). It will output basic debug info to the terminal.
-* **`make debug`** adds `-g -O0` to CFLAGS. It builds without optimizations so it can be debugged with gdb.
+* **`make release`** is the default, and adds `-O3` to CFLAGS.
+* **`make testing`** adds `-O3` to CFLAGS. It will output basic debug info to a connected debugger.
+* **`make debug`** adds `-g -O0` to CFLAGS. It builds without optimizations so it can be debugged more easily.
 * **`make slowdebug`** adds `-g -O0` to CFLAGS. It will output a lot of debug information, which will slow emulation down but might be helpful to debug game-specific issues.
 
-For easier debugging, you can build it for arm-linux (tested on a Raspberry Pi) with `make -f Makefile.linux` or for android using `ndk-build`.
-
-### License
+## License
 
 Some of the code is distributed under the MIT License (check source files for that) but, since
 this is a port of Reality Boy, here is (part of) the original readme:
@@ -124,4 +131,5 @@ Reality Boy is in no way affiliated with either of these parties
 * Myria - libkhax
 * thunderstruck - CIA banner sound (taken from Fishbone).
 * nop90 - Reality Boy backports and fixes.
-* danielps - 3DS port and V810 dynarec.
+* danielps - Initial 3DS port and V810 dynarec.
+* Floogle - 3DS hardware renderer; many optimizations, bugfixes, and other improvements.
