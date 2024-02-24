@@ -50,7 +50,7 @@ HWORD V810_RControll() {
 		if (key & BIT(i)) ret_keys |= vbkey[i];
 	}
 
-	if (key & KEY_TOUCH) ret_keys |= guiGetInput();
+	if (key & KEY_TOUCH) ret_keys |= guiGetInput(true);
 
 	if ((ret_keys & VB_LPAD_L) && (ret_keys & VB_LPAD_R)) ret_keys &= ~(VB_LPAD_L | VB_LPAD_R);
 	if ((ret_keys & VB_LPAD_U) && (ret_keys & VB_LPAD_D)) ret_keys &= ~(VB_LPAD_U | VB_LPAD_D);

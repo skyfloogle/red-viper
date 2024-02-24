@@ -16,6 +16,8 @@
 
 static bool buttons_on_screen = false;
 void setTouchControls(bool button);
+bool guiShouldSwitch();
+void drawTouchControls(int inputs);
 
 static C3D_RenderTarget *screen;
 
@@ -96,7 +98,12 @@ static Button rom_loader_buttons[] = {
 
 static void controls();
 static Button controls_buttons[] = {
-    //{"Touchscreen\nsettings", 96, 144, 128, 64},
+    {"Touchscreen\nsettings", 96, 144, 128, 64},
+    {"Back", 0, 208, 48, 32},
+};
+
+static void touchscreen_settings();
+static Button touchscreen_settings_buttons[] = {
     {"Back", 0, 208, 48, 32},
 };
 
@@ -129,7 +136,8 @@ static Button sound_error_buttons[] = {
     SETUP_BUTTONS(controls_buttons); \
     SETUP_BUTTONS(options_buttons); \
     SETUP_BUTTONS(colour_filter_buttons); \
-    SETUP_BUTTONS(sound_error_buttons);
+    SETUP_BUTTONS(sound_error_buttons); \
+    SETUP_BUTTONS(touchscreen_settings_buttons);
 
 static void first_menu() {
     LOOP_BEGIN(first_menu_buttons);
@@ -439,9 +447,130 @@ static void controls() {
         C2D_DrawText(tVBOpt.ABXY_MODE < 2 ? &text_A : &text_B, C2D_AlignLeft | C2D_WithColor, FACEX + OFFSET, FACEY, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
     LOOP_END(controls_buttons);
     switch (button) {
-        case 0: return;
+        case 0: return touchscreen_settings();
         case 1: return main_menu();
     }
+}
+
+static void touchscreen_settings() {
+    // 1: pause, 2: dpad/a, 3: b
+    int dragging = 0;
+    int xoff = 0, yoff = 0;
+    int BUTTON_RAD = 24;
+    int PAD_RAD = 48;
+    int PAUSE_RAD = 4;
+    LOOP_BEGIN(touchscreen_settings_buttons);
+        // handle dragging
+        touchPosition touch_pos;
+        hidTouchRead(&touch_pos);
+        if (hidKeysDown() & KEY_TOUCH) {
+            if (guiShouldSwitch()) {
+                buttons_on_screen = !buttons_on_screen;
+            } else if (abs(tVBOpt.PAUSE_RIGHT - touch_pos.px) < PAUSE_RAD) {
+                dragging = 1;
+                xoff = tVBOpt.PAUSE_RIGHT - touch_pos.px;
+            } else if (buttons_on_screen) {
+                int adx = tVBOpt.TOUCH_AX - touch_pos.px;
+                int ady = tVBOpt.TOUCH_AY - touch_pos.py;
+                int bdx = tVBOpt.TOUCH_BX - touch_pos.px;
+                int bdy = tVBOpt.TOUCH_BY - touch_pos.py;
+                if (adx*adx + ady*ady < BUTTON_RAD*BUTTON_RAD) {
+                    dragging = 2;
+                    xoff = adx;
+                    yoff = ady;
+                } else if (bdx*bdx + bdy*bdy < BUTTON_RAD*BUTTON_RAD) {
+                    dragging = 3;
+                    xoff = bdx;
+                    yoff = bdy;
+                }
+            } else {
+                int dx = tVBOpt.TOUCH_PADX - touch_pos.px;
+                int dy = tVBOpt.TOUCH_PADY - touch_pos.py;
+                if (dx*dx + dy*dy < PAD_RAD*PAD_RAD) {
+                    dragging = 2;
+                    xoff = dx;
+                    yoff = dy;
+                }
+            }
+        }
+        if (hidKeysHeld() & KEY_TOUCH) {
+            if (dragging == 1) {
+                int dest_x = touch_pos.px + xoff;
+                if (dest_x > tVBOpt.TOUCH_AX - BUTTON_RAD - PAUSE_RAD)
+                    dest_x = tVBOpt.TOUCH_AX - BUTTON_RAD - PAUSE_RAD;
+                if (dest_x > tVBOpt.TOUCH_BX - BUTTON_RAD - PAUSE_RAD)
+                    dest_x = tVBOpt.TOUCH_BX - BUTTON_RAD - PAUSE_RAD;
+                if (dest_x > tVBOpt.TOUCH_PADX - PAD_RAD - PAUSE_RAD)
+                    dest_x = tVBOpt.TOUCH_PADX - PAD_RAD - PAUSE_RAD;
+                if (dest_x > 192)
+                    dest_x = 192;
+                if (dest_x < 64 + PAUSE_RAD) 
+                    dest_x = 64 + PAUSE_RAD;
+                tVBOpt.PAUSE_RIGHT = dest_x;
+            } else if (dragging != 0) {
+                int dest_x = touch_pos.px + xoff;
+                int dest_y = touch_pos.py + yoff;
+                int rad = buttons_on_screen ? BUTTON_RAD : PAD_RAD;
+                if (dest_x > 320 - rad)
+                    dest_x = 320 - rad;
+                if (dest_y > 240 - rad)
+                    dest_y = 240 - rad;
+                if (dest_x < tVBOpt.PAUSE_RIGHT + PAUSE_RAD + rad)
+                    dest_x = tVBOpt.PAUSE_RIGHT + PAUSE_RAD + rad;
+                // lower top range to account for switch button
+                if (dest_y < 32 + rad)
+                    dest_y = 32 + rad;
+                if (buttons_on_screen) {
+                    if (dragging == 2) {
+                        int dx = dest_x - tVBOpt.TOUCH_BX;
+                        int dy = dest_y - tVBOpt.TOUCH_BY;
+                        int dist_sqr = dx*dx + dy*dy;
+                        if (dist_sqr < 4*BUTTON_RAD*BUTTON_RAD && dist_sqr != 0) {
+                            float dist = sqrt(dist_sqr);
+                            dest_x = tVBOpt.TOUCH_BX + dx * BUTTON_RAD * 2 / dist;
+                            dest_y = tVBOpt.TOUCH_BY + dy * BUTTON_RAD * 2 / dist;
+                        }
+                    } else {
+                        int dx = dest_x - tVBOpt.TOUCH_AX;
+                        int dy = dest_y - tVBOpt.TOUCH_AY;
+                        int dist_sqr = dx*dx + dy*dy;
+                        if (dist_sqr < 4*BUTTON_RAD*BUTTON_RAD && dist_sqr != 0) {
+                            float dist = sqrt(dist_sqr);
+                            dest_x = tVBOpt.TOUCH_AX + dx * BUTTON_RAD * 2 / dist;
+                            dest_y = tVBOpt.TOUCH_AY + dy * BUTTON_RAD * 2 / dist;
+                        }
+                    }
+                    // additional check in case the button check shunted us OOB
+                    if (dest_x <= 320 - BUTTON_RAD && dest_x >= tVBOpt.PAUSE_RIGHT + PAUSE_RAD + BUTTON_RAD
+                        && dest_y <= 240 - BUTTON_RAD && dest_y >= 32 + BUTTON_RAD
+                    ) {
+                        if (dragging == 2) {
+                            tVBOpt.TOUCH_AX = dest_x;
+                            tVBOpt.TOUCH_AY = dest_y;
+                        } else {
+                            tVBOpt.TOUCH_BX = dest_x;
+                            tVBOpt.TOUCH_BY = dest_y;
+                        }
+                    }
+                } else {
+                    tVBOpt.TOUCH_PADX = dest_x;
+                    tVBOpt.TOUCH_PADY = dest_y;
+                }
+            }
+        } else {
+            dragging = 0;
+        }
+        // draw
+        drawTouchControls(dragging == 2
+            ? (buttons_on_screen ? VB_KEY_A : VB_RPAD_D | VB_RPAD_L | VB_RPAD_R | VB_RPAD_U)
+            : (dragging == 3 ? VB_KEY_B : 0));
+        C2D_DrawRectSolid(
+            tVBOpt.PAUSE_RIGHT - PAUSE_RAD, 240/2 - 8, 0,
+            PAUSE_RAD * 2, 8*2, C2D_Color32(dragging == 1 ? 255 : 192, 0, 0, 255)
+        );
+    LOOP_END(touchscreen_settings_buttons);
+    saveFileOptions();
+    return controls();
 }
 
 static void colour_filter() {
@@ -778,6 +907,44 @@ bool guiShouldSwitch() {
     return touch_pos.px >= 320 - 64 && touch_pos.py < 32;
 }
 
+void drawTouchControls(int inputs) {
+    C2D_DrawLine(
+        tVBOpt.PAUSE_RIGHT, 0, C2D_Color32(64, 64, 64, 255),
+        tVBOpt.PAUSE_RIGHT, 240, C2D_Color32(64, 64, 64, 255),
+        1, 0);
+
+    if (inputs == 0) inputs = guiGetInput(false);
+
+    int pause_square_height = 70;
+    C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
+        pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+    C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
+        pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+
+    if (buttons_on_screen) {
+        C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, C2D_Color32(inputs & VB_KEY_A ? 192 : 128, 0, 0, 255));
+        C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, C2D_Color32(inputs & VB_KEY_B ? 192 : 128, 0, 0, 255));
+        C2D_DrawText(&text_A, C2D_AlignCenter, tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 0.5, 0.5);
+        C2D_DrawText(&text_B, C2D_AlignCenter, tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 0.5, 0.5);
+    } else {
+        int DPAD_ALL = VB_RPAD_D | VB_RPAD_L | VB_RPAD_R | VB_RPAD_U;
+        bool dpad_all_held = (inputs & DPAD_ALL) == DPAD_ALL;
+        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, C2D_Color32(dpad_all_held ? 192 : 128, 0, 0, 255));
+        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, C2D_Color32(dpad_all_held ? 192 : 128, 0, 0, 255));
+        if (inputs & VB_RPAD_L)
+            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, C2D_Color32(192, 0, 0, 255));
+        if (inputs & VB_RPAD_R)
+            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX + 16, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, C2D_Color32(192, 0, 0, 255));
+        if (inputs & VB_RPAD_U)
+            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 16*2, C2D_Color32(192, 0, 0, 255));
+        if (inputs & VB_RPAD_D)
+            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY + 16, 0, 16*2, 16*2, C2D_Color32(192, 0, 0, 255));
+    }
+
+    C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, C2D_Color32(128, 0, 0, 255));
+    C2D_DrawText(&text_switch, C2D_AlignLeft, 320 - 60, 4, 0, 0.5, 0.5);
+}
+
 void guiUpdate(float total_time, float drc_time) {
     C2D_Prepare();
     C2D_SceneBegin(screen);
@@ -786,29 +953,7 @@ void guiUpdate(float total_time, float drc_time) {
 
     if (shouldRedrawMenu) {
         C2D_TargetClear(screen, 0);
-        C2D_DrawLine(
-            tVBOpt.PAUSE_RIGHT, 0, C2D_Color32(64, 64, 64, 255),
-            tVBOpt.PAUSE_RIGHT, 240, C2D_Color32(64, 64, 64, 255),
-            1, 0);
-
-        int pause_square_height = 70;
-        C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
-            pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
-        C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
-            pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
-
-        if (buttons_on_screen) {
-            C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, C2D_Color32(128, 0, 0, 255));
-            C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, C2D_Color32(128, 0, 0, 255));
-            C2D_DrawText(&text_A, C2D_AlignCenter, tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 0.5, 0.5);
-            C2D_DrawText(&text_B, C2D_AlignCenter, tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 0.5, 0.5);
-        } else {
-            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, C2D_Color32(128, 0, 0, 255));
-            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, C2D_Color32(128, 0, 0, 255));
-        }
-
-        C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, C2D_Color32(128, 0, 0, 255));
-        C2D_DrawText(&text_switch, C2D_AlignLeft, 320 - 60, 4, 0, 0.5, 0.5);
+        drawTouchControls(0);
         shouldRedrawMenu = false;
     }
     
@@ -827,9 +972,9 @@ bool guiShouldPause() {
     return touch_pos.px < tVBOpt.PAUSE_RIGHT;
 }
 
-int guiGetInput() {
+int guiGetInput(bool do_switching) {
     if ((hidKeysHeld() & KEY_TOUCH) && guiShouldSwitch()) {
-        if (hidKeysDown() & KEY_TOUCH) setTouchControls(!buttons_on_screen);
+        if (do_switching && (hidKeysDown() & KEY_TOUCH)) setTouchControls(!buttons_on_screen);
         return 0;
     }
     touchPosition touch_pos;

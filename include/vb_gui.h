@@ -61,6 +61,6 @@ void showError(int code);
 extern Thread save_thread;
 
 bool guiShouldPause();
-int guiGetInput();
+int guiGetInput(bool do_switching);
 
 #endif //VB_GUI_H
