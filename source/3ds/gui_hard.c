@@ -1011,6 +1011,9 @@ void guiUpdate(float total_time, float drc_time) {
     if (new_inputs != last_inputs) shouldRedrawMenu = true;
     last_inputs = new_inputs;
 
+    if (!shouldRedrawMenu && !save_thread && !tVBOpt.PERF_INFO)
+        return;
+
     C2D_Prepare();
     C2D_SceneBegin(screen);
 
