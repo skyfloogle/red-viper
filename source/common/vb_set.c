@@ -87,6 +87,8 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("vbopt", "lastrom")) {
         pconfig->ROM_PATH = realloc(pconfig->ROM_PATH, strlen(value) + 1);
         strcpy(pconfig->ROM_PATH, value);
+    } else if (MATCH("vbopt", "abxy")) {
+        pconfig->ABXY_MODE = atoi(value) & 3;
     } else if (MATCH("touch", "ax")) {
         tVBOpt.TOUCH_AX = atoi(value);
     } else if (MATCH("touch", "ay")) {
@@ -94,7 +96,7 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("touch", "bx")) {
         tVBOpt.TOUCH_BX = atoi(value);
     } else if (MATCH("touch", "by")) {
-        tVBOpt.TOUCH_BX = atoi(value);
+        tVBOpt.TOUCH_BY = atoi(value);
     } else if (MATCH("touch", "padx")) {
         tVBOpt.TOUCH_PADX = atoi(value);
     } else if (MATCH("touch", "pady")) {
@@ -120,6 +122,7 @@ int saveFileOptions(void) {
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
     fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH ? tVBOpt.ROM_PATH : "");
+    fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
     fprintf(f, "[touch]\n");
     fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
     fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);

@@ -420,6 +420,7 @@ static void controls() {
     const int FACEW = 128;
     const int FACEH = 64;
     const int OFFSET = 22;
+    bool changed = false;
     LOOP_BEGIN(controls_buttons);
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
@@ -432,6 +433,7 @@ static void controls() {
                 pressed = false;
             }
         } else if (pressed) {
+            changed = true;
             tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 4;
             pressed = false;
             setTouchControls(buttons_on_screen);
@@ -446,6 +448,7 @@ static void controls() {
         C2D_DrawText(tVBOpt.ABXY_MODE < 2 ? &text_B : &text_A, C2D_AlignLeft | C2D_WithColor, FACEX - OFFSET, FACEY, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
         C2D_DrawText(tVBOpt.ABXY_MODE < 2 ? &text_A : &text_B, C2D_AlignLeft | C2D_WithColor, FACEX + OFFSET, FACEY, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
     LOOP_END(controls_buttons);
+    if (changed) saveFileOptions();
     switch (button) {
         case 0: return touchscreen_settings();
         case 1: return main_menu();
