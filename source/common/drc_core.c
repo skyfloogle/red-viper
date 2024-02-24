@@ -359,6 +359,11 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
                 // similar for wario land
                 if (tVBOpt.CRC32 == 0x133E9372 && inst_cache[i].PC == 0x71c2cda)
                     break;
+            case V810_OP_JAL:
+                // nester's funky bowling calls a function to do its busywait read
+                // and it does this twice
+                if (tVBOpt.CRC32 == 0xDF4D56B4 && (inst_cache[i].PC == 0x700a01a || inst_cache[i].PC == 0x700a094))
+                    break;
             case V810_OP_ADD:
             case V810_OP_OR:
                 // only certain operators are ok for busywait here, otherwise fallthrough
