@@ -96,6 +96,7 @@ int main() {
                 if (tVBOpt.SOUND) sound_disable();
                 int oldSound = tVBOpt.SOUND;
                 tVBOpt.SOUND = false;
+                if (save_thread) threadJoin(save_thread, U64_MAX);
                 v810_exit();
                 if (!v810_init())
                     goto exit;
