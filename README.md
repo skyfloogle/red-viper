@@ -22,7 +22,7 @@ Future additions:
 ## Usage
 
 The latest release can be found [here](https://github.com/skyfloogle/red-hydra/releases),
-provided as a 3dsx (can be loaded with Homebrew Launcher) and as a cia (can be installed to the home menu with FBI).
+provided as a 3DSX (can be loaded with Homebrew Launcher) and as a CIA (can be installed to the home menu with FBI).
 ROMs can be placed in any desired location on your SD card. The emulator will remember the location of the last ROM you loaded.
 
 ## Building
