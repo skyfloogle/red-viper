@@ -328,11 +328,13 @@ void video_hard_render() {
 					bool over_visible = !over || tileVisible[over_tile];
 
 					for (int y = gy - (my & 7); y < gy + h; y += 8) {
-						if (over_visible || (mapy & (scy - 1)) == mapy) {
+						if (y >= 224) break;
+						if (y > -8 && (over_visible || (mapy & (scy - 1)) == mapy)) {
 							int tx = tsx;
 							int mapx = mapsx;
 							int current_map = mapid + scx * mapy + mapx;
 							for (int x = gx - (mx & 7); x < gx + w; x += 8) {
+								if (x >= 384) continue;
 								bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
 								uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
 								if (++tx >= 64) {
@@ -340,6 +342,8 @@ void video_hard_render() {
 									if ((++mapx & (scx - 1)) == 0 && !over) mapx = 0;
 									current_map = mapid + scx * mapy + mapx;
 								}
+								// doing it down here so as to not mess up the above
+								if (x < -8) continue;
 								uint16_t tileid = tile & 0x07ff;
 								if (!tileVisible[tileid]) continue;
 								bool hflip = (tile & 0x2000) != 0;
