@@ -1,6 +1,6 @@
-APP_TITLE = r3Ddragon
+APP_TITLE = Red Hydra
 APP_DESCRIPTION = A Virtual Boy emulator for the 3DS
-APP_AUTHOR = danielps
+APP_AUTHOR = Floogle
 APP_PRODUCT_CODE = CTR-P-R3DD
 APP_UNIQUE_ID = 0xFE7CB
 APP_ENCRYPTED = false
