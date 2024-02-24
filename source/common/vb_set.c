@@ -130,6 +130,20 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("keys", "select")) {
     } else if (MATCH("keys", "l")) {
     } else if (MATCH("keys", "r")) {
+    } else if (MATCH("touch", "ax")) {
+        tVBOpt.TOUCH_AX = atoi(value);
+    } else if (MATCH("touch", "ay")) {
+        tVBOpt.TOUCH_AY = atoi(value);
+    } else if (MATCH("touch", "bx")) {
+        tVBOpt.TOUCH_BX = atoi(value);
+    } else if (MATCH("touch", "by")) {
+        tVBOpt.TOUCH_BX = atoi(value);
+    } else if (MATCH("touch", "padx")) {
+        tVBOpt.TOUCH_PADX = atoi(value);
+    } else if (MATCH("touch", "pady")) {
+        tVBOpt.TOUCH_PADY = atoi(value);
+    } else if (MATCH("touch", "pausex")) {
+        tVBOpt.PAUSE_RIGHT = atoi(value);
     } else {
         return 0;  // unknown section/name, error
     }
@@ -162,6 +176,14 @@ int saveFileOptions(void) {
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
     fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH ? tVBOpt.ROM_PATH : "");
+    fprintf(f, "[touch]\n");
+    fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
+    fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);
+    fprintf(f, "bx=%d\n", tVBOpt.TOUCH_BX);
+    fprintf(f, "by=%d\n", tVBOpt.TOUCH_BY);
+    fprintf(f, "padx=%d\n", tVBOpt.TOUCH_PADX);
+    fprintf(f, "pady=%d\n", tVBOpt.TOUCH_PADY);
+    fprintf(f, "pausex=%d\n", tVBOpt.PAUSE_RIGHT);
 
     fclose(f);
     return 0;
