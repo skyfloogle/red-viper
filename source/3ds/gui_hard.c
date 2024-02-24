@@ -467,6 +467,7 @@ static void touchscreen_settings() {
             if (guiShouldSwitch()) {
                 buttons_on_screen = !buttons_on_screen;
             } else if (abs(tVBOpt.PAUSE_RIGHT - touch_pos.px) < PAUSE_RAD) {
+                // pause slider
                 dragging = 1;
                 xoff = tVBOpt.PAUSE_RIGHT - touch_pos.px;
             } else if (buttons_on_screen) {
@@ -475,10 +476,12 @@ static void touchscreen_settings() {
                 int bdx = tVBOpt.TOUCH_BX - touch_pos.px;
                 int bdy = tVBOpt.TOUCH_BY - touch_pos.py;
                 if (adx*adx + ady*ady < BUTTON_RAD*BUTTON_RAD) {
+                    // a button
                     dragging = 2;
                     xoff = adx;
                     yoff = ady;
                 } else if (bdx*bdx + bdy*bdy < BUTTON_RAD*BUTTON_RAD) {
+                    // b button
                     dragging = 3;
                     xoff = bdx;
                     yoff = bdy;
@@ -487,6 +490,7 @@ static void touchscreen_settings() {
                 int dx = tVBOpt.TOUCH_PADX - touch_pos.px;
                 int dy = tVBOpt.TOUCH_PADY - touch_pos.py;
                 if (dx*dx + dy*dy < PAD_RAD*PAD_RAD) {
+                    // dpad
                     dragging = 2;
                     xoff = dx;
                     yoff = dy;
@@ -495,6 +499,7 @@ static void touchscreen_settings() {
         }
         if (hidKeysHeld() & KEY_TOUCH) {
             if (dragging == 1) {
+                // pause slider
                 int dest_x = touch_pos.px + xoff;
                 if (dest_x > tVBOpt.TOUCH_AX - BUTTON_RAD - PAUSE_RAD)
                     dest_x = tVBOpt.TOUCH_AX - BUTTON_RAD - PAUSE_RAD;
@@ -504,10 +509,11 @@ static void touchscreen_settings() {
                     dest_x = tVBOpt.TOUCH_PADX - PAD_RAD - PAUSE_RAD;
                 if (dest_x > 192)
                     dest_x = 192;
-                if (dest_x < 64 + PAUSE_RAD) 
-                    dest_x = 64 + PAUSE_RAD;
+                if (dest_x < 80 + PAUSE_RAD) 
+                    dest_x = 80 + PAUSE_RAD;
                 tVBOpt.PAUSE_RIGHT = dest_x;
             } else if (dragging != 0) {
+                // button or dpad
                 int dest_x = touch_pos.px + xoff;
                 int dest_y = touch_pos.py + yoff;
                 int rad = buttons_on_screen ? BUTTON_RAD : PAD_RAD;
@@ -522,6 +528,7 @@ static void touchscreen_settings() {
                     dest_y = 32 + rad;
                 if (buttons_on_screen) {
                     if (dragging == 2) {
+                        // a button
                         int dx = dest_x - tVBOpt.TOUCH_BX;
                         int dy = dest_y - tVBOpt.TOUCH_BY;
                         int dist_sqr = dx*dx + dy*dy;
@@ -531,6 +538,7 @@ static void touchscreen_settings() {
                             dest_y = tVBOpt.TOUCH_BY + dy * BUTTON_RAD * 2 / dist;
                         }
                     } else {
+                        // b button
                         int dx = dest_x - tVBOpt.TOUCH_AX;
                         int dy = dest_y - tVBOpt.TOUCH_AY;
                         int dist_sqr = dx*dx + dy*dy;
@@ -561,12 +569,13 @@ static void touchscreen_settings() {
             dragging = 0;
         }
         // draw
-        drawTouchControls(dragging == 2
-            ? (buttons_on_screen ? VB_KEY_A : VB_RPAD_D | VB_RPAD_L | VB_RPAD_R | VB_RPAD_U)
-            : (dragging == 3 ? VB_KEY_B : 0));
+        drawTouchControls(
+            dragging == 2 ? VB_KEY_A :
+            dragging == 3 ? VB_KEY_B :
+            dragging ? VB_KEY_START : 0);
         C2D_DrawRectSolid(
             tVBOpt.PAUSE_RIGHT - PAUSE_RAD, 240/2 - 8, 0,
-            PAUSE_RAD * 2, 8*2, C2D_Color32(dragging == 1 ? 255 : 192, 0, 0, 255)
+            PAUSE_RAD * 2, 8*2, dragging == 1 ? C2D_Color32(192, 128, 128, 255) : C2D_Color32(128, 0, 0, 255)
         );
     LOOP_END(touchscreen_settings_buttons);
     saveFileOptions();
@@ -908,28 +917,31 @@ bool guiShouldSwitch() {
 }
 
 void drawTouchControls(int inputs) {
-    int line = C2D_Color32(32, 32, 32, 255);
+    int col_up = C2D_Color32(128, 0, 0, 255);
+    int col_down = C2D_Color32(192, 0, 0, 255);
+    int col_drag = C2D_Color32(192, 128, 128, 255);
+    int col_line = C2D_Color32(32, 32, 32, 255);
     if (buttons_on_screen) {
         float mx = (float)(tVBOpt.TOUCH_AX + tVBOpt.TOUCH_BX) / 2;
         float my = (float)(tVBOpt.TOUCH_AY + tVBOpt.TOUCH_BY) / 2;
         if (tVBOpt.TOUCH_AY == tVBOpt.TOUCH_BY) {
             // edge case so we don't div0
-            C2D_DrawLine(mx, 0, line, mx, 240, line, 1, 0);
+            C2D_DrawLine(mx, 0, col_line, mx, 240, col_line, 1, 0);
         } else {
             float rico = -(tVBOpt.TOUCH_BX - tVBOpt.TOUCH_AX) / (float)(tVBOpt.TOUCH_BY - tVBOpt.TOUCH_AY);
             int oy = -rico * mx + my;
             int ly = oy + rico * tVBOpt.PAUSE_RIGHT;
             int ry = oy + rico * 320;
-            C2D_DrawLine(tVBOpt.PAUSE_RIGHT, ly, line, 320, ry, line, 1, 0);
+            C2D_DrawLine(tVBOpt.PAUSE_RIGHT, ly, col_line, 320, ry, col_line, 1, 0);
         }
     } else {
         C2D_DrawLine(
-            tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + tVBOpt.PAUSE_RIGHT, line,
-            320, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + 320, line,
+            tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + tVBOpt.PAUSE_RIGHT, col_line,
+            320, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + 320, col_line,
             1, 0);
         C2D_DrawLine(
-            tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - tVBOpt.PAUSE_RIGHT, line,
-            320, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - 320, line,
+            tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - tVBOpt.PAUSE_RIGHT, col_line,
+            320, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - 320, col_line,
             1, 0);
     }
 
@@ -948,22 +960,22 @@ void drawTouchControls(int inputs) {
         pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
 
     if (buttons_on_screen) {
-        C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, C2D_Color32(inputs & VB_KEY_A ? (dragging ? 255 : 192) : 128, 0, 0, 255));
-        C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, C2D_Color32(inputs & VB_KEY_B ? (dragging ? 255 : 192) : 128, 0, 0, 255));
+        C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, inputs & VB_KEY_A ? (dragging ? col_drag : col_down) : col_up);
+        C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, inputs & VB_KEY_B ? (dragging ? col_drag : col_down) : col_up);
         C2D_DrawText(&text_A, C2D_AlignCenter, tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 0.5, 0.5);
         C2D_DrawText(&text_B, C2D_AlignCenter, tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 0.5, 0.5);
     } else {
-        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, C2D_Color32(dragging ? 255 : 128, 0, 0, 255));
-        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, C2D_Color32(dragging ? 255 : 128, 0, 0, 255));
+        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, inputs & VB_KEY_A ? col_drag : col_up);
+        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, inputs & VB_KEY_A ? col_drag : col_up);
         if (!dragging) {
             if (inputs & VB_RPAD_L)
-                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, C2D_Color32(192, 0, 0, 255));
+                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
             if (inputs & VB_RPAD_R)
-                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX + 16, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, C2D_Color32(192, 0, 0, 255));
+                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX + 16, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
             if (inputs & VB_RPAD_U)
-                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 16*2, C2D_Color32(192, 0, 0, 255));
+                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 16*2, col_down);
             if (inputs & VB_RPAD_D)
-                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY + 16, 0, 16*2, 16*2, C2D_Color32(192, 0, 0, 255));
+                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY + 16, 0, 16*2, 16*2, col_down);
         }
     }
 
