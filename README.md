@@ -21,37 +21,9 @@ Future additions:
 
 ## Usage
 
-The latest release can be found [here](https://github.com/skyfloogle/r3Ddragon/releases),
+The latest release can be found [here](https://github.com/skyfloogle/red-hydra/releases),
 provided as a 3dsx (can be loaded with Homebrew Launcher) and as a cia (can be installed to the home menu with FBI).
 ROMs can be placed in any desired location on your SD card. The emulator will remember the location of the last ROM you loaded.
-
-## FAQs
-
-> Why would you make a Virtual Boy emulator? Nobody asked for it.
-
-The 3DS is the perfect system to faithfully emulate the Virtual Boy. They have similar screen resolutions, the
- 3D effect is better and it's actually portable.
-
-> OK, but wasn't the Virtual Boy, like, the worst console ever?
-
-There were many reasons why it was commercial failure. That doesn't mean the console is bad, or the games
-aren't worth playing. It's definitely received way more hate than it deserved.
-
-Plus, it has a nice homebrew scene with gems such as Hyper Fighting, Snatcher and many more.
-
-> Do I need a new 3DS to run this?
-
-Unfortunately, yes. The old 3DS is too slow to run it at a playable speed. That might change in the future,
-but it's unlikely.
-
-> Why did it take so long for an emulator with good compatibility to come out?
-
-Making a fast emulator is no easy task. Simply porting an existing emulator wouldn't have worked, as none of the
-existing emulators were designed to run on systems as slow as the 3DS.
-
-> Where can I download it?
-
-You can find the latest release [here](https://github.com/mrdanielps/r3Ddragon/releases).
 
 ## Building
 
