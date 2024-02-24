@@ -80,56 +80,13 @@ static int handler(void* user, const char* section, const char* name,
     VB_OPT* pconfig = (VB_OPT*)user;
 
     #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
-    if (MATCH("vbopt", "maxcycles")) {
-    } else if (MATCH("vbopt", "frmskip")) {
-        pconfig->FRMSKIP = atoi(value);
-    } else if (MATCH("vbopt", "dspmode")) {
-    } else if (MATCH("vbopt", "dspswap")) {
-        pconfig->DSPSWAP = atoi(value);
-    } else if (MATCH("vbopt", "dsp2x")) {
-        pconfig->DSP2X = atoi(value);
-    } else if (MATCH("vbopt", "palmode")) {
-        pconfig->PALMODE = atoi(value);
-    } else if (MATCH("vbopt", "debug")) {
-        pconfig->DEBUG = atoi(value);
-    } else if (MATCH("vbopt", "stdout")) {
-        pconfig->STDOUT = atoi(value);
-    } else if (MATCH("vbopt", "bfactor")) {
-        pconfig->BFACTOR = atoi(value);
-    } else if (MATCH("vbopt", "scr_x")) {
-        pconfig->SCR_X = atoi(value);
-    } else if (MATCH("vbopt", "scr_y")) {
-        pconfig->SCR_Y = atoi(value);
-    } else if (MATCH("vbopt", "fixpal")) {
-        pconfig->FIXPAL = atoi(value);
-    } else if (MATCH("vbopt", "disasm")) {
-        pconfig->DISASM = atoi(value);
-    } else if (MATCH("vbopt", "scr_mode")) {
-        pconfig->SCR_MODE = atoi(value);
-    } else if (MATCH("vbopt", "sound")) {
-    } else if (MATCH("vbopt", "dynarec")) {
-        pconfig->DYNAREC = atoi(value);
-    } else if (MATCH("vbopt", "tint")) {
+    if (MATCH("vbopt", "tint")) {
         pconfig->TINT = atoi(value);
     } else if (MATCH("vbopt", "perfinfo")) {
         pconfig->PERF_INFO = atoi(value);
     } else if (MATCH("vbopt", "lastrom")) {
         pconfig->ROM_PATH = realloc(pconfig->ROM_PATH, strlen(value) + 1);
         strcpy(pconfig->ROM_PATH, value);
-    } else if (MATCH("keys", "lup")) {
-    } else if (MATCH("keys", "ldown")) {
-    } else if (MATCH("keys", "lleft")) {
-    } else if (MATCH("keys", "lright")) {
-    } else if (MATCH("keys", "rup")) {
-    } else if (MATCH("keys", "rdown")) {
-    } else if (MATCH("keys", "rleft")) {
-    } else if (MATCH("keys", "rright")) {
-    } else if (MATCH("keys", "a")) {
-    } else if (MATCH("keys", "b")) {
-    } else if (MATCH("keys", "start")) {
-    } else if (MATCH("keys", "select")) {
-    } else if (MATCH("keys", "l")) {
-    } else if (MATCH("keys", "r")) {
     } else if (MATCH("touch", "ax")) {
         tVBOpt.TOUCH_AX = atoi(value);
     } else if (MATCH("touch", "ay")) {
@@ -160,19 +117,6 @@ int saveFileOptions(void) {
         return 1;
 
     fprintf(f, "[vbopt]\n");
-    fprintf(f, "frmskip=%d\n", tVBOpt.FRMSKIP);
-    fprintf(f, "dspswap=%d\n", tVBOpt.DSPSWAP);
-    fprintf(f, "palmode=%d\n", tVBOpt.PALMODE);
-    fprintf(f, "debug=%d\n", tVBOpt.DEBUG);
-    fprintf(f, "stdout=%d\n", tVBOpt.STDOUT);
-    fprintf(f, "bfactor=%d\n", tVBOpt.BFACTOR);
-    fprintf(f, "scr_x=%d\n", tVBOpt.SCR_X);
-    fprintf(f, "scr_y=%d\n", tVBOpt.SCR_Y);
-    fprintf(f, "scr_mode=%d\n", tVBOpt.SCR_MODE);
-    fprintf(f, "fixpal=%d\n", tVBOpt.FIXPAL);
-    fprintf(f, "disasm=%d\n", tVBOpt.DISASM);
-    fprintf(f, "dsp2x=%d\n", tVBOpt.DSP2X);
-    fprintf(f, "dynarec=%d\n", tVBOpt.DYNAREC);
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
     fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH ? tVBOpt.ROM_PATH : "");

@@ -16,7 +16,7 @@
 #define PAL_RG      3
 #define PAL_RBG     4
 
-#define CONFIG_FILENAME "rd_config.ini"
+#define CONFIG_FILENAME "rh_config.ini"
 
 // vbkey positions
 enum VB_KCFG {
