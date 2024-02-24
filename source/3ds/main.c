@@ -137,8 +137,10 @@ int main() {
         // Display a frame, only after the right number of 'skips'
         if(tVIPREG.tFrame == tVIPREG.FRMCYC) {
             int alt_buf = (tVIPREG.tFrameBuffer) % 2;
-            // pass C3D_FRAME_NONBLOCK to enable frameskip
-            if (C3D_FrameBegin(0)) {
+            // pass C3D_FRAME_NONBLOCK to enable frameskip, 0 to disable
+            // it's only needed for 1 second in the mario clash intro afaik
+            // so just bite the bullet and do the frameskip, rather that than slowdown
+            if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
                 guiUpdate(osTickCounterRead(&frameTickCounter), last_drc_time);
 
                 if (tVIPREG.DPCTRL & 0x0002) {
