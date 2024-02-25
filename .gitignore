@@ -1,8 +1,8 @@
 build
 .ccls-cache
 .vscode
-r3Ddragon.3dsx
-r3Ddragon.cia
-r3Ddragon.elf
-r3Ddragon.smdh
-r3Ddragon.lst
+*.3dsx
+*.cia
+*.elf
+*.smdh
+*.lst

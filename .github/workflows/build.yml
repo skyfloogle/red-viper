@@ -1,6 +1,6 @@
 on: [push]
 
-name: Build r3Ddragon
+name: Build Red Hydra
 
 jobs:
   build:
@@ -11,13 +11,13 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: true
-      - name: build r3Ddragon
+      - name: build Red Hydra
         run: make release
       - uses: actions/upload-artifact@v3
         with:
-          name: r3Ddragon.cia
-          path: r3Ddragon.cia
+          name: red-hydra.cia
+          path: red-hydra.cia
       - uses: actions/upload-artifact@v3
         with:
-          name: r3Ddragon.3dsx
-          path: r3Ddragon.3dsx
+          name: red-hydra.3dsx
+          path: red-hydra.3dsx
