@@ -10,6 +10,7 @@ hardware-accelerated renderer to achieve high performance on the 3DS's limited h
 * 3D support
 * Game saves are supported
 * Map either the A/B buttons or the right D-Pad to the face buttons, with the other being on the touch screen
+* New 3DS C-Stick is also supported
 * Configurable face button mapping
 * Configurable color filter
 
@@ -17,6 +18,7 @@ Future additions:
 * Support for PCM samples
 * Savestates
 * Homebrew support
+* Circle Pad Pro support
 * More versatile color filter
 * A forwarder to allow loading a specific game from the home menu
 
