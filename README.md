@@ -1,7 +1,7 @@
 Red Viper
 =========
 
-A Virtual Boy emulator for the Nintendo 3DS based on [r3Ddragon](https://github.com/mrdanielps/r3Ddragon) by mrdanielps,
+A Virtual Boy emulator for the Nintendo 3DS continuing mrdanielps's work on [r3Ddragon](https://github.com/mrdanielps/r3Ddragon),
 which is itself based on Reality Boy / Red Dragon. It uses a dynamic recompiler with busywait detection and a
 hardware-accelerated renderer to achieve high performance on the 3DS's limited hardware.
 
