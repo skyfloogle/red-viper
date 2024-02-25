@@ -149,6 +149,17 @@ static Button about_buttons[] = {
 
 static void first_menu() {
     LOOP_BEGIN(first_menu_buttons);
+        // draw initial "logo"
+        C2D_SceneBegin(screenTarget);
+        C2D_ViewScale(1, -1);
+        C2D_ViewTranslate(0, -512);
+        C2D_DrawText(&text_redhydra, C2D_AlignCenter | C2D_WithColor, 384 / 2 - 4, 80, 0, 2, 2, 0xffffffff);
+        C2D_DrawText(&text_redhydra, C2D_AlignCenter | C2D_WithColor, 384 / 2 + 4, 80 + 256, 0, 2, 2, 0xffffffff);
+        C2D_ViewReset();
+        C2D_Flush();
+        video_flush(false);
+        C2D_SceneBegin(screen);
+        C2D_Prepare();
     LOOP_END(first_menu_buttons);
     guiop = 0;
     switch (button) {
@@ -889,18 +900,16 @@ void openMenu() {
         C3D_FrameBegin(0);
         video_flush(true);
         C3D_FrameEnd(0);
-        gfxSetDoubleBuffering(GFX_TOP, false);
         if (tVBOpt.SOUND)
             ndspSetMasterVol(0.0);
     }
+    gfxSetDoubleBuffering(GFX_TOP, false);
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     main_menu();
-    if (game_running) {
-        gfxSetDoubleBuffering(GFX_TOP, true);
-        if (tVBOpt.SOUND)
-            ndspSetMasterVol(1.0);
-    }
+    gfxSetDoubleBuffering(GFX_TOP, true);
+    if (game_running && tVBOpt.SOUND)
+        ndspSetMasterVol(1.0);
 }
 
 void showSoundError() {

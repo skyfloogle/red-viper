@@ -93,7 +93,7 @@ C3D_RenderTarget *finalScreen[2];
 uint8_t maxRepeat = 0, minRepeat = 0;
 C3D_Tex columnTableTexture[2];
 
-int eye_count;
+int eye_count = 2;
 
 DVLB_s *sFinal_dvlb;
 shaderProgram_s sFinal;
