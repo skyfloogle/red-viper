@@ -1,4 +1,4 @@
-Red Hydra
+Red Viper
 =========
 
 A Virtual Boy emulator for the Nintendo 3DS based on [r3Ddragon](https://github.com/mrdanielps/r3Ddragon) by mrdanielps,
@@ -21,7 +21,7 @@ Future additions:
 
 ## Usage
 
-The latest release can be found [here](https://github.com/skyfloogle/red-hydra/releases),
+The latest release can be found [here](https://github.com/skyfloogle/red-viper/releases),
 provided as a 3DSX (can be loaded with Homebrew Launcher) and as a CIA (can be installed to the home menu with FBI).
 ROMs can be placed in any desired location on your SD card. The emulator will remember the location of the last ROM you loaded.
 

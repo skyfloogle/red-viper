@@ -25,7 +25,7 @@ static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
 static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off,
-                text_sound_error, text_anykeyexit, text_redhydra, text_about;
+                text_sound_error, text_anykeyexit, text_redviper, text_about;
 
 static C2D_SpriteSheet colour_wheel_sheet;
 static C2D_Sprite colour_wheel_sprite;
@@ -153,8 +153,8 @@ static void first_menu() {
         C2D_SceneBegin(screenTarget);
         C2D_ViewScale(1, -1);
         C2D_ViewTranslate(0, -512);
-        C2D_DrawText(&text_redhydra, C2D_AlignCenter | C2D_WithColor, 384 / 2 - 4, 80, 0, 2, 2, 0xffffffff);
-        C2D_DrawText(&text_redhydra, C2D_AlignCenter | C2D_WithColor, 384 / 2 + 4, 80 + 256, 0, 2, 2, 0xffffffff);
+        C2D_DrawText(&text_redviper, C2D_AlignCenter | C2D_WithColor, 384 / 2 - 4, 80, 0, 2, 2, 0xffffffff);
+        C2D_DrawText(&text_redviper, C2D_AlignCenter | C2D_WithColor, 384 / 2 + 4, 80 + 256, 0, 2, 2, 0xffffffff);
         C2D_ViewReset();
         C2D_Flush();
         video_flush(false);
@@ -767,7 +767,7 @@ static void sound_error() {
 
 static void about() {
     LOOP_BEGIN(about_buttons);
-        C2D_DrawText(&text_redhydra, C2D_AlignCenter | C2D_WithColor, 320 / 2, 40, 0, 1, 1, C2D_Color32(255, 0, 0, 255));
+        C2D_DrawText(&text_redviper, C2D_AlignCenter | C2D_WithColor, 320 / 2, 40, 0, 1, 1, C2D_Color32(255, 0, 0, 255));
         C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 100, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
     LOOP_END(about_buttons);
     return options();
@@ -885,9 +885,9 @@ void guiInit() {
     C2D_TextOptimize(&text_sound_error);
     C2D_TextParse(&text_anykeyexit, static_textbuf, "Press any key to exit");
     C2D_TextOptimize(&text_anykeyexit);
-    C2D_TextParse(&text_redhydra, static_textbuf, "Red Hydra");
-    C2D_TextOptimize(&text_redhydra);
-    C2D_TextParse(&text_about, static_textbuf, VERSION "\nInfo & credits at:\ngithub.com/skyfloogle/red-hydra");
+    C2D_TextParse(&text_redviper, static_textbuf, "Red Viper");
+    C2D_TextOptimize(&text_redviper);
+    C2D_TextParse(&text_about, static_textbuf, VERSION "\nInfo & credits at:\ngithub.com/skyfloogle/red-viper");
     C2D_TextOptimize(&text_about);
 }
 

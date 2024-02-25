@@ -1,6 +1,6 @@
 on: [push]
 
-name: Build Red Hydra
+name: Build Red Viper
 
 jobs:
   build:
@@ -11,13 +11,13 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: true
-      - name: build Red Hydra
+      - name: build Red Viper
         run: make release
       - uses: actions/upload-artifact@v3
         with:
-          name: red-hydra.cia
-          path: red-hydra.cia
+          name: red-viper.cia
+          path: red-viper.cia
       - uses: actions/upload-artifact@v3
         with:
-          name: red-hydra.3dsx
-          path: red-hydra.3dsx
+          name: red-viper.3dsx
+          path: red-viper.3dsx
