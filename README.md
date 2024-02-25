@@ -2,7 +2,8 @@ Red Viper
 =========
 
 A Virtual Boy emulator for the Nintendo 3DS based on [r3Ddragon](https://github.com/mrdanielps/r3Ddragon) by mrdanielps,
-which is itself based on Reality Boy / Red Dragon.
+which is itself based on Reality Boy / Red Dragon. It uses a dynamic recompiler with busywait detection and a
+hardware-accelerated renderer to achieve high performance on the 3DS's limited hardware.
 
 ## Features
 * All officially licensed games are playable at full speed, even on the original 3DS
@@ -17,13 +18,18 @@ Future additions:
 * Savestates
 * Homebrew support
 * More versatile color filter
-* A way to load a specific game from the home screen
+* A forwarder to allow loading a specific game from the home menu
 
 ## Usage
 
 The latest release can be found [here](https://github.com/skyfloogle/red-viper/releases),
 provided as a 3DSX (can be loaded with Homebrew Launcher) and as a CIA (can be installed to the home menu with FBI).
 ROMs can be placed in any desired location on your SD card. The emulator will remember the location of the last ROM you loaded.
+
+A display with some simple performance info can be enabled in the settings.
+Through this, you can see the time taken for **A**ll proecessing, **D**RC processing (CPU emulation),
+**C**itro3D processing (CPU graphics), and **P**ICA200 processing (GPU graphics), and the
+**M**emory usage of the DRC cache (increases over time then resets).
 
 ## Building
 
