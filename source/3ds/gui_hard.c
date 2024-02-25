@@ -24,7 +24,8 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
-static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off, text_sound_error, text_anykeyexit;
+static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off,
+                text_sound_error, text_anykeyexit, text_redhydra, text_about;
 
 static C2D_SpriteSheet colour_wheel_sheet;
 static C2D_Sprite colour_wheel_sprite;
@@ -130,6 +131,11 @@ static Button sound_error_buttons[] = {
     {"Continue without sound", 48, 130, 320-48*2, 32},
 };
 
+static void about();
+static Button about_buttons[] = {
+    {"Back", 160-48, 180, 48*2, 48},
+};
+
 #define SETUP_ALL_BUTTONS \
     SETUP_BUTTONS(first_menu_buttons); \
     SETUP_BUTTONS(game_menu_buttons); \
@@ -138,7 +144,8 @@ static Button sound_error_buttons[] = {
     SETUP_BUTTONS(options_buttons); \
     SETUP_BUTTONS(colour_filter_buttons); \
     SETUP_BUTTONS(sound_error_buttons); \
-    SETUP_BUTTONS(touchscreen_settings_buttons);
+    SETUP_BUTTONS(touchscreen_settings_buttons); \
+    SETUP_BUTTONS(about_buttons);
 
 static void first_menu() {
     LOOP_BEGIN(first_menu_buttons);
@@ -734,7 +741,7 @@ static void options() {
             saveFileOptions();
             return options();
         case 4: // About
-            return options();
+            return about();
         case 5: // Back
             return main_menu();
     }
@@ -745,6 +752,14 @@ static void sound_error() {
         C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
     LOOP_END(sound_error_buttons);
     return;
+}
+
+static void about() {
+    LOOP_BEGIN(about_buttons);
+        C2D_DrawText(&text_redhydra, C2D_AlignCenter | C2D_WithColor, 320 / 2, 40, 0, 1, 1, C2D_Color32(255, 0, 0, 255));
+        C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 100, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
+    LOOP_END(about_buttons);
+    return options();
 }
 
 static inline int handle_buttons(Button buttons[], int count) {
@@ -859,6 +874,10 @@ void guiInit() {
     C2D_TextOptimize(&text_sound_error);
     C2D_TextParse(&text_anykeyexit, static_textbuf, "Press any key to exit");
     C2D_TextOptimize(&text_anykeyexit);
+    C2D_TextParse(&text_redhydra, static_textbuf, "Red Hydra");
+    C2D_TextOptimize(&text_redhydra);
+    C2D_TextParse(&text_about, static_textbuf, VERSION "\nInfo & credits at:\ngithub.com/skyfloogle/red-hydra");
+    C2D_TextOptimize(&text_about);
 }
 
 static bool shouldRedrawMenu = true;

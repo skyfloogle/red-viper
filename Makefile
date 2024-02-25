@@ -1,3 +1,5 @@
+VERSION := v0.5.0
+
 #---------------------------------------------------------------------------------
 .SUFFIXES:
 #---------------------------------------------------------------------------------
@@ -58,10 +60,14 @@ ICON := icon.png
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
+GIT_HASH := $(shell git log -1 --pretty=format:"%h")
+FULL_VERSION := "$(VERSION) - $(GIT_HASH)"
+
 # FIXME: Remove -fcommon once all multiple definitions are fixed
 CFLAGS	:=	-g -Wall -Werror -O2 -mword-relocations \
 			-Wno-unused-variable \
 			-ffunction-sections -fcommon \
+			-DVERSION=\"$(FULL_VERSION)\" \
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -D__3DS__ $(EXTRA_CFLAGS)

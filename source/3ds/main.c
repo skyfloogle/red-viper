@@ -62,6 +62,8 @@ int main() {
     }
     game_running = true;
 
+    dprintf(0, "version %s\n", VERSION);
+
     if (tVBOpt.SOUND) sound_enable();
 
     v810_reset();
