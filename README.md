@@ -19,6 +19,7 @@ Future additions:
 * Savestates
 * Homebrew support
 * Circle Pad Pro support
+* Button controls for menu
 * More versatile color filter
 * A forwarder to allow loading a specific game from the home menu
 
