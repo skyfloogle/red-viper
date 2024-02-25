@@ -768,7 +768,7 @@ static void sound_error() {
 static void about() {
     LOOP_BEGIN(about_buttons);
         C2D_DrawText(&text_redviper, C2D_AlignCenter | C2D_WithColor, 320 / 2, 40, 0, 1, 1, C2D_Color32(255, 0, 0, 255));
-        C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 100, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
+        C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(255, 0, 0, 255));
     LOOP_END(about_buttons);
     return options();
 }
@@ -887,7 +887,7 @@ void guiInit() {
     C2D_TextOptimize(&text_anykeyexit);
     C2D_TextParse(&text_redviper, static_textbuf, "Red Viper");
     C2D_TextOptimize(&text_redviper);
-    C2D_TextParse(&text_about, static_textbuf, VERSION "\nInfo & credits at:\ngithub.com/skyfloogle/red-viper");
+    C2D_TextParse(&text_about, static_textbuf, VERSION "\nBy Floogle, danielps, & others\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
     C2D_TextOptimize(&text_about);
 }
 
