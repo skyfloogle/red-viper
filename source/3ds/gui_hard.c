@@ -12,7 +12,8 @@
 #include "vb_sound.h"
 #include "vb_types.h"
 #include "main.h"
-#include "colour_wheel_t3x.h"
+#include "sprites_t3x.h"
+#include "sprites.h"
 
 static bool buttons_on_screen = false;
 void setTouchControls(bool button);
@@ -25,10 +26,10 @@ static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
 static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off,
-                text_sound_error, text_anykeyexit, text_redviper, text_about;
+                text_sound_error, text_anykeyexit, text_about;
 
-static C2D_SpriteSheet colour_wheel_sheet;
-static C2D_Sprite colour_wheel_sprite;
+static C2D_SpriteSheet sprite_sheet;
+static C2D_Sprite colour_wheel_sprite, logo_sprite;
 
 // helpers
 static inline int sqr(int i) {
@@ -153,8 +154,10 @@ static void first_menu() {
         C2D_SceneBegin(screenTarget);
         C2D_ViewScale(1, -1);
         C2D_ViewTranslate(0, -512);
-        C2D_DrawText(&text_redviper, C2D_AlignCenter | C2D_WithColor, 384 / 2 - 4, 80, 0, 2, 2, 0xffffffff);
-        C2D_DrawText(&text_redviper, C2D_AlignCenter | C2D_WithColor, 384 / 2 + 4, 80 + 256, 0, 2, 2, 0xffffffff);
+        C2D_SpriteSetPos(&logo_sprite, 384 / 2 - 4, 224 / 2);
+        C2D_DrawSprite(&logo_sprite);
+        C2D_SpriteSetPos(&logo_sprite, 384 / 2 + 4, 224 / 2 + 256);
+        C2D_DrawSprite(&logo_sprite);
         C2D_ViewReset();
         C2D_Flush();
         video_flush(false);
@@ -766,8 +769,12 @@ static void sound_error() {
 }
 
 static void about() {
+    C2D_SpriteSetPos(&logo_sprite, 320 / 2, 36);
+    C2D_SetTintMode(C2D_TintMult);
+    C2D_ImageTint tint;
+    C2D_PlainImageTint(&tint, C2D_Color32(255, 0, 0, 255), 1);
     LOOP_BEGIN(about_buttons);
-        C2D_DrawText(&text_redviper, C2D_AlignCenter | C2D_WithColor, 320 / 2, 40, 0, 1, 1, C2D_Color32(255, 0, 0, 255));
+        C2D_DrawSpriteTinted(&logo_sprite, &tint);
         C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(255, 0, 0, 255));
     LOOP_END(about_buttons);
     return options();
@@ -859,10 +866,12 @@ void guiInit() {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     screen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
-    colour_wheel_sheet = C2D_SpriteSheetLoadFromMem(colour_wheel_t3x, colour_wheel_t3x_size);
-    C2D_SpriteFromSheet(&colour_wheel_sprite, colour_wheel_sheet, 0);
+    sprite_sheet = C2D_SpriteSheetLoadFromMem(sprites_t3x, sprites_t3x_size);
+    C2D_SpriteFromSheet(&colour_wheel_sprite, sprite_sheet, sprites_colour_wheel_idx);
     C2D_SpriteSetCenter(&colour_wheel_sprite, 0.5, 0.5);
     C2D_SpriteSetPos(&colour_wheel_sprite, 176, 112);
+    C2D_SpriteFromSheet(&logo_sprite, sprite_sheet, sprites_logo_idx);
+    C2D_SpriteSetCenter(&logo_sprite, 0.5, 0.5);
 
     setTouchControls(buttons_on_screen);
 
@@ -885,8 +894,6 @@ void guiInit() {
     C2D_TextOptimize(&text_sound_error);
     C2D_TextParse(&text_anykeyexit, static_textbuf, "Press any key to exit");
     C2D_TextOptimize(&text_anykeyexit);
-    C2D_TextParse(&text_redviper, static_textbuf, "Red Viper");
-    C2D_TextOptimize(&text_redviper);
     C2D_TextParse(&text_about, static_textbuf, VERSION "\nBy Floogle, danielps, & others\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
     C2D_TextOptimize(&text_about);
 }
