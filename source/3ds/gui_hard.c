@@ -15,6 +15,10 @@
 #include "sprites_t3x.h"
 #include "sprites.h"
 
+#define TINT_R ( (tVBOpt.TINT & 0x000000FF) )
+#define TINT_G ( (tVBOpt.TINT & 0x0000FF00) >> 8 )
+#define TINT_B ( (tVBOpt.TINT & 0x00FF0000) >> 16 )
+
 static bool buttons_on_screen = false;
 void setTouchControls(bool button);
 bool guiShouldSwitch();
@@ -387,7 +391,7 @@ static void rom_loader() {
             if (y + entry_height >= 0 && y < 240) {
                 C2D_TextParse(&text, dynamic_textbuf, i < dirCount ? dirs[i] : files[i - dirCount]);
                 C2D_TextOptimize(&text);
-                C2D_DrawRectSolid(56, y, 0, 264, entry_height, C2D_Color32(clicked_entry == i ? 144 : 255, 0, 0, 255));
+                C2D_DrawRectSolid(56, y, 0, 264, entry_height, (clicked_entry == i)? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255): C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
                 C2D_DrawText(&text, C2D_AlignLeft, 64, y + 8, 0, 0.5, 0.5);
             }
             y += entry_height;
@@ -395,13 +399,13 @@ static void rom_loader() {
         // scrollbar
         if (scroll_top != scroll_bottom) {
             C2D_DrawRectSolid(320-2, 32, 0, 2, 240-32, C2D_Color32(0, 0, 0, 255));
-            C2D_DrawRectSolid(320-2, 32 + (240-32-8) * (scroll_pos - scroll_top) / (scroll_bottom - scroll_top), 0, 2, 8, C2D_Color32(255, 0, 0, 255));
+            C2D_DrawRectSolid(320-2, 32 + (240-32-8) * (scroll_pos - scroll_top) / (scroll_bottom - scroll_top), 0, 2, 8, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
         }
         // path
         C2D_TextParse(&text, dynamic_textbuf, path);
         C2D_TextOptimize(&text);
         C2D_DrawRectSolid(0, 0, 0, 320, 32, C2D_Color32(0, 0, 0, 255));
-        C2D_DrawText(&text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, C2D_Color32(255, 0, 0, 255));
+        C2D_DrawText(&text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(rom_loader_buttons);
 
     for (int i = 0; i < dirCount; i++) free(dirs[i]);
@@ -460,11 +464,11 @@ static void controls() {
             pressed = false;
             setTouchControls(buttons_on_screen);
         }
-        C2D_DrawRectSolid(FACEX - FACEW/2, FACEY - FACEH/2, 0, FACEW, FACEH, pressed ? C2D_Color32(144, 0, 0, 255) : C2D_Color32(255, 0, 0, 255));
-        C2D_DrawCircleSolid(FACEX + OFFSET, FACEY, 0, 12, C2D_Color32(64, 0, 0, 255));
-        C2D_DrawCircleSolid(FACEX - OFFSET, FACEY, 0, 12, C2D_Color32(64, 0, 0, 255));
-        C2D_DrawCircleSolid(FACEX, FACEY + OFFSET, 0, 12, C2D_Color32(64, 0, 0, 255));
-        C2D_DrawCircleSolid(FACEX, FACEY - OFFSET, 0, 12, C2D_Color32(64, 0, 0, 255));
+        C2D_DrawRectSolid(FACEX - FACEW/2, FACEY - FACEH/2, 0, FACEW, FACEH, pressed ? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255) : C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawCircleSolid(FACEX + OFFSET, FACEY, 0, 12, C2D_Color32(0, 0, 0, 192));
+        C2D_DrawCircleSolid(FACEX - OFFSET, FACEY, 0, 12, C2D_Color32(0, 0, 0, 192));
+        C2D_DrawCircleSolid(FACEX, FACEY + OFFSET, 0, 12, C2D_Color32(0, 0, 0, 192));
+        C2D_DrawCircleSolid(FACEX, FACEY - OFFSET, 0, 12, C2D_Color32(0, 0, 0, 192));
         C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? &text_A : &text_B, C2D_AlignCenter | C2D_WithColor, FACEX, FACEY - OFFSET - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
         C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? &text_B : &text_A, C2D_AlignCenter | C2D_WithColor, FACEX, FACEY + OFFSET - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
         C2D_DrawText(tVBOpt.ABXY_MODE < 2 ? &text_B : &text_A, C2D_AlignCenter | C2D_WithColor, FACEX - OFFSET, FACEY - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
@@ -600,7 +604,7 @@ static void touchscreen_settings() {
             dragging ? VB_KEY_START : 0);
         C2D_DrawRectSolid(
             tVBOpt.PAUSE_RIGHT - PAUSE_RAD, 240/2 - 8, 0,
-            PAUSE_RAD * 2, 8*2, dragging == 1 ? C2D_Color32(192, 128, 128, 255) : C2D_Color32(128, 0, 0, 255)
+            PAUSE_RAD * 2, 8*2, dragging == 1 ? C2D_Color32(TINT_R*0.9, TINT_G*0.9, TINT_B*0.9, 255) : C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255)
         );
     LOOP_END(touchscreen_settings_buttons);
     switch (button) {
@@ -763,7 +767,7 @@ static void options() {
 
 static void sound_error() {
     LOOP_BEGIN(sound_error_buttons);
-        C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
+        C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(sound_error_buttons);
     return;
 }
@@ -775,7 +779,7 @@ static void about() {
     C2D_PlainImageTint(&tint, C2D_Color32(255, 0, 0, 255), 1);
     LOOP_BEGIN(about_buttons);
         C2D_DrawSpriteTinted(&logo_sprite, &tint);
-        C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(255, 0, 0, 255));
+        C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(about_buttons);
     return options();
 }
@@ -807,8 +811,8 @@ static inline int handle_buttons(Button buttons[], int count) {
     }
     // draw buttons
     for (int i = 0; i < count; i++) {
-        u32 normal_colour = C2D_Color32(255, 0, 0, 255);
-        u32 pressed_colour = C2D_Color32(144, 0, 0, 255);
+        u32 normal_colour = C2D_Color32(TINT_R, TINT_G, TINT_B, 255);
+        u32 pressed_colour = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
         C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h, pressed == i ? pressed_colour : normal_colour);
         int yoff = -10;
         char *strptr = buttons[i].str;
@@ -938,7 +942,7 @@ void showError(int code) {
     C3D_FrameBegin(0);
     C2D_TargetClear(screen, 0);
     C2D_SceneBegin(screen);
-    C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 60, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
+    C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 60, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     C2D_Flush();
     C3D_FrameEnd(0);
 
@@ -946,7 +950,7 @@ void showError(int code) {
 
     C3D_FrameBegin(0);
     C3D_FrameDrawOn(screen);
-    C2D_DrawText(&text_anykeyexit, C2D_AlignCenter | C2D_WithColor, 320 / 2, 140, 0, 0.7, 0.7, C2D_Color32(255, 0, 0, 255));
+    C2D_DrawText(&text_anykeyexit, C2D_AlignCenter | C2D_WithColor, 320 / 2, 140, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     C2D_Flush();
     C3D_FrameEnd(0);
 }
@@ -974,9 +978,9 @@ bool guiShouldSwitch() {
 }
 
 void drawTouchControls(int inputs) {
-    int col_up = C2D_Color32(128, 0, 0, 255);
-    int col_down = C2D_Color32(192, 0, 0, 255);
-    int col_drag = C2D_Color32(192, 128, 128, 255);
+    int col_up = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
+    int col_down = C2D_Color32(TINT_R*0.75, TINT_G*0.75, TINT_B*0.75, 255);
+    int col_drag = C2D_Color32(TINT_R*0.9, TINT_G*0.9, TINT_B*0.9, 255);
     int col_line = C2D_Color32(32, 32, 32, 255);
     if (buttons_on_screen) {
         float mx = (float)(tVBOpt.TOUCH_AX + tVBOpt.TOUCH_BX) / 2;
@@ -1036,7 +1040,7 @@ void drawTouchControls(int inputs) {
         }
     }
 
-    C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, C2D_Color32(128, 0, 0, 255));
+    C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255));
     C2D_DrawText(&text_switch, C2D_AlignCenter, 320 - 32, 6, 0, 0.7, 0.7);
 }
 
