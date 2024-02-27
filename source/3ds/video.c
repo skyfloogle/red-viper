@@ -19,7 +19,8 @@
 #define TOP_SCREEN_HEIGHT 240
 #define VIEWPORT_WIDTH    384
 #define VIEWPORT_HEIGHT   224
-#define MAX_DEPTH         8
+#define MAX_DEPTH         16
+#define CENTER_OFFSET     (MAX_DEPTH / 2)
 
 static inline u8 clamp127(u16 a) {
 	return a < 127 ? a : 127;
@@ -253,9 +254,16 @@ void video_render(int alt_buf) {
 
 float getDepthOffset(bool left_for_both, int eye) {
     if (left_for_both) {
-        return 0;
+        return 0.0f;
+    } else {
+        float depthOffset = 0.0f;
+        if (eye == 0) {
+            depthOffset = (CONFIG_3D_SLIDERSTATE * MAX_DEPTH) - CENTER_OFFSET;
+        } else {
+            depthOffset = (-CONFIG_3D_SLIDERSTATE * MAX_DEPTH) + CENTER_OFFSET;
+        }
+        return depthOffset;
     }
-    return (eye == 0) ? CONFIG_3D_SLIDERSTATE * MAX_DEPTH : -CONFIG_3D_SLIDERSTATE * MAX_DEPTH;
 }
 
 void video_flush(bool left_for_both) {
