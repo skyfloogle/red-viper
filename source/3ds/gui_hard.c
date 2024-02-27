@@ -63,7 +63,7 @@ static inline int handle_buttons(Button buttons[], int count);
     }
 
 #define LOOP_BEGIN(buttons) \
-    int button = 0; \
+    int button = -1; \
     bool loop = true; \
     while (loop && aptMainLoop()) { \
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW); \
@@ -76,6 +76,11 @@ static inline int handle_buttons(Button buttons[], int count);
         if (button >= 0) loop = false; \
         C2D_Flush(); \
         C3D_FrameEnd(0); \
+    } \
+    if (loop) { \
+        /* home menu exit */ \
+        guiop = GUIEXIT; \
+        return; \
     }
 
 static void first_menu();
