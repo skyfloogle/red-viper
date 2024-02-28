@@ -25,7 +25,11 @@ Future additions:
 
 ## Usage
 
-The latest release can be found [here](https://github.com/skyfloogle/red-viper/releases),
+[A modded 3DS](https://3ds.hacks.guide/) is needed. Once that's sorted, you can scan this QR code using FBI, in the "Remote Install" submenu:
+
+![image](https://github.com/skyfloogle/red-viper/assets/18466542/31fc852b-c701-4710-b849-fbf1d7dc29b8)
+
+Alternatively, the latest release can be manually downloaded [here](https://github.com/skyfloogle/red-viper/releases),
 provided as a 3DSX (can be loaded with Homebrew Launcher) and as a CIA (can be installed to the home menu with FBI).
 ROMs can be placed in any desired location on your SD card. The emulator will remember the location of the last ROM you loaded.
 
