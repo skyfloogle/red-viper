@@ -1289,11 +1289,57 @@ int drc_translateBlock() {
                 // Stores reg2 in v810_state->S_REG[regID]
                 LOAD_REG2();
                 STR_IO(arm_reg2, 11, (35 + inst_cache[i].imm) * 4);
+                if (inst_cache[i].imm == PSW || inst_cache[i].imm == EIPSW) {
+                    // load status register
+                    if (inst_cache[i].imm == PSW)
+                        MRS(0);
+                    else
+                        LDR_IO(0, 11, 70 * 4);
+                    // clear out condition flags
+                    MVN_I(1, 0xf, 4);
+                    AND(0, 0, 1);
+                    // zero flag
+                    TST_I(arm_reg2, 1, 0);
+                    ORRCC_I(ARM_COND_NE, 0, 1, 2);
+                    // sign flag
+                    TST_I(arm_reg2, 2, 0);
+                    ORRCC_I(ARM_COND_NE, 0, 2, 2);
+                    // overflow flag
+                    TST_I(arm_reg2, 4, 0);
+                    ORRCC_I(ARM_COND_NE, 0, 1, 4);
+                    // carry flag
+                    TST_I(arm_reg2, 8, 0);
+                    ORRCC_I(ARM_COND_NE, 0, 2, 4);
+                    // save status register
+                    if (inst_cache[i].imm == PSW)
+                        MSR(0);
+                    else
+                        STR_IO(0, 11, 70 * 4);
+                }
                 break;
             case V810_OP_STSR: // stsr regID, reg2
                 // Loads v810_state->S_REG[regID] into reg2
                 LOAD_REG2();
                 LDR_IO(arm_reg2, 11, (35 + inst_cache[i].imm) * 4);
+                if (inst_cache[i].imm == PSW || inst_cache[i].imm == EIPSW) {
+                    // clear out condition flags
+                    MVN_I(0, 0xf, 0);
+                    AND(arm_reg2, 0, arm_reg2);
+                    // load except flags if relevant
+                    if (inst_cache[i].imm == EIPSW) {
+                        MRS(0);
+                        LDR_IO(1, 11, 70 * 4);
+                        MSR(1);
+                    }
+                    // fill in the actual condition flags
+                    ORRCC_I(ARM_COND_EQ, arm_reg2, 1, 0);
+                    ORRCC_I(ARM_COND_MI, arm_reg2, 2, 0);
+                    ORRCC_I(ARM_COND_VS, arm_reg2, 4, 0);
+                    ORRCC_I(ARM_COND_CS, arm_reg2, 8, 0);
+                    // reload original flags
+                    if (inst_cache[i].imm == EIPSW)
+                        MSR(0);
+                }
                 reg2_modified = true;
                 break;
             case V810_OP_SEI: // sei

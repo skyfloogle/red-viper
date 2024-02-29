@@ -388,6 +388,12 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define MOV_I(Rd, imm8, rot) \
     new_data_proc_imm(ARM_COND_AL, ARM_OP_MOV, 0, 0, Rd, rot>>1, imm8)
 
+// mvn Rd, imm8, ror #rot
+// Move and NOT immediate
+// imm8 can be rotated an even number of times
+#define MVN_I(Rd, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_MVN, 0, 0, Rd, rot>>1, imm8)
+
 // add Rd, Rn, imm8, ror #rot
 // Add immediate
 #define ADD_I(Rd, Rn, imm8, rot) \
@@ -401,6 +407,12 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // Subtract immediate
 #define SUB_I(Rd, Rn, imm8, rot) \
     new_data_proc_imm(ARM_COND_AL, ARM_OP_SUB, 0, Rn, Rd, rot, imm8)
+
+// orrcc Rd, imm, ror #rot
+// Or immediate with condition
+// imm8 can be rotated an even number of times
+#define ORRCC_I(arm_cond, Rd, imm8, rot) \
+    new_data_proc_imm(arm_cond, ARM_OP_ORR, 0, Rd, Rd, rot>>1, imm8)
 
 // orr Rd, imm, ror #rot
 // Or immediate
@@ -669,12 +681,12 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // mrs Rn, cpsr
 // Move from CPSR
 #define MRS(Rn) \
-    new_move_from_cpsr(ARM_COND_AL, 0, 0b1111, Rn, 0);
+    new_move_from_cpsr(ARM_COND_AL, 0, 0b1111, Rn, 0)
 
 // msr cpsr, Rn
 // Move from register to CPSR
 #define MSR(Rn) \
-    new_move_reg_to_cpsr(ARM_COND_AL, 0, 0b1000, 0b1111, 0, Rn);
+    new_move_reg_to_cpsr(ARM_COND_AL, 0, 0b1000, 0b1111, 0, Rn)
 
 // Invert the carry flag
 #define INV_CARRY() { \
