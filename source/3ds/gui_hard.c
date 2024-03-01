@@ -465,7 +465,7 @@ static void controls() {
             }
         } else if (pressed) {
             changed = true;
-            tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 4;
+            tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 6;
             pressed = false;
             setTouchControls(buttons_on_screen);
         }
@@ -474,10 +474,10 @@ static void controls() {
         C2D_DrawCircleSolid(FACEX - OFFSET, FACEY, 0, 12, C2D_Color32(0, 0, 0, 192));
         C2D_DrawCircleSolid(FACEX, FACEY + OFFSET, 0, 12, C2D_Color32(0, 0, 0, 192));
         C2D_DrawCircleSolid(FACEX, FACEY - OFFSET, 0, 12, C2D_Color32(0, 0, 0, 192));
-        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? &text_A : &text_B, C2D_AlignCenter | C2D_WithColor, FACEX, FACEY - OFFSET - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
-        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? &text_B : &text_A, C2D_AlignCenter | C2D_WithColor, FACEX, FACEY + OFFSET - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
-        C2D_DrawText(tVBOpt.ABXY_MODE < 2 ? &text_B : &text_A, C2D_AlignCenter | C2D_WithColor, FACEX - OFFSET, FACEY - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
-        C2D_DrawText(tVBOpt.ABXY_MODE < 2 ? &text_A : &text_B, C2D_AlignCenter | C2D_WithColor, FACEX + OFFSET, FACEY - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
+        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 5 ? &text_A : &text_B, C2D_AlignCenter | C2D_WithColor, FACEX, FACEY - OFFSET - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
+        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 4 ? &text_B : &text_A, C2D_AlignCenter | C2D_WithColor, FACEX, FACEY + OFFSET - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
+        C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 5 ? &text_B : &text_A, C2D_AlignCenter | C2D_WithColor, FACEX - OFFSET, FACEY - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
+        C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 4 ? &text_A : &text_B, C2D_AlignCenter | C2D_WithColor, FACEX + OFFSET, FACEY - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
     LOOP_END(controls_buttons);
     if (changed) saveFileOptions();
     switch (button) {
@@ -969,10 +969,10 @@ void setTouchControls(bool buttons) {
         vbkey[__builtin_ctz(KEY_B)] = VB_RPAD_D;
         vbkey[__builtin_ctz(KEY_Y)] = VB_RPAD_L;
     } else {
-        vbkey[__builtin_ctz(KEY_A)] = tVBOpt.ABXY_MODE < 2 ? VB_KEY_A : VB_KEY_B;
-        vbkey[__builtin_ctz(KEY_Y)] = tVBOpt.ABXY_MODE < 2 ? VB_KEY_B : VB_KEY_A;
-        vbkey[__builtin_ctz(KEY_B)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? VB_KEY_B : VB_KEY_A;
-        vbkey[__builtin_ctz(KEY_X)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 ? VB_KEY_A : VB_KEY_B;
+        vbkey[__builtin_ctz(KEY_A)] = tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 4 ? VB_KEY_A : VB_KEY_B;
+        vbkey[__builtin_ctz(KEY_Y)] = tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 5 ? VB_KEY_B : VB_KEY_A;
+        vbkey[__builtin_ctz(KEY_B)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 4 ? VB_KEY_B : VB_KEY_A;
+        vbkey[__builtin_ctz(KEY_X)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 5 ? VB_KEY_A : VB_KEY_B;
     }
 }
 

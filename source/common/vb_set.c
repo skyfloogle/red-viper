@@ -88,7 +88,7 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->ROM_PATH = realloc(pconfig->ROM_PATH, strlen(value) + 1);
         strcpy(pconfig->ROM_PATH, value);
     } else if (MATCH("vbopt", "abxy")) {
-        pconfig->ABXY_MODE = atoi(value) & 3;
+        pconfig->ABXY_MODE = atoi(value) % 6;
     } else if (MATCH("touch", "ax")) {
         tVBOpt.TOUCH_AX = atoi(value);
     } else if (MATCH("touch", "ay")) {
