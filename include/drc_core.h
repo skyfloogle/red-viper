@@ -75,12 +75,6 @@ int __modsi3(int a, int b);
 unsigned int __udivsi3(unsigned int a, unsigned int b);
 unsigned int __umodsi3(unsigned int a, unsigned int b);
 
-void drc_mapRegs(exec_block *block);
-BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]);
-
-void drc_scanBlockBounds(WORD *p_start_PC, WORD *p_end_PC);
-unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_cache, WORD start_PC, WORD end_PC);
-int drc_translateBlock();
 void drc_executeBlock(WORD* entrypoint, exec_block* block);
 int drc_handleInterrupts(WORD cpsr, WORD* PC);
 void drc_relocTable(void);

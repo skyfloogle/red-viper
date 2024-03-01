@@ -53,8 +53,11 @@ WORD* cache_start;
 WORD* cache_pos;
 int block_pos = 1;
 
+static v810_instruction *inst_cache;
+static arm_inst *trans_cache;
+
 // Maps the most used registers in the block to V810 registers
-void drc_mapRegs(exec_block* block) {
+static void drc_mapRegs(exec_block* block) {
     int i, j, max;
 
     for (i = 0; i < ARM_NUM_CACHE_REGS; i++) {
@@ -77,7 +80,7 @@ void drc_mapRegs(exec_block* block) {
 }
 
 // Gets the ARM register corresponding to a cached V810 register
-BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
+static BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
     int i;
     for (i = 0; i < ARM_NUM_CACHE_REGS; i++) {
         if (reg_map[i] == vb_reg) {
@@ -88,7 +91,7 @@ BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
     return 0;
 }
 
-bool is_byte_getter(WORD start_PC) {
+static bool is_byte_getter(WORD start_PC) {
     static BYTE byte_getter_func[] = {
         0x46, 0xc1, 0x00, 0x00, // ld.b [r6], r10
         0x1f, 0x18,             // jmp  [lp] 
@@ -97,7 +100,7 @@ bool is_byte_getter(WORD start_PC) {
     return !memcmp(dest, byte_getter_func, sizeof(byte_getter_func));
 }
 
-bool is_hword_getter(WORD start_PC) {
+static bool is_hword_getter(WORD start_PC) {
     static BYTE hword_getter_func[] = {
         0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
         0x1f, 0x18,             // jmp  [lp] 
@@ -123,7 +126,7 @@ static bool drc_isCode(WORD PC) {
 // Finds the starting and ending address of a V810 code block. It stops after a
 // jmp, jal, reti or a long jr unless it branches further.
 // All code accessible from the entry point is accounted for.
-void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
+static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     WORD start_PC = *p_start_PC & V810_ROM1.highaddr;
     WORD end_PC = start_PC;
     WORD cur_PC;
@@ -261,7 +264,7 @@ void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
 }
 
 // Finds an instruction in the given range at the given PC, or the one just after it.
-v810_instruction *drc_findInstruction(v810_instruction *left, v810_instruction *right, WORD goal_PC) {
+static v810_instruction *drc_findInstruction(v810_instruction *left, v810_instruction *right, WORD goal_PC) {
     while (left != right) {
         v810_instruction *pivot = left + (right - left) / 2;
         if (pivot->PC < goal_PC) left = pivot + 1;
@@ -272,7 +275,7 @@ v810_instruction *drc_findInstruction(v810_instruction *left, v810_instruction *
 }
 
 // Finds the target of a branch, or the instruction just after it.
-v810_instruction *drc_findBranchTarget(v810_instruction *inst_cache, int size, int pos) {
+static v810_instruction *drc_findBranchTarget(int size, int pos) {
     // attempt to narrow down
     int close = pos;
     int far = pos + inst_cache[pos].branch_offset / 2;
@@ -292,7 +295,7 @@ v810_instruction *drc_findBranchTarget(v810_instruction *inst_cache, int size, i
     return drc_findInstruction(&inst_cache[left], &inst_cache[right], goal_PC);
 }
 
-void drc_findWaterworldBusywait(v810_instruction *inst_cache, int size) {
+static void drc_findWaterworldBusywait(int size) {
     for (int i = 3; i < size; i++) {
         // scan for this pattern:
         // ld.h <...>[gp], r10
@@ -320,7 +323,7 @@ void drc_findWaterworldBusywait(v810_instruction *inst_cache, int size) {
 // Workaround for an issue where the CPSR is modified outside of the block
 // before a conditional branch.
 // Sets save_flags for all unconditional instructions prior to a branch.
-void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
+static void drc_findLastConditionalInst(int pos) {
     bool save_flags = true, busywait = inst_cache[pos].branch_offset <= 0 && inst_cache[pos].opcode != V810_OP_SETF;
     int i;
     for (i = pos - 1; i >= 0; i--) {
@@ -391,7 +394,7 @@ void drc_findLastConditionalInst(v810_instruction *inst_cache, int pos) {
 // Decodes the instructions from start_PC to end_PC and stores them in
 // inst_cache.
 // Returns the number of instructions decoded.
-unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_cache, WORD start_PC, WORD end_PC) {
+static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WORD end_PC) {
     unsigned int i = 0;
     // Up to 4 bytes for instruction (either 16 or 32 bits)
     BYTE lowB, highB, lowB2, highB2;
@@ -440,7 +443,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
                 inst_cache[i].reg1 = 0xFF;
 
                 if (inst_cache[i].opcode == V810_OP_SETF) {
-                    drc_findLastConditionalInst(inst_cache, i);
+                    drc_findLastConditionalInst(i);
                 }
                 break;
             case AM_III: // Branch instructions
@@ -457,7 +460,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
 
                 if (inst_cache[i].opcode != V810_OP_BR &&
                     inst_cache[i].opcode != V810_OP_NOP)
-                    drc_findLastConditionalInst(inst_cache, i);
+                    drc_findLastConditionalInst(i);
                 break;
             case AM_IV: // Middle distance jump
                 inst_cache[i].imm = (unsigned)(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
@@ -566,7 +569,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
             continue;
         if (inst_cache[j].opcode != V810_OP_JR || abs(inst_cache[j].branch_offset) < 1024) {
             // find the branch target
-            v810_instruction *target = drc_findBranchTarget(inst_cache, i, j);
+            v810_instruction *target = drc_findBranchTarget(i, j);
             WORD target_PC = inst_cache[j].PC + inst_cache[j].branch_offset;
             if (target->PC != target_PC) {
                 // this really should not happen anymore
@@ -587,7 +590,7 @@ unsigned int drc_decodeInstructions(exec_block *block, v810_instruction *inst_ca
 }
 
 // Translates a V810 block into ARM code
-int drc_translateBlock() {
+static int drc_translateBlock() {
     int i, j;
     int err = 0;
     // Stores the number of clock cycles since the last branch
@@ -612,8 +615,6 @@ int drc_translateBlock() {
 
     exec_block *block = NULL;
 
-    v810_instruction *inst_cache = linearAlloc(MAX_INST*sizeof(v810_instruction));
-    arm_inst* trans_cache = linearAlloc(8*MAX_INST*sizeof(arm_inst));
     WORD* pool_cache_start = NULL;
 #ifdef LITERAL_POOL
     pool_cache_start = linearAlloc(256*4);
@@ -649,12 +650,12 @@ int drc_translateBlock() {
     block->free = false;
 
     // First pass: decode V810 instructions
-    num_v810_inst = drc_decodeInstructions(block, inst_cache, start_PC, end_PC);
+    num_v810_inst = drc_decodeInstructions(block, start_PC, end_PC);
     dprintf(3, "[DRC]: V810 block size - %d\n", num_v810_inst);
 
     // Waterworld-excluive pass: find busywaits
     if (tVBOpt.CRC32 == 0x82A95E51)
-        drc_findWaterworldBusywait(inst_cache, num_v810_inst);
+        drc_findWaterworldBusywait(num_v810_inst);
 
     // Second pass: map the most used V810 registers to ARM registers
     drc_mapRegs(block);
@@ -1622,8 +1623,6 @@ cleanup:
 #ifdef LITERAL_POOL
     linearFree(pool_cache_start);
 #endif
-    linearFree(trans_cache);
-    linearFree(inst_cache);
     return err;
 }
 
@@ -1674,6 +1673,9 @@ void drc_init() {
     rom_data_code_map = calloc(sizeof(bool), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
+    inst_cache = linearAlloc(MAX_INST*sizeof(v810_instruction));
+    trans_cache = linearAlloc(8*MAX_INST*sizeof(arm_inst));
+
     hbHaxInit();
 
     if (tVBOpt.DYNAREC) {
@@ -1706,6 +1708,8 @@ void drc_exit() {
     free(rom_block_map);
     free(rom_entry_map);
     linearFree(block_ptr_start);
+    linearFree(trans_cache);
+    linearFree(inst_cache);
     hbHaxExit();
 }
 
