@@ -1051,9 +1051,12 @@ void drawTouchControls(int inputs) {
 
 void guiUpdate(float total_time, float drc_time) {
     static int last_inputs = 0;
+    static bool last_fastforward = false;
     int new_inputs = guiGetInput(false);
     if (new_inputs != last_inputs) shouldRedrawMenu = true;
     last_inputs = new_inputs;
+    if (last_fastforward != tVBOpt.FASTFORWARD) shouldRedrawMenu = true;
+    last_fastforward = tVBOpt.FASTFORWARD;
 
     if (!shouldRedrawMenu && !save_thread && !tVBOpt.PERF_INFO)
         return;
@@ -1064,9 +1067,23 @@ void guiUpdate(float total_time, float drc_time) {
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
 
     if (shouldRedrawMenu) {
+        shouldRedrawMenu = false;
         C2D_TargetClear(screen, 0);
         drawTouchControls(0);
-        shouldRedrawMenu = false;
+        // fastforward icon
+        if (tVBOpt.FASTFORWARD) C2D_DrawRectSolid(0, 240-32, 0, 32, 32, C2D_Color32(32, 32, 32, 255));
+        int col_line = C2D_Color32(64, 64, 64, 255);
+        C2D_DrawLine(0, 240-32, col_line, 31.5, 240-32, col_line, 1, 0);
+        C2D_DrawLine(31.5, 240-32, col_line, 31.5, 240, col_line, 1, 0);
+        int t1l = 8 - 5 * !tVBOpt.PERF_INFO;
+        int t1r = 15 - !tVBOpt.PERF_INFO;
+        int t2l = 18 - !tVBOpt.PERF_INFO;
+        int t2r = 25 + 3 * !tVBOpt.PERF_INFO;
+        int tu = 240-28;
+        int tm = 240-22 + 6 * !tVBOpt.PERF_INFO;
+        int tb = 240-16 + 12 * !tVBOpt.PERF_INFO;
+        C2D_DrawTriangle(t1l, tu, col_line, t1l, tb, col_line, t1r, tm, col_line, 0);
+        C2D_DrawTriangle(t2l, tu, col_line, t2l, tb, col_line, t2r, tm, col_line, 0);
     }
     
     draw_status_bar(total_time, drc_time);
@@ -1081,7 +1098,7 @@ void guiUpdate(float total_time, float drc_time) {
 bool guiShouldPause() {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    return touch_pos.px < tVBOpt.PAUSE_RIGHT;
+    return touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || touch_pos.py < 240-32);
 }
 
 int guiGetInput(bool do_switching) {
@@ -1091,7 +1108,11 @@ int guiGetInput(bool do_switching) {
     }
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    if (touch_pos.px < tVBOpt.PAUSE_RIGHT) return 0;
+    if (touch_pos.px < tVBOpt.PAUSE_RIGHT) {
+        if (do_switching && (hidKeysDown() & KEY_TOUCH) && touch_pos.px < 32 && touch_pos.py >= 240-32)
+            tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
+        return 0;
+    }
     if (buttons_on_screen) {
         int axdist = touch_pos.px - tVBOpt.TOUCH_AX;
         int aydist = touch_pos.py - tVBOpt.TOUCH_AY;
