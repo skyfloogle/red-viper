@@ -252,17 +252,17 @@ void video_render(int alt_buf) {
 	video_flush(eye_count);
 }
 
-float getDepthOffset(bool left_for_both, int eye) {
+float getDepthOffset(bool left_for_both, int eye, bool full_parallax) {
     if (left_for_both) {
         return 0.0f;
+    }
+
+    float directionFactor = (eye == 0) ? 1.0f : -1.0f;
+
+    if (!full_parallax) {
+		return directionFactor * CONFIG_3D_SLIDERSTATE * (MAX_DEPTH / 2);
     } else {
-        float depthOffset = 0.0f;
-        if (eye == 0) {
-            depthOffset = (CONFIG_3D_SLIDERSTATE * MAX_DEPTH) - CENTER_OFFSET;
-        } else {
-            depthOffset = (-CONFIG_3D_SLIDERSTATE * MAX_DEPTH) + CENTER_OFFSET;
-        }
-        return depthOffset;
+        return directionFactor * (CONFIG_3D_SLIDERSTATE * MAX_DEPTH) - (directionFactor * CENTER_OFFSET);
     }
 }
 
@@ -301,7 +301,7 @@ void video_flush(bool left_for_both) {
 	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
 	
 	for (int eye = 0; eye < (left_for_both ? 2 : eye_count); eye++) {
-		float depthOffset = getDepthOffset(left_for_both, eye);
+		float depthOffset = getDepthOffset(left_for_both, eye, tVBOpt.SLIDERMODE);
 		C3D_RenderTargetClear(finalScreen[eye], C3D_CLEAR_ALL, 0, 0);
 		C3D_FrameDrawOn(finalScreen[eye]);
 		C3D_SetViewport(viewportY, viewportX+depthOffset, VIEWPORT_HEIGHT, VIEWPORT_WIDTH);
