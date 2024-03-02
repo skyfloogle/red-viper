@@ -1637,8 +1637,8 @@ void drc_clearCache() {
     free_block_count = 0;
 
     memset(cache_start, 0, CACHE_SIZE);
-    memset(rom_block_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    memset(rom_entry_map, 0, sizeof(WORD)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    memset(rom_block_map, 0, sizeof(rom_block_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    memset(rom_entry_map, 0, sizeof(*rom_entry_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
 
     *cache_start = -1;
 
@@ -1671,8 +1671,8 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 // Initialize the dynarec
 void drc_init() {
     // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
-    rom_block_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
-    rom_entry_map = calloc(sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
+    rom_block_map = calloc(sizeof(rom_block_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
+    rom_entry_map = calloc(sizeof(rom_entry_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     rom_data_code_map = calloc(sizeof(bool), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
@@ -1697,8 +1697,8 @@ void drc_init() {
 }
 
 void drc_reset() {
-    rom_block_map = realloc(rom_block_map, sizeof(WORD) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    rom_entry_map = realloc(rom_entry_map, sizeof(WORD) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    rom_block_map = realloc(rom_block_map, sizeof(rom_block_map[0]) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    rom_entry_map = realloc(rom_entry_map, sizeof(rom_entry_map[0]) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     rom_data_code_map = realloc(rom_data_code_map, sizeof(bool) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     memset(rom_data_code_map, 0, sizeof(bool)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     drc_clearCache();
@@ -1788,10 +1788,10 @@ int drc_run() {
 void drc_loadSavedCache() {
     FILE* f;
     f = fopen("rom_block_map", "r");
-    fread(rom_block_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fread(rom_block_map, sizeof(rom_block_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
     fclose(f);
     f = fopen("rom_entry_map", "r");
-    fread(rom_entry_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fread(rom_entry_map, sizeof(rom_entry_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
     fclose(f);
     f = fopen("block_heap", "r");
     fread(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
@@ -1805,10 +1805,10 @@ void drc_dumpCache(char* filename) {
     fclose(f);
 
     f = fopen("rom_block_map", "w");
-    fwrite(rom_block_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fwrite(rom_block_map, sizeof(rom_block_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
     fclose(f);
     f = fopen("rom_entry_map", "w");
-    fwrite(rom_entry_map, sizeof(WORD), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fwrite(rom_entry_map, sizeof(rom_entry_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
     fclose(f);
     f = fopen("block_heap", "w");
     fwrite(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);

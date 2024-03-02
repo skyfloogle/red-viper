@@ -62,7 +62,7 @@ typedef struct {
     bool is_branch_target;
 } v810_instruction;
 
-WORD* rom_block_map;
+HWORD* rom_block_map;
 WORD* rom_entry_map;
 bool* rom_data_code_map;
 BYTE reg_usage[32];
