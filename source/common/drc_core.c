@@ -403,7 +403,7 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
 
     WORD entry_PC = v810_state->PC;
 
-    for (; (i < MAX_INST) && (cur_PC <= end_PC); i++) {
+    for (; (i < MAX_V810_INST) && (cur_PC <= end_PC); i++) {
         cur_PC = (cur_PC & V810_ROM1.highaddr);
         lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
         highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
@@ -582,7 +582,7 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
         }
     }
 
-    if (i == MAX_INST) {
+    if (i == MAX_V810_INST) {
         dprintf(0, "WARN:%lx-%lx exceeds max instrs", start_PC, end_PC);
     }
 
@@ -707,6 +707,9 @@ static int drc_translateBlock() {
 
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
+
+        // The longest replacement sequence (bitstring) is 32 ARM instructions
+        if (inst_ptr - trans_cache >= MAX_ARM_INST - 32) break;
 
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         inst_ptr_start = inst_ptr;
@@ -1673,8 +1676,8 @@ void drc_init() {
     rom_data_code_map = calloc(sizeof(bool), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
-    inst_cache = linearAlloc(MAX_INST*sizeof(v810_instruction));
-    trans_cache = linearAlloc(8*MAX_INST*sizeof(arm_inst));
+    inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
+    trans_cache = linearAlloc(MAX_ARM_INST*sizeof(arm_inst));
 
     hbHaxInit();
 
