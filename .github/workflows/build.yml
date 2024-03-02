@@ -8,16 +8,16 @@ jobs:
     container: devkitpro/devkitarm
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - name: build Red Viper
         run: make release
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: red-viper.cia
           path: red-viper.cia
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: red-viper.3dsx
           path: red-viper.3dsx
