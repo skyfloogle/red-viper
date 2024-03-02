@@ -33,10 +33,25 @@ Alternatively, the latest release can be manually downloaded [here](https://gith
 provided as a 3DSX (can be loaded with Homebrew Launcher) and as a CIA (can be installed to the home menu with FBI).
 ROMs can be placed in any desired location on your SD card. The emulator will remember the location of the last ROM you loaded.
 
-A display with some simple performance info can be enabled in the settings.
-Through this, you can see the time taken for **A**ll proecessing, **D**RC processing (CPU emulation),
-**C**itro3D processing (CPU graphics), and **P**ICA200 processing (GPU graphics), and the
+## FAQ
+
+> The depth slider is weird.
+
+The Virtual Boy wasn't designed with a depth slider, so games can't have their depth scaled in the way 3DS games can. The alternative is to
+shift the entire image backwards or forwards, similar to how the Virtual Boy's IPD slider works.
+The default setting (3DS mode) starts at a "neutral" level and pushes the image further back as you move the slider up, keeping the metaphor fairly similar
+to how most 3DS games work. Alternatively, "Virtual Boy IPD" mode can be enabled, which unlocks the full range, from closest to furthest.
+
+To use the "default" level, use 3DS mode and keep the depth slider on, but near the bottom.
+
+> What do the numbers in the performance info mean?
+
+This displays the time taken for **A**ll processing in one frame, **D**RC processing (CPU emulation),
+**C**itro3D processing (CPU graphics), and **P**ICA200 processing (GPU graphics). It also displays the
 **M**emory usage of the DRC cache (increases over time then resets).
+
+As this is a developer option at heart, frametimes are displayed in milliseconds rather than FPS, as the former is much easier to reason about in this context.
+The target is usually 20ms, though some games only draw every other frame, so rendering has more leeway there.
 
 ## Building
 
