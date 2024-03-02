@@ -117,6 +117,9 @@ int main() {
             }
         }
 
+        // if hold, turn off fast forward, as it'll be turned back on while reading input
+        if (!tVBOpt.FF_TOGGLE) tVBOpt.FASTFORWARD = false;
+
         // read inputs once per frame
         HWORD inputs = V810_RControll();
         tHReg.SLB =(BYTE)(inputs&0xFF);

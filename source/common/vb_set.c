@@ -31,6 +31,7 @@ void setDefaults(void) {
     tVBOpt.DSP2X    = 0;
     tVBOpt.DYNAREC  = 1;
     tVBOpt.FASTFORWARD = 0;
+    tVBOpt.FF_TOGGLE = 0;
     tVBOpt.RENDERMODE = 1;
     tVBOpt.PAUSE_RIGHT = 160;
     tVBOpt.TOUCH_AX = 250;
@@ -106,6 +107,8 @@ static int handler(void* user, const char* section, const char* name,
         tVBOpt.TOUCH_PADY = atoi(value);
     } else if (MATCH("touch", "pausex")) {
         tVBOpt.PAUSE_RIGHT = atoi(value);
+    } else if (MATCH("touch", "ff_mode")) {
+        tVBOpt.FF_TOGGLE = atoi(value);
     } else {
         return 0;  // unknown section/name, error
     }
@@ -135,6 +138,7 @@ int saveFileOptions(void) {
     fprintf(f, "padx=%d\n", tVBOpt.TOUCH_PADX);
     fprintf(f, "pady=%d\n", tVBOpt.TOUCH_PADY);
     fprintf(f, "pausex=%d\n", tVBOpt.PAUSE_RIGHT);
+    fprintf(f, "ff_mode=%d\n", tVBOpt.FF_TOGGLE);
 
     fclose(f);
     return 0;
