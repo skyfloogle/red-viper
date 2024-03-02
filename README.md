@@ -35,6 +35,10 @@ ROMs can be placed in any desired location on your SD card. The emulator will re
 
 ## FAQ
 
+> It doesn't work! / What's this DSP firmware error?
+
+Try updating your Luma3DS installation (I tested with v13.0.2). Once it's updated, you may need to [dump your DSP firmware](https://3ds.hacks.guide/finalizing-setup#section-iii---rtc-and-dsp-setup).
+
 > The depth slider is weird.
 
 The Virtual Boy wasn't designed with a depth slider, so games can't have their depth scaled in the way 3DS games can. The alternative is to
