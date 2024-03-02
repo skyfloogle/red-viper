@@ -249,11 +249,11 @@ void video_render(int alt_buf) {
 		C3D_ImmDrawEnd();
 	}
 
-	video_flush(eye_count);
+	video_flush(false);
 }
 
-float getDepthOffset(bool left_for_both, int eye, bool full_parallax) {
-    if (left_for_both) {
+float getDepthOffset(bool default_for_both, int eye, bool full_parallax) {
+    if (default_for_both || CONFIG_3D_SLIDERSTATE == 0) {
         return 0.0f;
     }
 
@@ -266,8 +266,10 @@ float getDepthOffset(bool left_for_both, int eye, bool full_parallax) {
     }
 }
 
-void video_flush(bool left_for_both) {
-	if (eye_count == 2) left_for_both = false;
+void video_flush(bool default_for_both) {
+	static int orig_eye = 0;
+	if (!default_for_both) orig_eye = tVBOpt.DEFAULT_EYE;
+	if (eye_count == 2) default_for_both = false;
 
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
@@ -300,17 +302,18 @@ void video_flush(bool left_for_both) {
 	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
 	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
 	
-	for (int eye = 0; eye < (left_for_both ? 2 : eye_count); eye++) {
-		float depthOffset = getDepthOffset(left_for_both, eye, tVBOpt.SLIDERMODE);
-		C3D_RenderTargetClear(finalScreen[eye], C3D_CLEAR_ALL, 0, 0);
-		C3D_FrameDrawOn(finalScreen[eye]);
+	for (int dst_eye = 0; dst_eye < (default_for_both ? 2 : eye_count); dst_eye++) {
+		int src_eye = default_for_both ? orig_eye : CONFIG_3D_SLIDERSTATE == 0 ? tVBOpt.DEFAULT_EYE : dst_eye;
+		float depthOffset = getDepthOffset(default_for_both, dst_eye, tVBOpt.SLIDERMODE);
+		C3D_RenderTargetClear(finalScreen[dst_eye], C3D_CLEAR_ALL, 0, 0);
+		C3D_FrameDrawOn(finalScreen[dst_eye]);
 		C3D_SetViewport(viewportY, viewportX+depthOffset, VIEWPORT_HEIGHT, VIEWPORT_WIDTH);
-		C3D_TexBind(1, &columnTableTexture[eye]);
+		C3D_TexBind(1, &columnTableTexture[src_eye]);
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
 		C3D_ImmSendAttrib(1, 1, -1, 1);
-		C3D_ImmSendAttrib(0, eye && !left_for_both ? 0.5 : 0, 0, 0);
+		C3D_ImmSendAttrib(0, src_eye ? 0.5 : 0, 0, 0);
 		C3D_ImmSendAttrib(-1, -1, -1, 1);
-		C3D_ImmSendAttrib(384.0 / 512, (eye && !left_for_both ? 0.5 : 0) + 224.0 / 512, 0, 0);
+		C3D_ImmSendAttrib(384.0 / 512, (src_eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
 		C3D_ImmDrawEnd();
 	}
 

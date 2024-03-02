@@ -30,8 +30,8 @@ static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
 static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off,
-                text_toggle, text_hold, text_3ds, text_vbipd, text_sound_error,
-                text_anykeyexit, text_about;
+                text_toggle, text_hold, text_3ds, text_vbipd, text_left, text_right,
+                text_sound_error, text_anykeyexit, text_about;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
@@ -126,12 +126,19 @@ static Button touchscreen_settings_buttons[] = {
 
 static void options();
 static Button options_buttons[] = {
-    {"Color mode", 16, 16, 128, 48},
-    {"Slider mode", 176, 16, 128, 48, true, false, &text_vbipd, &text_3ds},
+    {"Video settings", 16, 16, 288, 48},
     {"Fast forward", 16, 80, 128, 48, true, false, &text_toggle, &text_hold},
     {"Sound", 176, 80, 128, 48, true, false, &text_on, &text_off},
     {"Perf. info", 16, 144, 128, 48, true, false, &text_on, &text_off},
     {"About", 176, 144, 128, 48},
+    {"Back", 0, 208, 48, 32},
+};
+
+static void video_settings();
+static Button video_settings_buttons[] = {
+    {"Color mode", 16, 16, 288, 48},
+    {"Slider mode", 16, 80, 288, 48, true, false, &text_vbipd, &text_3ds},
+    {"Default eye", 16, 144, 288, 48, true, false, &text_right, &text_left},
     {"Back", 0, 208, 48, 32},
 };
 
@@ -158,6 +165,7 @@ static Button about_buttons[] = {
     SETUP_BUTTONS(rom_loader_buttons); \
     SETUP_BUTTONS(controls_buttons); \
     SETUP_BUTTONS(options_buttons); \
+    SETUP_BUTTONS(video_settings_buttons); \
     SETUP_BUTTONS(colour_filter_buttons); \
     SETUP_BUTTONS(sound_error_buttons); \
     SETUP_BUTTONS(touchscreen_settings_buttons); \
@@ -174,10 +182,7 @@ static void first_menu() {
         C2D_SpriteSetPos(&logo_sprite, 384 / 2 + 2, 224 / 2 + 256);
         C2D_DrawSprite(&logo_sprite);
         C2D_ViewReset();
-        C2D_Flush();
-        video_flush(false);
         C2D_SceneBegin(screen);
-        C2D_Prepare();
     LOOP_END(first_menu_buttons);
     guiop = 0;
     switch (button) {
@@ -641,12 +646,6 @@ static void colour_filter() {
     const float circle_w = colour_wheel_sprite.params.pos.w;
     const float circle_h = colour_wheel_sprite.params.pos.h;
 
-    // in case we came here from the red/gray button
-    C3D_FrameBegin(0);
-    video_flush(true);
-    C3D_FrameEnd(0);
-    C2D_Prepare();
-
     LOOP_BEGIN(colour_filter_buttons);
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
@@ -691,9 +690,6 @@ static void colour_filter() {
                 ((int)((col[0] + 1 - sat) * 255)) |
                 ((int)((col[1] + 1 - sat) * 255) << 8) |
                 ((int)((col[2] + 1 - sat) * 255) << 16);
-            video_flush(true);
-            C2D_Prepare();
-            C2D_SceneBegin(screen);
         }
         C2D_DrawSprite(&colour_wheel_sprite);
         if (!dragging) {
@@ -738,7 +734,7 @@ static void colour_filter() {
     switch (button) {
         case 0: // Back
             saveFileOptions();
-            return options();
+            return video_settings();
         case 1: // Red
             tVBOpt.TINT = 0xff0000ff;
             return colour_filter();
@@ -749,36 +745,52 @@ static void colour_filter() {
 }
 
 static void options() {
-    options_buttons[1].toggle = tVBOpt.SLIDERMODE;
-    options_buttons[2].toggle = tVBOpt.FF_TOGGLE;
-    options_buttons[3].toggle = tVBOpt.SOUND;
-    options_buttons[4].toggle = tVBOpt.PERF_INFO;
+    options_buttons[1].toggle = tVBOpt.FF_TOGGLE;
+    options_buttons[2].toggle = tVBOpt.SOUND;
+    options_buttons[3].toggle = tVBOpt.PERF_INFO;
     LOOP_BEGIN(options_buttons);
     LOOP_END(options_buttons);
+    switch (button) {
+        case 0: // Video settings
+            return video_settings();
+        case 1: // Fast forward
+            tVBOpt.FF_TOGGLE = !tVBOpt.FF_TOGGLE;
+            saveFileOptions();
+            return options();
+        case 2: // Sound
+            tVBOpt.SOUND = !tVBOpt.SOUND;
+            if (tVBOpt.SOUND) sound_enable();
+            else sound_disable();
+            return options();
+        case 3: // Performance info
+            tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
+            saveFileOptions();
+            return options();
+        case 4: // About
+            return about();
+        case 5: // Back
+            return main_menu();
+    }
+}
+
+static void video_settings() {
+    video_settings_buttons[1].toggle = tVBOpt.SLIDERMODE;
+    video_settings_buttons[2].toggle = tVBOpt.DEFAULT_EYE;
+    LOOP_BEGIN(video_settings_buttons);
+    LOOP_END(video_settings_buttons);
     switch (button) {
         case 0: // Colour filter
             return colour_filter();
         case 1: // Slider mode
             tVBOpt.SLIDERMODE = !tVBOpt.SLIDERMODE;
             saveFileOptions();
-            return options();
-        case 2: // Fast forward
-            tVBOpt.FF_TOGGLE = !tVBOpt.FF_TOGGLE;
+            return video_settings();
+        case 2: // Default eye
+            tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
             saveFileOptions();
+            return video_settings();
+        case 3: // Back
             return options();
-        case 3: // Sound
-            tVBOpt.SOUND = !tVBOpt.SOUND;
-            if (tVBOpt.SOUND) sound_enable();
-            else sound_disable();
-            return options();
-        case 4: // Performance info
-            tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
-            saveFileOptions();
-            return options();
-        case 5: // About
-            return about();
-        case 6: // Back
-            return main_menu();
     }
 }
 
@@ -919,6 +931,10 @@ void guiInit() {
     C2D_TextOptimize(&text_3ds);
     C2D_TextParse(&text_vbipd, static_textbuf, "Virtual Boy IPD");
     C2D_TextOptimize(&text_vbipd);
+    C2D_TextParse(&text_left, static_textbuf, "Left");
+    C2D_TextOptimize(&text_left);
+    C2D_TextParse(&text_right, static_textbuf, "Right");
+    C2D_TextOptimize(&text_right);
     C2D_TextParse(&text_sound_error, static_textbuf, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
     C2D_TextOptimize(&text_sound_error);
     C2D_TextParse(&text_anykeyexit, static_textbuf, "Press any key to exit");
@@ -933,17 +949,12 @@ void openMenu() {
     shouldRedrawMenu = true;
     if (game_running) {
         save_sram();
-        C3D_FrameBegin(0);
-        video_flush(true);
-        C3D_FrameEnd(0);
         if (tVBOpt.SOUND)
             ndspSetMasterVol(0.0);
     }
-    gfxSetDoubleBuffering(GFX_TOP, false);
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     main_menu();
-    gfxSetDoubleBuffering(GFX_TOP, true);
     if (game_running && tVBOpt.SOUND)
         ndspSetMasterVol(1.0);
 }

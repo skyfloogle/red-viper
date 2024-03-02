@@ -1,4 +1,5 @@
 #include "vb_dsp.h"
+#include "vb_set.h"
 #include "v810_mem.h"
 
 typedef union {
@@ -85,7 +86,8 @@ void video_soft_render(int alt_buf) {
         return;
     }
     // copy framebuffer
-    for (int eye = 0; eye < eye_count; eye++) {
+    int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
+    for (int eye = start_eye; eye < start_eye + eye_count; eye++) {
         for (int tx = 0; tx < 384 / 8; tx++) {
             for (int ty = 0; ty < 224 / 8; ty++) {
                 uint32_t *out_tile = &out_fb[8 * 8 / 4 * 2 * (1 + eye * 256 / 8 + 512 / 8 * (512 / 8 - 1 - tx) + ty)];

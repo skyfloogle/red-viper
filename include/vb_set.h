@@ -62,6 +62,7 @@ typedef struct VB_OPT {
     int   FF_TOGGLE; // 0 - hold, 1 - toggle
     int   RENDERMODE; // 0 - hard only, 1 - hard + postproc, 2 - full soft
     int   SLIDERMODE; // 0 - 3ds (positive parallax), 1 - virtual boy (full parallax)
+    int   DEFAULT_EYE; // 0 - left, 1 - right
     int   PAUSE_RIGHT; // right side of pause block on touch screen
     int   TOUCH_AX;
     int   TOUCH_AY;

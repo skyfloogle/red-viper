@@ -265,6 +265,9 @@ void video_hard_render() {
 
 	uint8_t object_group_id = 3;
 
+	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
+	int end_eye = start_eye + eye_count;
+
 	for (int8_t wnd = 31; wnd >= 0; wnd--) {
 		if (windows[wnd * 16] & 0x40)
 			break;
@@ -298,7 +301,7 @@ void video_hard_render() {
 
 			if ((windows[wnd * 16] & 0x3000) == 0) {
 				// normal world
-				for (int eye = 0; eye < eye_count; eye++) {
+				for (int eye = start_eye; eye < end_eye; eye++) {
 					if (!(windows[wnd * 16] & (0x8000 >> eye)))
 						continue;
 
@@ -473,7 +476,7 @@ void video_hard_render() {
 					int full_w = 512 * scx;
 					int full_h = 512 * scy;
 
-					for (int eye = 0; eye < eye_count; eye++) {
+					for (int eye = start_eye; eye < end_eye; eye++) {
 						if (!(windows[wnd * 16] & (0x8000 >> eye)))
 							continue;
 
@@ -580,7 +583,7 @@ void video_hard_render() {
 
 				s16 jp = (s16)(cw1 << 6) >> 6;
 
-				for (int eye = 0; eye < eye_count; eye++) {
+				for (int eye = start_eye; eye < end_eye; eye++) {
 					if (!(cw1 & (0x8000 >> eye)))
 						continue;
 					u16 x = base_x;
