@@ -15,6 +15,13 @@
 #include "final_shbin.h"
 #include "soft_shbin.h"
 
+#define TOP_SCREEN_WIDTH  400
+#define TOP_SCREEN_HEIGHT 240
+#define VIEWPORT_WIDTH    384
+#define VIEWPORT_HEIGHT   224
+#define MAX_DEPTH         16
+#define CENTER_OFFSET     (MAX_DEPTH / 2)
+
 static inline u8 clamp127(u16 a) {
 	return a < 127 ? a : 127;
 }
@@ -245,6 +252,20 @@ void video_render(int alt_buf) {
 	video_flush(eye_count);
 }
 
+float getDepthOffset(bool left_for_both, int eye, bool full_parallax) {
+    if (left_for_both) {
+        return 0.0f;
+    }
+
+    float directionFactor = (eye == 0) ? 1.0f : -1.0f;
+
+    if (!full_parallax) {
+		return directionFactor * CONFIG_3D_SLIDERSTATE * (MAX_DEPTH / 2);
+    } else {
+        return directionFactor * (CONFIG_3D_SLIDERSTATE * MAX_DEPTH) - (directionFactor * CENTER_OFFSET);
+    }
+}
+
 void video_flush(bool left_for_both) {
 	if (eye_count == 2) left_for_both = false;
 
@@ -275,14 +296,16 @@ void video_flush(bool left_for_both) {
 		env = C3D_GetTexEnv(1);
 		C3D_TexEnvInit(env);
 	}
-
-
+	
+	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
+	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
+	
 	for (int eye = 0; eye < (left_for_both ? 2 : eye_count); eye++) {
+		float depthOffset = getDepthOffset(left_for_both, eye, tVBOpt.SLIDERMODE);
 		C3D_RenderTargetClear(finalScreen[eye], C3D_CLEAR_ALL, 0, 0);
 		C3D_FrameDrawOn(finalScreen[eye]);
-		C3D_SetViewport((240 - 224) / 2, (400 - 384) / 2, 224, 384);
+		C3D_SetViewport(viewportY, viewportX+depthOffset, VIEWPORT_HEIGHT, VIEWPORT_WIDTH);
 		C3D_TexBind(1, &columnTableTexture[eye]);
-
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
 		C3D_ImmSendAttrib(1, 1, -1, 1);
 		C3D_ImmSendAttrib(0, eye && !left_for_both ? 0.5 : 0, 0, 0);

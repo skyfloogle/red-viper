@@ -41,6 +41,7 @@ void setDefaults(void) {
     tVBOpt.TOUCH_PADY = 128;
     tVBOpt.ABXY_MODE = 0;
     tVBOpt.TINT = 0xff0000ff;
+    tVBOpt.SLIDERMODE = SLIDER_3DS;
     tVBOpt.PERF_INFO = false;
     tVBOpt.ROM_PATH = NULL;
 
@@ -82,6 +83,8 @@ static int handler(void* user, const char* section, const char* name,
     #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
     if (MATCH("vbopt", "tint")) {
         pconfig->TINT = atoi(value);
+    } else if (MATCH("vbopt", "slidermode")) {
+        pconfig->SLIDERMODE = atoi(value);
     } else if (MATCH("vbopt", "perfinfo")) {
         pconfig->PERF_INFO = atoi(value);
     } else if (MATCH("vbopt", "lastrom")) {
@@ -120,6 +123,7 @@ int saveFileOptions(void) {
 
     fprintf(f, "[vbopt]\n");
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
+    fprintf(f, "slidermode=%d\n", tVBOpt.SLIDERMODE);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
     fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH ? tVBOpt.ROM_PATH : "");
     fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);

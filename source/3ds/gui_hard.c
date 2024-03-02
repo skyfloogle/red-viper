@@ -30,7 +30,7 @@ static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
 static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off,
-                text_sound_error, text_anykeyexit, text_about;
+                text_3ds, text_vbipd, text_sound_error, text_anykeyexit, text_about;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
@@ -50,6 +50,8 @@ typedef struct {
     char *str;
     float x, y, w, h;
     bool show_toggle, toggle;
+    C2D_Text *toggle_text_on;
+    C2D_Text *toggle_text_off;
     C2D_Text text;
 } Button;
 
@@ -68,8 +70,10 @@ static inline int handle_buttons(Button buttons[], int count);
     while (loop && aptMainLoop()) { \
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW); \
         C2D_TargetClear(screen, 0); \
+        video_flush(eye_count); \
         C2D_SceneBegin(screen); \
-        hidScanInput();
+        C2D_Prepare(); \
+        hidScanInput(); \
 
 #define LOOP_END(buttons) \
         button = HANDLE_BUTTONS(buttons); \
@@ -121,10 +125,11 @@ static Button touchscreen_settings_buttons[] = {
 
 static void options();
 static Button options_buttons[] = {
-    {"Color filter", 16, 16, 288, 48},
-    {"Fastforward", 16, 80, 128, 48, true},
-    {"Sound", 176, 80, 128, 48, true},
-    {"Perf. info", 16, 144, 128, 48, true},
+    {"Color mode", 16, 16, 128, 48},
+    {"Slider mode", 176, 16, 128, 48, true, false, &text_vbipd, &text_3ds},
+    {"Fast forward", 16, 80, 128, 48, true, false, &text_on, &text_off},
+    {"Sound", 176, 80, 128, 48, true, false, &text_on, &text_off},
+    {"Perf. info", 16, 144, 128, 48, true, false, &text_on, &text_off},
     {"About", 176, 144, 128, 48},
     {"Back", 0, 208, 48, 32},
 };
@@ -163,9 +168,9 @@ static void first_menu() {
         C2D_SceneBegin(screenTarget);
         C2D_ViewScale(1, -1);
         C2D_ViewTranslate(0, -512);
-        C2D_SpriteSetPos(&logo_sprite, 384 / 2 - 4, 224 / 2);
+        C2D_SpriteSetPos(&logo_sprite, 384 / 2 - 2, 224 / 2);
         C2D_DrawSprite(&logo_sprite);
-        C2D_SpriteSetPos(&logo_sprite, 384 / 2 + 4, 224 / 2 + 256);
+        C2D_SpriteSetPos(&logo_sprite, 384 / 2 + 2, 224 / 2 + 256);
         C2D_DrawSprite(&logo_sprite);
         C2D_ViewReset();
         C2D_Flush();
@@ -743,29 +748,34 @@ static void colour_filter() {
 }
 
 static void options() {
-    options_buttons[1].toggle = tVBOpt.FASTFORWARD;
-    options_buttons[2].toggle = tVBOpt.SOUND;
-    options_buttons[3].toggle = tVBOpt.PERF_INFO;
+    options_buttons[1].toggle = tVBOpt.SLIDERMODE;
+    options_buttons[2].toggle = tVBOpt.FASTFORWARD;
+    options_buttons[3].toggle = tVBOpt.SOUND;
+    options_buttons[4].toggle = tVBOpt.PERF_INFO;
     LOOP_BEGIN(options_buttons);
     LOOP_END(options_buttons);
     switch (button) {
         case 0: // Colour filter
             return colour_filter();
-        case 1: // Fast forward
+        case 1: // Slider mode
+            tVBOpt.SLIDERMODE = !tVBOpt.SLIDERMODE;
+            saveFileOptions();
+            return options();
+        case 2: // Fast forward
             tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
             return options();
-        case 2: // Sound
+        case 3: // Sound
             tVBOpt.SOUND = !tVBOpt.SOUND;
             if (tVBOpt.SOUND) sound_enable();
             else sound_disable();
             return options();
-        case 3: // Performance info
+        case 4: // Performance info
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
             saveFileOptions();
             return options();
-        case 4: // About
+        case 5: // About
             return about();
-        case 5: // Back
+        case 6: // Back
             return main_menu();
     }
 }
@@ -826,7 +836,7 @@ static inline int handle_buttons(Button buttons[], int count) {
             strptr++;
         }
         C2D_DrawText(&buttons[i].text, C2D_AlignCenter, buttons[i].x + buttons[i].w / 2, buttons[i].y + buttons[i].h / 2 + yoff, 0, 0.7, 0.7);
-        if (buttons[i].show_toggle) C2D_DrawText(buttons[i].toggle ? &text_on : &text_off, C2D_AlignLeft, buttons[i].x, buttons[i].y, 0, 0.5, 0.5);
+        if (buttons[i].show_toggle) C2D_DrawText(buttons[i].toggle ? buttons[i].toggle_text_on : buttons[i].toggle_text_off, C2D_AlignLeft, buttons[i].x, buttons[i].y, 0, 0.5, 0.5);
     }
     if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);
     if (ret >= 0) pressed = -1;
@@ -899,6 +909,10 @@ void guiInit() {
     C2D_TextOptimize(&text_on);
     C2D_TextParse(&text_off, static_textbuf, "Off");
     C2D_TextOptimize(&text_off);
+    C2D_TextParse(&text_3ds, static_textbuf, "Nintendo 3DS");
+    C2D_TextOptimize(&text_3ds);
+    C2D_TextParse(&text_vbipd, static_textbuf, "Virtual Boy IPD");
+    C2D_TextOptimize(&text_vbipd);
     C2D_TextParse(&text_sound_error, static_textbuf, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
     C2D_TextOptimize(&text_sound_error);
     C2D_TextParse(&text_anykeyexit, static_textbuf, "Press any key to exit");

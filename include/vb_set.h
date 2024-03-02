@@ -16,6 +16,9 @@
 #define PAL_RG      3
 #define PAL_RBG     4
 
+#define SLIDER_3DS  0
+#define SLIDER_VB   1
+
 #define CONFIG_FILENAME "rv_config.ini"
 
 // vbkey positions
@@ -57,6 +60,7 @@ typedef struct VB_OPT {
     int   DYNAREC;
     int   FASTFORWARD;
     int   RENDERMODE; // 0 - hard only, 1 - hard + postproc, 2 - full soft
+    int   SLIDERMODE; // 0 - 3ds (positive parallax), 1 - virtual boy (full parallax)
     int   PAUSE_RIGHT; // right side of pause block on touch screen
     int   TOUCH_AX;
     int   TOUCH_AY;
