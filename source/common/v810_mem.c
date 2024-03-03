@@ -514,10 +514,12 @@ void hcreg_wbyte(WORD addr, BYTE data) {
             tHReg.tTRC = 2000;
         }
 
-        tHReg.TCR = (((data|0xE4)&0xFD)|(tHReg.TCR&0x02));
-        if ((data & 0x05) == 0x05 || !(data & 0x08)) {
-            tHReg.TCR &= 0xFD; // Clear the ZStat Flag...
-        }
+        BYTE zstat = tHReg.TCR & 0x02;
+        if (!(data & 0x08) || // not accurate, but galactic pinball doesn't boot without this rn
+            ((data & 0x04) && !((tHReg.TCR & 1) && !(data & 1))) // can't clear zstat while disabling timer
+        ) zstat = 0; // Clear the ZStat Flag...
+
+        tHReg.TCR = (((data|0xE4)&0xFD)|zstat);
         break;
     case 0x02000024:    //WCR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG WCR [%08x]:%02x ",addr,data);
