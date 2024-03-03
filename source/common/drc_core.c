@@ -1638,7 +1638,7 @@ void drc_clearCache() {
 
     memset(cache_start, 0, CACHE_SIZE);
     memset(rom_block_map, 0, sizeof(rom_block_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    memset(rom_entry_map, 0, sizeof(*rom_entry_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    memset(rom_entry_map, 0, sizeof(rom_entry_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
 
     *cache_start = -1;
 
