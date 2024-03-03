@@ -1083,13 +1083,16 @@ void drawTouchControls(int inputs) {
 void guiUpdate(float total_time, float drc_time) {
     static int last_inputs = 0;
     static bool last_fastforward = false;
+    static bool last_saving = false;
     int new_inputs = guiGetInput(false);
     if (new_inputs != last_inputs) shouldRedrawMenu = true;
     last_inputs = new_inputs;
     if (last_fastforward != tVBOpt.FASTFORWARD) shouldRedrawMenu = true;
     last_fastforward = tVBOpt.FASTFORWARD;
+    if (!!save_thread != last_saving) shouldRedrawMenu = true;
+    last_saving = !!save_thread;
 
-    if (!shouldRedrawMenu && !save_thread && !tVBOpt.PERF_INFO)
+    if (!shouldRedrawMenu && !tVBOpt.PERF_INFO)
         return;
 
     C2D_Prepare();
