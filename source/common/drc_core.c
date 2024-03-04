@@ -1657,7 +1657,7 @@ WORD* drc_getEntry(WORD loc, exec_block **p_block) {
     if (block == block_ptr_start || block->free) return cache_start;
     if (p_block)
         *p_block = block;
-    return cache_start + rom_entry_map[map_pos];
+    return block->phys_offset + rom_entry_map[map_pos];
 }
 
 // Sets a new entrypoint for the V810 instruction in location loc and the
@@ -1665,7 +1665,7 @@ WORD* drc_getEntry(WORD loc, exec_block **p_block) {
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
     unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
     rom_block_map[map_pos] = block - block_ptr_start;
-    rom_entry_map[map_pos] = entry - cache_start;
+    rom_entry_map[map_pos] = entry - block->phys_offset;
 }
 
 // Initialize the dynarec

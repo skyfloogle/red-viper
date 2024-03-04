@@ -11,6 +11,10 @@
 #define ARM_NUM_CACHE_REGS 6
 #define MAX_NUM_BLOCKS 4096
 
+#if MAX_ARM_INST >= 65536
+#error "MAX_ARM_INST can't be more than 64K"
+#endif
+
 enum {
     DRC_ERR_BAD_ENTRY   = 1,
     DRC_ERR_BAD_PC      = 2,
@@ -63,7 +67,7 @@ typedef struct {
 } v810_instruction;
 
 HWORD* rom_block_map;
-WORD* rom_entry_map;
+HWORD* rom_entry_map;
 bool* rom_data_code_map;
 BYTE reg_usage[32];
 extern WORD* cache_start;
