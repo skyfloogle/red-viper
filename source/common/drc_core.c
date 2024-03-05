@@ -1672,9 +1672,9 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 void drc_init() {
     // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
     dprintf(0, "used %ld / free %ld\n", osGetMemRegionUsed(MEMREGION_APPLICATION), osGetMemRegionFree(MEMREGION_APPLICATION));
-    rom_block_map = calloc(sizeof(rom_block_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
-    rom_entry_map = calloc(sizeof(rom_entry_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
-    rom_data_code_map = calloc(sizeof(rom_data_code_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> (1 + 3));
+    rom_block_map = calloc(sizeof(rom_block_map[0]), MAX_ROM_SIZE >> 1);
+    rom_entry_map = linearAlloc(sizeof(rom_entry_map[0]) * (MAX_ROM_SIZE >> 1));
+    rom_data_code_map = calloc(sizeof(rom_data_code_map[0]), MAX_ROM_SIZE >> (1 + 3));
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
     inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
@@ -1698,9 +1698,6 @@ void drc_init() {
 }
 
 void drc_reset() {
-    rom_block_map = realloc(rom_block_map, sizeof(rom_block_map[0]) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    rom_entry_map = realloc(rom_entry_map, sizeof(rom_entry_map[0]) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    rom_data_code_map = realloc(rom_data_code_map, sizeof(rom_data_code_map[0]) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> (1 + 3)));
     memset(rom_data_code_map, 0, sizeof(rom_data_code_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> (1 + 3)));
     drc_clearCache();
 }
@@ -1710,7 +1707,8 @@ void drc_exit() {
     if (tVBOpt.DYNAREC)
         free(cache_start);
     free(rom_block_map);
-    free(rom_entry_map);
+    linearFree(rom_entry_map);
+    free(rom_data_code_map);
     linearFree(block_ptr_start);
     linearFree(trans_cache);
     linearFree(inst_cache);

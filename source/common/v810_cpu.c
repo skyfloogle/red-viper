@@ -40,9 +40,13 @@ int v810_init() {
     if (f) {
         fseek(f , 0 , SEEK_END);
         rom_size = ftell(f);
+        if (rom_size > MAX_ROM_SIZE) {
+            fclose(f);
+            return 0;
+        }
         rewind(f);
 
-        V810_ROM1.pmemory = malloc(rom_size);
+        V810_ROM1.pmemory = malloc(MAX_ROM_SIZE);
         fread(V810_ROM1.pmemory, 1, rom_size, f);
 
         fclose(f);

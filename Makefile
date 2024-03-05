@@ -198,7 +198,7 @@ release testing debug slowdebug:
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(TARGET).cia
+	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(TARGET).cia $(TARGET)-himem.cia
 
 
 #---------------------------------------------------------------------------------
@@ -215,7 +215,7 @@ else
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(NO_SMDH)),)
 .PHONY: all
-all	:	$(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).cia
+all	:	$(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).cia $(OUTPUT)-himem.cia
 endif
 $(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
 
@@ -232,8 +232,15 @@ icon.icn: $(TOPDIR)/icon.png
 cia.rsf:
 	cat $(TOPDIR)/tools/template-cia.rsf | sed 's/{APP_TITLE}/$(APP_TITLE)/' | sed 's/{APP_PRODUCT_CODE}/$(APP_PRODUCT_CODE)/' | sed 's/{APP_UNIQUE_ID}/$(APP_UNIQUE_ID)/' | sed 's/{APP_ENCRYPTED}/$(APP_ENCRYPTED)/' | sed 's/{APP_SYSTEM_MODE}/$(APP_SYSTEM_MODE)/' | sed 's/{APP_SYSTEM_MODE_EXT}/$(APP_SYSTEM_MODE_EXT)/' > cia.rsf
 
+cia-himem.rsf:
+	cat $(TOPDIR)/tools/template-cia.rsf | sed 's/{APP_TITLE}/$(APP_TITLE)/' | sed 's/{APP_PRODUCT_CODE}/$(APP_PRODUCT_CODE)/' | sed 's/{APP_UNIQUE_ID}/$(APP_UNIQUE_ID)/' | sed 's/{APP_ENCRYPTED}/$(APP_ENCRYPTED)/' | sed 's/{APP_SYSTEM_MODE}/80MB/' | sed 's/{APP_SYSTEM_MODE_EXT}/$(APP_SYSTEM_MODE_EXT)/' > cia-himem.rsf
+
 $(OUTPUT).cia: banner.bnr icon.icn cia.rsf
 	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf $(OUTPUT).elf -icon icon.icn -banner banner.bnr
+	@echo "built ... $(notdir $@)"
+
+$(OUTPUT)-himem.cia: banner.bnr icon.icn cia-himem.rsf
+	$(MAKEROM) -f cia -o $(OUTPUT)-himem.cia -rsf cia-himem.rsf -target t -exefslogo -elf $(OUTPUT).elf -icon icon.icn -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 
 
