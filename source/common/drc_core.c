@@ -116,11 +116,11 @@ static bool is_hword_getter(WORD start_PC) {
 }
 
 static void drc_markCode(WORD PC) {
-    rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> 1] = true;
+    rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> (1 + 3)] |= 1 << ((PC >> 1) & 7);
 }
 
 static bool drc_isCode(WORD PC) {
-    return rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> 1];
+    return !!(rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> (1 + 3)] & (1 << ((PC >> 1) & 7)));
 }
 
 // Finds the starting and ending address of a V810 code block. It stops after a
@@ -1671,9 +1671,10 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 // Initialize the dynarec
 void drc_init() {
     // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
+    dprintf(0, "used %ld / free %ld\n", osGetMemRegionUsed(MEMREGION_APPLICATION), osGetMemRegionFree(MEMREGION_APPLICATION));
     rom_block_map = calloc(sizeof(rom_block_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
     rom_entry_map = calloc(sizeof(rom_entry_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
-    rom_data_code_map = calloc(sizeof(bool), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1);
+    rom_data_code_map = calloc(sizeof(rom_data_code_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> (1 + 3));
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
     inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
@@ -1699,8 +1700,8 @@ void drc_init() {
 void drc_reset() {
     rom_block_map = realloc(rom_block_map, sizeof(rom_block_map[0]) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
     rom_entry_map = realloc(rom_entry_map, sizeof(rom_entry_map[0]) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    rom_data_code_map = realloc(rom_data_code_map, sizeof(bool) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    memset(rom_data_code_map, 0, sizeof(bool)*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    rom_data_code_map = realloc(rom_data_code_map, sizeof(rom_data_code_map[0]) * ((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> (1 + 3)));
+    memset(rom_data_code_map, 0, sizeof(rom_data_code_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> (1 + 3)));
     drc_clearCache();
 }
 

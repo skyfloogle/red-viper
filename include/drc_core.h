@@ -68,7 +68,7 @@ typedef struct {
 
 HWORD* rom_block_map;
 HWORD* rom_entry_map;
-bool* rom_data_code_map;
+BYTE* rom_data_code_map;
 BYTE reg_usage[32];
 extern WORD* cache_start;
 extern WORD* cache_pos;
