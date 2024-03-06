@@ -282,8 +282,7 @@ void sound_update(int reg) {
         case S1FQH:
             reg1 = RBYTE(S1FQL);
             reg2 = RBYTE(S1FQH);
-            if ((((reg2 << 8) | reg1) & 0x7FF) == 0) voice_stop(voice[CH1]);
-            else voice_set_frequency(voice[CH1], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
+            voice_set_frequency(voice[CH1], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S1RAM:
             for (i = 0; i < 32; i++)
@@ -326,8 +325,7 @@ void sound_update(int reg) {
         case S2FQH:
             reg1 = RBYTE(S2FQL);
             reg2 = RBYTE(S2FQH);
-            if ((((reg2 << 8) | reg1) & 0x7FF) == 0) voice_stop(voice[CH2]);
-            else voice_set_frequency(voice[CH2], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
+            voice_set_frequency(voice[CH2], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S2RAM:
             for (i = 0; i < 32; i++)
@@ -370,8 +368,7 @@ void sound_update(int reg) {
         case S3FQH:
             reg1 = RBYTE(S3FQL);
             reg2 = RBYTE(S3FQH);
-            if ((((reg2 << 8) | reg1) & 0x7FF) == 0) voice_stop(voice[CH3]);
-            else voice_set_frequency(voice[CH3], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
+            voice_set_frequency(voice[CH3], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S3RAM:
             for (i = 0; i < 32; i++)
@@ -414,8 +411,7 @@ void sound_update(int reg) {
         case S4FQH:
             reg1 = RBYTE(S4FQL);
             reg2 = RBYTE(S4FQH);
-            if ((((reg2 << 8) | reg1) & 0x7FF) == 0) voice_stop(voice[CH4]);
-            else voice_set_frequency(voice[CH4], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
+            voice_set_frequency(voice[CH4], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S4RAM:
             for (i = 0; i < 32; i++)
@@ -474,8 +470,7 @@ void sound_update(int reg) {
         case S5FQH:
             reg1 = RBYTE(S5FQL);
             reg2 = RBYTE(S5FQH);
-            if ((((reg2 << 8) | reg1) & 0x7FF) == 0) voice_stop(voice[CH5]);
-            else voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
+            voice_set_frequency(voice[CH5], VB_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
         case S5RAM:
             for (i = 0; i < 32; i++)
@@ -509,7 +504,7 @@ void sound_update(int reg) {
             temp1 = ((reg1 >> 4) & 0x07);
             temp1 += CH6_0;
             // temp1 is one of ch6_0 to ch_6_7
-            if (Curr_C6V != voice[temp1] && (RBYTE(S6INT) & 0x80)) {
+            if (Curr_C6V != voice[temp1]) {
                 voice_stop(Curr_C6V);
                 Curr_C6V = voice[temp1];
                 if (C6V_playing == 1)
@@ -527,8 +522,7 @@ void sound_update(int reg) {
         case S6FQH:
             reg1 = RBYTE(S6FQL);
             reg2 = RBYTE(S6FQH);
-            if ((((reg2 << 8) | reg1) & 0x7FF) == 0) voice_stop(Curr_C6V);
-            else for (int i = CH6_0; i <= CH6_7; i++)
+            for (int i = CH6_0; i <= CH6_7; i++)
                 voice_set_frequency(i, RAND_FRQ_REG_TO_SAMP_FREQ(((reg2 << 8) | reg1) & 0x7FF));
             break;
 
