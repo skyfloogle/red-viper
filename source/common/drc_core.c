@@ -945,8 +945,7 @@ static int drc_translateBlock() {
                 LOAD_REG1();
                 LOAD_REG2();
                 MOV(0, arm_reg1);
-                MOV_I(1, 0x1F, 0);
-                AND(0, 0, 1);
+                AND_I(0, 0x1F, 0);
                 LSLS(arm_reg2, arm_reg2, 0);
                 reg2_modified = true;
                 break;
@@ -954,8 +953,7 @@ static int drc_translateBlock() {
                 LOAD_REG1();
                 LOAD_REG2();
                 MOV(0, arm_reg1);
-                MOV_I(1, 0x1F, 0);
-                AND(0, 0, 1);
+                AND_I(0, 0x1F, 0);
                 LSRS(arm_reg2, arm_reg2, 0);
                 reg2_modified = true;
                 break;
@@ -963,8 +961,7 @@ static int drc_translateBlock() {
                 LOAD_REG1();
                 LOAD_REG2();
                 MOV(0, arm_reg1);
-                MOV_I(1, 0x1F, 0);
-                AND(0, 0, 1);
+                AND_I(0, 0x1F, 0);
                 ASRS(arm_reg2, arm_reg2, 0);
                 reg2_modified = true;
                 break;
