@@ -215,7 +215,7 @@ else
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(NO_SMDH)),)
 .PHONY: all
-all	:	$(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).cia $(OUTPUT)-himem.cia
+all	:	$(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).cia
 endif
 $(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
 
