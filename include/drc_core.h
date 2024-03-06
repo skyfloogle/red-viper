@@ -5,10 +5,11 @@
 #include "vb_types.h"
 #include "arm_emit.h"
 
-#define MAX_ROM_SIZE (osGetMemRegionSize(MEMREGION_APPLICATION) < 75000000 ? 0x800000 : 0x1000000)
+#define MAX_ROM_SIZE 0x1000000
+#define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
 #define CACHE_SIZE  0x200000
 #define MAX_V810_INST 4096
-#define MAX_ARM_INST  MAX_V810_INST * 8
+#define MAX_ARM_INST  (MAX_V810_INST * 8)
 #define ARM_CACHE_REG_START 4
 #define ARM_NUM_CACHE_REGS 6
 #define MAX_NUM_BLOCKS 4096

@@ -116,11 +116,15 @@ static bool is_hword_getter(WORD start_PC) {
 }
 
 static void drc_markCode(WORD PC) {
-    rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> (1 + 3)] |= 1 << ((PC >> 1) & 7);
+    rom_data_code_map[(((PC & V810_ROM1.highaddr) >> 1) & (BLOCK_MAP_COUNT - 1)) >> 3] |= 1 << ((PC >> 1) & 7);
+}
+
+static void drc_markData(WORD PC) {
+    rom_data_code_map[(((PC & V810_ROM1.highaddr) >> 1) & (BLOCK_MAP_COUNT - 1)) >> 3] &= ~(1 << ((PC >> 1) & 7));
 }
 
 static bool drc_isCode(WORD PC) {
-    return !!(rom_data_code_map[((PC - V810_ROM1.lowaddr) & V810_ROM1.highaddr) >> (1 + 3)] & (1 << ((PC >> 1) & 7)));
+    return !!(rom_data_code_map[(((PC & V810_ROM1.highaddr) >> 1) & (BLOCK_MAP_COUNT - 1)) >> 3] & (1 << ((PC >> 1) & 7)));
 }
 
 // Finds the starting and ending address of a V810 code block. It stops after a
@@ -140,6 +144,19 @@ static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     finished = false;
     while(!finished) {
         bool potentiallyDone = false;
+
+        exec_block *existing_block;
+        if (drc_getEntry(cur_PC, &existing_block) != cache_start) {
+            drc_free(existing_block);
+            if (cur_PC < existing_block->start_pc || cur_PC > existing_block->end_pc) {
+                for (WORD PC = existing_block->start_pc; PC <= existing_block->end_pc; PC += 2)
+                    drc_markData(PC);
+                if (existing_block->start_pc < cur_PC) cur_PC = start_PC;
+            } else {
+                if (existing_block->start_pc < start_PC) start_PC = existing_block->start_pc;
+                if (existing_block->end_pc > end_PC) end_PC = existing_block->end_pc;
+            }
+        }
 
         drc_markCode(cur_PC);
         if (cur_PC > end_PC)
@@ -627,27 +644,13 @@ static int drc_translateBlock() {
     // Clear previous block register stats
     memset(reg_usage, 0, 32);
 
-    // Free any overlapping blocks
-    for (WORD PC = start_PC; PC <= end_PC; PC += 2) {
-        if (drc_isCode(PC)) {
-            exec_block *existing_block = NULL;
-            if (drc_getEntry(PC, &existing_block) != cache_start) {
-                // we don't need to re-scan because the code has already been traversed
-                if (start_PC > existing_block->start_pc)
-                    start_PC = existing_block->start_pc;
-                if (end_PC < existing_block->end_pc)
-                    end_PC = existing_block->end_pc;
-                drc_free(existing_block);
-                if (block == NULL)
-                    block = existing_block;
-            }
-        }
-    }
-    if (block == NULL)
-        block = drc_getNextBlockStruct();
+    block = drc_getNextBlockStruct();
     if (block == NULL)
         return DRC_ERR_NO_BLOCKS;
     block->free = false;
+
+    block->start_pc = start_PC;
+    block->end_pc = end_PC;
 
     // First pass: decode V810 instructions
     num_v810_inst = drc_decodeInstructions(block, start_PC, end_PC);
@@ -1619,8 +1622,6 @@ static int drc_translateBlock() {
     }
 
     block->size = num_arm_inst + pool_offset;
-    block->start_pc = start_PC;
-    block->end_pc = end_PC;
 
 cleanup:
 #ifdef LITERAL_POOL
@@ -1637,8 +1638,8 @@ void drc_clearCache() {
     free_block_count = 0;
 
     memset(cache_start, 0, CACHE_SIZE);
-    memset(rom_block_map, 0, sizeof(rom_block_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
-    memset(rom_entry_map, 0, sizeof(rom_entry_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1));
+    memset(rom_block_map, 0, sizeof(rom_block_map[0])*BLOCK_MAP_COUNT);
+    memset(rom_entry_map, 0, sizeof(rom_entry_map[0])*BLOCK_MAP_COUNT);
 
     *cache_start = -1;
 
@@ -1652,7 +1653,7 @@ WORD* drc_getEntry(WORD loc, exec_block **p_block) {
     unsigned int map_pos;
     exec_block *block;
 
-    map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
+    map_pos = ((loc&V810_ROM1.highaddr)>>1)&(BLOCK_MAP_COUNT-1);
     block = block_ptr_start + rom_block_map[map_pos];
     if (block == block_ptr_start || block->free) return cache_start;
     if (p_block)
@@ -1663,7 +1664,7 @@ WORD* drc_getEntry(WORD loc, exec_block **p_block) {
 // Sets a new entrypoint for the V810 instruction in location loc and the
 // corresponding block
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
-    unsigned int map_pos = ((loc-V810_ROM1.lowaddr)&V810_ROM1.highaddr)>>1;
+    unsigned int map_pos = ((loc&V810_ROM1.highaddr)>>1)&(BLOCK_MAP_COUNT-1);
     rom_block_map[map_pos] = block - block_ptr_start;
     rom_entry_map[map_pos] = entry - block->phys_offset;
 }
@@ -1671,10 +1672,9 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 // Initialize the dynarec
 void drc_init() {
     // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
-    dprintf(0, "used %ld / free %ld\n", osGetMemRegionUsed(MEMREGION_APPLICATION), osGetMemRegionFree(MEMREGION_APPLICATION));
-    rom_block_map = calloc(sizeof(rom_block_map[0]), MAX_ROM_SIZE >> 1);
-    rom_entry_map = linearAlloc(sizeof(rom_entry_map[0]) * (MAX_ROM_SIZE >> 1));
-    rom_data_code_map = calloc(sizeof(rom_data_code_map[0]), MAX_ROM_SIZE >> (1 + 3));
+    rom_block_map = calloc(sizeof(rom_block_map[0]), BLOCK_MAP_COUNT);
+    rom_entry_map = linearAlloc(sizeof(rom_entry_map[0]) * BLOCK_MAP_COUNT);
+    rom_data_code_map = calloc(sizeof(rom_data_code_map[0]), BLOCK_MAP_COUNT >> 3);
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
     inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
@@ -1683,7 +1683,7 @@ void drc_init() {
     hbHaxInit();
 
     if (tVBOpt.DYNAREC) {
-        cache_start = memalign(0x1000, CACHE_SIZE);
+        cache_start = linearMemAlign(CACHE_SIZE, 0x1000);
         ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7);
         FlushInvalidateCache();
         detectCitra(cache_start);
@@ -1698,14 +1698,14 @@ void drc_init() {
 }
 
 void drc_reset() {
-    memset(rom_data_code_map, 0, sizeof(rom_data_code_map[0])*((V810_ROM1.highaddr - V810_ROM1.lowaddr) >> (1 + 3)));
+    memset(rom_data_code_map, 0, sizeof(rom_data_code_map[0])*(BLOCK_MAP_COUNT >> 3));
     drc_clearCache();
 }
 
 // Cleanup and exit
 void drc_exit() {
     if (tVBOpt.DYNAREC)
-        free(cache_start);
+        linearFree(cache_start);
     free(rom_block_map);
     linearFree(rom_entry_map);
     free(rom_data_code_map);
@@ -1744,7 +1744,7 @@ int drc_run() {
         // Try to find a cached block
         // TODO: make sure we have enough free space
         entrypoint = drc_getEntry(v810_state->PC, &cur_block);
-        if (tVBOpt.DYNAREC && (entrypoint == cache_start)) {
+        if (tVBOpt.DYNAREC && (entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc)) {
             int result = drc_translateBlock(cur_block);
             if (result == DRC_ERR_CACHE_FULL || result == DRC_ERR_NO_BLOCKS) {
                 drc_clearCache();
@@ -1760,8 +1760,10 @@ int drc_run() {
             dprintf(3, "[DRC]: ARM block size - %ld\n", cur_block->size);
         }
         dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
-        if ((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE))
+        if ((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE)) {
+            dprintf(0, "Bad entry %p\n", drc_getEntry(entry_PC, NULL));
             return DRC_ERR_BAD_ENTRY;
+        }
 
         v810_state->cycles = clocks;
         drc_executeBlock(entrypoint, cur_block);
@@ -1787,10 +1789,10 @@ int drc_run() {
 void drc_loadSavedCache() {
     FILE* f;
     f = fopen("rom_block_map", "r");
-    fread(rom_block_map, sizeof(rom_block_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fread(rom_block_map, sizeof(rom_block_map[0]), BLOCK_MAP_COUNT, f);
     fclose(f);
     f = fopen("rom_entry_map", "r");
-    fread(rom_entry_map, sizeof(rom_entry_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fread(rom_entry_map, sizeof(rom_entry_map[0]), BLOCK_MAP_COUNT, f);
     fclose(f);
     f = fopen("block_heap", "r");
     fread(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
@@ -1804,10 +1806,10 @@ void drc_dumpCache(char* filename) {
     fclose(f);
 
     f = fopen("rom_block_map", "w");
-    fwrite(rom_block_map, sizeof(rom_block_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fwrite(rom_block_map, sizeof(rom_block_map[0]), BLOCK_MAP_COUNT, f);
     fclose(f);
     f = fopen("rom_entry_map", "w");
-    fwrite(rom_entry_map, sizeof(rom_entry_map[0]), (V810_ROM1.highaddr - V810_ROM1.lowaddr) >> 1, f);
+    fwrite(rom_entry_map, sizeof(rom_entry_map[0]), BLOCK_MAP_COUNT, f);
     fclose(f);
     f = fopen("block_heap", "w");
     fwrite(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
