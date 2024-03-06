@@ -944,19 +944,28 @@ static int drc_translateBlock() {
             case V810_OP_SHL: // shl reg1, reg2
                 LOAD_REG1();
                 LOAD_REG2();
-                LSLS(arm_reg2, arm_reg2, arm_reg1);
+                MOV(0, arm_reg1);
+                MOV_I(1, 0x1F, 0);
+                AND(0, 0, 1);
+                LSLS(arm_reg2, arm_reg2, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_SHR: // shr reg1, reg2
                 LOAD_REG1();
                 LOAD_REG2();
-                LSRS(arm_reg2, arm_reg2, arm_reg1);
+                MOV(0, arm_reg1);
+                MOV_I(1, 0x1F, 0);
+                AND(0, 0, 1);
+                LSRS(arm_reg2, arm_reg2, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_SAR: // sar reg1, reg2
                 LOAD_REG1();
                 LOAD_REG2();
-                ASRS(arm_reg2, arm_reg2, arm_reg1);
+                MOV(0, arm_reg1);
+                MOV_I(1, 0x1F, 0);
+                AND(0, 0, 1);
+                ASRS(arm_reg2, arm_reg2, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_MUL: // mul reg1, reg2
