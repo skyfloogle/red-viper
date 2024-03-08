@@ -40,7 +40,10 @@ int v810_init() {
     if (f) {
         fseek(f , 0 , SEEK_END);
         rom_size = ftell(f);
-        if (rom_size > MAX_ROM_SIZE) {
+        bool rom_size_valid = rom_size <= MAX_ROM_SIZE;
+        // require po2
+        rom_size_valid = rom_size_valid && !(rom_size & (rom_size - 1));
+        if (!rom_size_valid) {
             fclose(f);
             return 0;
         }
