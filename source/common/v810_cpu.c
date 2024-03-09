@@ -16,6 +16,7 @@
 #include "vb_set.h"
 #include "rom_db.h"
 #include "drc_core.h"
+#include "vb_sound.h"
 
 #include "replay.h"
 
@@ -396,6 +397,9 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             lastfb+=0x50280;
             newframe = true;
             pending_int = 1;
+
+            sound_update(cycles);
+            sound_flush();
         }
     }
 

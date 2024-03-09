@@ -920,8 +920,8 @@ static void options(int initial_button) {
             return options(OPTIONS_FF);
         case OPTIONS_SOUND: // Sound
             tVBOpt.SOUND = !tVBOpt.SOUND;
-            if (tVBOpt.SOUND) sound_enable();
-            else sound_disable();
+            //if (tVBOpt.SOUND) sound_enable();
+            //else sound_disable();
             return options(OPTIONS_SOUND);
         case OPTIONS_PERF: // Performance info
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;

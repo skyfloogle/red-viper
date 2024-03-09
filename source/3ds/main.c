@@ -72,7 +72,7 @@ int main() {
 
     dprintf(0, "version %s\n", VERSION);
 
-    if (tVBOpt.SOUND) sound_enable();
+    //if (tVBOpt.SOUND) sound_enable();
 
     v810_reset();
     drc_init();
@@ -105,7 +105,7 @@ int main() {
                 goto exit;
             }
             if (guiop & VBRESET) {
-                if (tVBOpt.SOUND) sound_disable();
+                //if (tVBOpt.SOUND) sound_disable();
                 int oldSound = tVBOpt.SOUND;
                 tVBOpt.SOUND = false;
                 if (save_thread) threadJoin(save_thread, U64_MAX);
@@ -116,7 +116,7 @@ int main() {
                 drc_reset();
                 clearCache();
                 tVBOpt.SOUND = oldSound;
-                if (tVBOpt.SOUND) sound_enable();
+                //if (tVBOpt.SOUND) sound_enable();
                 frame = 0;
                 tVIPREG.tFrame = 0;
                 tVIPREG.tFrameBuffer = 0;

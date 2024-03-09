@@ -65,9 +65,10 @@
 #define SSTOP 0x01000580
 
 void sound_init();
-void sound_update(int reg);
+void sound_update(int cycles);
 void sound_close();
 void sound_enable();
 void sound_disable();
+void sound_flush();
 
 #endif //VB_SOUND_H_
