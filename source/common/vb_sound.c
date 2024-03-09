@@ -60,6 +60,7 @@ void fill_buf_single_sample(int ch, int samples, int offset) {
 
 void update_buf_with_freq(int ch, int samples) {
     if (!(RBYTE(S1INT + 0x40 * ch) & 0x80)) return;
+    if (sound_state.channels[ch].envelope_value == 0) return;
     int total_clocks = samples * CYCLES_PER_SAMPLE;
     int current_clocks = 0;
     while (current_clocks < total_clocks) {
@@ -109,7 +110,7 @@ void sound_update(int cycles) {
                     if (sound_state.sweep_time != 0) {
                         if (env & 0x10) {
                             // modulation
-                            sound_state.sweep_frequency = GET_FREQ(5) + RBYTE(MODDATA + 4 * sound_state.modulation_counter++);
+                            sound_state.sweep_frequency = GET_FREQ(4) + RBYTE(MODDATA + 4 * sound_state.modulation_counter++);
                             if (sound_state.modulation_counter >= 32) {
                                 if (env & 0x20) {
                                     // repeat
@@ -128,7 +129,7 @@ void sound_update(int cycles) {
                                 sound_state.sweep_frequency -= sound_state.sweep_frequency >> shift;
                             if (sound_state.sweep_frequency <= 0 || sound_state.sweep_frequency >= 2048) {
                                 // TODO is this ok?
-                                sound_state.channels[5].envelope_value = 0;
+                                sound_state.channels[4].envelope_value = 0;
                                 sound_state.modulation_enabled = false;
                             }
                         }
@@ -186,12 +187,12 @@ void sound_write(int addr) {
         int ev0 = RBYTE(S1EV0 + 0x40 * ch);
         sound_state.channels[ch].envelope_value = ev0 >> 4;
         sound_state.channels[ch].envelope_time = ev0 & 7;
-        if (ch == 5 && (RBYTE(S5EV1) & 0x40)) {
+        if (ch == 4 && (RBYTE(S5EV1) & 0x40)) {
             // sweep/modulation
             int swp = RBYTE(S5SWP);
             int interval = (swp >> 4) & 7;
             sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
-            sound_state.sweep_frequency = GET_FREQ(5);
+            sound_state.sweep_frequency = GET_FREQ(4);
             sound_state.modulation_enabled = true;
             sound_state.modulation_counter = 0;
         } else if (ch == 6) {
