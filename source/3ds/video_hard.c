@@ -501,7 +501,10 @@ void video_hard_render() {
 							base_u += mx;
 							base_v += my;
 							for (int y = 0; y < h; y++) {
-								s16 p = (s16)(params[y * 2 + eye] << 3) >> 3;
+								// Account for hardware flaw that uses OR rather than addition
+								// when computing the address of HOFSTR.
+								int eye_offset = !((((int)params >> 1) & 1) | eye);
+								s16 p = (s16)(params[y * 2 + eye_offset] << 3) >> 3;
 								avcur->x1 = gx;
 								avcur->y1 = gy + y + 256 * eye;
 								avcur->x2 = gx + w;
