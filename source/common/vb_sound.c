@@ -5,6 +5,7 @@
 #include "vb_set.h"
 #include "vb_sound.h"
 #include "vb_types.h"
+#include <math.h>
 
 #define SAMPLE_RATE 50000
 #define CYCLES_PER_SAMPLE (20000000 / SAMPLE_RATE)
@@ -76,7 +77,7 @@ void sound_update(int cycles) {
         int samples = remaining_samples;
         if (samples > sound_state.effect_time)
             samples = sound_state.effect_time;
-        memset(wavebufs[fill_buf].data_pcm16 + buf_pos, 0, sizeof(s16) * samples * 2);
+        memset(wavebufs[fill_buf].data_pcm16 + buf_pos * 2, 0, sizeof(s16) * samples * 2);
         for (int i = 0; i < 6; i++) {
             sound_state.channels[i].envelope_value = RBYTE(S1EV0 + 0x40 * i) >> 4;
             update_buf_with_freq(i, samples);
@@ -97,18 +98,19 @@ void sound_init() {
         return;
     }
     memset(&sound_state, 0, sizeof(sound_state));
-    for (int i = 0; i < 2; i++) {
-        wavebufs[i].data_pcm16 = linearAlloc(sizeof(s16) * SAMPLE_COUNT * 2);
-        wavebufs[i].nsamples = SAMPLE_COUNT;
-        // force it to play the first time
-        wavebufs[i].status = NDSP_WBUF_DONE;
-    }
     ndspChnReset(0);
     ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
     ndspChnSetInterp(0, NDSP_INTERP_NONE);
     ndspChnSetRate(0, SAMPLE_RATE);
     float mix[12] = {[0] = 1, [1] = 1};
     ndspChnSetMix(0, mix);
+    for (int i = 0; i < 2; i++) {
+        memset(&wavebufs[i], 0, sizeof(wavebufs[i]));
+        wavebufs[i].data_pcm16 = linearAlloc(sizeof(s16) * SAMPLE_COUNT * 2);
+        wavebufs[i].nsamples = SAMPLE_COUNT;
+        // force it to play the first time
+        wavebufs[i].status = NDSP_WBUF_DONE;
+    }
 }
 
 void sound_flush() {
