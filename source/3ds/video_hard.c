@@ -374,7 +374,8 @@ void video_hard_render() {
 				}
 			} else {
 				// hbias or affine world
-				s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + windows[wnd * 16 + 9] * 2]);
+				u32 param_base = (u32)&V810_DISPLAY_RAM.pmemory[0x20000 + windows[wnd * 16 + 9] * 2];
+				s16 *params = (s16 *)(param_base);
 				int umin, vmin, umax, vmax;
 				if (windows[wnd * 16] & 0x1000) {
 					// h-bias
@@ -501,7 +502,9 @@ void video_hard_render() {
 							base_u += mx;
 							base_v += my;
 							for (int y = 0; y < h; y++) {
-								s16 p = (s16)(params[y * 2 + eye] << 3) >> 3;
+								// Account for hardware flaw that uses OR rather than adding
+								// when computing the address of HOFSTR.
+								s16 p = (*(s16 *)((param_base + y * 4) | (eye << 1)) << 3) >> 3;
 								avcur->x1 = gx;
 								avcur->y1 = gy + y + 256 * eye;
 								avcur->x2 = gx + w;
