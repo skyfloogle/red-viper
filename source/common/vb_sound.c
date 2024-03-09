@@ -12,23 +12,26 @@
 #define SAMPLE_COUNT (SAMPLE_RATE / 50)
 
 typedef struct {
-    uint8_t shutoff_time, envelope_time, envelope_value, sample_pos;
-    uint16_t freq_time;
+    u8 shutoff_time, envelope_time, envelope_value, sample_pos;
+    u16 freq_time;
 } ChannelState;
 struct {
     ChannelState channels[6];
-    int8_t sweep_time;
-    int16_t sweep_frequency;
     bool modulation_enabled;
-    int8_t modulation_values[32];
-    uint8_t modulation_counter;
-    uint16_t effect_time;
-    uint32_t last_cycles;
+    s8 modulation_values[32];
+    u8 modulation_counter;
+    s8 sweep_time;
+    s16 sweep_frequency;
+    u16 effect_time;
+    u32 last_cycles;
+    u16 noise_shift;
 } sound_state;
 
 uint8_t fill_buf = 0;
 uint16_t buf_pos = 0;
 ndspWaveBuf wavebufs[2];
+
+static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
 
 #define RBYTE(x) (V810_SOUND_RAM.pmemory[(x) & 0xFFF])
 
@@ -40,6 +43,10 @@ void fill_buf_single_sample(int ch, int samples, int offset) {
     s8 sample = 0;
     if (ch < 5) {
         sample = (RBYTE(0x80 * RBYTE(S1RAM + 0x40 * ch) + 4 * channel->sample_pos) << 2) ^ 0x80;
+    } else {
+        int bit = ~(sound_state.noise_shift >> 7);
+        bit ^= sound_state.noise_shift >> noise_bits[(RBYTE(S6EV1) >> 4) & 7];
+        sample = (bit & 1) ? 0x7c : 0x80;
     }
     u32 total = ((left_vol * sample) & 0xffff) | ((right_vol * sample) << 16);
     for (int i = 0; i < samples; i++) {
@@ -59,8 +66,14 @@ void update_buf_with_freq(int ch, int samples) {
         int next_samples = (current_clocks + clocks) / CYCLES_PER_SAMPLE;
         fill_buf_single_sample(ch, next_samples - current_samples, buf_pos + current_samples);
         if ((sound_state.channels[ch].freq_time -= clocks) == 0) {
-            sound_state.channels[ch].sample_pos += 1;
-            sound_state.channels[ch].sample_pos &= 31;
+            if (ch < 5) {
+                sound_state.channels[ch].sample_pos += 1;
+                sound_state.channels[ch].sample_pos &= 31;
+            } else {
+                int bit = ~(sound_state.noise_shift >> 7);
+                bit ^= sound_state.noise_shift >> noise_bits[(RBYTE(S6EV1) >> 4) & 7];
+                sound_state.noise_shift = (sound_state.noise_shift << 1) | (bit & 1);
+            }
             int freq = RBYTE(S1FQL + 0x40 * ch) | (RBYTE(S1FQH + 0x40 * ch) << 8);
             sound_state.channels[ch].freq_time = (2048 - freq) * (ch == 5 ? 40 : 4);
         }
