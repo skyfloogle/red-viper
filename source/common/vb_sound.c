@@ -35,13 +35,13 @@ ndspWaveBuf wavebufs[2];
 void fill_buf_single_sample(int ch, int samples, int offset) {
     ChannelState *channel = &sound_state.channels[ch];
     int lrv = RBYTE(S1LRV + 0x40 * ch);
-    int left_vol = channel->envelope_value * (lrv >> 4);
-    int right_vol = channel->envelope_value * (lrv & 0xf);
+    int left_vol = (channel->envelope_value * (lrv >> 4)) >> 3;
+    int right_vol = (channel->envelope_value * (lrv & 0xf)) >> 3;
     s8 sample = 0;
     if (ch < 5) {
         sample = (RBYTE(0x80 * RBYTE(S1RAM + 0x40 * ch) + 4 * channel->sample_pos) << 2) ^ 0x80;
     }
-    u32 total = ((left_vol * sample) << 16) | (right_vol * sample);
+    u32 total = ((left_vol * sample) & 0xffff) | ((right_vol * sample) << 16);
     for (int i = 0; i < samples; i++) {
         ((u32*)(wavebufs[fill_buf].data_pcm16))[offset + i] += total;
     }
