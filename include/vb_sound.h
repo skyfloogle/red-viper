@@ -66,7 +66,7 @@
 
 void sound_init();
 void sound_update(int cycles);
-void sound_write(int addr);
+void sound_write(int addr, u16 val);
 void sound_close();
 void sound_enable();
 void sound_disable();

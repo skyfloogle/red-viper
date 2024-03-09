@@ -15,7 +15,7 @@ typedef struct {
     u8 shutoff_time, envelope_time, envelope_value, sample_pos;
     u16 freq_time;
 } ChannelState;
-struct {
+static struct {
     ChannelState channels[6];
     bool modulation_enabled;
     u8 modulation_counter;
@@ -27,9 +27,11 @@ struct {
     s8 shutoff_divider, envelope_divider;
 } sound_state;
 
-uint8_t fill_buf = 0;
-uint16_t buf_pos = 0;
-ndspWaveBuf wavebufs[2];
+static int constant_sample[5] = {-1, -1, -1, -1, -1};
+
+static uint8_t fill_buf = 0;
+static uint16_t buf_pos = 0;
+static ndspWaveBuf wavebufs[2];
 
 static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
 
@@ -39,7 +41,7 @@ static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
     (2048 - (ch != 4 ? GET_FREQ(ch) : sound_state.sweep_frequency)) \
     * (ch == 5 ? 40 : 4))
 
-void fill_buf_single_sample(int ch, int samples, int offset) {
+static void fill_buf_single_sample(int ch, int samples, int offset) {
     ChannelState *channel = &sound_state.channels[ch];
     int lrv = RBYTE(S1LRV + 0x40 * ch);
     int left_vol = (channel->envelope_value * (lrv >> 4)) >> 3;
@@ -58,15 +60,19 @@ void fill_buf_single_sample(int ch, int samples, int offset) {
     }
 }
 
-void update_buf_with_freq(int ch, int samples) {
+static void update_buf_with_freq(int ch, int samples) {
     if (!(RBYTE(S1INT + 0x40 * ch) & 0x80)) return;
     if (sound_state.channels[ch].envelope_value == 0) return;
     int total_clocks = samples * CYCLES_PER_SAMPLE;
     int current_clocks = 0;
+    int freq_time = GET_FREQ_TIME(ch);
     while (current_clocks < total_clocks) {
         int clocks = total_clocks - current_clocks;
-        if (clocks > sound_state.channels[ch].freq_time)
-            clocks = sound_state.channels[ch].freq_time;
+        // optimization for constant samples
+        if (ch < 5 && constant_sample[RBYTE(S1RAM + 0x40 * ch)] < 0) {
+            if (clocks > sound_state.channels[ch].freq_time)
+                clocks = sound_state.channels[ch].freq_time;
+        }
         int current_samples = current_clocks / CYCLES_PER_SAMPLE;
         int next_samples = (current_clocks + clocks) / CYCLES_PER_SAMPLE;
         fill_buf_single_sample(ch, next_samples - current_samples, buf_pos + current_samples);
@@ -79,7 +85,7 @@ void update_buf_with_freq(int ch, int samples) {
                 bit ^= sound_state.noise_shift >> noise_bits[(RBYTE(S6EV1) >> 4) & 7];
                 sound_state.noise_shift = (sound_state.noise_shift << 1) | (bit & 1);
             }
-            sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
+            sound_state.channels[ch].freq_time = freq_time;
         }
         current_clocks += clocks;
     }
@@ -177,7 +183,8 @@ void sound_update(int cycles) {
     }
 }
 
-void sound_write(int addr) {
+// technically always u8 but gotta pass u16 because otherwise optimizations break everything
+void sound_write(int addr, u16 data) {
     int ch = (addr >> 6) & 7;
     if ((addr & 0x3f) == (S1INT & 0x3f)) {
         int data = RBYTE(addr);
@@ -199,10 +206,20 @@ void sound_write(int addr) {
             sound_state.noise_shift = 0;
         }
     } else if ((addr & 0x3f) == (S1EV0 & 0x3f)) {
-        sound_state.channels[ch].envelope_value = RBYTE(addr) >> 4;
+        sound_state.channels[ch].envelope_value = (data >> 4) & 0xf;
     } else if (addr == S6EV1) {
         sound_state.noise_shift = 0;
+    } else if (addr < 0x01000280) {
+        int sample = (addr >> 7) & 7;
+        constant_sample[sample] = RBYTE(0x80 * sample);
+        for (int i = 1; i < 32; i++) {
+            if (RBYTE(0x80 * sample + 4 * i) != constant_sample[sample]) {
+                constant_sample[sample] = -1;
+                break;
+            }
+        }
     }
+    sound_update(v810_state->cycles);
 }
 
 void sound_init() {

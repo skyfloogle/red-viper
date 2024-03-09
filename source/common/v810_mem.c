@@ -227,7 +227,7 @@ void mem_wbyte(WORD addr, BYTE data) {
         if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
             //~ dtprintf(0,ferr,"\nWrite BYTE  [%08x]:%02x  //SoundRam",addr,data);
             ((BYTE *)(V810_SOUND_RAM.off + addr))[0] = data;
-            sound_write(addr);
+            sound_write(addr, data & 0xff);
         }
         break;
     case 0x5000000:
@@ -304,7 +304,7 @@ void mem_whword(WORD addr, HWORD data) {
         if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
             //~ dtprintf(0,ferr,"\nWrite HWORD [%08x]:%04x  //SoundRam",addr,data);
             ((HWORD *)(V810_SOUND_RAM.off + addr))[0] = data;
-            sound_write(addr);
+            sound_write(addr, data & 0xff);
         }
         break;
     case 0x5000000:
@@ -381,7 +381,7 @@ void mem_wword(WORD addr, WORD data) {
         if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
             //~ dtprintf(0,ferr,"\nWrite WORD  [%08x]:%08x  //SoundRam",addr,data);
             ((WORD *)(V810_SOUND_RAM.off + addr))[0] = data;
-            sound_write(addr);
+            sound_write(addr, data & 0xff);
         }
         break;
     case 0x5000000:
