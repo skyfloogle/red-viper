@@ -34,7 +34,7 @@ ndspWaveBuf wavebufs[2];
 static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
 
 #define RBYTE(x) (V810_SOUND_RAM.pmemory[(x) & 0xFFF])
-#define GET_FREQ(ch) ((RBYTE(S1FQL + 0x40 * ch) | (RBYTE(S1FQL + 0x40 * ch) << 8)) & 0x7ff)
+#define GET_FREQ(ch) ((RBYTE(S1FQL + 0x40 * ch) | (RBYTE(S1FQH + 0x40 * ch) << 8)) & 0x7ff)
 #define GET_FREQ_TIME(ch) ( \
     (2048 - (ch != 4 ? GET_FREQ(ch) : sound_state.sweep_frequency)) \
     * (ch == 5 ? 40 : 4))
@@ -99,7 +99,6 @@ void sound_update(int cycles) {
         }
         if ((sound_state.effect_time -= samples) == 0) {
             sound_state.effect_time = 48;
-            goto effects_done;
             // sweep
             if (sound_state.modulation_enabled && (RBYTE(S5INT) & 0x80)) {
                 int env = RBYTE(S5EV1);
@@ -178,8 +177,8 @@ void sound_update(int cycles) {
 }
 
 void sound_write(int addr) {
+    int ch = (addr >> 6) & 7;
     if ((addr & 0x3f) == (S1INT & 0x3f)) {
-        int ch = (addr >> 6) & 7;
         int data = RBYTE(addr);
         sound_state.channels[ch].shutoff_time = data & 0x1f;
         sound_state.channels[ch].sample_pos = 0;
@@ -198,6 +197,8 @@ void sound_write(int addr) {
         } else if (ch == 6) {
             sound_state.noise_shift = 0;
         }
+    } else if ((addr & 0x3f) == (S1EV0 & 0x3f)) {
+        sound_state.channels[ch].envelope_value = RBYTE(addr) >> 4;
     } else if (addr == S6EV1) {
         sound_state.noise_shift = 0;
     }
