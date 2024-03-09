@@ -41,6 +41,7 @@ void setDefaults(void) {
     tVBOpt.TOUCH_PADX = 240;
     tVBOpt.TOUCH_PADY = 128;
     tVBOpt.ABXY_MODE = 0;
+    tVBOpt.ZLZR_MODE = 0;
     tVBOpt.TINT = 0xff0000ff;
     tVBOpt.SLIDERMODE = SLIDER_3DS;
     tVBOpt.DEFAULT_EYE = 0;
@@ -74,6 +75,8 @@ void setDefaults(void) {
 
     vbkey[__builtin_ctz(KEY_L)] = VB_KEY_L;
     vbkey[__builtin_ctz(KEY_R)] = VB_KEY_R;
+    vbkey[__builtin_ctz(KEY_ZL)] = VB_KEY_B;
+    vbkey[__builtin_ctz(KEY_ZR)] = VB_KEY_A;
 #endif
 }
 
@@ -96,6 +99,8 @@ static int handler(void* user, const char* section, const char* name,
         strcpy(pconfig->ROM_PATH, value);
     } else if (MATCH("vbopt", "abxy")) {
         pconfig->ABXY_MODE = atoi(value) % 6;
+    } else if (MATCH("vbopt", "zlzr")) {
+        pconfig->ZLZR_MODE = atoi(value) % 4;
     } else if (MATCH("touch", "ax")) {
         tVBOpt.TOUCH_AX = atoi(value);
     } else if (MATCH("touch", "ay")) {
@@ -134,6 +139,7 @@ int saveFileOptions(void) {
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
     fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH ? tVBOpt.ROM_PATH : "");
     fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
+    fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
     fprintf(f, "[touch]\n");
     fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
     fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);
