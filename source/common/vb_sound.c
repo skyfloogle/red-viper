@@ -18,7 +18,6 @@ typedef struct {
 struct {
     ChannelState channels[6];
     bool modulation_enabled;
-    s8 modulation_values[32];
     u8 modulation_counter;
     s8 sweep_time;
     s16 sweep_frequency;
@@ -35,7 +34,10 @@ ndspWaveBuf wavebufs[2];
 static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
 
 #define RBYTE(x) (V810_SOUND_RAM.pmemory[(x) & 0xFFF])
-#define GET_FREQ(ch) (RBYTE(S1FQL + 0x40 * ch) | (RBYTE(S1FQL + 0x40 * ch) << 8))
+#define GET_FREQ(ch) ((RBYTE(S1FQL + 0x40 * ch) | (RBYTE(S1FQL + 0x40 * ch) << 8)) & 0x7ff)
+#define GET_FREQ_TIME(ch) ( \
+    (2048 - (ch != 4 ? GET_FREQ(ch) : sound_state.sweep_frequency)) \
+    * (ch == 5 ? 40 : 4))
 
 void fill_buf_single_sample(int ch, int samples, int offset) {
     ChannelState *channel = &sound_state.channels[ch];
@@ -76,8 +78,7 @@ void update_buf_with_freq(int ch, int samples) {
                 bit ^= sound_state.noise_shift >> noise_bits[(RBYTE(S6EV1) >> 4) & 7];
                 sound_state.noise_shift = (sound_state.noise_shift << 1) | (bit & 1);
             }
-            int freq = ch != 4 ? GET_FREQ(ch) : sound_state.sweep_frequency;
-            sound_state.channels[ch].freq_time = (2048 - freq) * (ch == 5 ? 40 : 4);
+            sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
         }
         current_clocks += clocks;
     }
@@ -94,11 +95,11 @@ void sound_update(int cycles) {
             samples = sound_state.effect_time;
         memset(wavebufs[fill_buf].data_pcm16 + buf_pos * 2, 0, sizeof(s16) * samples * 2);
         for (int i = 0; i < 6; i++) {
-            sound_state.channels[i].envelope_value = RBYTE(S1EV0 + 0x40 * i) >> 4;
             update_buf_with_freq(i, samples);
         }
         if ((sound_state.effect_time -= samples) == 0) {
             sound_state.effect_time = 48;
+            goto effects_done;
             // sweep
             if (sound_state.modulation_enabled && (RBYTE(S5INT) & 0x80)) {
                 int env = RBYTE(S5EV1);
@@ -109,7 +110,7 @@ void sound_update(int cycles) {
                     if (sound_state.sweep_time != 0) {
                         if (env & 0x10) {
                             // modulation
-                            sound_state.sweep_frequency = GET_FREQ(5) + sound_state.modulation_values[sound_state.modulation_counter++];
+                            sound_state.sweep_frequency = GET_FREQ(5) + RBYTE(MODDATA + 4 * sound_state.modulation_counter++);
                             if (sound_state.modulation_counter >= 32) {
                                 if (env & 0x20) {
                                     // repeat
@@ -176,6 +177,31 @@ void sound_update(int cycles) {
     }
 }
 
+void sound_write(int addr) {
+    if ((addr & 0x3f) == (S1INT & 0x3f)) {
+        int ch = (addr >> 6) & 7;
+        int data = RBYTE(addr);
+        sound_state.channels[ch].shutoff_time = data & 0x1f;
+        sound_state.channels[ch].sample_pos = 0;
+        sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
+        int ev0 = RBYTE(S1EV0 + 0x40 * ch);
+        sound_state.channels[ch].envelope_value = ev0 >> 4;
+        sound_state.channels[ch].envelope_time = ev0 & 7;
+        if (ch == 5 && (RBYTE(S5EV1) & 0x40)) {
+            // sweep/modulation
+            int swp = RBYTE(S5SWP);
+            int interval = (swp >> 4) & 7;
+            sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
+            sound_state.sweep_frequency = GET_FREQ(5);
+            sound_state.modulation_enabled = true;
+            sound_state.modulation_counter = 0;
+        } else if (ch == 6) {
+            sound_state.noise_shift = 0;
+        }
+    } else if (addr == S6EV1) {
+        sound_state.noise_shift = 0;
+    }
+}
 
 void sound_init() {
     if (ndspInit()) {
