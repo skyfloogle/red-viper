@@ -29,9 +29,9 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
-static C2D_Text text_A, text_B, text_switch, text_saving, text_on, text_off,
-                text_toggle, text_hold, text_3ds, text_vbipd, text_left, text_right,
-                text_sound_error, text_anykeyexit, text_about;
+static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_L, text_btn_R, text_switch,
+                text_saving, text_on, text_off, text_toggle, text_hold, text_3ds, text_vbipd,
+                text_left, text_right, text_sound_error, text_anykeyexit, text_about;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
@@ -456,9 +456,16 @@ static void rom_loader() {
 }
 
 static void controls() {
-    bool pressed = false;
+    bool shoulder_pressed = false;
+    bool face_pressed = false;
+    bool new_3ds = false;
+    APT_CheckNew3DS(&new_3ds);
+    const int SHOULDX = 160;
+    const int SHOULDY = 0;
+    const int SHOULDW = 128;
+    const int SHOULDH = 40;
     const int FACEX = 160;
-    const int FACEY = 80;
+    const int FACEY = new_3ds ? 92 : 80;
     const int FACEW = 128;
     const int FACEH = 80;
     const int OFFSET = 22;
@@ -467,28 +474,42 @@ static void controls() {
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
         if (hidKeysHeld() & KEY_TOUCH) {
-            if (touch_pos.px >= FACEX - FACEW/2 && touch_pos.px < FACEX + FACEW/2 && touch_pos.py >= FACEY - FACEH/2 && touch_pos.py < FACEY + FACEH/2) {
+            if (new_3ds && touch_pos.px >= SHOULDX - SHOULDW/2 && touch_pos.px < SHOULDX + SHOULDW/2 && touch_pos.py <= SHOULDH) {
                 if (hidKeysDown() & KEY_TOUCH) {
-                    pressed = true;
+                    shoulder_pressed = true;
                 }
-            } else {
-                pressed = false;
+            } else if (touch_pos.px >= FACEX - FACEW/2 && touch_pos.px < FACEX + FACEW/2 && touch_pos.py >= FACEY - FACEH/2 && touch_pos.py < FACEY + FACEH/2) {
+                if (hidKeysDown() & KEY_TOUCH) {
+                    face_pressed = true;
+                }
+            } else  {
+                shoulder_pressed = false;
+                face_pressed = false;
             }
-        } else if (pressed) {
+        } else if (shoulder_pressed) {
+            changed = true;
+            tVBOpt.ZLZR_MODE = (tVBOpt.ZLZR_MODE + 1) % 4;
+            shoulder_pressed = false;
+            setTouchControls(buttons_on_screen);
+        } else if (face_pressed) {
             changed = true;
             tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 6;
-            pressed = false;
+            face_pressed = false;
             setTouchControls(buttons_on_screen);
         }
-        C2D_DrawRectSolid(FACEX - FACEW/2, FACEY - FACEH/2, 0, FACEW, FACEH, pressed ? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255) : C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
-        C2D_DrawCircleSolid(FACEX + OFFSET, FACEY, 0, 12, C2D_Color32(0, 0, 0, 192));
-        C2D_DrawCircleSolid(FACEX - OFFSET, FACEY, 0, 12, C2D_Color32(0, 0, 0, 192));
-        C2D_DrawCircleSolid(FACEX, FACEY + OFFSET, 0, 12, C2D_Color32(0, 0, 0, 192));
-        C2D_DrawCircleSolid(FACEX, FACEY - OFFSET, 0, 12, C2D_Color32(0, 0, 0, 192));
-        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 5 ? &text_A : &text_B, C2D_AlignCenter | C2D_WithColor, FACEX, FACEY - OFFSET - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
-        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 4 ? &text_B : &text_A, C2D_AlignCenter | C2D_WithColor, FACEX, FACEY + OFFSET - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
-        C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 5 ? &text_B : &text_A, C2D_AlignCenter | C2D_WithColor, FACEX - OFFSET, FACEY - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
-        C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 4 ? &text_A : &text_B, C2D_AlignCenter | C2D_WithColor, FACEX + OFFSET, FACEY - 8, 0, 0.5, 0.5, C2D_Color32(255, 255, 255, 255));
+        if (new_3ds) {
+            C2D_DrawRectSolid(SHOULDX - SHOULDW/2, SHOULDY, 0, SHOULDW, SHOULDH, shoulder_pressed ? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255) : C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+            // Shifting the draw x offset by 0.5 is a workaround for a Citro2D text rendering bug; it's being done to the (3DS) L, R, A, B, X, Y buttons here
+            C2D_DrawText(tVBOpt.ZLZR_MODE <= 1 ? &text_btn_L : tVBOpt.ZLZR_MODE <= 2 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, SHOULDX - OFFSET*2 - 0.5, SHOULDY + 5, 0, 1, 1);
+            C2D_DrawText(tVBOpt.ZLZR_MODE >= 2 ? &text_btn_L : tVBOpt.ZLZR_MODE == 0 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, SHOULDX - OFFSET*0.75, SHOULDY + 5, 0, 1, 1);
+            C2D_DrawText(tVBOpt.ZLZR_MODE >= 2 ? &text_btn_R : tVBOpt.ZLZR_MODE == 0 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, SHOULDX + OFFSET*0.75, SHOULDY + 5, 0, 1, 1);
+            C2D_DrawText(tVBOpt.ZLZR_MODE <= 1 ? &text_btn_R : tVBOpt.ZLZR_MODE <= 2 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, SHOULDX + OFFSET*2 + 0.5, SHOULDY + 5, 0, 1, 1);
+        }
+        C2D_DrawRectSolid(FACEX - FACEW/2, FACEY - FACEH/2, 0, FACEW, FACEH, face_pressed ? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255) : C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 5 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, FACEX - 0.5, FACEY - OFFSET - 16, 0, 1, 1);
+        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 4 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, FACEX - 0.5, FACEY + OFFSET - 16, 0, 1, 1);
+        C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 5 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, FACEX - OFFSET - 0.5, FACEY - 16, 0, 1, 1);
+        C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 4 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, FACEX + OFFSET - 0.5, FACEY - 16, 0, 1, 1);
     LOOP_END(controls_buttons);
     if (changed) saveFileOptions();
     switch (button) {
@@ -915,6 +936,14 @@ void guiInit() {
     C2D_TextOptimize(&text_A);
     C2D_TextParse(&text_B, static_textbuf, "B");
     C2D_TextOptimize(&text_B);
+    C2D_TextParse(&text_btn_A, static_textbuf, "\uE000");
+    C2D_TextOptimize(&text_btn_A);
+    C2D_TextParse(&text_btn_B, static_textbuf, "\uE001");
+    C2D_TextOptimize(&text_btn_B);
+    C2D_TextParse(&text_btn_L, static_textbuf, "\uE004");
+    C2D_TextOptimize(&text_btn_L);
+    C2D_TextParse(&text_btn_R, static_textbuf, "\uE005");
+    C2D_TextOptimize(&text_btn_R);
     C2D_TextParse(&text_switch, static_textbuf, "Switch");
     C2D_TextOptimize(&text_switch);
     C2D_TextParse(&text_saving, static_textbuf, "Saving...");
@@ -1004,6 +1033,14 @@ void setTouchControls(bool buttons) {
         vbkey[__builtin_ctz(KEY_Y)] = tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 5 ? VB_KEY_B : VB_KEY_A;
         vbkey[__builtin_ctz(KEY_B)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 4 ? VB_KEY_B : VB_KEY_A;
         vbkey[__builtin_ctz(KEY_X)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 5 ? VB_KEY_A : VB_KEY_B;
+    }
+    bool new_3ds = false;
+    APT_CheckNew3DS(&new_3ds);
+    if (new_3ds) {
+        vbkey[__builtin_ctz(KEY_L)] = tVBOpt.ZLZR_MODE <= 1 ? VB_KEY_L : tVBOpt.ZLZR_MODE == 2 ? VB_KEY_B : VB_KEY_A;
+        vbkey[__builtin_ctz(KEY_R)] = tVBOpt.ZLZR_MODE <= 1 ? VB_KEY_R : tVBOpt.ZLZR_MODE == 2 ? VB_KEY_A : VB_KEY_B;
+        vbkey[__builtin_ctz(KEY_ZL)] = tVBOpt.ZLZR_MODE == 0 ? VB_KEY_B : tVBOpt.ZLZR_MODE == 1 ? VB_KEY_A : VB_KEY_L;
+        vbkey[__builtin_ctz(KEY_ZR)] = tVBOpt.ZLZR_MODE == 0 ? VB_KEY_A : tVBOpt.ZLZR_MODE == 1 ? VB_KEY_B : VB_KEY_R;
     }
 }
 
