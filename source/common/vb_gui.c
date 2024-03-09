@@ -307,8 +307,8 @@ int options_sound(void) {
     tVBOpt.SOUND = !tVBOpt.SOUND;
     printf("Sound %s\n", tVBOpt.SOUND ? "enabled" : "disabled");
 
-    if (tVBOpt.SOUND) sound_enable();
-    else sound_disable();
+    //if (tVBOpt.SOUND) sound_enable();
+    //else sound_disable();
 
     waitForInput();
 
