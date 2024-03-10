@@ -54,13 +54,13 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
         if (lrv & 0xf0) left_vol++;
         if (lrv & 0x0f) right_vol++;
     }
-    s8 sample = 0;
+    u8 sample;
     if (ch < 5) {
-        sample = (SNDMEM(0x80 * SNDMEM(S1RAM + 0x40 * ch) + 4 * channel->sample_pos) << 2) ^ 0x80;
+        sample = (SNDMEM(0x80 * SNDMEM(S1RAM + 0x40 * ch) + 4 * channel->sample_pos) << 2);
     } else {
         int bit = ~(sound_state.noise_shift >> 7);
         bit ^= sound_state.noise_shift >> noise_bits[(SNDMEM(S6EV1) >> 4) & 7];
-        sample = (bit & 1) ? 0x7c : 0x80;
+        sample = (bit & 1) ? 0x7c : 0x00;
     }
     u32 total = ((left_vol * sample) & 0xffff) | ((right_vol * sample) << 16);
     for (int i = 0; i < samples; i++) {
