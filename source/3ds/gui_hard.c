@@ -1219,15 +1219,14 @@ static bool shouldRedrawMenu = true;
 void openMenu() {
     shouldRedrawMenu = true;
     if (game_running) {
+        sound_pause();
         save_sram();
-        if (tVBOpt.SOUND)
-            ndspSetMasterVol(0.0);
     }
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     main_menu(MAIN_MENU_LOAD_ROM);
-    if (game_running && tVBOpt.SOUND)
-        ndspSetMasterVol(1.0);
+    if (guiop == 0) sound_resume();
+    else sound_reset();
 }
 
 bool backlightEnabled = true;

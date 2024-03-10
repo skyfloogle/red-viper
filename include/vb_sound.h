@@ -68,7 +68,8 @@ void sound_init();
 void sound_update(u32 cycles);
 void sound_write(int addr, u16 val);
 void sound_close();
-void sound_enable();
-void sound_disable();
+void sound_pause();
+void sound_resume();
+void sound_reset();
 
 #endif //VB_SOUND_H_

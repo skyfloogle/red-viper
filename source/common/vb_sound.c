@@ -34,6 +34,8 @@ static uint8_t fill_buf = 0;
 static uint16_t buf_pos = 0;
 static ndspWaveBuf wavebufs[BUF_COUNT];
 
+static volatile bool paused = false;
+
 static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
 
 #define RBYTE(x) (V810_SOUND_RAM.pmemory[(x) & 0xFFF])
@@ -69,6 +71,7 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
 static void update_buf_with_freq(int ch, int samples) {
     if (!(RBYTE(S1INT + 0x40 * ch) & 0x80)) return;
     if (sound_state.channels[ch].envelope_value == 0) return;
+    if (!tVBOpt.SOUND) return;
     int total_clocks = samples * CYCLES_PER_SAMPLE;
     int current_clocks = 0;
     int freq_time = GET_FREQ_TIME(ch);
@@ -246,6 +249,7 @@ void sound_write(int addr, u16 data) {
 }
 
 void sound_callback(void *data) {
+    if (paused) return;
     int last_buf = (fill_buf + BUF_COUNT - 1) % BUF_COUNT;
     if (wavebufs[last_buf].status == NDSP_WBUF_DONE) {
         // uh oh, we're running out so repeat the last buf
@@ -281,4 +285,21 @@ void sound_init() {
 void sound_close() {
     for (int i = 0; i < BUF_COUNT; i++) linearFree(wavebufs[i].data_pcm16);
     ndspExit();
+}
+
+void sound_pause() {
+    paused = true;
+    ndspChnWaveBufClear(0);
+}
+
+void sound_resume() {
+    paused = false;
+}
+
+void sound_reset() {
+    memset(&sound_state, 0, sizeof(sound_state));
+    for (int i = 0; i < BUF_COUNT; i++) {
+        memset(wavebufs[i].data_pcm16, 0, SAMPLE_COUNT * 4);
+    }
+    paused = false;
 }
