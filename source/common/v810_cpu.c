@@ -398,7 +398,6 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             pending_int = 1;
 
             sound_update(cycles);
-            sound_flush();
         }
     }
 

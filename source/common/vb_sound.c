@@ -100,11 +100,11 @@ static void update_buf_with_freq(int ch, int samples) {
 void sound_update(u32 cycles) {
     int remaining_samples = (cycles - sound_state.last_cycles) / CYCLES_PER_SAMPLE;
     if (remaining_samples <= 0) return;
-    if (remaining_samples > SAMPLE_COUNT - buf_pos)
-        remaining_samples = SAMPLE_COUNT - buf_pos;
     sound_state.last_cycles += remaining_samples * CYCLES_PER_SAMPLE;
     while (remaining_samples > 0) {
         int samples = remaining_samples;
+        if (samples > SAMPLE_COUNT - buf_pos)
+            samples = SAMPLE_COUNT - buf_pos;
         if (samples > sound_state.effect_time)
             samples = sound_state.effect_time;
         memset(wavebufs[fill_buf].data_pcm16 + buf_pos * 2, 0, sizeof(s16) * samples * 2);
@@ -187,6 +187,15 @@ void sound_update(u32 cycles) {
         effects_done:
         buf_pos += samples;
         remaining_samples -= samples;
+        if (buf_pos == SAMPLE_COUNT) {
+            // push
+            if (wavebufs[fill_buf].status == NDSP_WBUF_DONE) {
+                DSP_FlushDataCache(wavebufs[fill_buf].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
+                ndspChnWaveBufAdd(0, &wavebufs[fill_buf]);
+                fill_buf = (fill_buf + 1) % BUF_COUNT;
+            }
+            buf_pos = 0;
+        }
     }
 }
 
@@ -267,15 +276,6 @@ void sound_init() {
         wavebufs[i].nsamples = SAMPLE_COUNT;
         ndspChnWaveBufAdd(0, &wavebufs[i]);
     }
-}
-
-void sound_flush() {
-    if (wavebufs[fill_buf].status == NDSP_WBUF_DONE) {
-        DSP_FlushDataCache(wavebufs[fill_buf].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
-        ndspChnWaveBufAdd(0, &wavebufs[fill_buf]);
-        fill_buf = (fill_buf + 1) % BUF_COUNT;
-    }
-    buf_pos = 0;
 }
 
 void sound_close() {

@@ -70,6 +70,5 @@ void sound_write(int addr, u16 val);
 void sound_close();
 void sound_enable();
 void sound_disable();
-void sound_flush();
 
 #endif //VB_SOUND_H_
