@@ -91,8 +91,9 @@ static void update_buf_with_freq(int ch, int samples) {
     }
 }
 
-void sound_update(int cycles) {
+void sound_update(u32 cycles) {
     int remaining_samples = (cycles - sound_state.last_cycles) / CYCLES_PER_SAMPLE;
+    if (remaining_samples <= 0) return;
     if (remaining_samples + buf_pos > SAMPLE_COUNT)
         remaining_samples = SAMPLE_COUNT - buf_pos;
     sound_state.last_cycles += remaining_samples * CYCLES_PER_SAMPLE;
@@ -186,7 +187,18 @@ void sound_update(int cycles) {
 // technically always u8 but gotta pass u16 because otherwise optimizations break everything
 void sound_write(int addr, u16 data) {
     int ch = (addr >> 6) & 7;
-    if ((addr & 0x3f) == (S1INT & 0x3f)) {
+    if (addr < 0x01000280) {
+        int sample = (addr >> 7) & 7;
+        constant_sample[sample] = RBYTE(0x80 * sample);
+        for (int i = 1; i < 32; i++) {
+            if (RBYTE(0x80 * sample + 4 * i) != constant_sample[sample]) {
+                constant_sample[sample] = -1;
+                break;
+            }
+        }
+    } else if (addr < 0x01000400) {
+        // ignore
+    } else if ((addr & 0x3f) == (S1INT & 0x3f)) {
         int data = RBYTE(addr);
         sound_state.channels[ch].shutoff_time = data & 0x1f;
         sound_state.channels[ch].sample_pos = 0;
@@ -209,17 +221,7 @@ void sound_write(int addr, u16 data) {
         sound_state.channels[ch].envelope_value = (data >> 4) & 0xf;
     } else if (addr == S6EV1) {
         sound_state.noise_shift = 0;
-    } else if (addr < 0x01000280) {
-        int sample = (addr >> 7) & 7;
-        constant_sample[sample] = RBYTE(0x80 * sample);
-        for (int i = 1; i < 32; i++) {
-            if (RBYTE(0x80 * sample + 4 * i) != constant_sample[sample]) {
-                constant_sample[sample] = -1;
-                break;
-            }
-        }
     }
-    sound_update(v810_state->cycles);
 }
 
 void sound_init() {
@@ -249,8 +251,8 @@ void sound_flush() {
         DSP_FlushDataCache(wavebufs[fill_buf].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
         ndspChnWaveBufAdd(0, &wavebufs[fill_buf]);
         fill_buf = !fill_buf;
-        buf_pos = 0;
     }
+    buf_pos = 0;
 }
 
 void sound_close() {

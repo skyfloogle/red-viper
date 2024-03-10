@@ -65,7 +65,7 @@
 #define SSTOP 0x01000580
 
 void sound_init();
-void sound_update(int cycles);
+void sound_update(u32 cycles);
 void sound_write(int addr, u16 val);
 void sound_close();
 void sound_enable();
