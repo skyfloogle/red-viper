@@ -1564,6 +1564,9 @@ static int drc_translateBlock() {
                 HANDLEINT(inst_cache[i + 1].PC);
             } else if (cycles != 0 && inst_cache[i + 1].is_branch_target) {
                 ADDCYCLES();
+            } else if (inst_cache[i + 1].PC > (0xfffffe00 & V810_ROM1.highaddr) && !(inst_cache[i + 1].PC & 0xf)) {
+                // potential interrupt handler coming up
+                ADDCYCLES();
             }
         }
 
