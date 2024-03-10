@@ -10,6 +10,7 @@
 #define SAMPLE_RATE 50000
 #define CYCLES_PER_SAMPLE (20000000 / SAMPLE_RATE)
 #define SAMPLE_COUNT (SAMPLE_RATE / 50)
+#define BUF_COUNT 4
 
 typedef struct {
     u8 shutoff_time, envelope_time, envelope_value, sample_pos;
@@ -31,7 +32,7 @@ static int constant_sample[5] = {-1, -1, -1, -1, -1};
 
 static uint8_t fill_buf = 0;
 static uint16_t buf_pos = 0;
-static ndspWaveBuf wavebufs[2];
+static ndspWaveBuf wavebufs[BUF_COUNT];
 
 static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
 
@@ -99,7 +100,7 @@ static void update_buf_with_freq(int ch, int samples) {
 void sound_update(u32 cycles) {
     int remaining_samples = (cycles - sound_state.last_cycles) / CYCLES_PER_SAMPLE;
     if (remaining_samples <= 0) return;
-    if (remaining_samples + buf_pos > SAMPLE_COUNT)
+    if (remaining_samples > SAMPLE_COUNT - buf_pos)
         remaining_samples = SAMPLE_COUNT - buf_pos;
     sound_state.last_cycles += remaining_samples * CYCLES_PER_SAMPLE;
     while (remaining_samples > 0) {
@@ -235,6 +236,17 @@ void sound_write(int addr, u16 data) {
     sound_update(v810_state->cycles);
 }
 
+void sound_callback(void *data) {
+    int last_buf = (fill_buf + BUF_COUNT - 1) % BUF_COUNT;
+    if (wavebufs[last_buf].status == NDSP_WBUF_DONE) {
+        // uh oh, we're running out so repeat the last buf
+        for (int buf = fill_buf + 1; (buf %= BUF_COUNT) != fill_buf; buf++) {
+            memcpy(wavebufs[buf].data_pcm16, wavebufs[last_buf].data_pcm16, SAMPLE_COUNT * 4);
+            ndspChnWaveBufAdd(0, &wavebufs[buf]);
+        }
+    }
+}
+
 void sound_init() {
     if (ndspInit()) {
         showSoundError();
@@ -246,14 +258,14 @@ void sound_init() {
     ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
     ndspChnSetInterp(0, NDSP_INTERP_NONE);
     ndspChnSetRate(0, SAMPLE_RATE);
+    ndspSetCallback(sound_callback, NULL);
     float mix[12] = {[0] = 1, [1] = 1};
     ndspChnSetMix(0, mix);
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < BUF_COUNT; i++) {
         memset(&wavebufs[i], 0, sizeof(wavebufs[i]));
         wavebufs[i].data_pcm16 = linearAlloc(sizeof(s16) * SAMPLE_COUNT * 2);
         wavebufs[i].nsamples = SAMPLE_COUNT;
-        // force it to play the first time
-        wavebufs[i].status = NDSP_WBUF_DONE;
+        ndspChnWaveBufAdd(0, &wavebufs[i]);
     }
 }
 
@@ -261,12 +273,12 @@ void sound_flush() {
     if (wavebufs[fill_buf].status == NDSP_WBUF_DONE) {
         DSP_FlushDataCache(wavebufs[fill_buf].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
         ndspChnWaveBufAdd(0, &wavebufs[fill_buf]);
-        fill_buf = !fill_buf;
+        fill_buf = (fill_buf + 1) % BUF_COUNT;
     }
     buf_pos = 0;
 }
 
 void sound_close() {
-    for (int i = 0; i < 2; i++) linearFree(wavebufs[i].data_pcm16);
+    for (int i = 0; i < BUF_COUNT; i++) linearFree(wavebufs[i].data_pcm16);
     ndspExit();
 }
