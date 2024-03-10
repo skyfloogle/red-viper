@@ -222,6 +222,7 @@ void sound_write(int addr, u16 data) {
     } else if (addr == S6EV1) {
         sound_state.noise_shift = 0;
     }
+    sound_update(v810_state->cycles);
 }
 
 void sound_init() {
