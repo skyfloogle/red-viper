@@ -13,7 +13,7 @@
 
 typedef struct {
     u8 shutoff_time, envelope_time, envelope_value, sample_pos;
-    u16 freq_time;
+    u32 freq_time;
 } ChannelState;
 static struct {
     ChannelState channels[6];
@@ -46,6 +46,11 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
     int lrv = RBYTE(S1LRV + 0x40 * ch);
     int left_vol = (channel->envelope_value * (lrv >> 4)) >> 3;
     int right_vol = (channel->envelope_value * (lrv & 0xf)) >> 3;
+    if (channel->envelope_value != 0) {
+        // if neither stereo nor envelope is 0, increment amplitude
+        if (lrv & 0xf0) left_vol++;
+        if (lrv & 0x0f) right_vol++;
+    }
     s8 sample = 0;
     if (ch < 5) {
         sample = (RBYTE(0x80 * RBYTE(S1RAM + 0x40 * ch) + 4 * channel->sample_pos) << 2) ^ 0x80;
@@ -69,7 +74,7 @@ static void update_buf_with_freq(int ch, int samples) {
     while (current_clocks < total_clocks) {
         int clocks = total_clocks - current_clocks;
         // optimization for constant samples
-        if (ch < 5 && constant_sample[RBYTE(S1RAM + 0x40 * ch)] < 0) {
+        if (ch == 5 || constant_sample[RBYTE(S1RAM + 0x40 * ch)] < 0) {
             if (clocks > sound_state.channels[ch].freq_time)
                 clocks = sound_state.channels[ch].freq_time;
         }
@@ -199,28 +204,33 @@ void sound_write(int addr, u16 data) {
     } else if (addr < 0x01000400) {
         // ignore
     } else if ((addr & 0x3f) == (S1INT & 0x3f)) {
-        int data = RBYTE(addr);
         sound_state.channels[ch].shutoff_time = data & 0x1f;
         sound_state.channels[ch].sample_pos = 0;
         sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
         int ev0 = RBYTE(S1EV0 + 0x40 * ch);
         sound_state.channels[ch].envelope_value = ev0 >> 4;
         sound_state.channels[ch].envelope_time = ev0 & 7;
-        if (ch == 4 && (RBYTE(S5EV1) & 0x40)) {
-            // sweep/modulation
-            int swp = RBYTE(S5SWP);
-            int interval = (swp >> 4) & 7;
-            sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
+        if (ch == 4) {
             sound_state.sweep_frequency = GET_FREQ(4);
-            sound_state.modulation_enabled = true;
-            sound_state.modulation_counter = 0;
-        } else if (ch == 6) {
+            if (RBYTE(S5EV1) & 0x40) {
+                // sweep/modulation
+                int swp = RBYTE(S5SWP);
+                int interval = (swp >> 4) & 7;
+                sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
+                sound_state.modulation_enabled = true;
+                sound_state.modulation_counter = 0;
+            }
+        } else if (ch == 5) {
             sound_state.noise_shift = 0;
         }
     } else if ((addr & 0x3f) == (S1EV0 & 0x3f)) {
         sound_state.channels[ch].envelope_value = (data >> 4) & 0xf;
     } else if (addr == S6EV1) {
         sound_state.noise_shift = 0;
+    } else if (addr == SSTOP && (data & 1)) {
+        for (int i = 0; i < 6; i++) {
+            sound_state.channels[i].envelope_value = 0;
+        }
     }
     sound_update(v810_state->cycles);
 }
