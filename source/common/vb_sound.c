@@ -240,7 +240,7 @@ void sound_write(int addr, u16 data) {
         sound_state.noise_shift = 0;
     } else if (addr == SSTOP && (data & 1)) {
         for (int i = 0; i < 6; i++) {
-            SNDMEM(S1INT + 0x40 * ch) &= ~0x80;
+            SNDMEM(S1INT + 0x40 * i) &= ~0x80;
         }
     }
     sound_update(v810_state->cycles);
