@@ -38,15 +38,15 @@ static volatile bool paused = false;
 
 static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
 
-#define RBYTE(x) (V810_SOUND_RAM.pmemory[(x) & 0xFFF])
-#define GET_FREQ(ch) ((RBYTE(S1FQL + 0x40 * ch) | (RBYTE(S1FQH + 0x40 * ch) << 8)) & 0x7ff)
+#define SNDMEM(x) (V810_SOUND_RAM.pmemory[(x) & 0xFFF])
+#define GET_FREQ(ch) ((SNDMEM(S1FQL + 0x40 * ch) | (SNDMEM(S1FQH + 0x40 * ch) << 8)) & 0x7ff)
 #define GET_FREQ_TIME(ch) ( \
     (2048 - (ch != 4 ? GET_FREQ(ch) : sound_state.sweep_frequency)) \
     * (ch == 5 ? 40 : 4))
 
 static void fill_buf_single_sample(int ch, int samples, int offset) {
     ChannelState *channel = &sound_state.channels[ch];
-    int lrv = RBYTE(S1LRV + 0x40 * ch);
+    int lrv = SNDMEM(S1LRV + 0x40 * ch);
     int left_vol = (channel->envelope_value * (lrv >> 4)) >> 3;
     int right_vol = (channel->envelope_value * (lrv & 0xf)) >> 3;
     if (channel->envelope_value != 0) {
@@ -56,10 +56,10 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
     }
     s8 sample = 0;
     if (ch < 5) {
-        sample = (RBYTE(0x80 * RBYTE(S1RAM + 0x40 * ch) + 4 * channel->sample_pos) << 2) ^ 0x80;
+        sample = (SNDMEM(0x80 * SNDMEM(S1RAM + 0x40 * ch) + 4 * channel->sample_pos) << 2) ^ 0x80;
     } else {
         int bit = ~(sound_state.noise_shift >> 7);
-        bit ^= sound_state.noise_shift >> noise_bits[(RBYTE(S6EV1) >> 4) & 7];
+        bit ^= sound_state.noise_shift >> noise_bits[(SNDMEM(S6EV1) >> 4) & 7];
         sample = (bit & 1) ? 0x7c : 0x80;
     }
     u32 total = ((left_vol * sample) & 0xffff) | ((right_vol * sample) << 16);
@@ -69,7 +69,7 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
 }
 
 static void update_buf_with_freq(int ch, int samples) {
-    if (!(RBYTE(S1INT + 0x40 * ch) & 0x80)) return;
+    if (!(SNDMEM(S1INT + 0x40 * ch) & 0x80)) return;
     if (sound_state.channels[ch].envelope_value == 0) return;
     if (!tVBOpt.SOUND) return;
     int total_clocks = samples * CYCLES_PER_SAMPLE;
@@ -78,7 +78,7 @@ static void update_buf_with_freq(int ch, int samples) {
     while (current_clocks < total_clocks) {
         int clocks = total_clocks - current_clocks;
         // optimization for constant samples
-        if (ch == 5 || constant_sample[RBYTE(S1RAM + 0x40 * ch)] < 0) {
+        if (ch == 5 || constant_sample[SNDMEM(S1RAM + 0x40 * ch)] < 0) {
             if (clocks > sound_state.channels[ch].freq_time)
                 clocks = sound_state.channels[ch].freq_time;
         }
@@ -91,7 +91,7 @@ static void update_buf_with_freq(int ch, int samples) {
                 sound_state.channels[ch].sample_pos &= 31;
             } else {
                 int bit = ~(sound_state.noise_shift >> 7);
-                bit ^= sound_state.noise_shift >> noise_bits[(RBYTE(S6EV1) >> 4) & 7];
+                bit ^= sound_state.noise_shift >> noise_bits[(SNDMEM(S6EV1) >> 4) & 7];
                 sound_state.noise_shift = (sound_state.noise_shift << 1) | (bit & 1);
             }
             sound_state.channels[ch].freq_time = freq_time;
@@ -117,16 +117,16 @@ void sound_update(u32 cycles) {
         if ((sound_state.effect_time -= samples) == 0) {
             sound_state.effect_time = 48;
             // sweep
-            if (sound_state.modulation_enabled && (RBYTE(S5INT) & 0x80)) {
-                int env = RBYTE(S5EV1);
+            if (sound_state.modulation_enabled && (SNDMEM(S5INT) & 0x80)) {
+                int env = SNDMEM(S5EV1);
                 if ((env & 0x40) && --sound_state.sweep_time < 0) {
-                    int swp = RBYTE(S5SWP);
+                    int swp = SNDMEM(S5SWP);
                     int interval = (swp >> 4) & 7;
                     sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
                     if (sound_state.sweep_time != 0) {
                         if (env & 0x10) {
                             // modulation
-                            sound_state.sweep_frequency = GET_FREQ(4) + RBYTE(MODDATA + 4 * sound_state.modulation_counter++);
+                            sound_state.sweep_frequency = GET_FREQ(4) + SNDMEM(MODDATA + 4 * sound_state.modulation_counter++);
                             if (sound_state.modulation_counter >= 32) {
                                 if (env & 0x20) {
                                     // repeat
@@ -144,8 +144,7 @@ void sound_update(u32 cycles) {
                             else
                                 sound_state.sweep_frequency -= sound_state.sweep_frequency >> shift;
                             if (sound_state.sweep_frequency <= 0 || sound_state.sweep_frequency >= 2048) {
-                                // TODO is this ok?
-                                sound_state.channels[4].envelope_value = 0;
+                                SNDMEM(S5INT) &= ~0x80;
                                 sound_state.modulation_enabled = false;
                             }
                         }
@@ -157,11 +156,10 @@ void sound_update(u32 cycles) {
             if (--sound_state.shutoff_divider >= 0) goto effects_done;
             sound_state.shutoff_divider += 4;
             for (int i = 0; i < 6; i++) {
-                int data = RBYTE(S1INT + 0x40 * i);
+                int data = SNDMEM(S1INT + 0x40 * i);
                 if ((data & 0xa0) == 0xa0) {
                     if ((--sound_state.channels[i].shutoff_time & 0x1f) == 0x1f) {
-                        // TODO is this ok?
-                        sound_state.channels[i].envelope_value = 0;
+                        SNDMEM(S1INT + 0x40 * i) &= ~0x80;
                     }
                 }
             }
@@ -170,10 +168,10 @@ void sound_update(u32 cycles) {
             if (--sound_state.envelope_divider >= 0) goto effects_done;
             sound_state.envelope_divider += 4;
             for (int i = 0; i < 6; i++) {
-                int data1 = RBYTE(S1EV1 + 0x40 * i);
+                int data1 = SNDMEM(S1EV1 + 0x40 * i);
                 if (data1 & 1) {
                     if (--sound_state.channels[i].envelope_time & 8) {
-                        int data0 = RBYTE(S1EV0 + 0x40 * i);
+                        int data0 = SNDMEM(S1EV0 + 0x40 * i);
                         sound_state.channels[i].envelope_time = data0 & 7;
                         sound_state.channels[i].envelope_value += (data0 & 8) ? 1 : -1;
                         if (sound_state.channels[i].envelope_value & 0x10) {
@@ -207,9 +205,9 @@ void sound_write(int addr, u16 data) {
     int ch = (addr >> 6) & 7;
     if (addr < 0x01000280) {
         int sample = (addr >> 7) & 7;
-        constant_sample[sample] = RBYTE(0x80 * sample);
+        constant_sample[sample] = SNDMEM(0x80 * sample);
         for (int i = 1; i < 32; i++) {
-            if (RBYTE(0x80 * sample + 4 * i) != constant_sample[sample]) {
+            if (SNDMEM(0x80 * sample + 4 * i) != constant_sample[sample]) {
                 constant_sample[sample] = -1;
                 break;
             }
@@ -220,14 +218,14 @@ void sound_write(int addr, u16 data) {
         sound_state.channels[ch].shutoff_time = data & 0x1f;
         sound_state.channels[ch].sample_pos = 0;
         sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
-        int ev0 = RBYTE(S1EV0 + 0x40 * ch);
+        int ev0 = SNDMEM(S1EV0 + 0x40 * ch);
         sound_state.channels[ch].envelope_value = ev0 >> 4;
         sound_state.channels[ch].envelope_time = ev0 & 7;
         if (ch == 4) {
             sound_state.sweep_frequency = GET_FREQ(4);
-            if (RBYTE(S5EV1) & 0x40) {
+            if (SNDMEM(S5EV1) & 0x40) {
                 // sweep/modulation
-                int swp = RBYTE(S5SWP);
+                int swp = SNDMEM(S5SWP);
                 int interval = (swp >> 4) & 7;
                 sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
                 sound_state.modulation_enabled = true;
@@ -242,7 +240,7 @@ void sound_write(int addr, u16 data) {
         sound_state.noise_shift = 0;
     } else if (addr == SSTOP && (data & 1)) {
         for (int i = 0; i < 6; i++) {
-            sound_state.channels[i].envelope_value = 0;
+            SNDMEM(S1INT + 0x40 * ch) &= ~0x80;
         }
     }
     sound_update(v810_state->cycles);
