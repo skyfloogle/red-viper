@@ -288,7 +288,7 @@ static void rom_loader() {
         } else {
             // check the file extension
             char *dot = strrchr(dp->d_name, '.');
-            if (dot && strcasecmp(dot, ".vb") == 0) {
+            if (dot && (strcasecmp(dot, ".vb") == 0 || strcasecmp(dot, ".zip") == 0)) {
                 if (fileCount == fileCap) {
                     fileCap *= 2;
                     files = realloc(files, fileCap * sizeof(char*));
