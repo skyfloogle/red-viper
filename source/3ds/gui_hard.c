@@ -855,7 +855,13 @@ static inline int handle_buttons(Button buttons[], int count) {
                 pressed = -1;
             }
         }
+
         if ((hidKeysUp() & KEY_TOUCH) && pressed == i) {
+            ret = i;
+        }
+
+        // move back with the B button
+        if ((hidKeysDown() & KEY_B) && strcmp(buttons[i].str, "Back") == 0) {
             ret = i;
         }
     }
