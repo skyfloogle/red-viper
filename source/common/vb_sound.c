@@ -216,6 +216,10 @@ void sound_write(int addr, u16 data) {
         }
     } else if (addr < 0x01000400) {
         // ignore
+    } else if (addr == SSTOP && (data & 1)) {
+        for (int i = 0; i < 6; i++) {
+            SNDMEM(S1INT + 0x40 * i) &= ~0x80;
+        }
     } else if ((addr & 0x3f) == (S1INT & 0x3f)) {
         sound_state.channels[ch].shutoff_time = data & 0x1f;
         sound_state.channels[ch].sample_pos = 0;
@@ -240,10 +244,6 @@ void sound_write(int addr, u16 data) {
         sound_state.channels[ch].envelope_value = (data >> 4) & 0xf;
     } else if (addr == S6EV1) {
         sound_state.noise_shift = 0;
-    } else if (addr == SSTOP && (data & 1)) {
-        for (int i = 0; i < 6; i++) {
-            SNDMEM(S1INT + 0x40 * i) &= ~0x80;
-        }
     }
 }
 
