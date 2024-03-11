@@ -141,7 +141,7 @@ int v810_init() {
 
     // Initialize our SoundRam tables....
     V810_SOUND_RAM.lowaddr  = 0x01000000;
-    V810_SOUND_RAM.highaddr = 0x010005FF; //0x010002FF
+    V810_SOUND_RAM.highaddr = 0x010007FF; //0x010002FF
     // Alocate space for it in memory
     V810_SOUND_RAM.pmemory = (unsigned char *)malloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr) * sizeof(BYTE));
     // Offset + Lowaddr = pmemory

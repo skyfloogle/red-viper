@@ -202,6 +202,8 @@ void sound_update(u32 cycles) {
 
 // technically always u8 but gotta pass u16 because otherwise optimizations break everything
 void sound_write(int addr, u16 data) {
+    sound_update(v810_state->cycles);
+    SNDMEM(addr) = data;
     int ch = (addr >> 6) & 7;
     if (addr < 0x01000280) {
         int sample = (addr >> 7) & 7;
@@ -243,7 +245,6 @@ void sound_write(int addr, u16 data) {
             SNDMEM(S1INT + 0x40 * i) &= ~0x80;
         }
     }
-    sound_update(v810_state->cycles);
 }
 
 void sound_callback(void *data) {

@@ -33,10 +33,7 @@ SBYTE mem_rbyte(WORD addr) {
         }
         break;
     case 0x1000000:
-        if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
-            //~ dtprintf(0,ferr,"\nRead  BYTE  [%08x]:%02x  //SoundRam",addr,((BYTE *)(V810_SOUND_RAM.off + addr))[0]);
-            return ((SBYTE *)(V810_SOUND_RAM.off + addr))[0];
-        }
+        return ((SBYTE *)(V810_SOUND_RAM.off + (addr & V810_SOUND_RAM.highaddr)))[0];
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nRead  BYTE  [%08x]:%02x  //VBRam",addr,((BYTE *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
@@ -88,10 +85,7 @@ SHWORD mem_rhword(WORD addr) {
         }
         break;
     case 0x1000000:
-        if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
-            //~ dtprintf(0,ferr,"\nRead  HWORD [%08x]:%04x  //SoundRam",addr,((HWORD *)(V810_SOUND_RAM.off + addr))[0]);
-            return ((SHWORD *)(V810_SOUND_RAM.off + addr))[0];
-        }
+        return ((SHWORD *)(V810_SOUND_RAM.off + (addr & V810_SOUND_RAM.highaddr)))[0];
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nRead  HWORD [%08x]:%04x  //VBRam",addr,((HWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
@@ -143,10 +137,7 @@ WORD mem_rword(WORD addr) {
         }
         break;
     case 0x1000000:
-        if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
-            //~ dtprintf(0,ferr,"\nRead  WORD  [%08x]:%08x  //SoundRam",addr,((WORD *)(V810_SOUND_RAM.off + addr))[0]);
-            return ((WORD *)(V810_SOUND_RAM.off + addr))[0];
-        }
+        return ((WORD *)(V810_SOUND_RAM.off + (addr & V810_SOUND_RAM.highaddr)))[0];
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nRead  WORD  [%08x]:%08x  //VBRam",addr,((WORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
@@ -224,11 +215,7 @@ void mem_wbyte(WORD addr, BYTE data) {
         }
         break;
     case 0x1000000:
-        if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
-            //~ dtprintf(0,ferr,"\nWrite BYTE  [%08x]:%02x  //SoundRam",addr,data);
-            ((BYTE *)(V810_SOUND_RAM.off + addr))[0] = data;
-            sound_write(addr, data & 0xff);
-        }
+        sound_write(addr & V810_SOUND_RAM.highaddr, data & 0xff);
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nWrite BYTE  [%08x]:%02x  //VBRam",addr,data);
@@ -301,11 +288,7 @@ void mem_whword(WORD addr, HWORD data) {
         }
         break;
     case 0x1000000:
-        if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
-            //~ dtprintf(0,ferr,"\nWrite HWORD [%08x]:%04x  //SoundRam",addr,data);
-            ((HWORD *)(V810_SOUND_RAM.off + addr))[0] = data;
-            sound_write(addr, data & 0xff);
-        }
+        sound_write(addr & V810_SOUND_RAM.highaddr, data & 0xff);
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nWrite HWORD [%08x]:%04x  //VBRam",addr,data);
@@ -378,11 +361,7 @@ void mem_wword(WORD addr, WORD data) {
         }
         break;
     case 0x1000000:
-        if((addr >= V810_SOUND_RAM.lowaddr)&&(addr <=V810_SOUND_RAM.highaddr)) {
-            //~ dtprintf(0,ferr,"\nWrite WORD  [%08x]:%08x  //SoundRam",addr,data);
-            ((WORD *)(V810_SOUND_RAM.off + addr))[0] = data;
-            sound_write(addr, data & 0xff);
-        }
+        sound_write(addr & V810_SOUND_RAM.highaddr, data & 0xff);
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nWrite WORD  [%08x]:%08x  //VBRam",addr,data);
