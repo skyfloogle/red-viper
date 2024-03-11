@@ -56,7 +56,7 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
     }
     u8 sample;
     if (ch < 5) {
-        sample = (SNDMEM(0x80 * SNDMEM(S1RAM + 0x40 * ch) + 4 * channel->sample_pos) << 2);
+        sample = (SNDMEM(0x80 * (SNDMEM(S1RAM + 0x40 * ch) & 7) + 4 * channel->sample_pos) << 2);
     } else {
         int bit = ~(sound_state.noise_shift >> 7);
         bit ^= sound_state.noise_shift >> noise_bits[(SNDMEM(S6EV1) >> 4) & 7];
@@ -71,6 +71,7 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
 static void update_buf_with_freq(int ch, int samples) {
     if (!(SNDMEM(S1INT + 0x40 * ch) & 0x80)) return;
     if (sound_state.channels[ch].envelope_value == 0) return;
+    if ((SNDMEM(S1RAM + 0x40 * ch) & 7) >= 5) return;
     if (!tVBOpt.SOUND) return;
     int total_clocks = samples * CYCLES_PER_SAMPLE;
     int current_clocks = 0;
@@ -78,7 +79,7 @@ static void update_buf_with_freq(int ch, int samples) {
     while (current_clocks < total_clocks) {
         int clocks = total_clocks - current_clocks;
         // optimization for constant samples
-        if (ch == 5 || constant_sample[SNDMEM(S1RAM + 0x40 * ch)] < 0) {
+        if (ch == 5 || constant_sample[SNDMEM(S1RAM + 0x40 * ch) & 7] < 0) {
             if (clocks > sound_state.channels[ch].freq_time)
                 clocks = sound_state.channels[ch].freq_time;
         }
@@ -240,6 +241,9 @@ void sound_write(int addr, u16 data) {
         } else if (ch == 5) {
             sound_state.noise_shift = 0;
         }
+    } else if ((addr & 0x38) == (S1FQL & 0x38)) {
+        // covers both FQL and FQH
+        sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
     } else if ((addr & 0x3f) == (S1EV0 & 0x3f)) {
         sound_state.channels[ch].envelope_value = (data >> 4) & 0xf;
     } else if (addr == S6EV1) {
