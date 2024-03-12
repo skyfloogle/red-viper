@@ -53,7 +53,7 @@ typedef struct {
 
 #define VBUF_SIZE 64 * 64 * 2 * 32
 static vertex *vbuf, *vcur;
-#define AVBUF_SIZE 4096
+#define AVBUF_SIZE 4096 * 8
 static avertex *avbuf, *avcur;
 
 void video_hard_init() {
@@ -194,7 +194,7 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 		return 0;
 	}
 	tileMapCache[cache_id].visible = true;
-	if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
+	if (vcur - vbuf > VBUF_SIZE) dprintf(0, "VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
 
 	// set up cache texture
 	C3D_FrameDrawOn(tileMapCache[cache_id].target);
@@ -276,7 +276,7 @@ void video_hard_render() {
 		int vcount = 0;
 		
 		#define DRAW_VBUF \
-			if (vcur - vbuf > VBUF_SIZE) printf("VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE); \
+			if (vcur - vbuf > VBUF_SIZE) dprintf(0, "VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE); \
 			if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 		if ((windows[wnd * 16] & 0x3000) != 0x3000) {
@@ -427,8 +427,29 @@ void video_hard_render() {
 						for (int i = mapid + sub_bg; i < mapid + sub_bg + AFFINE_CACHE_SIZE && i < mapid + scx * scy; i++) {
 							int sub_x = ((i - mapid) & (scx - 1)) + (umin / (scx * 512) - (umin < 0));
 							int sub_y = ((i - mapid) >> scx_pow) + (vmin / (scy * 512) - (vmin < 0));
-							if (sub_x * 512 > umax || (sub_x + 1) * 512 < umin || sub_y * 512 > vmax || (sub_y + 1) * 512 < vmin) {
-								continue;
+							if (!over) {
+								// TODO this doesn't work properly
+								bool in_range = false;
+								for (int u = umin & ~(scx * 512 - 1); u < umax; u += scx * 512) {
+									if (u + (sub_x + 1) * 512 >= umin && u + sub_x * 512 <= umax) {
+										in_range = true;
+										break;
+									}
+								}
+								if (!in_range) continue;
+								in_range = false;
+								for (int v = vmin & ~(scy * 512 - 1); v < vmax; v += scy * 512) {
+									if (v + (sub_y + 1) * 512 >= vmin && v + sub_y * 512 <= vmax) {
+										in_range = true;
+										break;
+									}
+								}
+								if (!in_range) continue;
+							} else {
+								// not repeating
+								if (sub_x * 512 > umax || (sub_x + 1) * 512 < umin || sub_y * 512 > vmax || (sub_y + 1) * 512 < vmin) {
+									continue;
+								}
 							}
 							vcur += render_affine_cache(i, vbuf, vcur, umin, umax, vmin, vmax);
 						}
@@ -527,29 +548,59 @@ void video_hard_render() {
 								avcur->jx = 0;
 								avcur++->jy = 0;
 							}
+							vcount = h;
 						} else {
-							// affine
-							// TODO handle repeating multimap
-							for (int y = 0; y < h; y++) {
-								s16 mx = params[y * 8 + 0];
-								s16 mp = params[y * 8 + 1];
-								s16 my = params[y * 8 + 2];
-								s32 dx = params[y * 8 + 3];
-								s32 dy = params[y * 8 + 4];
-								avcur->x1 = gx;
-								avcur->y1 = gy + y + 256 * eye;
-								avcur->x2 = gx + w;
-								avcur->y2 = gy + y + 1 + 256 * eye;
-								avcur->u = base_u * 8 + mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
-								avcur->v = base_v * 8 + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
-								avcur->ix = dx * w >> 6;
-								avcur->iy = dy * w >> 6;
-								avcur->jx = 0;
-								avcur++->jy = 0;
+							int base_u_min = base_u, base_u_max = base_u - 1;
+							int base_v_min = base_v, base_v_max = base_v - 1;
+							if (!over) {
+								// repeat
+								if (scx != 1) {
+									base_u_min -= umin & ~(full_w - 1);
+									base_u_max = -umax;
+								}
+								if (scy != 1) {
+									base_v_min -= vmin & ~(full_h - 1);
+									base_v_max = -vmax;
+								}
+							}
+							vcount = 0;
+							for (base_u = base_u_min; base_u > base_u_max; base_u -= full_w) {
+								for (base_v = base_v_min; base_v > base_v_max; base_v -= full_h) {
+									// affine
+									for (int y = 0; y < h; y++) {
+										s16 mx = params[y * 8 + 0];
+										s16 mp = params[y * 8 + 1];
+										s16 my = params[y * 8 + 2];
+										s32 dx = params[y * 8 + 3];
+										s32 dy = params[y * 8 + 4];
+										avcur->x1 = gx;
+										avcur->y1 = gy + y + 256 * eye;
+										avcur->x2 = gx + w;
+										avcur->y2 = gy + y + 1 + 256 * eye;
+										avcur->u = base_u * 8 + mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
+										avcur->v = base_v * 8 + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
+										avcur->ix = dx * w >> 6;
+										avcur->iy = dy * w >> 6;
+										if (!over) {
+											// repeat optimizations
+											if (scx != 1 && !(
+												avcur->u >= 0 || avcur->u < 512 * 8 ||
+												avcur->u + avcur->ix >= 0 || avcur->u + avcur->ix < 512 * 8
+											)) continue;
+											if (scy != 1 && !(
+												avcur->v >= 0 || avcur->v < 512 * 8 ||
+												avcur->v + avcur->iy >= 0 || avcur->v + avcur->iy < 512 * 8
+											)) continue;
+										}
+										avcur->jx = 0;
+										avcur++->jy = 0;
+										vcount++;
+									}
+								}
 							}
 						}
-						if (avcur - avbuf > AVBUF_SIZE) printf("AVBUF OVERRUN - %i/%i\n", avcur - avbuf, AVBUF_SIZE);
-						C3D_DrawArrays(GPU_GEOMETRY_PRIM, avcur - avbuf - h, h);
+						if (avcur - avbuf > AVBUF_SIZE) dprintf(0, "AVBUF OVERRUN - %i/%i\n", avcur - avbuf, AVBUF_SIZE);
+						if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, avcur - avbuf - vcount, vcount);
 					}
 
 					bufInfo = C3D_GetBufInfo();
