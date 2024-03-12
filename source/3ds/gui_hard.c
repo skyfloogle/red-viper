@@ -71,6 +71,7 @@ static inline int handle_buttons(Button buttons[], int count);
     }
 
 #define LOOP_BEGIN(buttons) \
+    selectedButton = NULL; \
     int button = -1; \
     bool loop = true; \
     while (loop && aptMainLoop()) { \
@@ -1268,7 +1269,7 @@ void guiUpdate(float total_time, float drc_time) {
 
     C2D_Flush();
 
-	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
+    C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 }
 
 bool guiShouldPause() {
