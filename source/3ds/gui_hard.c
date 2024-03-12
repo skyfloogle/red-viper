@@ -59,6 +59,7 @@ typedef struct {
 } Button;
 
 static Button* selectedButton = NULL;
+static bool buttonLock = false;
 
 static inline int handle_buttons(Button buttons[], int count);
 #define HANDLE_BUTTONS(buttons) handle_buttons(buttons, sizeof(buttons) / sizeof(buttons[0]))
@@ -330,8 +331,10 @@ static void rom_loader() {
         }
     }
 
+    buttonLock = true;
     int last_py = 0;
     int clicked_entry = -1;
+    int cursor = 0;
     bool dragging = false;
 
     LOOP_BEGIN(rom_loader_buttons);
@@ -402,6 +405,34 @@ static void rom_loader() {
         }
         scroll_pos += scroll_speed;
         scroll_pos = C2D_Clamp(scroll_pos, top_pos, bottom_pos);
+
+        // control with buttons
+        if (entry_count > 0)
+        {
+            u32 kDown = hidKeysDown();
+            int xaxis = (bool)(kDown & KEY_RIGHT) - (bool)(kDown & KEY_LEFT);
+            int yaxis = (bool)(kDown & KEY_DOWN) - (bool)(kDown & KEY_UP);
+
+            if (xaxis != 0 || yaxis != 0) {
+                if (yaxis != 0) cursor += yaxis;
+                if (xaxis != 0) cursor += xaxis * 10;
+
+                // limits
+                if (cursor < 0) cursor = 0;
+                if (cursor >= entry_count) cursor = entry_count-1;
+                
+                int temp = (cursor-1) * entry_height;
+                if (scroll_pos > temp) scroll_pos = temp;
+
+                temp = (cursor-1) * entry_height - 176;
+                if (scroll_pos < temp) scroll_pos = temp;
+            }
+
+            if ((kDown & KEY_A)) {
+                clicked_entry = cursor;
+            }
+        }
+
         // draw
         C2D_TextBufClear(dynamic_textbuf);
         float y = -scroll_pos;
@@ -411,7 +442,7 @@ static void rom_loader() {
             if (y + entry_height >= 0 && y < 240) {
                 C2D_TextParse(&text, dynamic_textbuf, i < dirCount ? dirs[i] : files[i - dirCount]);
                 C2D_TextOptimize(&text);
-                C2D_DrawRectSolid(56, y, 0, 264, entry_height, (clicked_entry == i)? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255): C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+                C2D_DrawRectSolid(56, y, 0, 264, entry_height, (clicked_entry == i || cursor == i)? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255): C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
                 C2D_DrawText(&text, C2D_AlignLeft, 64, y + 8, 0, 0.5, 0.5);
             }
             y += entry_height;
@@ -427,6 +458,8 @@ static void rom_loader() {
         C2D_DrawRectSolid(0, 0, 0, 320, 32, C2D_Color32(0, 0, 0, 255));
         C2D_DrawText(&text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(rom_loader_buttons);
+
+    buttonLock = false;
 
     for (int i = 0; i < dirCount; i++) free(dirs[i]);
     for (int i = 0; i < fileCount; i++) free(files[i]);
@@ -820,6 +853,7 @@ static void video_settings() {
 }
 
 static void sound_error() {
+    selectedButton = &sound_error_buttons[0];
     LOOP_BEGIN(sound_error_buttons);
         C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(sound_error_buttons);
@@ -846,7 +880,7 @@ static inline int handle_buttons(Button buttons[], int count) {
     
     // d-pad input
     u32 kDown = hidKeysDown();
-    if (kDown & (KEY_UP | KEY_DOWN | KEY_LEFT | KEY_RIGHT))
+    if ((kDown & (KEY_UP | KEY_DOWN | KEY_LEFT | KEY_RIGHT)) && !buttonLock)
     {
         // if no button is selected just use the first one
         if (selectedButton == NULL)
@@ -915,13 +949,18 @@ static inline int handle_buttons(Button buttons[], int count) {
             ret = i;
         }
 
+        // select with the A button
+        if ((kDown & KEY_A) && selectedButton == &buttons[i] && !buttonLock) {
+            ret = i;
+        }
+
         // move back with the B button
         if ((kDown & KEY_B) && strcmp(buttons[i].str, "Back") == 0) {
             ret = i;
         }
 
-        // select with the A button
-        if ((kDown & KEY_A) && selectedButton == &buttons[i]) {
+        // move up a directory with X
+        if ((kDown & KEY_X) && strcmp(buttons[i].str, "Up") == 0) {
             ret = i;
         }
     }
