@@ -87,6 +87,9 @@ int main() {
     TickCounter drcTickCounter;
     TickCounter frameTickCounter;
 
+    aptHookCookie cookie;
+    aptHook(&cookie, aptBacklight, NULL);
+
     while(aptMainLoop()) {
         osTickCounterStart(&frameTickCounter);
 

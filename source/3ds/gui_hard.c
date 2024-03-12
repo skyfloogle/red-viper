@@ -1137,7 +1137,15 @@ static void draw_status_bar(float total_time, float drc_time) {
     C2D_DrawText(&text, C2D_AlignLeft, 310-60, 240 - 12, 0, 0.35, 0.35);
 }
 
+bool old_2ds = 0;
+
 void guiInit() {
+    u8 model = 0;
+    cfguInit();
+    CFGU_GetSystemModel(&model);
+    cfguExit();
+    old_2ds = (model == CFG_MODEL_2DS);
+
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     screen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
@@ -1378,6 +1386,17 @@ void guiUpdate(float total_time, float drc_time) {
         int tb = 240-16 + 12 * !tVBOpt.PERF_INFO;
         C2D_DrawTriangle(t1l, tu, col_line, t1l, tb, col_line, t1r, tm, col_line, 0);
         C2D_DrawTriangle(t2l, tu, col_line, t2l, tb, col_line, t2r, tm, col_line, 0);
+        if (!old_2ds) {
+            // backlight icon
+            int col_top = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
+            int col_off = C2D_Color32(32, 32, 32, 255);
+            C2D_DrawLine(31.5, 0, col_line, 31.5, 31.5, col_line, 1, 0);
+            C2D_DrawLine(0, 31.5, col_line, 31.5, 31.5, col_line, 1, 0);
+            C2D_DrawRectSolid(5, 3, 0, 21, 11, col_top);
+            C2D_DrawRectSolid(8, 17, 0, 15, 11, col_line);
+            C2D_DrawLine(11.5, 18, col_off, 19.5, 27, col_off, 2, 0);
+            C2D_DrawLine(19.5, 18, col_off, 11.5, 27, col_off, 2, 0);
+        }
     }
     
     draw_status_bar(total_time, drc_time);
@@ -1389,46 +1408,81 @@ void guiUpdate(float total_time, float drc_time) {
     C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 }
 
+bool backlightEnabled = true;
+
 bool guiShouldPause() {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    return touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || touch_pos.py < 240-32);
+    return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
+}
+
+bool toggleBacklight(bool enable) {
+    gspLcdInit();
+    enable ? GSPLCD_PowerOnBacklight(GSPLCD_SCREEN_BOTTOM) : GSPLCD_PowerOffBacklight(GSPLCD_SCREEN_BOTTOM);
+    gspLcdExit();
+    return enable;
+}
+
+void aptBacklight(APT_HookType hook, void* param) {
+    if (backlightEnabled == false) {
+        switch (hook) {
+            case APTHOOK_ONSUSPEND:
+                toggleBacklight(true);
+                break;
+            case APTHOOK_ONRESTORE:
+            case APTHOOK_ONWAKEUP:
+                toggleBacklight(false);
+                break;
+            default:
+                toggleBacklight(true);
+                break;
+        }
+    }
 }
 
 int guiGetInput(bool do_switching) {
-    if ((hidKeysHeld() & KEY_TOUCH) && guiShouldSwitch()) {
-        if (do_switching && (hidKeysDown() & KEY_TOUCH)) setTouchControls(!buttons_on_screen);
-        return 0;
-    }
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    if (do_switching) {
-        if (touch_pos.px < 32 && touch_pos.py >= 240-32) {
-            if ((tVBOpt.FF_TOGGLE ? hidKeysDown() : hidKeysHeld()) & KEY_TOUCH) {
-                tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
-            }
+    if (backlightEnabled) {
+        if ((hidKeysHeld() & KEY_TOUCH) && guiShouldSwitch()) {
+            if (do_switching && (hidKeysDown() & KEY_TOUCH)) setTouchControls(!buttons_on_screen);
             return 0;
         }
-    }
-    if (touch_pos.px < tVBOpt.PAUSE_RIGHT) {
-        return 0;
-    }
-    if (buttons_on_screen) {
-        int axdist = touch_pos.px - tVBOpt.TOUCH_AX;
-        int aydist = touch_pos.py - tVBOpt.TOUCH_AY;
-        int bxdist = touch_pos.px - tVBOpt.TOUCH_BX;
-        int bydist = touch_pos.py - tVBOpt.TOUCH_BY;
-        if (axdist*axdist + aydist*aydist < bxdist*bxdist + bydist*bydist)
-            return VB_KEY_A;
-        else
-            return VB_KEY_B;
-    } else {
-        int xdist = touch_pos.px - tVBOpt.TOUCH_PADX;
-        int ydist = touch_pos.py - tVBOpt.TOUCH_PADY;
-        if (abs(xdist) >= abs(ydist)) {
-            return xdist >= 0 ? VB_RPAD_R : VB_RPAD_L;
-        } else {
-            return ydist <= 0 ? VB_RPAD_U : VB_RPAD_D;
+        if (do_switching) {
+            if (touch_pos.px < 32 && touch_pos.py >= 240-32) {
+                if ((tVBOpt.FF_TOGGLE ? hidKeysDown() : hidKeysHeld()) & KEY_TOUCH) {
+                    tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
+                }
+                return 0;
+            }
         }
+        if (hidKeysDown() & KEY_TOUCH && (touch_pos.px <= 32 && touch_pos.py <= 32) && !old_2ds) {
+            backlightEnabled = toggleBacklight(false);
+            return 0;
+        }
+        if (touch_pos.px < tVBOpt.PAUSE_RIGHT) {
+            return 0;
+        }
+        if (buttons_on_screen) {
+            int axdist = touch_pos.px - tVBOpt.TOUCH_AX;
+            int aydist = touch_pos.py - tVBOpt.TOUCH_AY;
+            int bxdist = touch_pos.px - tVBOpt.TOUCH_BX;
+            int bydist = touch_pos.py - tVBOpt.TOUCH_BY;
+            if (axdist*axdist + aydist*aydist < bxdist*bxdist + bydist*bydist)
+                return VB_KEY_A;
+            else
+                return VB_KEY_B;
+        } else {
+            int xdist = touch_pos.px - tVBOpt.TOUCH_PADX;
+            int ydist = touch_pos.py - tVBOpt.TOUCH_PADY;
+            if (abs(xdist) >= abs(ydist)) {
+                return xdist >= 0 ? VB_RPAD_R : VB_RPAD_L;
+            } else {
+                return ydist <= 0 ? VB_RPAD_U : VB_RPAD_D;
+            }
+        }
+    } else if (hidKeysDown() & KEY_TOUCH && (touch_pos.px > 32 || touch_pos.py > 32)) {
+        backlightEnabled = toggleBacklight(true);
     }
+    return 0;
 }
