@@ -318,6 +318,7 @@ static void rom_loader() {
     if (scroll_bottom < scroll_top) scroll_bottom = scroll_top;
     float scroll_pos = scroll_top;
     float scroll_speed = 0;
+    int cursor = 0;
 
     if (tVBOpt.ROM_PATH && strstr(tVBOpt.ROM_PATH, path) == tVBOpt.ROM_PATH) {
         char *filename = strrchr(tVBOpt.ROM_PATH, '/');
@@ -327,6 +328,7 @@ static void rom_loader() {
                 if (strcmp(files[i], filename) == 0) {
                     int button_y = i * entry_height;
                     scroll_pos = C2D_Clamp(button_y - (240 / 2), scroll_top, scroll_bottom);
+                    cursor = i;
                 }
             }
         }
@@ -335,7 +337,6 @@ static void rom_loader() {
     buttonLock = true;
     int last_py = 0;
     int clicked_entry = -1;
-    int cursor = 0;
     bool dragging = false;
 
     LOOP_BEGIN(rom_loader_buttons);
