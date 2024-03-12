@@ -857,8 +857,8 @@ static inline int handle_buttons(Button buttons[], int count) {
             Button* temp = NULL;
             int xaxis = (bool)(kDown & KEY_RIGHT) - (bool)(kDown & KEY_LEFT);
             int yaxis = (bool)(kDown & KEY_DOWN) - (bool)(kDown & KEY_UP);
-            int selectx = (selectedButton->x + (selectedButton->w / 2)) + ((selectedButton->w / 4) * xaxis);
-            int selecty = (selectedButton->y + (selectedButton->h / 2)) + ((selectedButton->h / 4) * yaxis);
+            int selectx = (selectedButton->x + (selectedButton->w / 2)) + ((selectedButton->w / 2) * xaxis);
+            int selecty = (selectedButton->y + (selectedButton->h / 2)) + ((selectedButton->h / 2) * yaxis);
 
             for (int i = 0; i < count; i++)
             {
@@ -867,8 +867,8 @@ static inline int handle_buttons(Button buttons[], int count) {
                     continue;
 
                 // skip if button is not in the right direction
-                int buttonx = (buttons[i].x + (buttons[i].w / 2)) - ((buttons[i].w / 4) * xaxis);
-                int buttony = (buttons[i].y + (buttons[i].h / 2)) - ((buttons[i].h / 4) * yaxis);
+                int buttonx = (buttons[i].x + (buttons[i].w / 2)) - ((buttons[i].w / 2) * xaxis);
+                int buttony = (buttons[i].y + (buttons[i].h / 2)) - ((buttons[i].h / 2) * yaxis);
 
                 if (((kDown & KEY_UP)    && buttony >= selecty) ||
                     ((kDown & KEY_DOWN)  && buttony <= selecty) ||
@@ -878,7 +878,7 @@ static inline int handle_buttons(Button buttons[], int count) {
                     continue;
                 }
 
-                // use the nearest button that is within range
+                // use the nearest button that is in the right direction
                 if (temp) {
                     int tempx = (temp->x + (temp->w / 2)) - ((temp->w / 4) * xaxis);
                     int tempy = (temp->y + (temp->h / 2)) - ((temp->h / 4) * yaxis);
@@ -916,7 +916,12 @@ static inline int handle_buttons(Button buttons[], int count) {
         }
 
         // move back with the B button
-        if ((hidKeysDown() & KEY_B) && strcmp(buttons[i].str, "Back") == 0) {
+        if ((kDown & KEY_B) && strcmp(buttons[i].str, "Back") == 0) {
+            ret = i;
+        }
+
+        // select with the A button
+        if ((kDown & KEY_A) && selectedButton == &buttons[i]) {
             ret = i;
         }
     }
