@@ -37,6 +37,8 @@ static C2D_SpriteSheet sprite_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
 
 // helpers
+#define dis(X1,Y1,X2,Y2) ( (((X2)-(X1)) * ((X2)-(X1))) + (((Y2)-(Y1)) * ((Y2)-(Y1))) )
+
 static inline int sqr(int i) {
     return i * i;
 }
@@ -55,6 +57,8 @@ typedef struct {
     C2D_Text *toggle_text_off;
     C2D_Text text;
 } Button;
+
+static Button* selectedButton = NULL;
 
 static inline int handle_buttons(Button buttons[], int count);
 #define HANDLE_BUTTONS(buttons) handle_buttons(buttons, sizeof(buttons) / sizeof(buttons[0]))
@@ -839,6 +843,57 @@ static inline int handle_buttons(Button buttons[], int count) {
     int ret = -1;
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
+    
+    // d-pad input
+    u32 kDown = hidKeysDown();
+    if (kDown & (KEY_UP | KEY_DOWN | KEY_LEFT | KEY_RIGHT))
+    {
+        // if no button is selected just use the first one
+        if (selectedButton == NULL)
+            selectedButton = &buttons[0];
+        else
+        {
+            // search for button nearest to the selected one
+            Button* temp = NULL;
+            int xaxis = (bool)(kDown & KEY_RIGHT) - (bool)(kDown & KEY_LEFT);
+            int yaxis = (bool)(kDown & KEY_DOWN) - (bool)(kDown & KEY_UP);
+            int selectx = (selectedButton->x + (selectedButton->w / 2)) + ((selectedButton->w / 4) * xaxis);
+            int selecty = (selectedButton->y + (selectedButton->h / 2)) + ((selectedButton->h / 4) * yaxis);
+
+            for (int i = 0; i < count; i++)
+            {
+                // skip if selected button
+                if (selectedButton == &buttons[i])
+                    continue;
+
+                // skip if button is not in the right direction
+                int buttonx = (buttons[i].x + (buttons[i].w / 2)) - ((buttons[i].w / 4) * xaxis);
+                int buttony = (buttons[i].y + (buttons[i].h / 2)) - ((buttons[i].h / 4) * yaxis);
+
+                if (((kDown & KEY_UP)    && buttony >= selecty) ||
+                    ((kDown & KEY_DOWN)  && buttony <= selecty) ||
+                    ((kDown & KEY_LEFT)  && buttonx >= selectx) ||
+                    ((kDown & KEY_RIGHT) && buttonx <= selectx))
+                {
+                    continue;
+                }
+
+                // use the nearest button that is within range
+                if (temp) {
+                    int tempx = (temp->x + (temp->w / 2)) - ((temp->w / 4) * xaxis);
+                    int tempy = (temp->y + (temp->h / 2)) - ((temp->h / 4) * yaxis);
+                    if (dis(selectx,selecty,buttonx,buttony) > dis(selectx,selecty,tempx,tempy))
+                        continue;
+                }
+
+                temp = &buttons[i];
+            }
+
+            if (temp)
+                selectedButton = temp;
+        }
+    }
+
     // check buttons for input
     for (int i = 0; i < count; i++) {
         if (
@@ -869,7 +924,7 @@ static inline int handle_buttons(Button buttons[], int count) {
     for (int i = 0; i < count; i++) {
         u32 normal_colour = C2D_Color32(TINT_R, TINT_G, TINT_B, 255);
         u32 pressed_colour = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
-        C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h, pressed == i ? pressed_colour : normal_colour);
+        C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h, (pressed == i || selectedButton == &buttons[i]) ? pressed_colour : normal_colour);
         int yoff = -10;
         char *strptr = buttons[i].str;
         while ((strptr = strchr(strptr, '\n'))) {
