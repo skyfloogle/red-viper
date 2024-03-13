@@ -425,29 +425,24 @@ void video_hard_render() {
 					if (sub_bg % AFFINE_CACHE_SIZE == 0) {
 						// on first and every nth sub-bg, re-flush cache
 						for (int i = mapid + sub_bg; i < mapid + sub_bg + AFFINE_CACHE_SIZE && i < mapid + scx * scy; i++) {
-							int sub_x = ((i - mapid) & (scx - 1)) + (umin / (scx * 512) - (umin < 0));
-							int sub_y = ((i - mapid) >> scx_pow) + (vmin / (scy * 512) - (vmin < 0));
+							int sub_u = ((i - mapid) & (scx - 1)) * 512;
+							int sub_v = ((i - mapid) >> scx_pow) * 512;
 							if (!over) {
-								// TODO this doesn't work properly
-								bool in_range = false;
-								for (int u = umin & ~(scx * 512 - 1); u < umax; u += scx * 512) {
-									if (u + (sub_x + 1) * 512 >= umin && u + sub_x * 512 <= umax) {
-										in_range = true;
-										break;
-									}
+								// repeating
+								// TODO can this be done faster with maths?
+								while (sub_u + 512 > umin) sub_u -= scx * 512;
+								while (sub_u + 512 <= umin) sub_u += scx * 512;
+								if (sub_u > umax) {
+									continue;
 								}
-								if (!in_range) continue;
-								in_range = false;
-								for (int v = vmin & ~(scy * 512 - 1); v < vmax; v += scy * 512) {
-									if (v + (sub_y + 1) * 512 >= vmin && v + sub_y * 512 <= vmax) {
-										in_range = true;
-										break;
-									}
+								while (sub_v + 512 > vmin) sub_v -= scy * 512;
+								while (sub_v + 512 <= vmin) sub_v += scy * 512;
+								if (sub_v > vmax) {
+									continue;
 								}
-								if (!in_range) continue;
 							} else {
 								// not repeating
-								if (sub_x * 512 > umax || (sub_x + 1) * 512 < umin || sub_y * 512 > vmax || (sub_y + 1) * 512 < vmin) {
+								if (sub_u > umax || sub_u + 512 < umin || sub_v > vmax || sub_v + 512 < vmin) {
 									continue;
 								}
 							}
