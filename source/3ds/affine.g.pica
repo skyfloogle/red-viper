@@ -1,23 +1,37 @@
 .gsh point c0
 
+; three uv offsets (u0,v0,u1,v1),(u2,v2,_,_)
+.fvec bgmap_offsets[2]
+
 ; base required z and w
 .constf myconst(0.0, 0.0, -1.0, 1.0)
 
 ; v0: (left,top,right,bottom) pos
-; v1: (u,v) texcoord origin
+; v1: (u,v,u,v) texcoord origin
 ; v2: (ix,iy,jx,jy) texcoord basis
 
 .out outpos position
 .out outtc0 texcoord0
+.out outtc1 texcoord1
+.out outtc2 texcoord2
 
 .entry gmain
 .proc gmain
+    ; r0: position
+    ; r1: texcoord intermediate
+    ; r2: texcoord final
+    ; r3: tecoord shifted
+
     ; top left
     setemit 0
     mov r0, myconst
     mov r0.xy, v0.xy
     mov outpos, r0
-    mov outtc0, v1
+
+    add r3, bgmap_offsets[0], v1
+    mov outtc0.xy, r3.xy
+    mov outtc1.xy, r3.zw
+    add outtc2.xy, bgmap_offsets[1].xy, v1.xy
     emit
 
     ; top right
@@ -25,8 +39,13 @@
     mov r0.x, v0.z
     mov outpos, r0
     ; add i to texcoord origin
-    mov r2, v1
-    add outtc0.xy, r2.xy, v2.xy
+    mov r1, v1
+    add r2.xyzw, r1.xyzw, v2.xyxy
+
+    add r3, bgmap_offsets[0], r2
+    mov outtc0.xy, r3.xy
+    mov outtc1.xy, r3.zw
+    add outtc2.xy, bgmap_offsets[1].xy, r2.xy
     emit
 
     ; bottom left
@@ -34,8 +53,12 @@
     mov r0.xy, v0.xw
     mov outpos, r0
     ; add j to texcoord origin
-    add r1.xy, r2.xy, v2.zw
-    mov outtc0, r1
+    add r1.xyzw, r1.xyzw, v2.zwzw
+
+    add r3, bgmap_offsets[0], r1
+    mov outtc0.xy, r3.xy
+    mov outtc1.xy, r3.zw
+    add outtc2.xy, bgmap_offsets[1].xy, r1.xy
     emit
 
     ; bottom left
@@ -43,7 +66,12 @@
     mov r0.x, v0.z
     mov outpos, r0
     ; add i to previous texcoord
-    add outtc0.xy, r1.xy, v2.xy
+    add r2.xyzw, r1.xyzw, v2.xyxy
+
+    add r3, bgmap_offsets[0], r2
+    mov outtc0.xy, r3.xy
+    mov outtc1.xy, r3.zw
+    add outtc2.xy, bgmap_offsets[1].xy, r2.xy
     emit
 
     end

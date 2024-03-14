@@ -36,6 +36,8 @@ static shaderProgram_s sChar;
 static s8 uLoc_posscale;
 static s8 uLoc_palettes;
 static C3D_FVec palettes[8];
+static s8 uLoc_bgmap_offsets;
+static C3D_FVec bgmap_offsets[2];
 
 static DVLB_s *sAffine_dvlb;
 static shaderProgram_s sAffine;
@@ -69,6 +71,8 @@ void video_hard_init() {
 	shaderProgramInit(&sAffine);
 	shaderProgramSetVsh(&sAffine, &sAffine_dvlb->DVLE[0]);
 	shaderProgramSetGsh(&sAffine, &sAffine_dvlb->DVLE[1], 3);
+
+	uLoc_bgmap_offsets = shaderInstanceGetUniformLocation(sAffine.geometryShader, "bgmap_offsets");
 
 	C3D_TexInitParams params;
 	params.width = 256;
@@ -119,6 +123,9 @@ static void setRegularTexEnv() {
 	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PRIMARY_COLOR, 0);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
 	C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+
+	env = C3D_GetTexEnv(2);
+	C3D_TexEnvInit(env);
 }
 
 static void setRegularDrawing() {
@@ -206,6 +213,51 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	return vcount;
+}
+
+void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h) {
+	C3D_FrameDrawOn(screenTarget);
+	C3D_BindProgram(&sAffine);
+
+	for (int i = 0; i < count; i++) {
+		C3D_TexBind(i, textures[i]);
+		C3D_TexEnv *env = C3D_GetTexEnv(i);
+		C3D_TexEnvInit(env);
+		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0 + i, GPU_PREVIOUS, 0);
+		C3D_TexEnvFunc(env, C3D_Both, i == 0 ? GPU_REPLACE : GPU_ADD);
+	}
+	for (int i = count; i < 3; i++) {
+		C3D_TexEnv *env = C3D_GetTexEnv(i);
+		C3D_TexEnvInit(env);
+	}
+
+	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc_bgmap_offsets, 2), bgmap_offsets, sizeof(bgmap_offsets));
+
+	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
+	AttrInfo_Init(attrInfo);
+	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 2);
+	AttrInfo_AddLoader(attrInfo, 2, GPU_SHORT, 4);
+
+	C3D_BufInfo *bufInfo = C3D_GetBufInfo();
+	BufInfo_Init(bufInfo);
+	BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 3, 0x210);
+
+	for (int eye = 0; eye < 2; eye++) {
+		if (vbufs[eye] != NULL) {
+			int gx = base_gx + (eye == 0 ? -gp : gp);
+			
+			C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, 256 * eye + (gy >= 0 ? gy : 0), gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
+			C3D_DrawArrays(GPU_GEOMETRY_PRIM, vbufs[eye] - avbuf, h);
+		}
+	}
+
+	bufInfo = C3D_GetBufInfo();
+	BufInfo_Init(bufInfo);
+	BufInfo_Add(bufInfo, vbuf, sizeof(vertex), 2, 0x10);
+	C3D_BindProgram(&sChar);
+	C3D_TexBind(0, &tileTexture);
+	setRegularDrawing();
 }
 
 void video_hard_render() {
@@ -376,6 +428,11 @@ void video_hard_render() {
 				// hbias or affine world
 				u16 param_base = windows[wnd * 16 + 9];
 				s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + param_base * 2]);
+
+				int full_w = 512 * scx;
+				int full_h = 512 * scy;
+
+				// calculate bounds
 				int umin, vmin, umax, vmax;
 				if (windows[wnd * 16] & 0x1000) {
 					// h-bias
@@ -420,35 +477,108 @@ void video_hard_render() {
 					vmin = vmin / 8 - (vmin < 0);
 					vmax = vmax / 8 - (vmax < 0);
 				}
-				
-				for (uint8_t sub_bg = 0; sub_bg < scx * scy; sub_bg++) {
-					if (sub_bg % AFFINE_CACHE_SIZE == 0) {
-						// on first and every nth sub-bg, re-flush cache
-						for (int i = mapid + sub_bg; i < mapid + sub_bg + AFFINE_CACHE_SIZE && i < mapid + scx * scy; i++) {
-							int sub_u = ((i - mapid) & (scx - 1)) * 512;
-							int sub_v = ((i - mapid) >> scx_pow) * 512;
+
+				// set up vertex buffers
+				int vbuf_count = 0;
+				avertex *vbufs[2] = {NULL, NULL};
+				for (int eye = start_eye; eye < end_eye; eye++) {
+					if (!(windows[wnd * 16] & (0x8000 >> eye)))
+						continue;
+
+					vbufs[eye] = avcur;
+
+					int gx = base_gx;
+					int mx = base_mx;
+
+					if (eye == 0) {
+						gx -= gp;
+						mx -= mp;
+					} else {
+						gx += gp;
+						mx += mp;
+					}
+					if ((windows[wnd * 16] & 0x3000) == 0x1000) {
+						// hbias
+						// Account for hardware flaw that uses OR rather than adding
+						// when computing the address of HOFSTR.
+						u8 eye_offset = eye && !(param_base & 1);
+						for (int y = 0; y < h; y++) {
+							s16 p = (s16)(params[y * 2 + eye_offset] << 3) >> 3;
+							avcur->x1 = gx;
+							avcur->y1 = gy + y + 256 * eye;
+							avcur->x2 = gx + w;
+							avcur->y2 = gy + y + 1 + 256 * eye;
+							// we can do just one pass per bg for repeating multimap
+							// because hbias isn't downscaled
+							int u = mx + p;
+							int v = my + y;
 							if (!over) {
-								// repeating
-								// TODO can this be done faster with maths?
-								while (sub_u + 512 > umin) sub_u -= scx * 512;
-								while (sub_u + 512 <= umin) sub_u += scx * 512;
-								if (sub_u > umax) {
-									continue;
-								}
-								while (sub_v + 512 > vmin) sub_v -= scy * 512;
-								while (sub_v + 512 <= vmin) sub_v += scy * 512;
-								if (sub_v > vmax) {
-									continue;
-								}
-							} else {
-								// not repeating
-								if (sub_u > umax || sub_u + 512 < umin || sub_v > vmax || sub_v + 512 < vmin) {
-									continue;
-								}
+								u &= full_w - 1;
+								if (u & (full_w >> 1)) u -= full_w;
+								v &= full_h - 1;
+								if (v & (full_h >> 1)) v -= full_h;
 							}
-							vcur += render_affine_cache(i, vbuf, vcur, umin, umax, vmin, vmax);
+							avcur->u = u * 8;
+							avcur->v = v * 8;
+							avcur->ix = w * 8;
+							avcur->iy = 0;
+							avcur->jx = 0;
+							avcur++->jy = 0;
+						}
+					} else {
+						// affine
+						for (int y = 0; y < h; y++) {
+							s16 mx = params[y * 8 + 0];
+							s16 mp = params[y * 8 + 1];
+							s16 my = params[y * 8 + 2];
+							s32 dx = params[y * 8 + 3];
+							s32 dy = params[y * 8 + 4];
+							avcur->x1 = gx;
+							avcur->y1 = gy + y + 256 * eye;
+							avcur->x2 = gx + w;
+							avcur->y2 = gy + y + 1 + 256 * eye;
+							avcur->u = mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
+							avcur->v = my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
+							avcur->ix = dx * w >> 6;
+							avcur->iy = dy * w >> 6;
+							avcur->jx = 0;
+							avcur++->jy = 0;
+							vcount++;
 						}
 					}
+				}
+				if (avcur - avbuf > AVBUF_SIZE) dprintf(0, "AVBUF OVERRUN - %i/%i\n", avcur - avbuf, AVBUF_SIZE);
+
+				if (vbufs[0] == NULL && vbufs[1] == NULL) continue;
+
+				// draw with each texture
+				int tex_count = 0;
+				C3D_Tex *textures[3];
+				for (uint8_t sub_bg = 0; sub_bg < scx * scy; sub_bg++) {
+					// don't draw offscreen bgmaps
+					int sub_u = (sub_bg & (scx - 1)) * 512;
+					int sub_v = (sub_bg >> scx_pow) * 512;
+					if (!over) {
+						// repeating
+						// TODO can this be done faster with maths?
+						while (sub_u + 512 > umin) sub_u -= scx * 512;
+						while (sub_u + 512 <= umin) sub_u += scx * 512;
+						if (sub_u > umax) {
+							continue;
+						}
+						while (sub_v + 512 > vmin) sub_v -= scy * 512;
+						while (sub_v + 512 <= vmin) sub_v += scy * 512;
+						if (sub_v > vmax) {
+							continue;
+						}
+					} else {
+						// not repeating
+						if (sub_u > umax || sub_u + 512 < umin || sub_v > vmax || sub_v + 512 < vmin) {
+							continue;
+						}
+					}
+
+					vcur += render_affine_cache(mapid + sub_bg, vbuf, vcur, umin, umax, vmin, vmax);
 					int cache_id = (mapid + sub_bg) % AFFINE_CACHE_SIZE;
 					if (tileMapCache[cache_id].bg != mapid + sub_bg || !tileMapCache[cache_id].visible) continue;
 
@@ -467,144 +597,39 @@ void video_hard_render() {
 						}
 					}
 
-					// next, draw the affine map
-					C3D_FrameDrawOn(screenTarget);
-					C3D_BindProgram(&sAffine);
-					C3D_TexBind(0, &tileMapCache[cache_id].tex);
-
-					C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
-					AttrInfo_Init(attrInfo);
-					AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
-					AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 2);
-					AttrInfo_AddLoader(attrInfo, 2, GPU_SHORT, 4);
-
-					bufInfo = C3D_GetBufInfo();
-					BufInfo_Init(bufInfo);
-					BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 3, 0x210);
-
-					C3D_TexEnv *env = C3D_GetTexEnv(0);
-					C3D_TexEnvInit(env);
-					C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
-					C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-
-					env = C3D_GetTexEnv(1);
-					C3D_TexEnvInit(env);
-
-					int full_w = 512 * scx;
-					int full_h = 512 * scy;
-
-					for (int eye = start_eye; eye < end_eye; eye++) {
-						if (!(windows[wnd * 16] & (0x8000 >> eye)))
-							continue;
-
-						int gx = base_gx;
-						int mx = base_mx;
-
-						if (eye == 0) {
-							gx -= gp;
-							mx -= mp;
-						} else {
-							gx += gp;
-							mx += mp;
+					sub_u &= full_w - 1;
+					sub_v &= full_h - 1;
+					int base_u_min = -sub_u, base_u_max = -sub_u - 1;
+					int base_v_min = -sub_v, base_v_max = -sub_v - 1;
+					if (!over && (windows[wnd * 16] & 0x3000) == 0x2000) {
+						// repeating affine
+						if (scx != 1) {
+							base_u_min -= umin & ~(full_w - 1);
+							base_u_max = -umax;
 						}
-						
-						C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, 256 * eye + (gy >= 0 ? gy : 0), gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
-						
-						int base_u = -512 * (sub_bg & (scx - 1));
-						int base_v = -512 * (sub_bg >> scx_pow);
-
-						if ((windows[wnd * 16] & 0x3000) == 0x1000) {
-							// hbias
-							base_u += mx;
-							base_v += my;
-							// Account for hardware flaw that uses OR rather than adding
-							// when computing the address of HOFSTR.
-							u8 eye_offset = eye && !(param_base & 1);
-							for (int y = 0; y < h; y++) {
-								s16 p = (s16)(params[y * 2 + eye_offset] << 3) >> 3;
-								avcur->x1 = gx;
-								avcur->y1 = gy + y + 256 * eye;
-								avcur->x2 = gx + w;
-								avcur->y2 = gy + y + 1 + 256 * eye;
-								// we can do just one pass per bg for repeating multimap
-								// because hbias isn't downscaled
-								int u = base_u + p;
-								int v = base_v + y;
-								if (!over) {
-									u &= full_w - 1;
-									if (u & (full_w >> 1)) u -= full_w;
-									v &= full_h - 1;
-									if (v & (full_h >> 1)) v -= full_h;
-								}
-								avcur->u = u * 8;
-								avcur->v = v * 8;
-								avcur->ix = w * 8;
-								avcur->iy = 0;
-								avcur->jx = 0;
-								avcur++->jy = 0;
-							}
-							vcount = h;
-						} else {
-							int base_u_min = base_u, base_u_max = base_u - 1;
-							int base_v_min = base_v, base_v_max = base_v - 1;
-							if (!over) {
-								// repeat
-								if (scx != 1) {
-									base_u_min -= umin & ~(full_w - 1);
-									base_u_max = -umax;
-								}
-								if (scy != 1) {
-									base_v_min -= vmin & ~(full_h - 1);
-									base_v_max = -vmax;
-								}
-							}
-							vcount = 0;
-							for (base_u = base_u_min; base_u > base_u_max; base_u -= full_w) {
-								for (base_v = base_v_min; base_v > base_v_max; base_v -= full_h) {
-									// affine
-									for (int y = 0; y < h; y++) {
-										s16 mx = params[y * 8 + 0];
-										s16 mp = params[y * 8 + 1];
-										s16 my = params[y * 8 + 2];
-										s32 dx = params[y * 8 + 3];
-										s32 dy = params[y * 8 + 4];
-										avcur->x1 = gx;
-										avcur->y1 = gy + y + 256 * eye;
-										avcur->x2 = gx + w;
-										avcur->y2 = gy + y + 1 + 256 * eye;
-										avcur->u = base_u * 8 + mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
-										avcur->v = base_v * 8 + my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
-										avcur->ix = dx * w >> 6;
-										avcur->iy = dy * w >> 6;
-										if (!over) {
-											// repeat optimizations
-											if (scx != 1 && !(
-												avcur->u >= 0 || avcur->u < 512 * 8 ||
-												avcur->u + avcur->ix >= 0 || avcur->u + avcur->ix < 512 * 8
-											)) continue;
-											if (scy != 1 && !(
-												avcur->v >= 0 || avcur->v < 512 * 8 ||
-												avcur->v + avcur->iy >= 0 || avcur->v + avcur->iy < 512 * 8
-											)) continue;
-										}
-										avcur->jx = 0;
-										avcur++->jy = 0;
-										vcount++;
-									}
-								}
-							}
+						if (scy != 1) {
+							base_v_min -= vmin & ~(full_h - 1);
+							base_v_max = -vmax;
 						}
-						if (avcur - avbuf > AVBUF_SIZE) dprintf(0, "AVBUF OVERRUN - %i/%i\n", avcur - avbuf, AVBUF_SIZE);
-						if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, avcur - avbuf - vcount, vcount);
 					}
-
-					bufInfo = C3D_GetBufInfo();
-					BufInfo_Init(bufInfo);
-					BufInfo_Add(bufInfo, vbuf, sizeof(vertex), 2, 0x10);
-					C3D_BindProgram(&sChar);
-					C3D_TexBind(0, &tileTexture);
-					setRegularDrawing();
-					vcount = 0;
+					int old_tex_count = tex_count;
+					for (int base_u = base_u_min; base_u > base_u_max; base_u -= full_w) {
+						for (int base_v = base_v_min; base_v > base_v_max; base_v -= full_h) {
+							bgmap_offsets[tex_count / 2].c[3 - 2 * (tex_count % 2)] = base_u >> 9;
+							bgmap_offsets[tex_count / 2].c[3 - 2 * (tex_count % 2) - 1] = base_v >> 9;
+							//dprintf(0, "%d %d -> %f %f\n", base_u, base_v, bgmap_offsets[tex_count / 2].c[2 * (tex_count % 2)], bgmap_offsets[tex_count / 2].c[2 * (tex_count % 2) + 1]);
+							textures[tex_count] = &tileMapCache[cache_id].tex;
+							if (++tex_count == 3) {
+								draw_affine_layer(vbufs, textures, tex_count, base_gx, gp, gy, w, h);
+								tex_count = 0;
+							}
+						}
+					}
+					if (old_tex_count == tex_count) puts("!");
+				}
+				// clean up any leftovers
+				if (tex_count != 0) {
+					draw_affine_layer(vbufs, textures, tex_count, base_gx, gp, gy, w, h);
 				}
 			}
 		} else {
