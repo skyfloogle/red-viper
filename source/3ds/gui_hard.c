@@ -1219,6 +1219,29 @@ void openMenu() {
         ndspSetMasterVol(1.0);
 }
 
+bool backlightEnabled = true;
+
+bool toggleBacklight(bool enable) {
+    gspLcdInit();
+    enable ? GSPLCD_PowerOnBacklight(GSPLCD_SCREEN_BOTTOM) : GSPLCD_PowerOffBacklight(GSPLCD_SCREEN_BOTTOM);
+    gspLcdExit();
+    return enable;
+}
+
+void aptBacklight(APT_HookType hook, void* param) {
+    if (backlightEnabled == false) {
+        switch (hook) {
+            case APTHOOK_ONRESTORE:
+            case APTHOOK_ONWAKEUP:
+                toggleBacklight(false);
+                break;
+            default:
+                toggleBacklight(true);
+                break;
+        }
+    }
+}
+
 void showSoundError() {
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
@@ -1226,6 +1249,7 @@ void showSoundError() {
 }
 
 void showError(int code) {
+    if (!backlightEnabled) toggleBacklight(true);
     gfxSetDoubleBuffering(GFX_BOTTOM, false);
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
@@ -1408,36 +1432,10 @@ void guiUpdate(float total_time, float drc_time) {
     C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 }
 
-bool backlightEnabled = true;
-
 bool guiShouldPause() {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
     return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
-}
-
-bool toggleBacklight(bool enable) {
-    gspLcdInit();
-    enable ? GSPLCD_PowerOnBacklight(GSPLCD_SCREEN_BOTTOM) : GSPLCD_PowerOffBacklight(GSPLCD_SCREEN_BOTTOM);
-    gspLcdExit();
-    return enable;
-}
-
-void aptBacklight(APT_HookType hook, void* param) {
-    if (backlightEnabled == false) {
-        switch (hook) {
-            case APTHOOK_ONSUSPEND:
-                toggleBacklight(true);
-                break;
-            case APTHOOK_ONRESTORE:
-            case APTHOOK_ONWAKEUP:
-                toggleBacklight(false);
-                break;
-            default:
-                toggleBacklight(true);
-                break;
-        }
-    }
 }
 
 int guiGetInput(bool do_switching) {
