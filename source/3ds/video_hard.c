@@ -184,6 +184,11 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 			short u = (tileid % 32) * 8;
 			short v = (tileid / 32) * 8;
 
+			if (vcur >= vbuf + VBUF_SIZE) {
+				dprintf(0, "VBUF OVERRUN!\n");
+				break;
+			}
+
 			vcur->x1 = xx + 8 * hflip;
 			vcur->y1 = yy + 8 * vflip;
 			vcur->x2 = xx + 8 * !hflip;
@@ -406,6 +411,11 @@ void video_hard_render() {
 								short u = (tileid % 32) * 8;
 								short v = (tileid / 32) * 8;
 
+								if (vcur >= vbuf + VBUF_SIZE) {
+									dprintf(0, "VBUF OVERRUN!\n");
+									break;
+								}
+
 								vcur->x1 = x + 8 * hflip;
 								vcur->y1 = y + 8 * vflip + 256 * eye;
 								vcur->x2 = x + 8 * !hflip;
@@ -499,6 +509,12 @@ void video_hard_render() {
 					}
 					if ((windows[wnd * 16] & 0x3000) == 0x1000) {
 						// hbias
+
+						if (avcur + h >= avbuf + AVBUF_SIZE) {
+							dprintf(0, "AVBUF OVERRUN!\n");
+							break;
+						}
+
 						// Account for hardware flaw that uses OR rather than adding
 						// when computing the address of HOFSTR.
 						u8 eye_offset = eye && !(param_base & 1);
@@ -527,6 +543,10 @@ void video_hard_render() {
 						}
 					} else {
 						// affine
+						if (avcur + h >= avbuf + AVBUF_SIZE) {
+							dprintf(0, "AVBUF OVERRUN!\n");
+							break;
+						}
 						for (int y = 0; y < h; y++) {
 							s16 mx = params[y * 8 + 0];
 							s16 mp = params[y * 8 + 1];
@@ -666,6 +686,11 @@ void video_hard_render() {
 						x -= jp;
 					else
 						x += jp;
+
+					if (vcur >= vbuf + VBUF_SIZE) {
+						dprintf(0, "VBUF OVERRUN!\n");
+						break;
+					}
 
 					vcur->x1 = x + 8 * hflip;
 					vcur->y1 = y + 8 * vflip + 256 * eye;
