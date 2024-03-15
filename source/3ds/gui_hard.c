@@ -18,6 +18,8 @@
 #define TINT_R ( (tVBOpt.TINT & 0x000000FF) )
 #define TINT_G ( (tVBOpt.TINT & 0x0000FF00) >> 8 )
 #define TINT_B ( (tVBOpt.TINT & 0x00FF0000) >> 16 )
+#define BACKLIGHT_SHORT 5 * 50
+#define BACKLIGHT_LONG 30 * 50
 
 static bool buttons_on_screen = false;
 void setTouchControls(bool button);
@@ -29,7 +31,7 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
-static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R,
+static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R, text_auto,
                 text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_3ds,
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about;
 
@@ -176,8 +178,10 @@ static Button video_settings_buttons[] = {
     #define VIDEO_SLIDER 1
     {.str="Slider mode", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_vbipd, .toggle_text_off=&text_3ds},
     #define VIDEO_DEFAULT_EYE 2
-    {.str="Default eye", .x=16, .y=144, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_right, .toggle_text_off=&text_left},
-    #define VIDEO_BACK 3
+    {.str="Default eye", .x=16, .y=144, .w=136, .h=48, .show_toggle=true, .toggle_text_on=&text_right, .toggle_text_off=&text_left},
+    #define VIDEO_BACKLIGHT 3
+    {.str="Backlight", .x=168, .y=144, .w=136, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_auto},
+    #define VIDEO_BACK 4
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -928,9 +932,14 @@ static void options(int initial_button) {
     }
 }
 
+bool old_2ds = false;
+
 static void video_settings(int initial_button) {
     video_settings_buttons[VIDEO_SLIDER].toggle = tVBOpt.SLIDERMODE;
     video_settings_buttons[VIDEO_DEFAULT_EYE].toggle = tVBOpt.DEFAULT_EYE;
+    video_settings_buttons[VIDEO_BACKLIGHT].toggle = tVBOpt.BACKLIGHT;
+    video_settings_buttons[VIDEO_BACKLIGHT].hidden = old_2ds;
+    video_settings_buttons[VIDEO_DEFAULT_EYE].w = old_2ds ? 288 : 136;
     LOOP_BEGIN(video_settings_buttons, initial_button);
     LOOP_END(video_settings_buttons);
     switch (button) {
@@ -944,6 +953,10 @@ static void video_settings(int initial_button) {
             tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
             saveFileOptions();
             return video_settings(VIDEO_DEFAULT_EYE);
+        case VIDEO_BACKLIGHT: // Backlight
+            tVBOpt.BACKLIGHT = !tVBOpt.BACKLIGHT;
+            saveFileOptions();
+            return video_settings(VIDEO_BACKLIGHT);
         case VIDEO_BACK: // Back
             return options(OPTIONS_VIDEO);
     }
@@ -1137,8 +1150,6 @@ static void draw_status_bar(float total_time, float drc_time) {
     C2D_DrawText(&text, C2D_AlignLeft, 310-60, 240 - 12, 0, 0.35, 0.35);
 }
 
-bool old_2ds = 0;
-
 void guiInit() {
     u8 model = 0;
     cfguInit();
@@ -1195,6 +1206,8 @@ void guiInit() {
     C2D_TextOptimize(&text_left);
     C2D_TextParse(&text_right, static_textbuf, "Right");
     C2D_TextOptimize(&text_right);
+    C2D_TextParse(&text_auto, static_textbuf, "Auto");
+    C2D_TextOptimize(&text_auto);
     C2D_TextParse(&text_sound_error, static_textbuf, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
     C2D_TextOptimize(&text_sound_error);
     C2D_TextParse(&text_anykeyexit, static_textbuf, "Press any key to exit");
@@ -1372,6 +1385,8 @@ void drawTouchControls(int inputs) {
     C2D_DrawText(&text_switch, C2D_AlignCenter, 320 - 32, 6, 0, 0.7, 0.7);
 }
 
+int backlightTimer = 0;
+
 void guiUpdate(float total_time, float drc_time) {
     static int last_inputs = 0;
     static bool last_fastforward = false;
@@ -1410,22 +1425,20 @@ void guiUpdate(float total_time, float drc_time) {
         int tb = 240-16 + 12 * !tVBOpt.PERF_INFO;
         C2D_DrawTriangle(t1l, tu, col_line, t1l, tb, col_line, t1r, tm, col_line, 0);
         C2D_DrawTriangle(t2l, tu, col_line, t2l, tb, col_line, t2r, tm, col_line, 0);
-        if (!old_2ds) {
-            // backlight icon
-            int col_top = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
-            int col_off = C2D_Color32(32, 32, 32, 255);
-            C2D_DrawLine(31.5, 0, col_line, 31.5, 31.5, col_line, 1, 0);
-            C2D_DrawLine(0, 31.5, col_line, 31.5, 31.5, col_line, 1, 0);
-            C2D_DrawRectSolid(5, 3, 0, 21, 11, col_top);
-            C2D_DrawRectSolid(8, 17, 0, 15, 11, col_line);
-            C2D_DrawLine(11.5, 18, col_off, 19.5, 27, col_off, 2, 0);
-            C2D_DrawLine(19.5, 18, col_off, 11.5, 27, col_off, 2, 0);
-        }
     }
     
     draw_status_bar(total_time, drc_time);
 
     if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);
+
+    if (tVBOpt.BACKLIGHT == 0 && backlightEnabled && !old_2ds) {
+        if (backlightTimer > BACKLIGHT_SHORT) {
+            C2D_DrawRectSolid(0, 0, 0, 320, 240, C2D_Color32(0, 0, 0, (backlightTimer - BACKLIGHT_SHORT) * 5));
+            if (backlightTimer > BACKLIGHT_SHORT + 50) {
+                backlightEnabled = toggleBacklight(false);
+            }
+        }
+    }
 
     C2D_Flush();
 
@@ -1435,13 +1448,18 @@ void guiUpdate(float total_time, float drc_time) {
 bool guiShouldPause() {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
+    return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || touch_pos.py < 240-32)) && backlightTimer < BACKLIGHT_SHORT;
 }
 
 int guiGetInput(bool do_switching) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
     if (backlightEnabled) {
+        if (tVBOpt.BACKLIGHT == 0 && !old_2ds) {
+            backlightTimer++;
+            if (backlightTimer > BACKLIGHT_SHORT) shouldRedrawMenu = true;
+            if (hidKeysHeld() & KEY_TOUCH) backlightTimer = 0;
+        }
         if ((hidKeysHeld() & KEY_TOUCH) && guiShouldSwitch()) {
             if (do_switching && (hidKeysDown() & KEY_TOUCH)) setTouchControls(!buttons_on_screen);
             return 0;
@@ -1454,12 +1472,11 @@ int guiGetInput(bool do_switching) {
                 return 0;
             }
         }
-        if (hidKeysDown() & KEY_TOUCH && (touch_pos.px <= 32 && touch_pos.py <= 32) && !old_2ds) {
-            backlightEnabled = toggleBacklight(false);
-            return 0;
-        }
         if (touch_pos.px < tVBOpt.PAUSE_RIGHT) {
             return 0;
+        }
+        if (tVBOpt.BACKLIGHT == 0 && !old_2ds && touch_pos.px > tVBOpt.PAUSE_RIGHT) {
+            backlightTimer = BACKLIGHT_SHORT - BACKLIGHT_LONG;
         }
         if (buttons_on_screen) {
             int axdist = touch_pos.px - tVBOpt.TOUCH_AX;
@@ -1479,8 +1496,9 @@ int guiGetInput(bool do_switching) {
                 return ydist <= 0 ? VB_RPAD_U : VB_RPAD_D;
             }
         }
-    } else if (hidKeysDown() & KEY_TOUCH && (touch_pos.px > 32 || touch_pos.py > 32)) {
+    } else if (hidKeysUp() & KEY_TOUCH) {
         backlightEnabled = toggleBacklight(true);
+        backlightTimer = 0;
     }
     return 0;
 }
