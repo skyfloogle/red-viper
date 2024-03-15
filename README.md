@@ -28,7 +28,7 @@ Future additions:
 [A modded 3DS](https://3ds.hacks.guide/) is needed. Once that's sorted, you can install it using [Universal Updater](https://universal-team.net/projects/universal-updater.html).
 
 <details>
-  <summary>If you still have FBI, you can scan this QR code with it.</summary>
+  <summary>You can also scan this QR code with FBI.</summary>
 
 ![image](https://github.com/skyfloogle/red-viper/assets/18466542/31fc852b-c701-4710-b849-fbf1d7dc29b8)
 </details>
@@ -63,14 +63,18 @@ The target is usually 20ms, though some games only draw every other frame, so re
 
 ## Building
 
-Before building, fetch the dependencies:
+After setting up [devkitPro](http://3dbrew.org/wiki/Setting_up_Development_Environment), install the
+additional dependencies:
+```bash
+> pacman -S 3ds-zlib
+```
 
+After cloning the repository, fetch the last dependencies:
 ```bash
 > git submodule update
 ```
 
-Once you have [ctrulib installed](http://3dbrew.org/wiki/Setting_up_Development_Environment), you can choose
-between four different make targets:
+Once that's all sorted, you can choose between four different make targets:
 
 * **`make release`** is the default, and adds `-O3` to CFLAGS.
 * **`make testing`** adds `-O3` to CFLAGS. It will output basic debug info to a connected debugger.
