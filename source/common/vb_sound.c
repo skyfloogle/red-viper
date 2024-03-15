@@ -71,7 +71,7 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
 static void update_buf_with_freq(int ch, int samples) {
     if (!(SNDMEM(S1INT + 0x40 * ch) & 0x80)) return;
     if (sound_state.channels[ch].envelope_value == 0) return;
-    if ((SNDMEM(S1RAM + 0x40 * ch) & 7) >= 5) return;
+    if (ch < 5 && (SNDMEM(S1RAM + 0x40 * ch) & 7) >= 5) return;
     if (!tVBOpt.SOUND) return;
     int total_clocks = samples * CYCLES_PER_SAMPLE;
     int current_clocks = 0;
