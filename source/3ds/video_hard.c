@@ -27,6 +27,8 @@ typedef struct {
 	C3D_RenderTarget *target;
 	int bg;
 	short umin, umax, vmin, vmax;
+	u16 tiles[64 * 64];
+	u16 GPLT[4];
 	bool visible;
 } AffineCacheEntry;
 static AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
@@ -145,22 +147,20 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	int vcount = 0;
 
 	int cache_id = mapid % AFFINE_CACHE_SIZE;
-	bool new_cache = tileMapCache[cache_id].bg != mapid || tDSPCACHE.BGCacheInvalid[mapid];
-	if (!new_cache) {
-		if (tileMapCache[cache_id].umin <= umin && tileMapCache[cache_id].umax >= umax &&
-			tileMapCache[cache_id].vmin <= vmin && tileMapCache[cache_id].vmax >= vmax
-		) return 0;
-	}
-	tDSPCACHE.BGCacheInvalid[mapid] = false;
+	bool new_map = tileMapCache[cache_id].bg != mapid || tDSPCACHE.BrtPALMod;
+	int old_umin = tileMapCache[cache_id].umin;
+	int old_umax = tileMapCache[cache_id].umax;
+	int old_vmin = tileMapCache[cache_id].vmin;
+	int old_vmax = tileMapCache[cache_id].vmax;
 	tileMapCache[cache_id].bg = mapid;
-	// increase the range only if new cache or if bigger
-	if (tileMapCache[cache_id].umin > umin || new_cache)
+	// move the bounds only if new map or if bigger
+	if (tileMapCache[cache_id].umin > umin || new_map)
 		tileMapCache[cache_id].umin = umin;
-	if (tileMapCache[cache_id].umax < umax || new_cache)
+	if (tileMapCache[cache_id].umax < umax || new_map)
 		tileMapCache[cache_id].umax = umax;
-	if (tileMapCache[cache_id].vmin > vmin || new_cache)
+	if (tileMapCache[cache_id].vmin > vmin || new_map)
 		tileMapCache[cache_id].vmin = vmin;
-	if (tileMapCache[cache_id].vmax < vmax || new_cache)
+	if (tileMapCache[cache_id].vmax < vmax || new_map)
 		tileMapCache[cache_id].vmax = vmax;
 
 	int visible_count = 0;
@@ -168,6 +168,7 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid));
 	for (int y = tileMapCache[cache_id].vmin & ~7; y <= tileMapCache[cache_id].vmax; y += 8) {
 		if (y - (tileMapCache[cache_id].vmin & ~7) >= 512) break;
+		bool new_row = new_map || (old_vmax - old_vmin < 512 && (y < old_vmin || y > old_vmax));
 		for (int x = tileMapCache[cache_id].umin & ~7; x <= tileMapCache[cache_id].umax; x += 8) {
 			if (x - (tileMapCache[cache_id].umin & ~7) >= 512) break;
 			int xx = x & 0x1f8;
@@ -179,6 +180,14 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 			// maybe clearing with a vbuf rather than immediate mode would help? idk
 			if (!tileVisible[tileid]) tileid = blankTile;
 			else visible_count++;
+
+			if (!(new_row || (old_umax - old_umin < 512 && (x < old_umin || x > old_umax))
+				|| tileMapCache[cache_id].tiles[(yy << 3) + (xx >> 3)] != tile
+				|| tDSPCACHE.CharacterCache[tileid]
+				|| tileMapCache[cache_id].GPLT[tile >> 14] != tVIPREG.GPLT[tile >> 14]
+			)) continue;
+			tileMapCache[cache_id].tiles[(yy << 3) + (xx >> 3)] = tile;
+
 			bool hflip = (tile & 0x2000) != 0;
 			bool vflip = (tile & 0x1000) != 0;
 			short u = (tileid % 32) * 8;
@@ -200,6 +209,7 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 			vcount++;
 		}
 	}
+	memcpy(tileMapCache[cache_id].GPLT, tVIPREG.GPLT, sizeof(tVIPREG.GPLT));
 	if (visible_count == 0) {
 		// bail
 		tileMapCache[cache_id].visible = false;
@@ -214,7 +224,7 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
 	C3D_AlphaTest(false, GPU_GREATER, 0);
-	C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
+	if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	return vcount;
@@ -645,7 +655,6 @@ void video_hard_render() {
 							}
 						}
 					}
-					if (old_tex_count == tex_count) puts("!");
 				}
 				// clean up any leftovers
 				if (tex_count != 0) {
@@ -707,6 +716,9 @@ void video_hard_render() {
 			DRAW_VBUF;
 		}
 	}
+
+	// cleanup
+	tDSPCACHE.BrtPALMod = false;
 }
 
 void update_texture_cache_hard() {
@@ -714,9 +726,7 @@ void update_texture_cache_hard() {
 	blankTile = -1;
 	for (int t = 0; t < 2048; t++) {
 		// skip if this tile wasn't modified
-		if (tDSPCACHE.CharacterCache[t]) {
-			tDSPCACHE.CharacterCache[t] = false;
-		} else {
+		if (!tDSPCACHE.CharacterCache[t]) {
 			if (blankTile < 0 && !tileVisible[t])
 				blankTile = t;
 			continue;

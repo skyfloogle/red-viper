@@ -222,6 +222,11 @@ void video_render(int alt_buf) {
 		C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, 0, 0);
 	}
 
+	// we need to have this cache during rendering
+	if (tVIPREG.XPCTRL & 0x0002) {
+		memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
+	}
+
 	if (tVBOpt.RENDERMODE > 0) {
 		// postproc
 		video_soft_render(alt_buf);
