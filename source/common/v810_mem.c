@@ -489,12 +489,14 @@ void hcreg_wbyte(WORD addr, BYTE data) {
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG TLB [%08x]:%02x ",addr,data);
         tHReg.TLB = data;
         tHReg.tTHW = (tHReg.TLB | (tHReg.tTHW & 0xFF00)); //Reset internal count
+        tHReg.tCount = tHReg.tTHW;
         //tHReg.tTHW = (tHReg.TLB | (tHReg.THB << 8)); //Reset internal count
         break;
     case 0x0200001C:    //THB
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG THB [%08x]:%02x ",addr,data);
         tHReg.THB = data;
         tHReg.tTHW = ((tHReg.THB << 8) | (tHReg.tTHW & 0xFF)); //Reset internal count
+        tHReg.tCount = tHReg.tTHW;
         //tHReg.tTHW = (tHReg.TLB | (tHReg.THB << 8)); //Reset internal count
         break;
     case 0x02000020:    //TCR
@@ -502,16 +504,7 @@ void hcreg_wbyte(WORD addr, BYTE data) {
         if ((tHReg.TCR & 1) && ((data & 0x05) == 0x04)) break; //Cannot disable timer and clear ZStat at the same time!
 
         if (data & 0x01) {
-            tHReg.TLB = (tHReg.tTHW&0xFF);
-            tHReg.THB = ((tHReg.tTHW>>8)&0xFF);
-            tHReg.tCount = tHReg.tTHW;
             if (!(tHReg.TCR & 0x01)) tHReg.tReset = 1;
-        }
-        if (data & 0x10) { //20us timer
-            tHReg.tTRC = 400;
-        }
-        else { //100us timer
-            tHReg.tTRC = 2000;
         }
 
         BYTE zstat = tHReg.TCR & 0x02;

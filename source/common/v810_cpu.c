@@ -240,6 +240,7 @@ void v810_reset() {
 int serviceInt(unsigned int cycles, WORD PC) {
     static unsigned int lasttime=0;
     static unsigned int lastinput=0;
+    static unsigned int ticks=0;
     const static int MAXCYCLES = 512;
 
     //OK, this is a strange muck of code... basically it attempts to hit interrupts and
@@ -255,7 +256,8 @@ int serviceInt(unsigned int cycles, WORD PC) {
     //  v810_int(0);
     //}
 
-    int next_timer = tHReg.TCR & 0x01 ? tHReg.tCount * tHReg.tTRC - (cycles - lasttime) : MAXCYCLES;
+    bool fast_timer = !!(tHReg.TCR & 0x10);
+    int next_timer = (tHReg.TCR & 0x01) && tHReg.tCount != 0 ? tHReg.tCount * (fast_timer ? 400 : 2000) - (cycles - lasttime) : MAXCYCLES;
     int next_input = tHReg.SCR & 2 ? tHReg.hwRead - (cycles - lastinput) : MAXCYCLES;
     int next_interrupt = next_timer < next_input ? next_timer : next_input;
     next_interrupt = next_interrupt < MAXCYCLES ? next_interrupt : MAXCYCLES;
@@ -268,25 +270,27 @@ int serviceInt(unsigned int cycles, WORD PC) {
     }
     lastinput = cycles;
 
-    if (tHReg.TCR & 0x01) { // Timer Enabled
-        if ((cycles-lasttime) >= tHReg.tTRC) {
-            int steps = (cycles - lasttime) / tHReg.tTRC;
-            lasttime += tHReg.tTRC * steps;
+    if ((cycles-lasttime) >= 400) {
+        int new_ticks = (cycles - lasttime) / 400;
+        lasttime += 400 * new_ticks;
+        int steps = fast_timer ? new_ticks : (ticks + new_ticks) / 5;
+        ticks = (ticks + new_ticks) % 5;
+        if (tHReg.TCR & 0x01) { // Timer Enabled
             tHReg.tCount -= steps;
-            if (tHReg.tCount <= 0) {
-                tHReg.tCount += tHReg.tTHW; //reset counter
+            // Sometimes (Nester's Funky Bowling) there's more steps than the
+            // timer has ticks. This shouldn't happen, but in the meantime
+            // make sure not to crash it.
+            while (tHReg.tCount <= 0) {
+                tHReg.tCount += tHReg.tTHW + 1; //reset counter
                 tHReg.TCR |= 0x02; //Zero Status
             }
             tHReg.TLB = (tHReg.tCount&0xFF);
             tHReg.THB = ((tHReg.tCount>>8)&0xFF);
         }
-        if ((tHReg.TCR & 0x02) && (tHReg.TCR & 0x08)) {
-            // zero & interrupt enabled
-            return v810_int(1, PC) ? 0 : next_input;
-        }
-    } else {
-        // don't get too overzealous if we turn it off and on again
-        lasttime = cycles;
+    }
+    if ((tHReg.TCR & 0x01) && (tHReg.TCR & 0x02) && (tHReg.TCR & 0x08)) {
+        // zero & interrupt enabled
+        return v810_int(1, PC) ? 0 : next_input;
     }
     return next_interrupt;
 }
