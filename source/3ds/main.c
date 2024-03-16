@@ -20,6 +20,13 @@ char rom_name[128];
 
 bool game_running = false;
 
+Handle frame_event;
+volatile int lag_frames;
+void frame_pacer_thread() {
+    lag_frames++;
+    svcSignalEvent(frame_event);
+}
+
 int main() {
     int qwe;
     int frame = 0;
@@ -74,9 +81,8 @@ int main() {
 
     osSetSpeedupEnable(true);
 
-    Handle frameTimer;
-    svcCreateTimer(&frameTimer, RESET_STICKY);
-    svcSetTimer(frameTimer, 0, 20000000);
+    svcCreateEvent(&frame_event, RESET_STICKY);
+    startPeriodic(frame_pacer_thread, 20000000);
 
     TickCounter drcTickCounter;
     TickCounter frameTickCounter;
@@ -115,6 +121,7 @@ int main() {
                 clearCache();
                 drc_clearCache();
             }
+            lag_frames = 0;
         }
 
         // if hold, turn off fast forward, as it'll be turned back on while reading input
@@ -159,7 +166,7 @@ int main() {
                 tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
             }
         } else {
-            // no game graphics, draw menu if posible
+            // no game graphics, draw menu if possible
             if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
                 guiUpdate(osTickCounterRead(&frameTickCounter), last_drc_time);
                 C3D_FrameEnd(0);
@@ -172,8 +179,15 @@ int main() {
         osTickCounterUpdate(&frameTickCounter);
 
         if (!tVBOpt.FASTFORWARD) {
-            svcWaitSynchronization(frameTimer, 20000000);
-            svcClearTimer(frameTimer);
+            if (lag_frames <= 0) {
+                svcWaitSynchronization(frame_event, 20000000);
+                lag_frames = 1;
+            }
+            svcClearEvent(frame_event);
+            if (--lag_frames > 2)
+                lag_frames = 2;
+        } else {
+            lag_frames = 0;
         }
 
 #if DEBUGLEVEL == 0
