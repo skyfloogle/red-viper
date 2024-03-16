@@ -278,6 +278,9 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 void video_hard_render() {
 	C3D_FrameDrawOn(screenTarget);
 
+	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
+	int end_eye = start_eye + eye_count;
+
 	// clear
 	u8 clearcol = brightness[tVIPREG.BKCOL];
 	C3D_BindProgram(&sFinal);
@@ -296,10 +299,20 @@ void video_hard_render() {
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
 
 	C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
-	C3D_ImmSendAttrib(1, 1, -1, 1);
-	C3D_ImmSendAttrib(0, 0, 0, 0);
-	C3D_ImmSendAttrib(-1, -1, -1, 1);
-	C3D_ImmSendAttrib(1, 1, 0, 0);
+	// left
+	if (start_eye == 0) {
+		C3D_ImmSendAttrib(384.0/256-1, 224.0/256-1, -1, 1);
+		C3D_ImmSendAttrib(0, 0, 0, 0);
+		C3D_ImmSendAttrib(-1, -1, -1, 1);
+		C3D_ImmSendAttrib(0, 0, 0, 0);
+	}
+	// right
+	if (end_eye == 1) {
+		C3D_ImmSendAttrib(384.0/256-1, 224.0/256, -1, 1);
+		C3D_ImmSendAttrib(0, 0, 0, 0);
+		C3D_ImmSendAttrib(-1, 0, -1, 1);
+		C3D_ImmSendAttrib(0, 0, 0, 0);
+	}
 	C3D_ImmDrawEnd();
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 
@@ -331,9 +344,6 @@ void video_hard_render() {
 	u16 *windows = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
 
 	uint8_t object_group_id = 3;
-
-	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
-	int end_eye = start_eye + eye_count;
 
 	for (int8_t wnd = 31; wnd >= 0; wnd--) {
 		if (windows[wnd * 16] & 0x40)

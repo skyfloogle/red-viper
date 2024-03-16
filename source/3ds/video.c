@@ -247,11 +247,24 @@ void video_render(int alt_buf) {
 			C3D_TexEnvColor(env, (brightness[1] << 16) | (brightness[2] << 8) | (brightness[3]) | 0xff808080);
 			C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
 
+			int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
+			int end_eye = start_eye + eye_count;
+
 			C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
-			C3D_ImmSendAttrib(1, 1, -1, 1);
-			C3D_ImmSendAttrib(1, 1, 0, 0);
-			C3D_ImmSendAttrib(-1, -1, -1, 1);
-			C3D_ImmSendAttrib(0, 0, 0, 0);
+			// left
+			if (start_eye == 0) {
+				C3D_ImmSendAttrib(384.0/256-1, 224.0/256-1, -1, 1);
+				C3D_ImmSendAttrib(224.0/512, 384.0/512, 0, 0);
+				C3D_ImmSendAttrib(-1, -1, -1, 1);
+				C3D_ImmSendAttrib(0, 0, 0, 0);
+			}
+			// right
+			if (end_eye == 1) {
+				C3D_ImmSendAttrib(384.0/256-1, 224.0/256, -1, 1);
+				C3D_ImmSendAttrib(224.0/512+0.5, 384.0/512, 0, 0);
+				C3D_ImmSendAttrib(-1, 0, -1, 1);
+				C3D_ImmSendAttrib(0.5, 0, 0, 0);
+			}
 			C3D_ImmDrawEnd();
 		}
 	}
