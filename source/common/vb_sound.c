@@ -254,10 +254,11 @@ void sound_write(int addr, u16 data) {
 
 void sound_callback(void *data) {
     if (paused) return;
-    int last_buf = (fill_buf + BUF_COUNT - 1) % BUF_COUNT;
+    int last_buf = (fill_buf + BUF_COUNT - 2) % BUF_COUNT;
     if (wavebufs[last_buf].status == NDSP_WBUF_DONE) {
         // uh oh, we're running out so repeat the last buf
         for (int buf = fill_buf + 1; (buf %= BUF_COUNT) != fill_buf; buf++) {
+            if (wavebufs[last_buf].status != NDSP_WBUF_DONE) continue;
             memcpy(wavebufs[buf].data_pcm16, wavebufs[last_buf].data_pcm16, SAMPLE_COUNT * 4);
             ndspChnWaveBufAdd(0, &wavebufs[buf]);
         }
