@@ -529,7 +529,7 @@ static void rom_loader() {
                 C2D_TextParse(&text, dynamic_textbuf, i < dirCount ? dirs[i] : files[i - dirCount]);
                 C2D_TextOptimize(&text);
                 C2D_DrawRectSolid(56, y, 0, 264, entry_height, clicked_entry == i ? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255) : C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
-                if (cursor == i) C2D_DrawRectSolid(56 + 4, y + entry_height - 4, 0, 264 - 8, 1, C2D_Color32(0, 0, 0, 255));
+                if (cursor == i) C2D_DrawRectSolid(56 + 4, y + entry_height - 8, 0, 264 - 8, 1, C2D_Color32(0, 0, 0, 255));
                 C2D_DrawText(&text, C2D_AlignLeft, 64, y + 8, 0, 0.5, 0.5);
             }
             y += entry_height;
