@@ -49,14 +49,16 @@ static inline int u16len(const u16 *s) {
     return e - s;
 }
 
-typedef struct {
+typedef struct Button_t Button;
+struct Button_t {
     char *str;
     float x, y, w, h;
-    bool show_toggle, toggle;
+    bool show_toggle, toggle, hidden;
     C2D_Text *toggle_text_on;
     C2D_Text *toggle_text_off;
     C2D_Text text;
-} Button;
+    void (*custom_draw)(Button*);
+};
 
 static Button* selectedButton = NULL;
 static bool buttonLock = false;
@@ -66,8 +68,10 @@ static inline int handle_buttons(Button buttons[], int count);
 
 #define SETUP_BUTTONS(arr) \
     for (int i = 0; i < sizeof(arr) / sizeof(arr[0]); i++) { \
-        C2D_TextParse(&arr[i].text, static_textbuf, arr[i].str); \
-        C2D_TextOptimize(&arr[i].text); \
+        if (arr[i].str) { \
+            C2D_TextParse(&arr[i].text, static_textbuf, arr[i].str ? arr[i].str : ""); \
+            C2D_TextOptimize(&arr[i].text); \
+        } \
     }
 
 #define LOOP_BEGIN(buttons, initial_button) \
@@ -126,11 +130,18 @@ static Button rom_loader_buttons[] = {
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
-static void controls();
+static void draw_abxy(Button*);
+static void draw_shoulders(Button*);
+static void controls(int initial_button);
 static Button controls_buttons[] = {
-    #define CONTROLS_TOUCHSCREEN 0
+    #define CONTROLS_FACE 0
+    // y is set later
+    {.x=160-64, .w=128, .h=80, .custom_draw=draw_abxy},
+    #define CONTROLS_SHOULDER 1
+    {.x=160-64, .y=0, .w=128, .h=40, .custom_draw=draw_shoulders},
+    #define CONTROLS_TOUCHSCREEN 2
     {.str="Touchscreen\nsettings", .x=96, .y=144, .w=128, .h=64},
-    #define CONTROLS_BACK 1
+    #define CONTROLS_BACK 3
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -220,7 +231,7 @@ static void first_menu(int initial_button) {
         case MAIN_MENU_LOAD_ROM:
             return rom_loader();
         case MAIN_MENU_CONTROLS:
-            return controls();
+            return controls(0);
         case MAIN_MENU_OPTIONS:
             return options(0);
         case MAIN_MENU_QUIT: // Quit
@@ -237,7 +248,7 @@ static void game_menu(int initial_button) {
             guiop = AKILL | VBRESET;
             return rom_loader();
         case MAIN_MENU_CONTROLS: // Controls
-            return controls();
+            return controls(0);
         case MAIN_MENU_OPTIONS: // Options
             return options(0);
         case MAIN_MENU_QUIT: // Quit
@@ -568,11 +579,39 @@ static void rom_loader() {
     }
 }
 
-static void controls() {
+static void draw_abxy(Button *self) {
+    const int FACEX = self->x + self->w / 2;
+    const int FACEY = self->y + self->h / 2;
+    const int FACEW = self->w;
+    const int FACEH = self->h;
+    const int OFFSET = 22;
+    // Shifting the draw x offset by 0.5 is a workaround for a Citro2D text rendering bug; it's being done to the (3DS) L, R, A, B, X, Y buttons here
+    C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 5 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, FACEX - 0.5, FACEY - OFFSET - 16, 0, 1, 1);
+    C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 4 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, FACEX - 0.5, FACEY + OFFSET - 16, 0, 1, 1);
+    C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 5 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, FACEX - OFFSET - 0.5, FACEY - 16, 0, 1, 1);
+    C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 4 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, FACEX + OFFSET - 0.5, FACEY - 16, 0, 1, 1);
+}
+
+static void draw_shoulders(Button *self) {
+    const int SHOULDX = self->x + self->w / 2;
+    const int SHOULDY = self->y;
+    const int SHOULDW = self->w;
+    const int SHOULDH = self->h;
+    const int OFFSET = 22;
+    // Shifting the draw x offset by 0.5 is a workaround for a Citro2D text rendering bug; it's being done to the (3DS) L, R, A, B, X, Y buttons here
+    C2D_DrawText(tVBOpt.ZLZR_MODE <= 1 ? &text_btn_L : tVBOpt.ZLZR_MODE <= 2 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, SHOULDX - OFFSET*2 - 0.5, SHOULDY + 5, 0, 1, 1);
+    C2D_DrawText(tVBOpt.ZLZR_MODE >= 2 ? &text_btn_L : tVBOpt.ZLZR_MODE == 0 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, SHOULDX - OFFSET*0.75, SHOULDY + 5, 0, 1, 1);
+    C2D_DrawText(tVBOpt.ZLZR_MODE >= 2 ? &text_btn_R : tVBOpt.ZLZR_MODE == 0 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, SHOULDX + OFFSET*0.75, SHOULDY + 5, 0, 1, 1);
+    C2D_DrawText(tVBOpt.ZLZR_MODE <= 1 ? &text_btn_R : tVBOpt.ZLZR_MODE <= 2 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, SHOULDX + OFFSET*2 + 0.5, SHOULDY + 5, 0, 1, 1);
+}
+
+static void controls(int initial_button) {
     bool shoulder_pressed = false;
     bool face_pressed = false;
     bool new_3ds = false;
     APT_CheckNew3DS(&new_3ds);
+    controls_buttons[CONTROLS_FACE].y = new_3ds ? 52 : 40;
+    controls_buttons[CONTROLS_SHOULDER].hidden = !new_3ds;
     const int SHOULDX = 160;
     const int SHOULDY = 0;
     const int SHOULDW = 128;
@@ -583,51 +622,20 @@ static void controls() {
     const int FACEH = 80;
     const int OFFSET = 22;
     bool changed = false;
-    LOOP_BEGIN(controls_buttons, -1);
-        touchPosition touch_pos;
-        hidTouchRead(&touch_pos);
-        if (hidKeysHeld() & KEY_TOUCH) {
-            if (new_3ds && touch_pos.px >= SHOULDX - SHOULDW/2 && touch_pos.px < SHOULDX + SHOULDW/2 && touch_pos.py <= SHOULDH) {
-                if (hidKeysDown() & KEY_TOUCH) {
-                    shoulder_pressed = true;
-                }
-            } else if (touch_pos.px >= FACEX - FACEW/2 && touch_pos.px < FACEX + FACEW/2 && touch_pos.py >= FACEY - FACEH/2 && touch_pos.py < FACEY + FACEH/2) {
-                if (hidKeysDown() & KEY_TOUCH) {
-                    face_pressed = true;
-                }
-            } else  {
-                shoulder_pressed = false;
-                face_pressed = false;
-            }
-        } else if (shoulder_pressed) {
-            changed = true;
-            tVBOpt.ZLZR_MODE = (tVBOpt.ZLZR_MODE + 1) % 4;
-            shoulder_pressed = false;
-            setTouchControls(buttons_on_screen);
-        } else if (face_pressed) {
-            changed = true;
-            tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 6;
-            face_pressed = false;
-            setTouchControls(buttons_on_screen);
-        }
-        if (new_3ds) {
-            C2D_DrawRectSolid(SHOULDX - SHOULDW/2, SHOULDY, 0, SHOULDW, SHOULDH, shoulder_pressed ? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255) : C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
-            // Shifting the draw x offset by 0.5 is a workaround for a Citro2D text rendering bug; it's being done to the (3DS) L, R, A, B, X, Y buttons here
-            C2D_DrawText(tVBOpt.ZLZR_MODE <= 1 ? &text_btn_L : tVBOpt.ZLZR_MODE <= 2 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, SHOULDX - OFFSET*2 - 0.5, SHOULDY + 5, 0, 1, 1);
-            C2D_DrawText(tVBOpt.ZLZR_MODE >= 2 ? &text_btn_L : tVBOpt.ZLZR_MODE == 0 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, SHOULDX - OFFSET*0.75, SHOULDY + 5, 0, 1, 1);
-            C2D_DrawText(tVBOpt.ZLZR_MODE >= 2 ? &text_btn_R : tVBOpt.ZLZR_MODE == 0 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, SHOULDX + OFFSET*0.75, SHOULDY + 5, 0, 1, 1);
-            C2D_DrawText(tVBOpt.ZLZR_MODE <= 1 ? &text_btn_R : tVBOpt.ZLZR_MODE <= 2 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, SHOULDX + OFFSET*2 + 0.5, SHOULDY + 5, 0, 1, 1);
-        }
-        C2D_DrawRectSolid(FACEX - FACEW/2, FACEY - FACEH/2, 0, FACEW, FACEH, face_pressed ? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255) : C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
-        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 5 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, FACEX - 0.5, FACEY - OFFSET - 16, 0, 1, 1);
-        C2D_DrawText(tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 4 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, FACEX - 0.5, FACEY + OFFSET - 16, 0, 1, 1);
-        C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 5 ? &text_btn_B : &text_btn_A, C2D_AlignCenter, FACEX - OFFSET - 0.5, FACEY - 16, 0, 1, 1);
-        C2D_DrawText(tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 4 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, FACEX + OFFSET - 0.5, FACEY - 16, 0, 1, 1);
+    LOOP_BEGIN(controls_buttons, initial_button);
     LOOP_END(controls_buttons);
-    if (changed) saveFileOptions();
     switch (button) {
-        case CONTROLS_TOUCHSCREEN: return touchscreen_settings();
-        case CONTROLS_BACK: return main_menu(MAIN_MENU_CONTROLS);
+        case CONTROLS_FACE:
+            tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 6;
+            return controls(CONTROLS_FACE);
+        case CONTROLS_SHOULDER:
+            tVBOpt.ZLZR_MODE = (tVBOpt.ZLZR_MODE + 1) % 4;
+            return controls(CONTROLS_SHOULDER);
+        case CONTROLS_TOUCHSCREEN:
+            return touchscreen_settings();
+        case CONTROLS_BACK:
+            saveFileOptions();
+            return main_menu(MAIN_MENU_CONTROLS);
     }
 }
 
@@ -638,6 +646,7 @@ static void touchscreen_settings() {
     int BUTTON_RAD = 24;
     int PAD_RAD = 48;
     int PAUSE_RAD = 4;
+    buttonLock = true;
     LOOP_BEGIN(touchscreen_settings_buttons, -1);
         // handle dragging
         touchPosition touch_pos;
@@ -747,6 +756,10 @@ static void touchscreen_settings() {
         } else {
             dragging = 0;
         }
+
+        // exit on B
+        if (hidKeysDown() & KEY_B) button = TOUCHSCREEN_BACK;
+
         // draw
         drawTouchControls(
             dragging == 2 ? VB_KEY_A :
@@ -757,10 +770,11 @@ static void touchscreen_settings() {
             PAUSE_RAD * 2, 8*2, dragging == 1 ? C2D_Color32(TINT_R*0.9, TINT_G*0.9, TINT_B*0.9, 255) : C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255)
         );
     LOOP_END(touchscreen_settings_buttons);
+    buttonLock = false;
     switch (button) {
         case TOUCHSCREEN_BACK: // Back
             saveFileOptions();
-            return controls();
+            return controls(CONTROLS_TOUCHSCREEN);
         case TOUCHSCREEN_RESET: // Reset
             tVBOpt.PAUSE_RIGHT = 160;
             tVBOpt.TOUCH_AX = 250;
@@ -976,6 +990,10 @@ static inline int handle_buttons(Button buttons[], int count) {
                 if (selectedButton == &buttons[i])
                     continue;
 
+                // skip if hidden
+                if (buttons[i].hidden)
+                    continue;
+
                 // skip if button is not in the right direction
                 int buttonx = (buttons[i].x + (buttons[i].w / 2)) - ((buttons[i].w / 2) * xaxis);
                 int buttony = (buttons[i].y + (buttons[i].h / 2)) - ((buttons[i].h / 2) * yaxis);
@@ -1006,6 +1024,7 @@ static inline int handle_buttons(Button buttons[], int count) {
 
     // check buttons for input
     for (int i = 0; i < count; i++) {
+        if (buttons[i].hidden) continue;
         if (
             touch_pos.px >= buttons[i].x && touch_pos.py >= buttons[i].y &&
             touch_pos.px < buttons[i].x + buttons[i].w && touch_pos.py < buttons[i].y + buttons[i].h
@@ -1030,6 +1049,9 @@ static inline int handle_buttons(Button buttons[], int count) {
             ret = i;
         }
 
+        // text-based checks, ignore when there is not text
+        if (!buttons[i].str) continue;
+
         // move back with the B button
         if ((kDown & KEY_B) && strcmp(buttons[i].str, "Back") == 0) {
             ret = i;
@@ -1042,6 +1064,7 @@ static inline int handle_buttons(Button buttons[], int count) {
     }
     // draw buttons
     for (int i = 0; i < count; i++) {
+        if (buttons[i].hidden) continue;
         u32 normal_colour = C2D_Color32(TINT_R, TINT_G, TINT_B, 255);
         u32 pressed_colour = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
         C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h,
@@ -1052,13 +1075,17 @@ static inline int handle_buttons(Button buttons[], int count) {
             float le = 5.5;
             C2D_DrawRectSolid(buttons[i].x + 4, buttons[i].y + buttons[i].h - 4, 0, buttons[i].w - 8, 1, C2D_Color32(0, 0, 0, 255));
         }
-        int yoff = -10;
-        char *strptr = buttons[i].str;
-        while ((strptr = strchr(strptr, '\n'))) {
-            yoff -= 10;
-            strptr++;
+        if (buttons[i].custom_draw) {
+            buttons[i].custom_draw(&buttons[i]);
+        } else if (buttons[i].str) {
+            int yoff = -10;
+            char *strptr = buttons[i].str;
+            while ((strptr = strchr(strptr, '\n'))) {
+                yoff -= 10;
+                strptr++;
+            }
+            C2D_DrawText(&buttons[i].text, C2D_AlignCenter, buttons[i].x + buttons[i].w / 2, buttons[i].y + buttons[i].h / 2 + yoff, 0, 0.7, 0.7);
         }
-        C2D_DrawText(&buttons[i].text, C2D_AlignCenter, buttons[i].x + buttons[i].w / 2, buttons[i].y + buttons[i].h / 2 + yoff, 0, 0.7, 0.7);
         if (buttons[i].show_toggle) C2D_DrawText(buttons[i].toggle ? buttons[i].toggle_text_on : buttons[i].toggle_text_off, C2D_AlignLeft, buttons[i].x, buttons[i].y, 0, 0.5, 0.5);
     }
     if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);
