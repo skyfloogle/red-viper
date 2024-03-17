@@ -77,7 +77,7 @@ static inline int handle_buttons(Button buttons[], int count);
     while (loop && aptMainLoop()) { \
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW); \
         C2D_TargetClear(screen, 0); \
-        video_flush(eye_count); \
+        video_flush(true); \
         C2D_SceneBegin(screen); \
         C2D_Prepare(); \
         hidScanInput(); \
@@ -484,6 +484,12 @@ static void rom_loader() {
     } else if (clicked_entry < dirCount) {
         return rom_loader();
     } else {
+        // clear screen buffer
+        C2D_TargetClear(screenTarget, 0);
+        C3D_FrameBegin(0);
+        video_flush(true);
+        C3D_FrameEnd(0);
+
         tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_cap);
         memcpy(tVBOpt.ROM_PATH, path, path_cap);
         tVBOpt.RAM_PATH = realloc(tVBOpt.RAM_PATH, path_cap);
