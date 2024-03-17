@@ -1040,10 +1040,15 @@ static inline int handle_buttons(Button buttons[], int count) {
     // draw buttons
     for (int i = 0; i < count; i++) {
         u32 normal_colour = C2D_Color32(TINT_R, TINT_G, TINT_B, 255);
-        u32 selected_colour = C2D_Color32(TINT_R*0.7, TINT_G*0.7, TINT_B*0.7, 255);
         u32 pressed_colour = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
         C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h,
-            pressed == i ? pressed_colour : selectedButton == &buttons[i] ? selected_colour : normal_colour);
+            pressed == i ? pressed_colour : normal_colour);
+        if (selectedButton == &buttons[i]) {
+            u32 line_colour = C2D_Color32(0, 0, 0, 255);
+            float ls = 3.5;
+            float le = 5.5;
+            C2D_DrawRectSolid(buttons[i].x + 4, buttons[i].y + buttons[i].h - 4, 0, buttons[i].w - 8, 1, C2D_Color32(0, 0, 0, 255));
+        }
         int yoff = -10;
         char *strptr = buttons[i].str;
         while ((strptr = strchr(strptr, '\n'))) {
