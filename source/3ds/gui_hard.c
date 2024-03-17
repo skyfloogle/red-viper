@@ -70,8 +70,8 @@ static inline int handle_buttons(Button buttons[], int count);
         C2D_TextOptimize(&arr[i].text); \
     }
 
-#define LOOP_BEGIN(buttons) \
-    selectedButton = NULL; \
+#define LOOP_BEGIN(buttons, initial_button) \
+    if (initial_button >= 0) selectedButton = &buttons[initial_button]; \
     int button = -1; \
     bool loop = true; \
     while (loop && aptMainLoop()) { \
@@ -94,7 +94,7 @@ static inline int handle_buttons(Button buttons[], int count);
         return; \
     }
 
-static void first_menu();
+static void first_menu(int initial_button);
 static Button first_menu_buttons[] = {
     {"Load ROM", 16, 16, 288, 144},
     {"Controls", 0, 176, 80, 64},
@@ -102,7 +102,7 @@ static Button first_menu_buttons[] = {
     {"Quit", 112, 192, 96, 48},
 };
 
-static void game_menu();
+static void game_menu(int initial_button);
 static Button game_menu_buttons[] = {
     #define MAIN_MENU_LOAD_ROM 0
     {"Load ROM", 224 - 48, 64, 80 + 48, 80},
@@ -142,7 +142,7 @@ static Button touchscreen_settings_buttons[] = {
     {"Reset", 0, 0, 48, 32},
 };
 
-static void options();
+static void options(int initial_button);
 static Button options_buttons[] = {
     #define OPTIONS_VIDEO 0
     {"Video settings", 16, 16, 288, 48},
@@ -158,7 +158,7 @@ static Button options_buttons[] = {
     {"Back", 0, 208, 48, 32},
 };
 
-static void video_settings();
+static void video_settings(int initial_button);
 static Button video_settings_buttons[] = {
     #define VIDEO_COLOUR 0
     {"Color mode", 16, 16, 288, 48},
@@ -202,8 +202,8 @@ static Button about_buttons[] = {
     SETUP_BUTTONS(touchscreen_settings_buttons); \
     SETUP_BUTTONS(about_buttons);
 
-static void first_menu() {
-    LOOP_BEGIN(first_menu_buttons);
+static void first_menu(int initial_button) {
+    LOOP_BEGIN(first_menu_buttons, initial_button);
         // draw initial "logo"
         C2D_SceneBegin(screenTarget);
         C2D_ViewScale(1, -1);
@@ -222,15 +222,15 @@ static void first_menu() {
         case MAIN_MENU_CONTROLS:
             return controls();
         case MAIN_MENU_OPTIONS:
-            return options();
+            return options(0);
         case MAIN_MENU_QUIT: // Quit
             guiop = GUIEXIT;
             return;
     }
 }
 
-static void game_menu() {
-    LOOP_BEGIN(game_menu_buttons);
+static void game_menu(int initial_button) {
+    LOOP_BEGIN(game_menu_buttons, initial_button);
     LOOP_END(game_menu_buttons);
     switch (button) {
         case MAIN_MENU_LOAD_ROM: // Load ROM
@@ -239,7 +239,7 @@ static void game_menu() {
         case MAIN_MENU_CONTROLS: // Controls
             return controls();
         case MAIN_MENU_OPTIONS: // Options
-            return options();
+            return options(0);
         case MAIN_MENU_QUIT: // Quit
             guiop = AKILL | GUIEXIT;
             return;
@@ -252,9 +252,9 @@ static void game_menu() {
     }
 }
 
-static void main_menu() {
-    if (game_running) game_menu();
-    else first_menu();
+static void main_menu(int initial_button) {
+    if (game_running) game_menu(MAIN_MENU_LOAD_ROM);
+    else first_menu(MAIN_MENU_LOAD_ROM);
 }
 
 int strptrcmp(const void *s1, const void *s2) {
@@ -364,7 +364,7 @@ static void rom_loader() {
     int clicked_entry = -1;
     bool dragging = false;
 
-    LOOP_BEGIN(rom_loader_buttons);
+    LOOP_BEGIN(rom_loader_buttons, -1);
         // process rom list
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
@@ -504,7 +504,7 @@ static void rom_loader() {
                     path[len - 1] = 0;
                 }
                 return rom_loader();
-            case ROM_LOADER_BACK: return main_menu();
+            case ROM_LOADER_BACK: return main_menu(MAIN_MENU_LOAD_ROM);
         }
     } else if (clicked_entry < dirCount) {
         return rom_loader();
@@ -540,7 +540,7 @@ static void controls() {
     const int FACEH = 80;
     const int OFFSET = 22;
     bool changed = false;
-    LOOP_BEGIN(controls_buttons);
+    LOOP_BEGIN(controls_buttons, -1);
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
         if (hidKeysHeld() & KEY_TOUCH) {
@@ -584,7 +584,7 @@ static void controls() {
     if (changed) saveFileOptions();
     switch (button) {
         case CONTROLS_TOUCHSCREEN: return touchscreen_settings();
-        case CONTROLS_BACK: return main_menu();
+        case CONTROLS_BACK: return main_menu(MAIN_MENU_CONTROLS);
     }
 }
 
@@ -595,7 +595,7 @@ static void touchscreen_settings() {
     int BUTTON_RAD = 24;
     int PAD_RAD = 48;
     int PAUSE_RAD = 4;
-    LOOP_BEGIN(touchscreen_settings_buttons);
+    LOOP_BEGIN(touchscreen_settings_buttons, -1);
         // handle dragging
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
@@ -737,7 +737,7 @@ static void colour_filter() {
     const float circle_w = colour_wheel_sprite.params.pos.w;
     const float circle_h = colour_wheel_sprite.params.pos.h;
 
-    LOOP_BEGIN(colour_filter_buttons);
+    LOOP_BEGIN(colour_filter_buttons, -1);
         touchPosition touch_pos;
         hidTouchRead(&touch_pos);
         float touch_dx = (touch_pos.px - circle_x) / (circle_w / 2);
@@ -825,7 +825,7 @@ static void colour_filter() {
     switch (button) {
         case COLOUR_BACK: // Back
             saveFileOptions();
-            return video_settings();
+            return video_settings(VIDEO_COLOUR);
         case COLOUR_RED: // Red
             tVBOpt.TINT = 0xff0000ff;
             return colour_filter();
@@ -835,39 +835,39 @@ static void colour_filter() {
     }
 }
 
-static void options() {
+static void options(int initial_button) {
     options_buttons[1].toggle = tVBOpt.FF_TOGGLE;
     options_buttons[2].toggle = tVBOpt.SOUND;
     options_buttons[3].toggle = tVBOpt.PERF_INFO;
-    LOOP_BEGIN(options_buttons);
+    LOOP_BEGIN(options_buttons, initial_button);
     LOOP_END(options_buttons);
     switch (button) {
         case OPTIONS_VIDEO: // Video settings
-            return video_settings();
+            return video_settings(0);
         case OPTIONS_FF: // Fast forward
             tVBOpt.FF_TOGGLE = !tVBOpt.FF_TOGGLE;
             saveFileOptions();
-            return options();
+            return options(OPTIONS_FF);
         case OPTIONS_SOUND: // Sound
             tVBOpt.SOUND = !tVBOpt.SOUND;
             if (tVBOpt.SOUND) sound_enable();
             else sound_disable();
-            return options();
+            return options(OPTIONS_SOUND);
         case OPTIONS_PERF: // Performance info
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
             saveFileOptions();
-            return options();
+            return options(OPTIONS_PERF);
         case OPTIONS_ABOUT: // About
             return about();
         case OPTIONS_BACK: // Back
-            return main_menu();
+            return main_menu(MAIN_MENU_OPTIONS);
     }
 }
 
-static void video_settings() {
+static void video_settings(int initial_button) {
     video_settings_buttons[1].toggle = tVBOpt.SLIDERMODE;
     video_settings_buttons[2].toggle = tVBOpt.DEFAULT_EYE;
-    LOOP_BEGIN(video_settings_buttons);
+    LOOP_BEGIN(video_settings_buttons, initial_button);
     LOOP_END(video_settings_buttons);
     switch (button) {
         case VIDEO_COLOUR: // Colour filter
@@ -875,19 +875,19 @@ static void video_settings() {
         case VIDEO_SLIDER: // Slider mode
             tVBOpt.SLIDERMODE = !tVBOpt.SLIDERMODE;
             saveFileOptions();
-            return video_settings();
+            return video_settings(VIDEO_SLIDER);
         case VIDEO_DEFAULT_EYE: // Default eye
             tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
             saveFileOptions();
-            return video_settings();
+            return video_settings(VIDEO_DEFAULT_EYE);
         case VIDEO_BACK: // Back
-            return options();
+            return options(OPTIONS_VIDEO);
     }
 }
 
 static void sound_error() {
     selectedButton = &sound_error_buttons[0];
-    LOOP_BEGIN(sound_error_buttons);
+    LOOP_BEGIN(sound_error_buttons, -1);
         C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(sound_error_buttons);
     return;
@@ -898,11 +898,11 @@ static void about() {
     C2D_SetTintMode(C2D_TintMult);
     C2D_ImageTint tint;
     C2D_PlainImageTint(&tint, C2D_Color32(255, 0, 0, 255), 1);
-    LOOP_BEGIN(about_buttons);
+    LOOP_BEGIN(about_buttons, -1);
         C2D_DrawSpriteTinted(&logo_sprite, &tint);
         C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(about_buttons);
-    return options();
+    return options(OPTIONS_ABOUT);
 }
 
 static inline int handle_buttons(Button buttons[], int count) {
@@ -1000,8 +1000,10 @@ static inline int handle_buttons(Button buttons[], int count) {
     // draw buttons
     for (int i = 0; i < count; i++) {
         u32 normal_colour = C2D_Color32(TINT_R, TINT_G, TINT_B, 255);
+        u32 selected_colour = C2D_Color32(TINT_R*0.7, TINT_G*0.7, TINT_B*0.7, 255);
         u32 pressed_colour = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
-        C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h, (pressed == i || selectedButton == &buttons[i]) ? pressed_colour : normal_colour);
+        C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h,
+            pressed == i ? pressed_colour : selectedButton == &buttons[i] ? selected_colour : normal_colour);
         int yoff = -10;
         char *strptr = buttons[i].str;
         while ((strptr = strchr(strptr, '\n'))) {
@@ -1121,7 +1123,7 @@ void openMenu() {
     }
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    main_menu();
+    main_menu(MAIN_MENU_LOAD_ROM);
     if (game_running && tVBOpt.SOUND)
         ndspSetMasterVol(1.0);
 }
