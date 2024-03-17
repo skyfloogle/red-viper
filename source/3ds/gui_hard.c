@@ -1416,10 +1416,17 @@ void guiUpdate(float total_time, float drc_time) {
             int col_off = C2D_Color32(32, 32, 32, 255);
             C2D_DrawLine(31.5, 0, col_line, 31.5, 31.5, col_line, 1, 0);
             C2D_DrawLine(0, 31.5, col_line, 31.5, 31.5, col_line, 1, 0);
-            C2D_DrawRectSolid(5, 3, 0, 21, 11, col_top);
-            C2D_DrawRectSolid(8, 17, 0, 15, 11, col_line);
-            C2D_DrawLine(11.5, 18, col_off, 19.5, 27, col_off, 2, 0);
-            C2D_DrawLine(19.5, 18, col_off, 11.5, 27, col_off, 2, 0);
+            C2D_DrawCircleSolid(16, 10, 0, 8, col_line);
+            C2D_DrawTriangle(
+                10, 15, col_line,
+                12, 22, col_line,
+                32 - 12, 22, col_line, 0);
+            C2D_DrawTriangle(
+                32 - 10, 15, col_line,
+                10, 15, col_line,
+                32 - 12, 22, col_line, 0);
+            C2D_DrawRectSolid(12, 22, 0, 8, 3, col_line);
+            C2D_DrawRectSolid(13, 25, 0, 6, 2, col_line);
         }
     }
     
