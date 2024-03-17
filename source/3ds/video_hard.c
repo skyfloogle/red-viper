@@ -163,8 +163,6 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	if (tileMapCache[cache_id].vmax < vmax || new_map)
 		tileMapCache[cache_id].vmax = vmax;
 
-	int visible_count = 0;
-
 	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid));
 	for (int y = tileMapCache[cache_id].vmin & ~7; y <= tileMapCache[cache_id].vmax; y += 8) {
 		if (y - (tileMapCache[cache_id].vmin & ~7) >= 512) break;
@@ -175,11 +173,6 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 			int yy = y & 0x1f8;
 			uint16_t tile = tilemap[(yy << 3) + (xx >> 3)];
 			uint16_t tileid = tile & 0x07ff;
-			// it's faster to draw everything including blank tiles with alpha test off
-			// than to clear the surface and then draw any visible tiles onto it
-			// maybe clearing with a vbuf rather than immediate mode would help? idk
-			if (!tileVisible[tileid]) tileid = blankTile;
-			else visible_count++;
 
 			if (!(new_row || (old_umax - old_umin < 512 && (x < old_umin || x > old_umax))
 				|| tileMapCache[cache_id].tiles[(yy << 3) + (xx >> 3)] != tile
@@ -210,13 +203,12 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 		}
 	}
 	memcpy(tileMapCache[cache_id].GPLT, tVIPREG.GPLT, sizeof(tVIPREG.GPLT));
-	if (visible_count == 0) {
+	tileMapCache[cache_id].visible = true;
+
+	if (vcount == 0) {
 		// bail
-		tileMapCache[cache_id].visible = false;
 		return 0;
 	}
-	tileMapCache[cache_id].visible = true;
-	if (vcur - vbuf > VBUF_SIZE) dprintf(0, "VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
 
 	// set up cache texture
 	C3D_FrameDrawOn(tileMapCache[cache_id].target);
@@ -462,50 +454,17 @@ void video_hard_render() {
 				int full_w = 512 * scx;
 				int full_h = 512 * scy;
 
-				// calculate bounds
+				// initial bounds calculation setup
 				int umin, vmin, umax, vmax;
-				if (windows[wnd * 16] & 0x1000) {
+				if ((windows[wnd * 16] & 0x3000) == 0x1000) {
 					// h-bias
 					vmin = my;
 					vmax = my + h;
 					umin = umax = params[0];
-					for (int i = 1; i < h * 2; i++) {
-						if (params[i] < umin) umin = params[i];
-						if (params[i] > umax) umax = params[i];
-					}
-					umin += base_mx - abs(mp);
-					umax += base_mx + abs(mp) + w;
 				} else {
 					// affine
-					umin = umax = params[0];
-					vmin = vmax = params[2];
-					for (int i = 0; i < h * 8; i += 8) {
-						int mx = params[i + 0];
-						int mp = params[i + 1];
-						int my = params[i + 2];
-						int dx = params[i + 3];
-						int dy = params[i + 4];
-						int mxleft = mx + ((dx * abs(mp)) >> 6);
-						int mxright = (mx > mxleft ? mx : mxleft) + ((dx * w) >> 6);
-						int myleft = my + ((dy * abs(mp)) >> 6);
-						int myright = (my > myleft ? my : myleft) + ((dy * w) >> 6);
-						if (mx < umin) umin = mx;
-						if (mx > umax) umax = mx;
-						if (mxleft < umin) umin = mxleft;
-						if (mxleft > umax) umax = mxleft;
-						if (mxright < umin) umin = mxright;
-						if (mxright > umax) umax = mxright;
-						if (my < vmin) vmin = my;
-						if (my > vmax) vmax = my;
-						if (myleft < vmin) vmin = myleft;
-						if (myleft > vmax) vmax = myleft;
-						if (myright < vmin) vmin = myright;
-						if (myright > vmax) vmax = myright;
-					}
-					umin = umin / 8 - (umin < 0);
-					umax = umax / 8 - (umax < 0);
-					vmin = vmin / 8 - (vmin < 0);
-					vmax = vmax / 8 - (vmax < 0);
+					umin = umax = params[0] >> 3;
+					vmin = vmax = params[2] >> 3;
 				}
 
 				// set up vertex buffers
@@ -548,12 +507,8 @@ void video_hard_render() {
 							// because hbias isn't downscaled
 							int u = mx + p;
 							int v = my + y;
-							if (!over) {
-								u &= full_w - 1;
-								if (u & (full_w >> 1)) u -= full_w;
-								v &= full_h - 1;
-								if (v & (full_h >> 1)) v -= full_h;
-							}
+							if (u < umin) umin = u;
+							if (u + w > umax) umax = u + w;
 							avcur->u = u * 8;
 							avcur->v = v * 8;
 							avcur->ix = w * 8;
@@ -581,9 +536,24 @@ void video_hard_render() {
 							avcur->v = my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
 							avcur->ix = dx * w >> 6;
 							avcur->iy = dy * w >> 6;
+							if (umin > (avcur->u >> 3))
+								umin = (avcur->u >> 3);
+							if (umin > ((avcur->u + avcur->ix) >> 3))
+								umin = ((avcur->u + avcur->ix) >> 3);
+							if (umax < (avcur->u >> 3))
+								umax = (avcur->u >> 3);
+							if (umax < ((avcur->u + avcur->ix) >> 3))
+								umax = ((avcur->u + avcur->ix) >> 3);
+							if (vmin > (avcur->v >> 3))
+								vmin = (avcur->v >> 3);
+							if (vmin > ((avcur->v + avcur->iy) >> 3))
+								vmin = ((avcur->v + avcur->iy) >> 3);
+							if (vmax < (avcur->v >> 3))
+								vmax = (avcur->v >> 3);
+							if (vmax < ((avcur->v + avcur->iy) >> 3))
+								vmax = ((avcur->v + avcur->iy) >> 3);
 							avcur->jx = 0;
 							avcur++->jy = 0;
-							vcount++;
 						}
 					}
 				}
