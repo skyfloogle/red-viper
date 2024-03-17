@@ -29,9 +29,9 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
-static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_L, text_btn_R, text_switch,
-                text_saving, text_on, text_off, text_toggle, text_hold, text_3ds, text_vbipd,
-                text_left, text_right, text_sound_error, text_anykeyexit, text_about;
+static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R,
+                text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_3ds,
+                text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
@@ -524,6 +524,9 @@ static void rom_loader() {
         C2D_TextOptimize(&text);
         C2D_DrawRectSolid(0, 0, 0, 320, 32, C2D_Color32(0, 0, 0, 255));
         C2D_DrawText(&text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+
+        // up button indicator
+        C2D_DrawText(&text_btn_X, C2D_AlignLeft | C2D_WithColor, 8, 32, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(rom_loader_buttons);
 
     buttonLock = false;
@@ -1125,6 +1128,8 @@ void guiInit() {
     C2D_TextOptimize(&text_btn_A);
     C2D_TextParse(&text_btn_B, static_textbuf, "\uE001");
     C2D_TextOptimize(&text_btn_B);
+    C2D_TextParse(&text_btn_X, static_textbuf, "\uE002");
+    C2D_TextOptimize(&text_btn_X);
     C2D_TextParse(&text_btn_L, static_textbuf, "\uE004");
     C2D_TextOptimize(&text_btn_L);
     C2D_TextParse(&text_btn_R, static_textbuf, "\uE005");
