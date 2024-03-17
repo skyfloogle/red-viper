@@ -104,54 +104,79 @@ static Button first_menu_buttons[] = {
 
 static void game_menu();
 static Button game_menu_buttons[] = {
+    #define MAIN_MENU_LOAD_ROM 0
     {"Load ROM", 224 - 48, 64, 80 + 48, 80},
+    #define MAIN_MENU_CONTROLS 1
     {"Controls", 0, 176, 80, 64},
+    #define MAIN_MENU_OPTIONS 2
     {"Options", 240, 176, 80, 64},
+    #define MAIN_MENU_QUIT 3
     {"Quit", 112, 192, 96, 48},
+    #define MAIN_MENU_RESUME 4
     {"Resume", 0, 0, 320, 48},
+    #define MAIN_MENU_RESET 5
     {"Reset", 16, 64, 80 + 48, 80},
 };
 
 static void rom_loader();
 static Button rom_loader_buttons[] = {
+    #define ROM_LOADER_UP 0
     {"Up", 0, 0, 32, 32},
+    #define ROM_LOADER_BACK 1
     {"Back", 0, 208, 48, 32},
 };
 
 static void controls();
 static Button controls_buttons[] = {
+    #define CONTROLS_TOUCHSCREEN 0
     {"Touchscreen\nsettings", 96, 144, 128, 64},
+    #define CONTROLS_BACK 1
     {"Back", 0, 208, 48, 32},
 };
 
 static void touchscreen_settings();
 static Button touchscreen_settings_buttons[] = {
+    #define TOUCHSCREEN_BACK 0
     {"Back", 0, 208, 48, 32},
+    #define TOUCHSCREEN_RESET 1
     {"Reset", 0, 0, 48, 32},
 };
 
 static void options();
 static Button options_buttons[] = {
+    #define OPTIONS_VIDEO 0
     {"Video settings", 16, 16, 288, 48},
+    #define OPTIONS_FF 1
     {"Fast forward", 16, 80, 128, 48, true, false, &text_toggle, &text_hold},
+    #define OPTIONS_SOUND 2
     {"Sound", 176, 80, 128, 48, true, false, &text_on, &text_off},
+    #define OPTIONS_PERF 3
     {"Perf. info", 16, 144, 128, 48, true, false, &text_on, &text_off},
+    #define OPTIONS_ABOUT 4
     {"About", 176, 144, 128, 48},
+    #define OPTIONS_BACK 5
     {"Back", 0, 208, 48, 32},
 };
 
 static void video_settings();
 static Button video_settings_buttons[] = {
+    #define VIDEO_COLOUR 0
     {"Color mode", 16, 16, 288, 48},
+    #define VIDEO_SLIDER 1
     {"Slider mode", 16, 80, 288, 48, true, false, &text_vbipd, &text_3ds},
+    #define VIDEO_DEFAULT_EYE 2
     {"Default eye", 16, 144, 288, 48, true, false, &text_right, &text_left},
+    #define VIDEO_BACK 3
     {"Back", 0, 208, 48, 32},
 };
 
 static void colour_filter();
 static Button colour_filter_buttons[] = {
+    #define COLOUR_BACK 0
     {"Back", 0, 208, 48, 32},
+    #define COLOUR_RED 1
     {"Red", 16, 64, 48, 32},
+    #define COLOUR_GRAY 2
     {"Gray", 16, 128, 48, 32},
 };
 
@@ -192,13 +217,13 @@ static void first_menu() {
     LOOP_END(first_menu_buttons);
     guiop = 0;
     switch (button) {
-        case 0:
+        case MAIN_MENU_LOAD_ROM:
             return rom_loader();
-        case 1:
+        case MAIN_MENU_CONTROLS:
             return controls();
-        case 2:
+        case MAIN_MENU_OPTIONS:
             return options();
-        case 3: // Quit
+        case MAIN_MENU_QUIT: // Quit
             guiop = GUIEXIT;
             return;
     }
@@ -208,20 +233,20 @@ static void game_menu() {
     LOOP_BEGIN(game_menu_buttons);
     LOOP_END(game_menu_buttons);
     switch (button) {
-        case 0: // Load ROM
+        case MAIN_MENU_LOAD_ROM: // Load ROM
             guiop = AKILL | VBRESET;
             return rom_loader();
-        case 1: // Controls
+        case MAIN_MENU_CONTROLS: // Controls
             return controls();
-        case 2: // Options
+        case MAIN_MENU_OPTIONS: // Options
             return options();
-        case 3: // Quit
+        case MAIN_MENU_QUIT: // Quit
             guiop = AKILL | GUIEXIT;
             return;
-        case 4: // Resume
+        case MAIN_MENU_RESUME: // Resume
             guiop = 0;
             return;
-        case 5: // Reset
+        case MAIN_MENU_RESET: // Reset
             guiop = AKILL | VBRESET;
             return;
     }
@@ -470,7 +495,7 @@ static void rom_loader() {
 
     if (clicked_entry < 0) {
         switch (button) {
-            case 0: // Up
+            case ROM_LOADER_UP: // Up
                 int len = strlen(path);
                 // don't get shorter than sdmc:/
                 if (len > 6) {
@@ -479,7 +504,7 @@ static void rom_loader() {
                     path[len - 1] = 0;
                 }
                 return rom_loader();
-            case 1: return main_menu();
+            case ROM_LOADER_BACK: return main_menu();
         }
     } else if (clicked_entry < dirCount) {
         return rom_loader();
@@ -558,8 +583,8 @@ static void controls() {
     LOOP_END(controls_buttons);
     if (changed) saveFileOptions();
     switch (button) {
-        case 0: return touchscreen_settings();
-        case 1: return main_menu();
+        case CONTROLS_TOUCHSCREEN: return touchscreen_settings();
+        case CONTROLS_BACK: return main_menu();
     }
 }
 
@@ -690,10 +715,10 @@ static void touchscreen_settings() {
         );
     LOOP_END(touchscreen_settings_buttons);
     switch (button) {
-        case 0: // Back
+        case TOUCHSCREEN_BACK: // Back
             saveFileOptions();
             return controls();
-        case 1: // Reset
+        case TOUCHSCREEN_RESET: // Reset
             tVBOpt.PAUSE_RIGHT = 160;
             tVBOpt.TOUCH_AX = 250;
             tVBOpt.TOUCH_AY = 64;
@@ -798,13 +823,13 @@ static void colour_filter() {
             0, 2, tVBOpt.TINT);
     LOOP_END(colour_filter_buttons);
     switch (button) {
-        case 0: // Back
+        case COLOUR_BACK: // Back
             saveFileOptions();
             return video_settings();
-        case 1: // Red
+        case COLOUR_RED: // Red
             tVBOpt.TINT = 0xff0000ff;
             return colour_filter();
-        case 2: // Gray
+        case COLOUR_GRAY: // Gray
             tVBOpt.TINT = 0xffffffff;
             return colour_filter();
     }
@@ -817,24 +842,24 @@ static void options() {
     LOOP_BEGIN(options_buttons);
     LOOP_END(options_buttons);
     switch (button) {
-        case 0: // Video settings
+        case OPTIONS_VIDEO: // Video settings
             return video_settings();
-        case 1: // Fast forward
+        case OPTIONS_FF: // Fast forward
             tVBOpt.FF_TOGGLE = !tVBOpt.FF_TOGGLE;
             saveFileOptions();
             return options();
-        case 2: // Sound
+        case OPTIONS_SOUND: // Sound
             tVBOpt.SOUND = !tVBOpt.SOUND;
             if (tVBOpt.SOUND) sound_enable();
             else sound_disable();
             return options();
-        case 3: // Performance info
+        case OPTIONS_PERF: // Performance info
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
             saveFileOptions();
             return options();
-        case 4: // About
+        case OPTIONS_ABOUT: // About
             return about();
-        case 5: // Back
+        case OPTIONS_BACK: // Back
             return main_menu();
     }
 }
@@ -845,17 +870,17 @@ static void video_settings() {
     LOOP_BEGIN(video_settings_buttons);
     LOOP_END(video_settings_buttons);
     switch (button) {
-        case 0: // Colour filter
+        case VIDEO_COLOUR: // Colour filter
             return colour_filter();
-        case 1: // Slider mode
+        case VIDEO_SLIDER: // Slider mode
             tVBOpt.SLIDERMODE = !tVBOpt.SLIDERMODE;
             saveFileOptions();
             return video_settings();
-        case 2: // Default eye
+        case VIDEO_DEFAULT_EYE: // Default eye
             tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
             saveFileOptions();
             return video_settings();
-        case 3: // Back
+        case VIDEO_BACK: // Back
             return options();
     }
 }
