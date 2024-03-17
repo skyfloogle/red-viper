@@ -1008,9 +1008,9 @@ static inline int handle_buttons(Button buttons[], int count) {
 
                 // use the nearest button that is in the right direction
                 if (temp) {
-                    int tempx = (temp->x + (temp->w / 2)) - ((temp->w / 4) * xaxis);
-                    int tempy = (temp->y + (temp->h / 2)) - ((temp->h / 4) * yaxis);
-                    if (dis(selectx,selecty,buttonx,buttony) > dis(selectx,selecty,tempx,tempy))
+                    int tempx = (temp->x + (temp->w / 2)) - ((temp->w / 2) * xaxis);
+                    int tempy = (temp->y + (temp->h / 2)) - ((temp->h / 2) * yaxis);
+                    if (dis(selectx,selecty,buttonx,buttony) >= dis(selectx,selecty,tempx,tempy))
                         continue;
                 }
 
