@@ -388,6 +388,8 @@ static void rom_loader() {
             clicked_entry = floorf((touch_pos.py + scroll_pos) / entry_height);
             if (clicked_entry < 0 || clicked_entry >= entry_count)
                 clicked_entry = -1;
+            else
+                cursor = clicked_entry;
             dragging = false;
             scroll_speed = 0;
         } else if (clicked_entry >= 0 && (hidKeysHeld() & KEY_TOUCH)) {
@@ -1038,6 +1040,7 @@ static inline int handle_buttons(Button buttons[], int count) {
             // touching the button
             if (hidKeysDown() & KEY_TOUCH) {
                 pressed = i;
+                selectedButton = &buttons[i];
             }
         } else {
             // not touching the button
