@@ -900,9 +900,9 @@ static void colour_filter() {
 }
 
 static void options(int initial_button) {
-    options_buttons[1].toggle = tVBOpt.FF_TOGGLE;
-    options_buttons[2].toggle = tVBOpt.SOUND;
-    options_buttons[3].toggle = tVBOpt.PERF_INFO;
+    options_buttons[OPTIONS_FF].toggle = tVBOpt.FF_TOGGLE;
+    options_buttons[OPTIONS_SOUND].toggle = tVBOpt.SOUND;
+    options_buttons[OPTIONS_PERF].toggle = tVBOpt.PERF_INFO;
     LOOP_BEGIN(options_buttons, initial_button);
     LOOP_END(options_buttons);
     switch (button) {
@@ -929,8 +929,8 @@ static void options(int initial_button) {
 }
 
 static void video_settings(int initial_button) {
-    video_settings_buttons[1].toggle = tVBOpt.SLIDERMODE;
-    video_settings_buttons[2].toggle = tVBOpt.DEFAULT_EYE;
+    video_settings_buttons[VIDEO_SLIDER].toggle = tVBOpt.SLIDERMODE;
+    video_settings_buttons[VIDEO_DEFAULT_EYE].toggle = tVBOpt.DEFAULT_EYE;
     LOOP_BEGIN(video_settings_buttons, initial_button);
     LOOP_END(video_settings_buttons);
     switch (button) {
@@ -950,8 +950,7 @@ static void video_settings(int initial_button) {
 }
 
 static void sound_error() {
-    selectedButton = &sound_error_buttons[0];
-    LOOP_BEGIN(sound_error_buttons, -1);
+    LOOP_BEGIN(sound_error_buttons, 0);
         C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(sound_error_buttons);
     return;
@@ -962,7 +961,7 @@ static void about() {
     C2D_SetTintMode(C2D_TintMult);
     C2D_ImageTint tint;
     C2D_PlainImageTint(&tint, C2D_Color32(255, 0, 0, 255), 1);
-    LOOP_BEGIN(about_buttons, -1);
+    LOOP_BEGIN(about_buttons, 0);
         C2D_DrawSpriteTinted(&logo_sprite, &tint);
         C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(about_buttons);
