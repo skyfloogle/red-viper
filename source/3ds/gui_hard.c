@@ -363,6 +363,10 @@ static void rom_loader() {
     int last_py = 0;
     int clicked_entry = -1;
     bool dragging = false;
+    // Delayed Auto Shift
+    int das_start = 20;
+    int xdas_length = 0, xdas_time = 0, xdas_count = 0;
+    int ydas_length = 0, ydas_time = 0, ydas_count = 0;
 
     LOOP_BEGIN(rom_loader_buttons, -1);
         // process rom list
@@ -437,8 +441,44 @@ static void rom_loader() {
         if (entry_count > 0)
         {
             u32 kDown = hidKeysDown();
-            int xaxis = (bool)(kDown & KEY_RIGHT) - (bool)(kDown & KEY_LEFT);
-            int yaxis = (bool)(kDown & KEY_DOWN) - (bool)(kDown & KEY_UP);
+            u32 kHeld = hidKeysHeld();
+            int xaxis = (bool)(kHeld & KEY_RIGHT) - (bool)(kHeld & KEY_LEFT);
+            int yaxis = (bool)(kHeld & KEY_DOWN) - (bool)(kHeld & KEY_UP);
+            if ((kDown & KEY_RIGHT) || (kDown & KEY_LEFT)) {
+                xdas_length = xdas_time = das_start;
+                xdas_count = 0;
+            }
+            if ((kDown & KEY_DOWN) || (kDown & KEY_UP)) {
+                ydas_length = ydas_time = das_start;
+                ydas_count = 0;
+            }
+
+            if (xaxis != 0 && ++xdas_time >= xdas_length) {
+                xdas_time = 0;
+                xdas_count++;
+                if (xdas_count > 1) {
+                    xdas_length = 4;
+                } else if (xdas_count > 5) {
+                    xdas_length = 2;
+                } else if (xdas_count > 10) {
+                    xdas_length = 1;
+                }
+            } else {
+                xaxis = 0;
+            }
+            if (yaxis != 0 && ++ydas_time >= ydas_length) {
+                ydas_time = 0;
+                ydas_count++;
+                if (ydas_count > 1) {
+                    ydas_length = 4;
+                } else if (ydas_count > 5) {
+                    ydas_length = 2;
+                } else if (ydas_count > 10) {
+                    ydas_length = 1;
+                }
+            } else {
+                yaxis = 0;
+            }
 
             if (xaxis != 0 || yaxis != 0) {
                 if (yaxis != 0) cursor += yaxis;
