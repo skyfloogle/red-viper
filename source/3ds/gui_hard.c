@@ -96,88 +96,88 @@ static inline int handle_buttons(Button buttons[], int count);
 
 static void first_menu(int initial_button);
 static Button first_menu_buttons[] = {
-    {"Load ROM", 16, 16, 288, 144},
-    {"Controls", 0, 176, 80, 64},
-    {"Options", 240, 176, 80, 64},
-    {"Quit", 112, 192, 96, 48},
+    {.str="Load ROM", .x=16, .y=16, .w=288, .h=144},
+    {.str="Controls", .x=0, .y=176, .w=80, .h=64},
+    {.str="Options", .x=240, .y=176, .w=80, .h=64},
+    {.str="Quit", .x=112, .y=192, .w=96, .h=48},
 };
 
 static void game_menu(int initial_button);
 static Button game_menu_buttons[] = {
     #define MAIN_MENU_LOAD_ROM 0
-    {"Load ROM", 224 - 48, 64, 80 + 48, 80},
+    {.str="Load ROM", .x=224 - 48, .y=64, .w=80 + 48, .h=80},
     #define MAIN_MENU_CONTROLS 1
-    {"Controls", 0, 176, 80, 64},
+    {.str="Controls", .x=0, .y=176, .w=80, .h=64},
     #define MAIN_MENU_OPTIONS 2
-    {"Options", 240, 176, 80, 64},
+    {.str="Options", .x=240, .y=176, .w=80, .h=64},
     #define MAIN_MENU_QUIT 3
-    {"Quit", 112, 192, 96, 48},
+    {.str="Quit", .x=112, .y=192, .w=96, .h=48},
     #define MAIN_MENU_RESUME 4
-    {"Resume", 0, 0, 320, 48},
+    {.str="Resume", .x=0, .y=0, .w=320, .h=48},
     #define MAIN_MENU_RESET 5
-    {"Reset", 16, 64, 80 + 48, 80},
+    {.str="Reset", .x=16, .y=64, .w=80 + 48, .h=80},
 };
 
 static void rom_loader();
 static Button rom_loader_buttons[] = {
     #define ROM_LOADER_UP 0
-    {"Up", 0, 0, 32, 32},
+    {.str="Up", .x=0, .y=0, .w=32, .h=32},
     #define ROM_LOADER_BACK 1
-    {"Back", 0, 208, 48, 32},
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static void controls();
 static Button controls_buttons[] = {
     #define CONTROLS_TOUCHSCREEN 0
-    {"Touchscreen\nsettings", 96, 144, 128, 64},
+    {.str="Touchscreen\nsettings", .x=96, .y=144, .w=128, .h=64},
     #define CONTROLS_BACK 1
-    {"Back", 0, 208, 48, 32},
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static void touchscreen_settings();
 static Button touchscreen_settings_buttons[] = {
     #define TOUCHSCREEN_BACK 0
-    {"Back", 0, 208, 48, 32},
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
     #define TOUCHSCREEN_RESET 1
-    {"Reset", 0, 0, 48, 32},
+    {.str="Reset", .x=0, .y=0, .w=48, .h=32},
 };
 
 static void options(int initial_button);
 static Button options_buttons[] = {
     #define OPTIONS_VIDEO 0
-    {"Video settings", 16, 16, 288, 48},
+    {.str="Video settings", .x=16, .y=16, .w=288, .h=48},
     #define OPTIONS_FF 1
-    {"Fast forward", 16, 80, 128, 48, true, false, &text_toggle, &text_hold},
+    {.str="Fast forward", .x=16, .y=80, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_toggle, .toggle_text_off=&text_hold},
     #define OPTIONS_SOUND 2
-    {"Sound", 176, 80, 128, 48, true, false, &text_on, &text_off},
+    {.str="Sound", .x=176, .y=80, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
     #define OPTIONS_PERF 3
-    {"Perf. info", 16, 144, 128, 48, true, false, &text_on, &text_off},
+    {.str="Perf. info", .x=16, .y=144, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
     #define OPTIONS_ABOUT 4
-    {"About", 176, 144, 128, 48},
+    {.str="About", .x=176, .y=144, .w=128, .h=48},
     #define OPTIONS_BACK 5
-    {"Back", 0, 208, 48, 32},
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static void video_settings(int initial_button);
 static Button video_settings_buttons[] = {
     #define VIDEO_COLOUR 0
-    {"Color mode", 16, 16, 288, 48},
+    {.str="Color mode", .x=16, .y=16, .w=288, .h=48},
     #define VIDEO_SLIDER 1
-    {"Slider mode", 16, 80, 288, 48, true, false, &text_vbipd, &text_3ds},
+    {.str="Slider mode", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_vbipd, .toggle_text_off=&text_3ds},
     #define VIDEO_DEFAULT_EYE 2
-    {"Default eye", 16, 144, 288, 48, true, false, &text_right, &text_left},
+    {.str="Default eye", .x=16, .y=144, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_right, .toggle_text_off=&text_left},
     #define VIDEO_BACK 3
-    {"Back", 0, 208, 48, 32},
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static void colour_filter();
 static Button colour_filter_buttons[] = {
     #define COLOUR_BACK 0
-    {"Back", 0, 208, 48, 32},
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
     #define COLOUR_RED 1
-    {"Red", 16, 64, 48, 32},
+    {.str="Red", .x=16, .y=64, .w=48, .h=32},
     #define COLOUR_GRAY 2
-    {"Gray", 16, 128, 48, 32},
+    {.str="Gray", .x=16, .y=128, .w=48, .h=32},
 };
 
 static void sound_error();
