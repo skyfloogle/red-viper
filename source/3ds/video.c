@@ -259,7 +259,7 @@ void video_render(int alt_buf) {
 				C3D_ImmSendAttrib(0, 0, 0, 0);
 			}
 			// right
-			if (end_eye == 1) {
+			if (end_eye == 2) {
 				C3D_ImmSendAttrib(384.0/256-1, 224.0/256, -1, 1);
 				C3D_ImmSendAttrib(224.0/512+0.5, 384.0/512, 0, 0);
 				C3D_ImmSendAttrib(-1, 0, -1, 1);
