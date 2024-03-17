@@ -61,6 +61,7 @@ void showError(int code);
 extern Thread save_thread;
 
 bool guiShouldPause();
+void aptBacklight(APT_HookType hook, void* param);
 int guiGetInput(bool do_switching);
 
 #endif //VB_GUI_H
