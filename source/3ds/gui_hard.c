@@ -264,7 +264,7 @@ static void game_menu(int initial_button) {
 }
 
 static void main_menu(int initial_button) {
-    if (game_running) game_menu(MAIN_MENU_LOAD_ROM);
+    if (game_running) game_menu(MAIN_MENU_RESUME);
     else first_menu(MAIN_MENU_LOAD_ROM);
 }
 
