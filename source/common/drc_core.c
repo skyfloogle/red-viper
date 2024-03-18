@@ -49,6 +49,8 @@
 #include "arm_emit.h"
 #include "arm_codegen.h"
 
+#include "replay.h"
+
 WORD* cache_start;
 WORD* cache_pos;
 int block_pos = 1;
@@ -1825,10 +1827,11 @@ void drc_dumpCache(char* filename) {
     fclose(f);
 }
 
-void drc_dumpDebugInfo() {
+void drc_dumpDebugInfo(int code) {
     int i;
     FILE* f = fopen("debug_info.txt", "w");
 
+    fprintf(f, "Error code: %d\n", code);
     fprintf(f, "PC: 0x%08lx\n", v810_state->PC);
     for (i = 0; i < 32; i++)
         fprintf(f, "r%d: 0x%08lx\n", i, v810_state->P_REG[i]);
@@ -1844,6 +1847,8 @@ void drc_dumpDebugInfo() {
         debug_dumpdrccache();
         debug_dumpvbram();
     }
+
+    replay_save("debug_replay.bin");
 
     fclose(f);
 }

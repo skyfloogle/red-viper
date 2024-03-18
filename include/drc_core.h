@@ -98,6 +98,6 @@ void drc_exit();
 int drc_run();
 void drc_loadSavedCache();
 void drc_dumpCache(char* filename);
-void drc_dumpDebugInfo();
+void drc_dumpDebugInfo(int code);
 
 #endif //DRC_CORE_H

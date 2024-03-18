@@ -17,6 +17,8 @@
 #include "rom_db.h"
 #include "drc_core.h"
 
+#include "replay.h"
+
 #include "3ds/services/fs.h"
 
 #define NEG(n) ((n) >> 31)
@@ -166,6 +168,8 @@ int v810_init() {
         fread(V810_GAME_RAM.pmemory, 1, ((V810_GAME_RAM.highaddr + 1) - V810_GAME_RAM.lowaddr), f);
         fclose(f);
     }
+
+    replay_init((bool)f);
     
     // If we need to save, we'll find out later
     is_sram = false;

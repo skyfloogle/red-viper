@@ -14,6 +14,7 @@
 #include "vb_sound.h"
 #include "vb_gui.h"
 #include "rom_db.h"
+#include "replay.h"
 
 char rom_path[256] = "sdmc:/vb/";
 char rom_name[128];
@@ -134,6 +135,8 @@ int main() {
         HWORD inputs = V810_RControll();
         tHReg.SLB =(BYTE)(inputs&0xFF);
         tHReg.SHB =(BYTE)((inputs>>8)&0xFF);
+
+        replay_update(inputs);
 
         float last_drc_time = osTickCounterRead(&drcTickCounter);
 

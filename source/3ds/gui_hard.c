@@ -31,7 +31,8 @@ static C2D_TextBuf dynamic_textbuf;
 
 static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R,
                 text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_3ds,
-                text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about;
+                text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
+                text_debug_filenames;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
@@ -167,6 +168,8 @@ static Button options_buttons[] = {
     {.str="About", .x=176, .y=144, .w=128, .h=48},
     #define OPTIONS_BACK 5
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
+    #define OPTIONS_DEBUG 6
+    {.str="Save debug info", .x=170, .y=208, .w=150, .h=32},
 };
 
 static void video_settings(int initial_button);
@@ -901,6 +904,7 @@ static void colour_filter() {
     }
 }
 
+static void save_debug_info();
 static void options(int initial_button) {
     options_buttons[OPTIONS_FF].toggle = tVBOpt.FF_TOGGLE;
     options_buttons[OPTIONS_SOUND].toggle = tVBOpt.SOUND;
@@ -927,6 +931,8 @@ static void options(int initial_button) {
             return about();
         case OPTIONS_BACK: // Back
             return main_menu(MAIN_MENU_OPTIONS);
+        case OPTIONS_DEBUG: // Save debug info
+            return save_debug_info();
     }
 }
 
@@ -1200,6 +1206,8 @@ void guiInit() {
     C2D_TextOptimize(&text_right);
     C2D_TextParse(&text_sound_error, static_textbuf, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
     C2D_TextOptimize(&text_sound_error);
+    C2D_TextParse(&text_debug_filenames, static_textbuf, "Please share debug_info.txt and\ndebug_replay.bin in your bug report.");
+    C2D_TextOptimize(&text_debug_filenames);
     C2D_TextParse(&text_anykeyexit, static_textbuf, "Press any key to exit");
     C2D_TextOptimize(&text_anykeyexit);
     C2D_TextParse(&text_about, static_textbuf, VERSION "\nBy Floogle, danielps, & others\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
@@ -1251,6 +1259,22 @@ void showSoundError() {
     sound_error();
 }
 
+static void save_debug_info() {
+    C3D_FrameBegin(0);
+    C2D_TargetClear(screen, 0);
+    C2D_SceneBegin(screen);
+    C2D_DrawText(&text_saving, C2D_AlignCenter | C2D_WithColor, 320 / 2, 100, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    C2D_Flush();
+    C3D_FrameEnd(0);
+
+    drc_dumpDebugInfo(0);
+
+    LOOP_BEGIN(about_buttons, 0);
+        C2D_DrawText(&text_debug_filenames, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    LOOP_END(about_buttons);
+    return options(OPTIONS_DEBUG);
+}
+
 void showError(int code) {
     if (!backlightEnabled) toggleBacklight(true);
     gfxSetDoubleBuffering(GFX_BOTTOM, false);
@@ -1265,15 +1289,16 @@ void showError(int code) {
     C3D_FrameBegin(0);
     C2D_TargetClear(screen, 0);
     C2D_SceneBegin(screen);
-    C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 60, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 40, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     C2D_Flush();
     C3D_FrameEnd(0);
 
-    drc_dumpDebugInfo();
+    drc_dumpDebugInfo(code);
 
     C3D_FrameBegin(0);
     C3D_FrameDrawOn(screen);
-    C2D_DrawText(&text_anykeyexit, C2D_AlignCenter | C2D_WithColor, 320 / 2, 140, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    C2D_DrawText(&text_debug_filenames, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    C2D_DrawText(&text_anykeyexit, C2D_AlignCenter | C2D_WithColor, 320 / 2, 180, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     C2D_Flush();
     C3D_FrameEnd(0);
 }
