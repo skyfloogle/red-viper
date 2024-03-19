@@ -35,7 +35,7 @@ void replay_init(bool has_sram) {
 
 void replay_update(HWORD inputs) {
     if (overflowed) return;
-    if (inputs != replay_cursor->inputs) {
+    if (inputs != replay_cursor->inputs || replay_cursor->count == UINT16_MAX) {
         if (replay_cursor->count != 0) replay_cursor++;
         if (replay_cursor >= replay_buf + REPLAY_COUNT) {
             overflowed = true;
