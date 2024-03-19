@@ -506,7 +506,12 @@ static void rom_loader() {
                 if (yaxis != 0) cursor += yaxis;
                 if (xaxis != 0) cursor += xaxis * 10;
 
-                // limits
+                // wrap if direction pressed and at end
+                if (cursor - xaxis * 10 - yaxis == 0 && (kDown & (KEY_UP | KEY_LEFT)))
+                    cursor = entry_count-1;
+                if (cursor - xaxis * 10 - yaxis == entry_count - 1 && (kDown & (KEY_DOWN | KEY_RIGHT)))
+                    cursor = 0;
+                // limit otherwise
                 if (cursor < 0) cursor = 0;
                 if (cursor >= entry_count) cursor = entry_count-1;
                 
