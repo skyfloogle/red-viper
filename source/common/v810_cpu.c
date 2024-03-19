@@ -100,25 +100,11 @@ int open_rom() {
     }
 }
 
-int v810_init() {
+void v810_init() {
     char ram_name[32];
     unsigned int ram_size = 0;
 
-    // Open VB Rom
     V810_ROM1.pmemory = malloc(MAX_ROM_SIZE);
-    int rom_size = open_rom();
-    if (rom_size < 0) // error
-        return 0;
-
-    // CRC32 Calculations
-    gen_table();
-    tVBOpt.CRC32 = get_crc(rom_size);
-
-    // Initialize our rom tables.... (USA)
-    V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
-    V810_ROM1.lowaddr  = 0x07000000;
-    V810_ROM1.off = (unsigned)V810_ROM1.pmemory - V810_ROM1.lowaddr;
-    // Offset + Lowaddr = pmemory
 
     // Initialize our ram1 tables....
     V810_DISPLAY_RAM.lowaddr  = 0x00000000;
@@ -163,18 +149,6 @@ int v810_init() {
     // Offset + Lowaddr = pmemory
     V810_GAME_RAM.off = (unsigned)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
 
-    // Try to load up the saveRam file...
-    FILE *f = fopen(tVBOpt.RAM_PATH, "r");
-    if (f) {
-        fread(V810_GAME_RAM.pmemory, 1, ((V810_GAME_RAM.highaddr + 1) - V810_GAME_RAM.lowaddr), f);
-        fclose(f);
-    }
-
-    replay_init((bool)f);
-    
-    // If we need to save, we'll find out later
-    is_sram = false;
-
     // Initialize our HCREG tables.... // realy reg01
     V810_HCREG.lowaddr  = 0x02000000;
     V810_HCREG.highaddr = 0x02FFFFFF; // Realy just 0200002C but its mirrored...
@@ -186,27 +160,35 @@ int v810_init() {
     V810_HCREG.rfuncw = &(hcreg_rword);
     V810_HCREG.wfuncw = &(hcreg_wword);
 
-    mem_whword(0x0005F840, 0x0004); //XPSTTS
-
-    tHReg.SCR	= 0x4C;
-    tHReg.WCR	= 0xFC;
-    tHReg.TCR	= 0xE4;
-    tHReg.THB	= 0xFF;
-    tHReg.TLB	= 0xFF;
-    tHReg.SHB	= 0x00;
-    tHReg.SLB	= 0x00;
-    tHReg.CDRR	= 0x00;
-    tHReg.CDTR	= 0x00;
-    tHReg.CCSR	= 0xFF;
-    tHReg.CCR	= 0x6D;
-
-    tHReg.tTRC = 2000;
-    tHReg.tCount = 0xFFFF;
-    tHReg.tReset = 0;
-
-    tHReg.hwRead = 0;
-
     v810_state = calloc(1, sizeof(cpu_state));
+}
+
+int v810_load() {
+    // Open VB Rom
+    int rom_size = open_rom();
+    if (rom_size < 0) // error
+        return 0;
+
+    // CRC32 Calculations
+    gen_table();
+    tVBOpt.CRC32 = get_crc(rom_size);
+
+    // Initialize our rom tables.... (USA)
+    V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
+    V810_ROM1.lowaddr  = 0x07000000;
+    V810_ROM1.off = (unsigned)V810_ROM1.pmemory - V810_ROM1.lowaddr;
+    // Offset + Lowaddr = pmemory
+
+    // Try to load up the saveRam file...
+    FILE *f = fopen(tVBOpt.RAM_PATH, "r");
+    if (f) {
+        fread(V810_GAME_RAM.pmemory, 1, ((V810_GAME_RAM.highaddr + 1) - V810_GAME_RAM.lowaddr), f);
+        fclose(f);
+    }
+
+    replay_init((bool)f);
+
+    v810_reset();
 
     return 1;
 }
@@ -239,6 +221,29 @@ void v810_reset() {
     tHReg.WCR = 0;
     tVIPREG.INTENB = 0;
     tVIPREG.XPSTTS &= ~2;
+    
+    // If we need to save, we'll find out later
+    is_sram = false;
+
+    mem_whword(0x0005F840, 0x0004); //XPSTTS
+
+    tHReg.SCR	= 0x4C;
+    tHReg.WCR	= 0xFC;
+    tHReg.TCR	= 0xE4;
+    tHReg.THB	= 0xFF;
+    tHReg.TLB	= 0xFF;
+    tHReg.SHB	= 0x00;
+    tHReg.SLB	= 0x00;
+    tHReg.CDRR	= 0x00;
+    tHReg.CDTR	= 0x00;
+    tHReg.CCSR	= 0xFF;
+    tHReg.CCR	= 0x6D;
+
+    tHReg.tTRC = 2000;
+    tHReg.tCount = 0xFFFF;
+    tHReg.tReset = 0;
+
+    tHReg.hwRead = 0;
 }
 
 // Returns number of cycles until next timer interrupt.
