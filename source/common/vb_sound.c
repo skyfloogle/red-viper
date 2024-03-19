@@ -241,12 +241,10 @@ void sound_write(int addr, u16 data) {
         } else if (ch == 5) {
             sound_state.noise_shift = 0;
         }
-    } else if ((addr & 0x38) == (S1FQL & 0x38)) {
-        // covers both FQL and FQH
-        sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
-        if (ch == 4) sound_state.sweep_frequency = GET_FREQ(4);
     } else if ((addr & 0x3f) == (S1EV0 & 0x3f)) {
         sound_state.channels[ch].envelope_value = (data >> 4) & 0xf;
+    } else if (addr == S5FQL || addr == S5FQH) {
+        if (ch == 4) sound_state.sweep_frequency = GET_FREQ(4);
     } else if (addr == S6EV1) {
         sound_state.noise_shift = 0;
     }
