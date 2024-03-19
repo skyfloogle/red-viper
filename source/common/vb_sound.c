@@ -82,6 +82,9 @@ static void update_buf_with_freq(int ch, int samples) {
         if (ch == 5 || constant_sample[SNDMEM(S1RAM + 0x40 * ch) & 7] < 0) {
             if (clocks > sound_state.channels[ch].freq_time)
                 clocks = sound_state.channels[ch].freq_time;
+        } else {
+            // constant sample, just reset the freqtime
+            sound_state.channels[ch].freq_time = freq_time;
         }
         int current_samples = current_clocks / CYCLES_PER_SAMPLE;
         int next_samples = (current_clocks + clocks) / CYCLES_PER_SAMPLE;
