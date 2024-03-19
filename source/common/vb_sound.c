@@ -9,8 +9,8 @@
 
 #define SAMPLE_RATE 50000
 #define CYCLES_PER_SAMPLE (20000000 / SAMPLE_RATE)
-#define SAMPLE_COUNT (SAMPLE_RATE / 50)
-#define BUF_COUNT 4
+#define SAMPLE_COUNT (SAMPLE_RATE / 100)
+#define BUF_COUNT 9
 
 typedef struct {
     u8 shutoff_time, envelope_time, envelope_value, sample_pos;
