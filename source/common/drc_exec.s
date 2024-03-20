@@ -133,6 +133,11 @@ exit_block:
     @ Restore CPSR
     msr     cpsr_f, r4
 
+    @ r10 = -MAXCYCLES (to cancel out adding MAXCYCLES in postexec)
+    ldr     r10, =tVBOpt
+    ldr     r10, [r10]
+    neg     r10, r10
+
     @ Exit the block ignoring linked return address
     pop     {r4, r5}
     pop     {r0, pc}
