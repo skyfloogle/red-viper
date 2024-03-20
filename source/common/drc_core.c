@@ -804,6 +804,8 @@ static int drc_translateBlock() {
                 STR_IO(1, 11, 33 * 4);
                 STR_IO(2, 11, (35 + PSW) * 4);
 
+                ADDCYCLES();
+
                 // restore flags
                 LDR_IO(1, 11, 70 * 4);
                 MSR(1);
