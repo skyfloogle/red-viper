@@ -42,6 +42,7 @@ void replay_update(HWORD inputs) {
             return;
         }
         replay_cursor->inputs = inputs;
+        replay_cursor->count = 0;
     }
     replay_cursor->count++;
 }
