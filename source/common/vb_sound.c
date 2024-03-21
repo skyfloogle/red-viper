@@ -278,7 +278,8 @@ void sound_init() {
     ndspChnSetInterp(0, NDSP_INTERP_NONE);
     ndspChnSetRate(0, SAMPLE_RATE);
     ndspSetCallback(sound_callback, NULL);
-    float mix[12] = {[0] = 1, [1] = 1};
+    // About as loud as it can be without clipping when all channels are max volume
+    float mix[12] = {[0] = 1.37, [1] = 1.37};
     ndspChnSetMix(0, mix);
     for (int i = 0; i < BUF_COUNT; i++) {
         memset(&wavebufs[i], 0, sizeof(wavebufs[i]));
