@@ -225,12 +225,6 @@ void sound_write(int addr, u16 data) {
             SNDMEM(S1INT + 0x40 * i) &= ~0x80;
         }
     } else if ((addr & 0x3f) == (S1INT & 0x3f)) {
-        sound_state.channels[ch].shutoff_time = data & 0x1f;
-        sound_state.channels[ch].sample_pos = 0;
-        sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
-        int ev0 = SNDMEM(S1EV0 + 0x40 * ch);
-        sound_state.channels[ch].envelope_value = ev0 >> 4;
-        sound_state.channels[ch].envelope_time = ev0 & 7;
         if (ch == 4) {
             sound_state.sweep_frequency = GET_FREQ(4);
             if (SNDMEM(S5EV1) & 0x40) {
@@ -244,6 +238,12 @@ void sound_write(int addr, u16 data) {
         } else if (ch == 5) {
             sound_state.noise_shift = 0;
         }
+        sound_state.channels[ch].shutoff_time = data & 0x1f;
+        sound_state.channels[ch].sample_pos = 0;
+        sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
+        int ev0 = SNDMEM(S1EV0 + 0x40 * ch);
+        sound_state.channels[ch].envelope_value = ev0 >> 4;
+        sound_state.channels[ch].envelope_time = ev0 & 7;
     } else if ((addr & 0x3f) == (S1EV0 & 0x3f)) {
         sound_state.channels[ch].envelope_value = (data >> 4) & 0xf;
     } else if (addr == S5FQL || addr == S5FQH) {
