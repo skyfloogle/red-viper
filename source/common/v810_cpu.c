@@ -175,6 +175,9 @@ int v810_load_init() {
         struct stat mystat;
         fstat(fileno(load_sram), &mystat);
         load_sram_size = mystat.st_size;
+        int max_sram_size = V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr;
+        if (load_sram_size > max_sram_size)
+            load_sram_size = max_sram_size;
     } else {
         load_sram_size = 0;
     }
@@ -184,13 +187,15 @@ int v810_load_init() {
 }
 
 int v810_load_step() {
-    const int CHUNK_SIZE = 0x10000;
+    int chunk_size = 0x10000;
     int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
     int ram_size = load_sram_size;
     int all_size = rom_size + ram_size;
     if (load_pos < rom_size) {
+        if (chunk_size > rom_size - load_pos)
+            chunk_size = rom_size - load_pos;
         if (load_is_zip) {
-            int ret = unzReadCurrentFile(load_unz, V810_ROM1.pmemory + load_pos, CHUNK_SIZE);
+            int ret = unzReadCurrentFile(load_unz, V810_ROM1.pmemory + load_pos, chunk_size);
             if (ret < 0) {
                 unzCloseCurrentFile(load_unz);
                 unzClose(load_unz);
@@ -200,7 +205,7 @@ int v810_load_step() {
             load_pos += ret;
         } else {
             size_t bytes_read;
-            if (!(bytes_read = fread(V810_ROM1.pmemory + load_pos, 1, CHUNK_SIZE, load_file))) {
+            if (!(bytes_read = fread(V810_ROM1.pmemory + load_pos, 1, chunk_size, load_file))) {
                 fclose(load_file);
                 if (load_sram) fclose(load_sram);
                 return UNZ_ERRNO;
@@ -220,7 +225,9 @@ int v810_load_step() {
     }
     if (load_pos >= rom_size && load_pos < all_size) {
         // load ram
-        size_t bytes_read = fread(V810_GAME_RAM.pmemory + load_pos - rom_size, 1, CHUNK_SIZE, load_sram);
+        if (chunk_size > all_size - load_pos)
+            chunk_size = all_size - load_pos;
+        size_t bytes_read = fread(V810_GAME_RAM.pmemory + load_pos - rom_size, 1, chunk_size, load_sram);
         if (bytes_read == 0 && !feof(load_sram)) {
             fclose(load_sram);
             return UNZ_ERRNO;
