@@ -267,8 +267,8 @@ static void game_menu(int initial_button) {
 }
 
 static void main_menu(int initial_button) {
-    if (game_running) game_menu(MAIN_MENU_RESUME);
-    else first_menu(MAIN_MENU_LOAD_ROM);
+    if (game_running) game_menu(initial_button);
+    else first_menu(initial_button);
 }
 
 int strptrcmp(const void *s1, const void *s2) {
@@ -1229,7 +1229,7 @@ void openMenu() {
     }
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    main_menu(MAIN_MENU_LOAD_ROM);
+    main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
     if (guiop == 0) sound_resume();
     else if (!(guiop & GUIEXIT)) sound_reset();
 }
