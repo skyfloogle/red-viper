@@ -212,11 +212,11 @@ int main() {
     save_sram();
 
 exit:
+    sound_close();
     if (save_thread) threadJoin(save_thread, U64_MAX);
     endThreads();
     V810_DSP_Quit();
     video_quit();
-    sound_close();
     drc_exit();
     v810_exit();
 

@@ -290,8 +290,8 @@ void sound_init() {
 }
 
 void sound_close() {
-    for (int i = 0; i < BUF_COUNT; i++) linearFree(wavebufs[i].data_pcm16);
     ndspExit();
+    for (int i = 0; i < BUF_COUNT; i++) linearFree(wavebufs[i].data_pcm16);
 }
 
 void sound_pause() {

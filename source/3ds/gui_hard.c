@@ -1231,7 +1231,7 @@ void openMenu() {
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     main_menu(MAIN_MENU_LOAD_ROM);
     if (guiop == 0) sound_resume();
-    else sound_reset();
+    else if (!(guiop & GUIEXIT)) sound_reset();
 }
 
 bool backlightEnabled = true;
@@ -1280,6 +1280,7 @@ static void save_debug_info() {
 }
 
 void showError(int code) {
+    sound_pause();
     if (!backlightEnabled) toggleBacklight(true);
     gfxSetDoubleBuffering(GFX_BOTTOM, false);
     C2D_Prepare();
