@@ -274,6 +274,8 @@ void v810_exit() {
 // Reinitialize the defaults in the CPU
 void v810_reset() {
     memset(v810_state, 0, sizeof(cpu_state));
+    memset(&tVIPREG, 0, sizeof(tVIPREG));
+    memset(&tHReg, 0, sizeof(tHReg));
 
     v810_state->irq_handler = &drc_handleInterrupts;
     v810_state->reloc_table = &drc_relocTable;
