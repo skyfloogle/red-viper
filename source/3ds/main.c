@@ -99,6 +99,7 @@ int main() {
                 goto exit;
             }
             if (guiop & VBRESET) {
+                v810_reset();
                 drc_reset();
                 clearCache();
                 frame = 0;

@@ -233,6 +233,9 @@ int v810_load_step() {
     if (load_pos >= all_size) {
         // final setup
 
+        // If we need to save, we'll find out later
+        is_sram = false;
+
         // CRC32 Calculations
         gen_table();
         tVBOpt.CRC32 = get_crc(rom_size);
@@ -287,9 +290,6 @@ void v810_reset() {
     tHReg.WCR = 0;
     tVIPREG.INTENB = 0;
     tVIPREG.XPSTTS &= ~2;
-    
-    // If we need to save, we'll find out later
-    is_sram = false;
 
     mem_whword(0x0005F840, 0x0004); //XPSTTS
 
@@ -312,7 +312,7 @@ void v810_reset() {
     tHReg.hwRead = 0;
 
     // we don't reset load_sram so it will be non-null if there was sram to load
-    replay_init((bool)load_sram);
+    replay_init(is_sram || (bool)load_sram);
 }
 
 // Returns number of cycles until next timer interrupt.
