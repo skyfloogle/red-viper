@@ -261,6 +261,7 @@ void sound_callback(void *data) {
         for (int buf = fill_buf + 1; (buf %= BUF_COUNT) != fill_buf; buf++) {
             if (wavebufs[last_buf].status != NDSP_WBUF_DONE) continue;
             memcpy(wavebufs[buf].data_pcm16, wavebufs[last_buf].data_pcm16, SAMPLE_COUNT * 4);
+            DSP_FlushDataCache(wavebufs[buf].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
             ndspChnWaveBufAdd(0, &wavebufs[buf]);
         }
     }
@@ -285,6 +286,7 @@ void sound_init() {
         memset(&wavebufs[i], 0, sizeof(wavebufs[i]));
         wavebufs[i].data_pcm16 = linearAlloc(sizeof(s16) * SAMPLE_COUNT * 2);
         wavebufs[i].nsamples = SAMPLE_COUNT;
+        DSP_FlushDataCache(wavebufs[i].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
         ndspChnWaveBufAdd(0, &wavebufs[i]);
     }
 }
