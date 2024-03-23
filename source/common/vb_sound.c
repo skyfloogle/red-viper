@@ -305,6 +305,9 @@ void sound_resume() {
 
 void sound_reset() {
     memset(&sound_state, 0, sizeof(sound_state));
+    for (int i = 0; i < 6; i++) {
+        SNDMEM(S1INT + 0x40 * i) = 0;
+    }
     for (int i = 0; i < BUF_COUNT; i++) {
         memset(wavebufs[i].data_pcm16, 0, SAMPLE_COUNT * 4);
     }
