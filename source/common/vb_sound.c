@@ -38,6 +38,8 @@ static volatile bool paused = false;
 
 static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
 
+static short dc_offset = 0;
+
 #define SNDMEM(x) (V810_SOUND_RAM.pmemory[(x) & 0xFFF])
 #define GET_FREQ(ch) ((SNDMEM(S1FQL + 0x40 * ch) | (SNDMEM(S1FQH + 0x40 * ch) << 8)) & 0x7ff)
 #define GET_FREQ_TIME(ch) ( \
@@ -56,11 +58,11 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
     }
     u8 sample;
     if (ch < 5) {
-        sample = (SNDMEM(0x80 * (SNDMEM(S1RAM + 0x40 * ch) & 7) + 4 * channel->sample_pos) << 2);
+        sample = SNDMEM(0x80 * (SNDMEM(S1RAM + 0x40 * ch) & 7) + 4 * channel->sample_pos);
     } else {
         int bit = ~(sound_state.noise_shift >> 7);
         bit ^= sound_state.noise_shift >> noise_bits[(SNDMEM(S6EV1) >> 4) & 7];
-        sample = (bit & 1) ? 0x7c : 0x00;
+        sample = (bit & 1) ? 0x3f : 0x00;
     }
     u32 total = ((left_vol * sample) & 0xffff) | ((right_vol * sample) << 16);
     for (int i = 0; i < samples; i++) {
@@ -193,6 +195,28 @@ void sound_update(u32 cycles) {
         buf_pos += samples;
         remaining_samples -= samples;
         if (buf_pos == SAMPLE_COUNT) {
+            // final post processing
+            for (int i = 0; i < SAMPLE_COUNT; i++) {
+                #define AMPLIFY(x) (((x) >> 4) * 95)
+                short left = AMPLIFY(wavebufs[fill_buf].data_pcm16[i * 2]) + dc_offset;
+                short right = AMPLIFY(wavebufs[fill_buf].data_pcm16[i * 2 + 1]) + dc_offset;
+                #undef AMPLIFY
+                int extra_offset = dc_offset - (-left - right + dc_offset * 48) / 50;
+                if (left < dc_offset || right < dc_offset) {
+                    int extra_offset = 0;
+                    if (left < dc_offset)
+                        extra_offset = left - 0x7fff;
+                    if (right < dc_offset && right - 0x7fff > extra_offset)
+                        extra_offset = right - 0x7fff;
+                }
+                left -= extra_offset;
+                right -= extra_offset;
+                dc_offset -= extra_offset;
+                if (dc_offset != 0) {
+                    wavebufs[fill_buf].data_pcm16[i * 2] = left;
+                    wavebufs[fill_buf].data_pcm16[i * 2 + 1] = right;
+                }
+            }
             // push
             if (wavebufs[fill_buf].status == NDSP_WBUF_DONE) {
                 DSP_FlushDataCache(wavebufs[fill_buf].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
@@ -280,7 +304,7 @@ void sound_init() {
     ndspChnSetRate(0, SAMPLE_RATE);
     ndspSetCallback(sound_callback, NULL);
     // About as loud as it can be without clipping when all channels are max volume
-    float mix[12] = {[0] = 1.37, [1] = 1.37};
+    float mix[12] = {[0] = 1.5, [1] = 1.5};
     ndspChnSetMix(0, mix);
     for (int i = 0; i < BUF_COUNT; i++) {
         memset(&wavebufs[i], 0, sizeof(wavebufs[i]));
@@ -298,6 +322,7 @@ void sound_close() {
 
 void sound_pause() {
     paused = true;
+    dc_offset = 0;
     ndspChnWaveBufClear(0);
 }
 
