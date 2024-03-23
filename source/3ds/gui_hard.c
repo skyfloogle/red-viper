@@ -32,7 +32,7 @@ static C2D_TextBuf dynamic_textbuf;
 static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R,
                 text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_3ds,
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
-                text_debug_filenames;
+                text_debug_filenames, text_loading, text_loaderr, text_unloaded;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
@@ -67,11 +67,15 @@ static bool buttonLock = false;
 static inline int handle_buttons(Button buttons[], int count);
 #define HANDLE_BUTTONS(buttons) handle_buttons(buttons, sizeof(buttons) / sizeof(buttons[0]))
 
+#define STATIC_TEXT(var, str) {\
+    C2D_TextParse(var, static_textbuf, str); \
+    C2D_TextOptimize(var); \
+}
+
 #define SETUP_BUTTONS(arr) \
     for (int i = 0; i < sizeof(arr) / sizeof(arr[0]); i++) { \
         if (arr[i].str) { \
-            C2D_TextParse(&arr[i].text, static_textbuf, arr[i].str ? arr[i].str : ""); \
-            C2D_TextOptimize(&arr[i].text); \
+            STATIC_TEXT(&arr[i].text, arr[i].str ? arr[i].str : ""); \
         } \
     }
 
@@ -204,6 +208,11 @@ static Button about_buttons[] = {
     {"Back", 160-48, 180, 48*2, 48},
 };
 
+static void load_rom();
+static Button load_rom_buttons[] = {
+    {"Unload & cancel", 160-80, 180, 80*2, 48},
+};
+
 #define SETUP_ALL_BUTTONS \
     SETUP_BUTTONS(first_menu_buttons); \
     SETUP_BUTTONS(game_menu_buttons); \
@@ -214,20 +223,24 @@ static Button about_buttons[] = {
     SETUP_BUTTONS(colour_filter_buttons); \
     SETUP_BUTTONS(sound_error_buttons); \
     SETUP_BUTTONS(touchscreen_settings_buttons); \
-    SETUP_BUTTONS(about_buttons);
+    SETUP_BUTTONS(about_buttons); \
+    SETUP_BUTTONS(load_rom_buttons);
+
+static void draw_logo() {
+    C2D_SceneBegin(screenTarget);
+    C2D_ViewScale(1, -1);
+    C2D_ViewTranslate(0, -512);
+    C2D_SpriteSetPos(&logo_sprite, 384 / 2 - 2, 224 / 2);
+    C2D_DrawSprite(&logo_sprite);
+    C2D_SpriteSetPos(&logo_sprite, 384 / 2 + 2, 224 / 2 + 256);
+    C2D_DrawSprite(&logo_sprite);
+    C2D_ViewReset();
+    C2D_SceneBegin(screen);
+}
 
 static void first_menu(int initial_button) {
     LOOP_BEGIN(first_menu_buttons, initial_button);
-        // draw initial "logo"
-        C2D_SceneBegin(screenTarget);
-        C2D_ViewScale(1, -1);
-        C2D_ViewTranslate(0, -512);
-        C2D_SpriteSetPos(&logo_sprite, 384 / 2 - 2, 224 / 2);
-        C2D_DrawSprite(&logo_sprite);
-        C2D_SpriteSetPos(&logo_sprite, 384 / 2 + 2, 224 / 2 + 256);
-        C2D_DrawSprite(&logo_sprite);
-        C2D_ViewReset();
-        C2D_SceneBegin(screen);
+        draw_logo();
     LOOP_END(first_menu_buttons);
     guiop = 0;
     switch (button) {
@@ -592,7 +605,7 @@ static void rom_loader() {
         memcpy(tVBOpt.RAM_PATH, path, path_cap);
         strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
         saveFileOptions();
-        return;
+        return load_rom();
     }
 }
 
@@ -981,6 +994,59 @@ static void about() {
     return options(OPTIONS_ABOUT);
 }
 
+static void load_error(int err, bool unloaded) {
+    LOOP_BEGIN(about_buttons, 0);
+        C2D_DrawText(&text_loaderr, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        if (unloaded) {
+            C2D_DrawText(&text_unloaded, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        }
+    LOOP_END(about_buttons);
+    return rom_loader();
+}
+
+static void load_rom() {
+    if (save_thread) threadJoin(save_thread, U64_MAX);
+    int ret;
+    if ((ret = v810_load_init())) {
+        // instant fail
+        return load_error(ret, false);
+    }
+    LOOP_BEGIN(load_rom_buttons, -1);
+        ret = v810_load_step();
+        if (ret < 0) {
+            // error
+            loop = false;
+        } else {
+            C2D_DrawText(&text_loading, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.8, 0.8, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+            C2D_DrawRectSolid(60, 140, 0, 200, 16, C2D_Color32(0.5 * TINT_R, 0.5 * TINT_G, 0.5 * TINT_B, 255));
+            C2D_DrawRectSolid(60, 140, 0, 2 * ret, 16, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+            if (ret == 100) {
+                // complete
+                loop = false;
+            }
+        }
+    LOOP_END(load_rom_buttons);
+    if (ret == 100) {
+        // complete
+        game_running = true;
+        return;
+    } else {
+        game_running = false;
+        // redraw logo since we unloaded
+        C3D_FrameBegin(0);
+        draw_logo();
+        C3D_FrameEnd(0);
+        if (ret < 0) {
+            // error
+            return load_error(ret, true);
+        } else {
+            // cancelled
+            v810_load_cancel();
+            return rom_loader();
+        }
+    }
+}
+
 static inline int handle_buttons(Button buttons[], int count) {
     static int pressed = -1;
     int ret = -1;
@@ -1175,48 +1241,30 @@ void guiInit() {
     static_textbuf = C2D_TextBufNew(1024);
     dynamic_textbuf = C2D_TextBufNew(4096);
     SETUP_ALL_BUTTONS;
-    C2D_TextParse(&text_A, static_textbuf, "A");
-    C2D_TextOptimize(&text_A);
-    C2D_TextParse(&text_B, static_textbuf, "B");
-    C2D_TextOptimize(&text_B);
-    C2D_TextParse(&text_btn_A, static_textbuf, "\uE000");
-    C2D_TextOptimize(&text_btn_A);
-    C2D_TextParse(&text_btn_B, static_textbuf, "\uE001");
-    C2D_TextOptimize(&text_btn_B);
-    C2D_TextParse(&text_btn_X, static_textbuf, "\uE002");
-    C2D_TextOptimize(&text_btn_X);
-    C2D_TextParse(&text_btn_L, static_textbuf, "\uE004");
-    C2D_TextOptimize(&text_btn_L);
-    C2D_TextParse(&text_btn_R, static_textbuf, "\uE005");
-    C2D_TextOptimize(&text_btn_R);
-    C2D_TextParse(&text_switch, static_textbuf, "Switch");
-    C2D_TextOptimize(&text_switch);
-    C2D_TextParse(&text_saving, static_textbuf, "Saving...");
-    C2D_TextOptimize(&text_saving);
-    C2D_TextParse(&text_on, static_textbuf, "On");
-    C2D_TextOptimize(&text_on);
-    C2D_TextParse(&text_off, static_textbuf, "Off");
-    C2D_TextOptimize(&text_off);
-    C2D_TextParse(&text_toggle, static_textbuf, "Toggle");
-    C2D_TextOptimize(&text_toggle);
-    C2D_TextParse(&text_hold, static_textbuf, "Hold");
-    C2D_TextOptimize(&text_hold);
-    C2D_TextParse(&text_3ds, static_textbuf, "Nintendo 3DS");
-    C2D_TextOptimize(&text_3ds);
-    C2D_TextParse(&text_vbipd, static_textbuf, "Virtual Boy IPD");
-    C2D_TextOptimize(&text_vbipd);
-    C2D_TextParse(&text_left, static_textbuf, "Left");
-    C2D_TextOptimize(&text_left);
-    C2D_TextParse(&text_right, static_textbuf, "Right");
-    C2D_TextOptimize(&text_right);
-    C2D_TextParse(&text_sound_error, static_textbuf, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
-    C2D_TextOptimize(&text_sound_error);
-    C2D_TextParse(&text_debug_filenames, static_textbuf, "Please share debug_info.txt and\ndebug_replay.bin in your bug report.");
-    C2D_TextOptimize(&text_debug_filenames);
-    C2D_TextParse(&text_anykeyexit, static_textbuf, "Press any key to exit");
-    C2D_TextOptimize(&text_anykeyexit);
-    C2D_TextParse(&text_about, static_textbuf, VERSION "\nBy Floogle, danielps, & others\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
-    C2D_TextOptimize(&text_about);
+    STATIC_TEXT(&text_A, "A");
+    STATIC_TEXT(&text_B, "B");
+    STATIC_TEXT(&text_btn_A, "\uE000");
+    STATIC_TEXT(&text_btn_B, "\uE001");
+    STATIC_TEXT(&text_btn_X, "\uE002");
+    STATIC_TEXT(&text_btn_L, "\uE004");
+    STATIC_TEXT(&text_btn_R, "\uE005");
+    STATIC_TEXT(&text_switch, "Switch");
+    STATIC_TEXT(&text_saving, "Saving...");
+    STATIC_TEXT(&text_on, "On");
+    STATIC_TEXT(&text_off, "Off");
+    STATIC_TEXT(&text_toggle, "Toggle");
+    STATIC_TEXT(&text_hold, "Hold");
+    STATIC_TEXT(&text_3ds, "Nintendo 3DS");
+    STATIC_TEXT(&text_vbipd, "Virtual Boy IPD");
+    STATIC_TEXT(&text_left, "Left");
+    STATIC_TEXT(&text_right, "Right");
+    STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
+    STATIC_TEXT(&text_debug_filenames, "Please share debug_info.txt and\ndebug_replay.bin in your bug report.");
+    STATIC_TEXT(&text_anykeyexit, "Press any key to exit");
+    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
+    STATIC_TEXT(&text_loading, "Loading...");
+    STATIC_TEXT(&text_loaderr, "Failed to load ROM.");
+    STATIC_TEXT(&text_unloaded, "The current ROM has been unloaded.");
 }
 
 static bool shouldRedrawMenu = true;

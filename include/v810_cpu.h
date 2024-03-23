@@ -117,7 +117,9 @@ void v810_init();
 void v810_exit();
 
 // Load ROM
-int v810_load();
+int v810_load_init();
+int v810_load_step();
+void v810_load_cancel();
 
 // Reset the registers
 void v810_reset();

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
 
 #include "minizip/unzip.h"
 
@@ -35,70 +36,6 @@ const BYTE opcycle[0x50] = {
     0x05,0x05,0x0D,0x05,0x01,0x01,0x00,0x01,0x05,0x05,0x1A,0x05,0x01,0x01,0x00,0x01, //these are based on 16-bit bus!! (should be 32-bit?)
     0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x01,0x03,0x03
 };
-
-// < 0: error
-// > 0: rom size
-int open_rom() {
-    char *ext = strrchr(tVBOpt.ROM_PATH, '.');
-    if (ext != NULL && strcasecmp(ext, ".zip") == 0) {
-        unzFile unz = unzOpen(tVBOpt.ROM_PATH);
-        if (unz == NULL) return -1;
-        int err;
-        if ((err = unzGoToFirstFile(unz)) != UNZ_OK) goto bail1;
-        unz_file_info info;
-        int filename_size = 256;
-        char *filename = malloc(filename_size);
-        while (true) {
-            if ((err = unzGetCurrentFileInfo(unz, &info, filename, filename_size, NULL, 0, NULL, 0)) != UNZ_OK) goto bail2;
-            if (info.size_filename > filename_size) {
-                filename_size = info.size_filename + 1;
-                filename = realloc(filename, filename_size);
-                continue;
-            }
-            ext = strrchr(filename, '.');
-            if (ext != NULL && strcasecmp(ext, ".vb") == 0) {
-                // check filesize
-                bool rom_size_valid = info.uncompressed_size <= MAX_ROM_SIZE;
-                // require po2
-                rom_size_valid = rom_size_valid && !(info.uncompressed_size & (info.uncompressed_size - 1));
-                if (rom_size_valid) {
-                    if ((err = unzOpenCurrentFile(unz)) != UNZ_OK) goto bail2;
-                    // make sure to close the file even if there's an error
-                    err = unzReadCurrentFile(unz, V810_ROM1.pmemory, MAX_ROM_SIZE);
-                    int err2;
-                    if ((err2 = unzCloseCurrentFile(unz)) != UNZ_OK && err == UNZ_OK) err = err2;
-                    if (err != UNZ_OK) goto bail2;
-                    err = info.uncompressed_size;
-                    break;
-                }
-            }
-            if ((err = unzGoToNextFile(unz)) != UNZ_OK) goto bail2;
-        }
-        bail2:
-        free(filename);
-        bail1:
-        unzClose(unz);
-        return err;
-    } else {
-        // attempt to open as raw file
-        FILE *f = fopen(tVBOpt.ROM_PATH, "r");
-        if (!f) return -1;
-        fseek(f, 0, SEEK_END);
-        long rom_size = ftell(f);
-        bool rom_size_valid = rom_size <= MAX_ROM_SIZE;
-        // require po2
-        rom_size_valid = rom_size_valid && !(rom_size & (rom_size - 1));
-        if (!rom_size_valid) {
-            fclose(f);
-            return -1;
-        }
-        rewind(f);
-
-        fread(V810_ROM1.pmemory, 1, rom_size, f);
-        fclose(f);
-        return rom_size;
-    }
-}
 
 void v810_init() {
     char ram_name[32];
@@ -163,34 +100,163 @@ void v810_init() {
     v810_state = calloc(1, sizeof(cpu_state));
 }
 
-int v810_load() {
-    // Open VB Rom
-    int rom_size = open_rom();
-    if (rom_size < 0) // error
-        return 0;
+static bool load_is_zip;
+static unzFile load_unz;
+static FILE *load_file;
+static size_t load_pos;
+static FILE *load_sram;
+static size_t load_sram_size;
+int v810_load_init() {
+    int rom_size;
 
-    // CRC32 Calculations
-    gen_table();
-    tVBOpt.CRC32 = get_crc(rom_size);
+    char *ext = strrchr(tVBOpt.ROM_PATH, '.');
+    load_is_zip = ext != NULL && strcasecmp(ext, ".zip") == 0;
+    load_pos = 0;
 
+    if (load_is_zip) {
+        load_unz = unzOpen(tVBOpt.ROM_PATH);
+        if (load_unz == NULL) return -1;
+        int err;
+        if ((err = unzGoToFirstFile(load_unz)) != UNZ_OK) goto bail1;
+        unz_file_info info;
+        int filename_size = 256;
+        char *filename = malloc(filename_size);
+        while (true) {
+            if ((err = unzGetCurrentFileInfo(load_unz, &info, filename, filename_size, NULL, 0, NULL, 0)) != UNZ_OK) goto bail2;
+            if (info.size_filename > filename_size) {
+                filename_size = info.size_filename + 1;
+                filename = realloc(filename, filename_size);
+                continue;
+            }
+            ext = strrchr(filename, '.');
+            if (ext != NULL && strcasecmp(ext, ".vb") == 0) {
+                // check filesize
+                bool rom_size_valid = info.uncompressed_size <= MAX_ROM_SIZE;
+                // require po2
+                rom_size_valid = rom_size_valid && !(info.uncompressed_size & (info.uncompressed_size - 1));
+                if (rom_size_valid) {
+                    if ((err = unzOpenCurrentFile(load_unz)) != UNZ_OK) goto bail2;
+                    rom_size = info.uncompressed_size;
+                    free(filename);
+                    goto ok;
+                }
+            }
+            if ((err = unzGoToNextFile(load_unz)) != UNZ_OK) goto bail2;
+        }
+        bail2:
+        free(filename);
+        bail1:
+        unzClose(load_unz);
+        return err;
+    } else {
+        // attempt to open as raw file
+        load_file = fopen(tVBOpt.ROM_PATH, "rb");
+        if (!load_file) return UNZ_ERRNO;
+        struct stat mystat;
+        fstat(fileno(load_file), &mystat);
+        rom_size = mystat.st_size;
+        bool rom_size_valid = rom_size <= MAX_ROM_SIZE;
+        // require po2
+        rom_size_valid = rom_size_valid && !(rom_size & (rom_size - 1));
+        if (!rom_size_valid) {
+            fclose(load_file);
+            return UNZ_ERRNO;
+        }
+    }
+    ok:
     // Initialize our rom tables.... (USA)
     V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
     V810_ROM1.lowaddr  = 0x07000000;
     V810_ROM1.off = (unsigned)V810_ROM1.pmemory - V810_ROM1.lowaddr;
     // Offset + Lowaddr = pmemory
 
-    // Try to load up the saveRam file...
-    FILE *f = fopen(tVBOpt.RAM_PATH, "r");
-    if (f) {
-        fread(V810_GAME_RAM.pmemory, 1, ((V810_GAME_RAM.highaddr + 1) - V810_GAME_RAM.lowaddr), f);
-        fclose(f);
+    load_sram = fopen(tVBOpt.RAM_PATH, "rb");
+    if (load_sram) {
+        struct stat mystat;
+        fstat(fileno(load_sram), &mystat);
+        load_sram_size = mystat.st_size;
+    } else {
+        load_sram_size = 0;
     }
 
-    replay_init((bool)f);
+    load_pos = 0;
+    return 0;
+}
 
-    v810_reset();
+int v810_load_step() {
+    const int CHUNK_SIZE = 0x10000;
+    int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
+    int ram_size = load_sram_size;
+    int all_size = rom_size + ram_size;
+    if (load_pos < rom_size) {
+        if (load_is_zip) {
+            int ret = unzReadCurrentFile(load_unz, V810_ROM1.pmemory + load_pos, CHUNK_SIZE);
+            if (ret < 0) {
+                unzCloseCurrentFile(load_unz);
+                unzClose(load_unz);
+                if (load_sram) fclose(load_sram);
+                return ret;
+            }
+            load_pos += ret;
+        } else {
+            size_t bytes_read;
+            if (!(bytes_read = fread(V810_ROM1.pmemory + load_pos, 1, CHUNK_SIZE, load_file))) {
+                fclose(load_file);
+                if (load_sram) fclose(load_sram);
+                return UNZ_ERRNO;
+            }
+            load_pos += bytes_read;
+        }
+        if (load_pos >= rom_size) {
+            // finish rom
+            load_pos = rom_size;
+            if (load_is_zip) {
+                unzCloseCurrentFile(load_unz);
+                unzClose(load_unz);
+            } else {
+                fclose(load_file);
+            }
+        }
+    }
+    if (load_pos >= rom_size && load_pos < all_size) {
+        // load ram
+        size_t bytes_read = fread(V810_GAME_RAM.pmemory + load_pos - rom_size, 1, CHUNK_SIZE, load_sram);
+        if (bytes_read == 0 && !feof(load_sram)) {
+            fclose(load_sram);
+            return UNZ_ERRNO;
+        }
+        if ((load_pos += bytes_read) == all_size) {
+            load_pos = all_size;
+            fclose(load_sram);
+        }
+    }
+    if (load_pos >= all_size) {
+        // final setup
 
-    return 1;
+        // CRC32 Calculations
+        gen_table();
+        tVBOpt.CRC32 = get_crc(rom_size);
+
+        v810_reset();
+
+        return 100;
+    }
+    return load_pos * 100 / all_size;
+}
+
+void v810_load_cancel() {
+    int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
+    int all_size = rom_size + load_sram_size;
+    if (load_pos < rom_size) {
+        if (load_is_zip) {
+            unzCloseCurrentFile(load_unz);
+            unzClose(load_unz);
+        } else {
+            fclose(load_file);
+        }
+    } else if (load_pos < all_size) {
+        if (load_sram) fclose(load_sram);
+    }
 }
 
 void v810_exit() {
@@ -244,6 +310,9 @@ void v810_reset() {
     tHReg.tReset = 0;
 
     tHReg.hwRead = 0;
+
+    // we don't reset load_sram so it will be non-null if there was sram to load
+    replay_init((bool)load_sram);
 }
 
 // Returns number of cycles until next timer interrupt.

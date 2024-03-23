@@ -61,22 +61,15 @@ int main() {
 
     sound_init();
 
+    drc_init();
+
     guiop = 0;
     openMenu();
     if (guiop & GUIEXIT) {
         goto exit;
     }
 
-    if (!v810_load()) {
-        goto exit;
-    }
     game_running = true;
-
-    dprintf(0, "version %s\n", VERSION);
-
-    //if (tVBOpt.SOUND) sound_enable();
-
-    drc_init();
 
     clearCache();
     consoleClear();
@@ -106,16 +99,8 @@ int main() {
                 goto exit;
             }
             if (guiop & VBRESET) {
-                //if (tVBOpt.SOUND) sound_disable();
-                int oldSound = tVBOpt.SOUND;
-                tVBOpt.SOUND = false;
-                if (save_thread) threadJoin(save_thread, U64_MAX);
-                if (!v810_load())
-                    goto exit;
                 drc_reset();
                 clearCache();
-                tVBOpt.SOUND = oldSound;
-                //if (tVBOpt.SOUND) sound_enable();
                 frame = 0;
                 tVIPREG.tFrame = 0;
                 tVIPREG.tFrameBuffer = 0;
