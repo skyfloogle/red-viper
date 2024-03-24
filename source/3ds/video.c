@@ -193,6 +193,9 @@ void video_init() {
 }
 
 void video_render(int alt_buf) {
+	if (tDSPCACHE.ColumnTableInvalid)
+		processColumnTable();
+
 	#ifdef COLTABLESCALE
 	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
 	#else
@@ -209,9 +212,6 @@ void video_render(int alt_buf) {
 	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
 
 	eye_count = CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
-		
-	if (tDSPCACHE.ColumnTableInvalid)
-		processColumnTable();
 
 	if (tVIPREG.XPCTRL & 0x0002) {
 		if (tDSPCACHE.CharCacheInvalid) {
