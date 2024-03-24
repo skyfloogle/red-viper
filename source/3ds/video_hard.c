@@ -30,6 +30,7 @@ typedef struct {
 	u16 tiles[64 * 64];
 	u16 GPLT[4];
 	bool visible;
+	bool used;
 } AffineCacheEntry;
 static AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
 
@@ -153,6 +154,7 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	int old_vmin = tileMapCache[cache_id].vmin;
 	int old_vmax = tileMapCache[cache_id].vmax;
 	tileMapCache[cache_id].bg = mapid;
+	tileMapCache[cache_id].used = true;
 	// move the bounds only if new map or if bigger
 	if (tileMapCache[cache_id].umin > umin || new_map)
 		tileMapCache[cache_id].umin = umin;
@@ -272,6 +274,10 @@ void video_hard_render() {
 
 	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
 	int end_eye = start_eye + eye_count;
+
+	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
+		tileMapCache[i].used = false;
+	}
 
 	// clear
 	u8 clearcol = brightness[tVIPREG.BKCOL];
@@ -699,6 +705,10 @@ void video_hard_render() {
 
 	// cleanup
 	tDSPCACHE.BrtPALMod = false;
+	// invalidate any unused bgmaps
+	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
+		if (!tileMapCache[i].used) tileMapCache[i].bg = -1;
+	}
 }
 
 void update_texture_cache_hard() {
