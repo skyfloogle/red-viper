@@ -1013,12 +1013,20 @@ static void load_rom() {
         // instant fail
         return load_error(ret, false);
     }
+    C2D_Text text;
+    C2D_TextBufClear(dynamic_textbuf);
+    char *filename = strrchr(tVBOpt.ROM_PATH, '/');
+    if (filename) filename++;
+    else filename = tVBOpt.ROM_PATH;
+    C2D_TextParse(&text, dynamic_textbuf, filename);
+    C2D_TextOptimize(&text);
     LOOP_BEGIN(load_rom_buttons, -1);
         ret = v810_load_step();
         if (ret < 0) {
             // error
             loop = false;
         } else {
+            C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
             C2D_DrawText(&text_loading, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.8, 0.8, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
             C2D_DrawRectSolid(60, 140, 0, 200, 16, C2D_Color32(0.5 * TINT_R, 0.5 * TINT_G, 0.5 * TINT_B, 255));
             C2D_DrawRectSolid(60, 140, 0, 2 * ret, 16, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
