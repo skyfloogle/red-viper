@@ -611,8 +611,8 @@ void video_hard_render() {
 					sub_v &= full_h - 1;
 					int base_u_min = -sub_u, base_u_max = -sub_u - 1;
 					int base_v_min = -sub_v, base_v_max = -sub_v - 1;
-					if (!over && (windows[wnd * 16] & 0x3000) == 0x2000) {
-						// repeating affine
+					if (!over) {
+						// repeating
 						if (scx != 1) {
 							base_u_min -= umin & ~(full_w - 1);
 							base_u_max = -umax;
