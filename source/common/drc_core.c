@@ -1729,8 +1729,14 @@ void drc_exit() {
 }
 
 exec_block* drc_getNextBlockStruct() {
-    if (block_pos > MAX_NUM_BLOCKS)
+    if (block_pos >= MAX_NUM_BLOCKS) {
+        for (int i = 0; i < MAX_NUM_BLOCKS; i++) {
+            if (block_ptr_start[i].free) {
+                return &block_ptr_start[i];
+            }
+        }
         return NULL;
+    }
     return &block_ptr_start[block_pos++];
 }
 
