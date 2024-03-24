@@ -11,6 +11,7 @@
 #include "vb_set.h"
 #include "vb_sound.h"
 #include "vb_types.h"
+#include "replay.h"
 #include "main.h"
 #include "sprites_t3x.h"
 #include "sprites.h"
@@ -1426,8 +1427,16 @@ void drawTouchControls(int inputs) {
     int pause_square_height = 70;
     C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
         pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
-    C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
-        pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+    if (replay_playing()) {
+        C2D_DrawTriangle(
+            tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
+            tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 + pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
+            tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6 + pause_square_height * 0.6, 240 / 2, C2D_Color32(64, 64, 64, 255), 0
+        );
+    } else {
+        C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
+            pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+    }
 
     if (buttons_on_screen) {
         C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, inputs & VB_KEY_A ? (dragging ? col_drag : col_down) : col_up);

@@ -11,6 +11,7 @@
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_gui.h"
+#include "replay.h"
 
 #include "final_shbin.h"
 #include "soft_shbin.h"
@@ -34,6 +35,12 @@ VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
 extern int arm_keys;
 // Read the Controller, Fix Me....
 HWORD V810_RControll() {
+
+	if (replay_playing()) {
+		guiGetInput(true);
+		return replay_read();
+	}
+
     int ret_keys = 0;
     int key = 0;
 	bool battery_low = false;

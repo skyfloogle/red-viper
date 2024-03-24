@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "replay.h"
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_types.h"
@@ -10,7 +11,10 @@ typedef struct {
 
 #define REPLAY_COUNT 200000
 
-static const int version = 0;
+// "RVRP"
+static const int MAGIC = 0x50525652;
+static const int REPLAY_VERSION = 0;
+
 static BYTE *initial_sram = NULL;
 static int initial_sram_size;
 static ReplayEntry *replay_buf = NULL, *replay_cursor;
@@ -50,8 +54,8 @@ void replay_update(HWORD inputs) {
 void replay_save(char *fn) {
     FILE *f = fopen(fn, "wb");
     if (!f) return;
-    fwrite("RVRP", 4, 1, f);
-    fwrite(&version, 4, 1, f);
+    fwrite(&MAGIC, 4, 1, f);
+    fwrite(&REPLAY_VERSION, 4, 1, f);
     fwrite(&tVBOpt.CRC32, 4, 1, f);
     fwrite(&initial_sram_size, 4, 1, f);
     if (initial_sram_size) {
@@ -59,4 +63,45 @@ void replay_save(char *fn) {
     }
     fwrite(replay_buf, sizeof(ReplayEntry), replay_cursor + 1 - replay_buf, f);
     fclose(f);
+}
+
+static FILE *current_replay;
+static ReplayEntry current_entry;
+
+void replay_load(char *fn) {
+    current_entry.count = 0;
+    current_replay = fopen(fn, "rb");
+    if (!current_replay) return;
+    u32 buf;
+    fread(&buf, 4, 1, current_replay);
+    if (buf != MAGIC) goto err;
+    fread(&buf, 4, 1, current_replay);
+    if (buf != REPLAY_VERSION) goto err;
+    fread(&buf, 4, 1, current_replay);
+    if (buf != tVBOpt.CRC32) goto err;
+    fread(&buf, 4, 1, current_replay);
+    if (buf > V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr) goto err;
+    fread(V810_GAME_RAM.pmemory, 1, buf, current_replay);
+    return;
+    err:
+    fclose(current_replay);
+    current_replay = NULL;
+    return;
+}
+
+bool replay_playing() {
+    return (bool)current_replay;
+}
+
+HWORD replay_read() {
+    while (current_entry.count == 0) {
+        fread(&current_entry, 4, 1, current_replay);
+        if (feof(current_replay)) {
+            fclose(current_replay);
+            current_replay = NULL;
+            return 0;
+        }
+    }
+    current_entry.count--;
+    return current_entry.inputs;
 }
