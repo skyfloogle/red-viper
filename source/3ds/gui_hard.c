@@ -1466,6 +1466,7 @@ void guiUpdate(float total_time, float drc_time) {
     static int last_inputs = 0;
     static bool last_fastforward = false;
     static bool last_saving = false;
+    static bool last_replay = false;
     int new_inputs = guiGetInput(false);
     if (new_inputs != last_inputs) shouldRedrawMenu = true;
     last_inputs = new_inputs;
@@ -1473,6 +1474,8 @@ void guiUpdate(float total_time, float drc_time) {
     last_fastforward = tVBOpt.FASTFORWARD;
     if (!!save_thread != last_saving) shouldRedrawMenu = true;
     last_saving = !!save_thread;
+    if (replay_playing() != last_replay) shouldRedrawMenu = true;
+    last_replay = replay_playing();
 
     if (!shouldRedrawMenu && !tVBOpt.PERF_INFO)
         return;
