@@ -58,7 +58,7 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
     }
     u8 sample;
     if (ch < 5) {
-        sample = SNDMEM(0x80 * (SNDMEM(S1RAM + 0x40 * ch) & 7) + 4 * channel->sample_pos);
+        sample = SNDMEM(0x80 * (SNDMEM(S1RAM + 0x40 * ch) & 7) + 4 * channel->sample_pos) & 63;
     } else {
         int bit = ~(sound_state.noise_shift >> 7);
         bit ^= sound_state.noise_shift >> noise_bits[(SNDMEM(S6EV1) >> 4) & 7];
