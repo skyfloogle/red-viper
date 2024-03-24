@@ -15,11 +15,9 @@ hardware-accelerated renderer to achieve high performance on the 3DS's limited h
 * Configurable color filter
 
 Future additions:
-* Support for PCM samples
 * Savestates
 * Homebrew support
 * Circle Pad Pro support
-* Button controls for menu
 * More versatile color filter
 * A forwarder to allow loading a specific game from the home menu
 
