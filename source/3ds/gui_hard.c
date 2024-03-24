@@ -665,6 +665,7 @@ static void controls(int initial_button) {
         case CONTROLS_TOUCHSCREEN:
             return touchscreen_settings();
         case CONTROLS_BACK:
+            setTouchControls(buttons_on_screen);
             saveFileOptions();
             return main_menu(MAIN_MENU_CONTROLS);
     }
