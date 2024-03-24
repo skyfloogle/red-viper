@@ -601,9 +601,9 @@ void video_hard_render() {
 						if (!warned) {
 							warned = true;
 							if ((windows[wnd * 16] & 0x3000) == 0x1000)
-								puts("WARN:Can't do overplane in H-Bias yet");
+								dprintf(0, "WARN:Can't do overplane in H-Bias yet\n");
 							else
-								puts("WARN:Can't do overplane in Affine yet");
+								dprintf(0, "WARN:Can't do overplane in Affine yet\n");
 						}
 					}
 
