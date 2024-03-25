@@ -133,7 +133,10 @@ int main() {
         osTickCounterUpdate(&drcTickCounter);
         if (err) {
             showError(err);
-            waitForInput();
+            do {
+                hidScanInput();
+                gspWaitForVBlank();
+            } while (aptMainLoop() && !hidKeysDown());
             goto exit;
         }
 
