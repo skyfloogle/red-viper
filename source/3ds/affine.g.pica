@@ -1,6 +1,6 @@
 .gsh point c0
 
-; three uv offsets (u0,v0,u1,v1),(u2,v2,_,_)
+; three uv offsets (u0,v0,u1,v1),(u2,v2,fac2u,fac2v)
 .fvec bgmap_offsets[2]
 
 ; base required z and w
@@ -31,7 +31,8 @@
     add r3, bgmap_offsets[0], v1
     mov outtc0.xy, r3.xy
     mov outtc1.xy, r3.zw
-    add outtc2.xy, bgmap_offsets[1].xy, v1.xy
+    add r3.xy, bgmap_offsets[1].xy, v1.xy
+    mul outtc2.xy, bgmap_offsets[1].zw, r3.xy
     emit
 
     ; top right
@@ -45,7 +46,8 @@
     add r3, bgmap_offsets[0], r2
     mov outtc0.xy, r3.xy
     mov outtc1.xy, r3.zw
-    add outtc2.xy, bgmap_offsets[1].xy, r2.xy
+    add r3.xy, bgmap_offsets[1].xy, r2.xy
+    mul outtc2.xy, bgmap_offsets[1].zw, r3.xy
     emit
 
     ; bottom left
@@ -58,7 +60,8 @@
     add r3, bgmap_offsets[0], r1
     mov outtc0.xy, r3.xy
     mov outtc1.xy, r3.zw
-    add outtc2.xy, bgmap_offsets[1].xy, r1.xy
+    add r3.xy, bgmap_offsets[1].xy, r1.xy
+    mul outtc2.xy, bgmap_offsets[1].zw, r3.xy
     emit
 
     ; bottom left
@@ -71,7 +74,8 @@
     add r3, bgmap_offsets[0], r2
     mov outtc0.xy, r3.xy
     mov outtc1.xy, r3.zw
-    add outtc2.xy, bgmap_offsets[1].xy, r2.xy
+    add r3.xy, bgmap_offsets[1].xy, r2.xy
+    mul outtc2.xy, bgmap_offsets[1].zw, r3.xy
     emit
 
     end

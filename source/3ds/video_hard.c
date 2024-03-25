@@ -13,6 +13,21 @@
 #include "final_shbin.h"
 #include "affine_shbin.h"
 
+#include <tex3ds.h>
+#include "map1x1_t3x.h"
+#include "map1x2_t3x.h"
+#include "map1x4_t3x.h"
+#include "map1x8_t3x.h"
+#include "map2x1_t3x.h"
+#include "map2x2_t3x.h"
+#include "map2x4_t3x.h"
+#include "map4x1_t3x.h"
+#include "map4x2_t3x.h"
+#include "map4x4_t3x.h"
+#include "map8x1_t3x.h"
+#include "map8x2_t3x.h"
+#include "map8x4_t3x.h"
+
 C3D_Tex screenTexHard;
 C3D_RenderTarget *screenTarget;
 
@@ -33,6 +48,8 @@ typedef struct {
 	bool used;
 } AffineCacheEntry;
 static AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
+
+static C3D_Tex affine_masks[4][4];
 
 static DVLB_s *char_dvlb;
 static shaderProgram_s sChar;
@@ -103,12 +120,32 @@ void video_hard_init() {
 		tileMapCache[i].bg = -1;
 	}
 
+	#define LOAD_MASK(w,h,wp,hp) { \
+		Tex3DS_TextureFree(Tex3DS_TextureImport(map ## w ## x ## h ## _t3x, map ## w ## x ## h ## _t3x_size, &affine_masks[wp][hp], NULL, false)); \
+		C3D_TexSetWrap(&affine_masks[wp][hp], GPU_REPEAT, GPU_REPEAT); \
+	}
+	LOAD_MASK(1, 1, 0, 0);
+	LOAD_MASK(1, 2, 0, 1);
+	LOAD_MASK(1, 4, 0, 2);
+	LOAD_MASK(1, 8, 0, 3);
+	LOAD_MASK(2, 1, 1, 0);
+	LOAD_MASK(2, 2, 1, 1);
+	LOAD_MASK(2, 4, 1, 2);
+	LOAD_MASK(4, 1, 2, 0);
+	LOAD_MASK(4, 2, 2, 1);
+	LOAD_MASK(4, 4, 2, 2);
+	LOAD_MASK(8, 1, 3, 0);
+	LOAD_MASK(8, 2, 3, 1);
+	LOAD_MASK(8, 4, 3, 2);
+	#undef LOAD_MASK
+	affine_masks[3][3] = affine_masks[2][3] = affine_masks[1][3] = affine_masks[0][3];
+
 	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
 
 	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
-	C3D_AlphaTest(true, GPU_GREATER, 0);
+	C3D_AlphaTest(true, GPU_GREATER, 16);
 
 	vbuf = linearAlloc(sizeof(vertex) * VBUF_SIZE);
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
@@ -127,8 +164,8 @@ static void setRegularTexEnv() {
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
 	C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
 
-	env = C3D_GetTexEnv(2);
-	C3D_TexEnvInit(env);
+	C3D_TexEnvInit(C3D_GetTexEnv(2));
+	C3D_TexEnvInit(C3D_GetTexEnv(3));
 }
 
 static void setRegularDrawing() {
@@ -219,25 +256,44 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 
 	C3D_AlphaTest(false, GPU_GREATER, 0);
 	if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
-	C3D_AlphaTest(true, GPU_GREATER, 0);
+	C3D_AlphaTest(true, GPU_GREATER, 16);
 
 	return vcount;
 }
 
-void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h) {
+void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
 	C3D_FrameDrawOn(screenTarget);
 	C3D_BindProgram(&sAffine);
 
-	for (int i = 0; i < count; i++) {
-		C3D_TexBind(i, textures[i]);
-		C3D_TexEnv *env = C3D_GetTexEnv(i);
-		C3D_TexEnvInit(env);
-		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0 + i, GPU_PREVIOUS, 0);
-		C3D_TexEnvFunc(env, C3D_Both, i == 0 ? GPU_REPLACE : GPU_ADD);
-	}
-	for (int i = count; i < 3; i++) {
-		C3D_TexEnv *env = C3D_GetTexEnv(i);
-		C3D_TexEnvInit(env);
+	if (!use_masks) {
+		for (int i = 0; i < count; i++) {
+			C3D_TexBind(i, textures[i]);
+			C3D_TexEnv *env = C3D_GetTexEnv(i);
+			C3D_TexEnvInit(env);
+			C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0 + i, GPU_PREVIOUS, 0);
+			C3D_TexEnvFunc(env, C3D_Both, i == 0 ? GPU_REPLACE : GPU_ADD);
+		}
+		for (int i = count; i < 4; i++) {
+			C3D_TexEnvInit(C3D_GetTexEnv(i));
+		}
+	} else {
+		if (count == 2) C3D_TexEnvBufUpdate(C3D_RGB | C3D_Alpha, GPU_TEV_BUFFER_WRITE_CONFIG(false, true, false, false));
+		for (int i = 0; i < count; i++) {
+			C3D_TexBind(i, textures[i]);
+			C3D_TexEnv *env = C3D_GetTexEnv(i * 2);
+			C3D_TexEnvInit(env);
+			C3D_TexEnvColor(env, i == 0 ? 0x0080ff : 0x80ff80);
+			C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE2, GPU_CONSTANT, 0);
+			C3D_TexEnvFunc(env, C3D_Both, GPU_DOT3_RGBA);
+			env = C3D_GetTexEnv(i * 2 + 1);
+			C3D_TexEnvInit(env);
+			C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE0 + i, GPU_PREVIOUS_BUFFER);
+			C3D_TexEnvFunc(env, C3D_Both, i == 0 ? GPU_MODULATE : GPU_MULTIPLY_ADD);
+		}
+		if (count == 1) {
+			C3D_TexEnvInit(C3D_GetTexEnv(2));
+			C3D_TexEnvInit(C3D_GetTexEnv(3));
+		}
 	}
 
 	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc_bgmap_offsets, 2), bgmap_offsets, sizeof(bgmap_offsets));
@@ -282,7 +338,7 @@ void video_hard_render() {
 	// clear
 	u8 clearcol = brightness[tVIPREG.BKCOL];
 	C3D_BindProgram(&sFinal);
-	C3D_AlphaTest(false, GPU_GREATER, 0);
+	C3D_AlphaTest(false, GPU_GREATER, 16);
 
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
@@ -312,7 +368,7 @@ void video_hard_render() {
 		C3D_ImmSendAttrib(0, 0, 0, 0);
 	}
 	C3D_ImmDrawEnd();
-	C3D_AlphaTest(true, GPU_GREATER, 0);
+	C3D_AlphaTest(true, GPU_GREATER, 16);
 
 	for (int i = 0; i < 4; i++) {
 		HWORD pal = tVIPREG.GPLT[i];
@@ -567,31 +623,56 @@ void video_hard_render() {
 
 				if (vbufs[0] == NULL && vbufs[1] == NULL) continue;
 
+				int map_count = scx * scy;
+				bool huge_bg = map_count > 8; // TODO make this work properly
+				if (huge_bg) map_count = 8;
+				// use_masks = <maskless>/3 > <masks>/2, aka <maskless>*2 > <masks>*3
+				bool use_masks = !over && map_count != 1 && (huge_bg || ((umax >> 9) - (umin >> 9)) * ((vmax >> 9) - (vmin >> 9)) * 2 > map_count);
+				if (use_masks) {
+					C3D_TexBind(2, &affine_masks[scx_pow][scy_pow]);
+					bgmap_offsets[1].x = 0;
+					bgmap_offsets[1].y = 0;
+					bgmap_offsets[1].z = 1.0f / scx;
+					bgmap_offsets[1].w = 1.0f / scy;
+				} else {
+					bgmap_offsets[1].x = 0;
+					bgmap_offsets[1].y = 0;
+					bgmap_offsets[1].z = 1;
+					bgmap_offsets[1].w = 1;
+				}
+
 				// draw with each texture
 				int tex_count = 0;
 				C3D_Tex *textures[3];
-				for (uint8_t sub_bg = 0; sub_bg < scx * scy; sub_bg++) {
-					// don't draw offscreen bgmaps
+				for (uint8_t sub_bg = 0; sub_bg < map_count; sub_bg++) {
 					int sub_u = (sub_bg & (scx - 1)) * 512;
 					int sub_v = (sub_bg >> scx_pow) * 512;
-					if (!over) {
-						// repeating
-						// TODO can this be done faster with maths?
-						while (sub_u + 512 > umin) sub_u -= scx * 512;
-						while (sub_u + 512 <= umin) sub_u += scx * 512;
-						if (sub_u > umax) {
-							continue;
+					// don't draw offscreen bgmaps
+					// with masks on this is too complicated
+					if (!use_masks) {
+						if (!over) {
+							// repeating
+							// TODO can this be done faster with maths?
+							while (sub_u + 512 > umin) sub_u -= scx * 512;
+							while (sub_u + 512 <= umin) sub_u += scx * 512;
+							if (sub_u > umax) {
+								continue;
+							}
+							while (sub_v + 512 > vmin) sub_v -= scy * 512;
+							while (sub_v + 512 <= vmin) sub_v += scy * 512;
+							if (sub_v > vmax) {
+								continue;
+							}
+						} else {
+							// not repeating
+							if (sub_u > umax || sub_u + 512 < umin || sub_v > vmax || sub_v + 512 < vmin) {
+								continue;
+							}
 						}
-						while (sub_v + 512 > vmin) sub_v -= scy * 512;
-						while (sub_v + 512 <= vmin) sub_v += scy * 512;
-						if (sub_v > vmax) {
-							continue;
-						}
-					} else {
-						// not repeating
-						if (sub_u > umax || sub_u + 512 < umin || sub_v > vmax || sub_v + 512 < vmin) {
-							continue;
-						}
+					} else if (sub_bg % 2 == 0) {
+						// new draw, adjust mask offsets
+						bgmap_offsets[1].x = sub_bg & (scx - 1);
+						bgmap_offsets[1].y = sub_bg >> scx_pow;
 					}
 
 					vcur += render_affine_cache(mapid + sub_bg, vbuf, vcur, umin, umax, vmin, vmax);
@@ -600,8 +681,8 @@ void video_hard_render() {
 
 					// set up wrapping for affine map
 					C3D_TexSetWrap(&tileMapCache[cache_id].tex,
-						!over && scx == 1 ? GPU_REPEAT : GPU_CLAMP_TO_BORDER,
-						!over && scy == 1 ? GPU_REPEAT : GPU_CLAMP_TO_BORDER);
+						use_masks || (!over && scx == 1) ? GPU_REPEAT : GPU_CLAMP_TO_BORDER,
+						use_masks || (!over && scy == 1) ? GPU_REPEAT : GPU_CLAMP_TO_BORDER);
 					if (over && tileVisible[over_tile]) {
 						static bool warned = false;
 						if (!warned) {
@@ -617,8 +698,8 @@ void video_hard_render() {
 					sub_v &= full_h - 1;
 					int base_u_min = -sub_u, base_u_max = -sub_u - 1;
 					int base_v_min = -sub_v, base_v_max = -sub_v - 1;
-					if (!over) {
-						// repeating
+					if (!over && !use_masks) {
+						// repeating maskless
 						if (scx != 1) {
 							base_u_min -= umin & ~(full_w - 1);
 							base_u_max = -umax;
@@ -633,10 +714,9 @@ void video_hard_render() {
 						for (int base_v = base_v_min; base_v > base_v_max; base_v -= full_h) {
 							bgmap_offsets[tex_count / 2].c[3 - 2 * (tex_count % 2)] = base_u >> 9;
 							bgmap_offsets[tex_count / 2].c[3 - 2 * (tex_count % 2) - 1] = base_v >> 9;
-							//dprintf(0, "%d %d -> %f %f\n", base_u, base_v, bgmap_offsets[tex_count / 2].c[2 * (tex_count % 2)], bgmap_offsets[tex_count / 2].c[2 * (tex_count % 2) + 1]);
 							textures[tex_count] = &tileMapCache[cache_id].tex;
-							if (++tex_count == 3) {
-								draw_affine_layer(vbufs, textures, tex_count, base_gx, gp, gy, w, h);
+							if (++tex_count == (use_masks ? 2 : 3)) {
+								draw_affine_layer(vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 								tex_count = 0;
 							}
 						}
@@ -644,7 +724,7 @@ void video_hard_render() {
 				}
 				// clean up any leftovers
 				if (tex_count != 0) {
-					draw_affine_layer(vbufs, textures, tex_count, base_gx, gp, gy, w, h);
+					draw_affine_layer(vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 				}
 			}
 		} else {
