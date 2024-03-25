@@ -201,17 +201,17 @@ static Button colour_filter_buttons[] = {
 
 static void sound_error();
 static Button sound_error_buttons[] = {
-    {"Continue without sound", 48, 130, 320-48*2, 32},
+    {.str="Continue without sound", .x=48, .y=130, .w=320-48*2, .h=32},
 };
 
 static void about();
 static Button about_buttons[] = {
-    {"Back", 160-48, 180, 48*2, 48},
+    {"Back", .x=160-48, .y=180, .w=48*2, .h=48},
 };
 
 static void load_rom();
 static Button load_rom_buttons[] = {
-    {"Unload & cancel", 160-80, 180, 80*2, 48},
+    {"Unload & cancel", .x=160-80, .y=180, .w=80*2, .h=48},
 };
 
 #define SETUP_ALL_BUTTONS \
@@ -929,6 +929,7 @@ static void options(int initial_button) {
     options_buttons[OPTIONS_FF].toggle = tVBOpt.FF_TOGGLE;
     options_buttons[OPTIONS_SOUND].toggle = tVBOpt.SOUND;
     options_buttons[OPTIONS_PERF].toggle = tVBOpt.PERF_INFO;
+    options_buttons[OPTIONS_DEBUG].hidden = !game_running;
     LOOP_BEGIN(options_buttons, initial_button);
     LOOP_END(options_buttons);
     switch (button) {
