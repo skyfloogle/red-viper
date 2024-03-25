@@ -9,7 +9,7 @@ typedef struct {
     HWORD count;
 } ReplayEntry;
 
-#define REPLAY_COUNT 200000
+#define REPLAY_COUNT 100000
 
 // "RVRP"
 static const int MAGIC = 0x50525652;
