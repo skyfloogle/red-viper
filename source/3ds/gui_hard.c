@@ -1270,7 +1270,7 @@ void guiInit() {
     STATIC_TEXT(&text_left, "Left");
     STATIC_TEXT(&text_right, "Right");
     STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
-    STATIC_TEXT(&text_debug_filenames, "Please share debug_info.txt and\ndebug_replay.bin in your bug report.");
+    STATIC_TEXT(&text_debug_filenames, "Please share debug_info.txt and\ndebug_replay.bin.gz in your bug\nreport.");
     STATIC_TEXT(&text_anykeyexit, "Press any key to exit");
     STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
     STATIC_TEXT(&text_loading, "Loading...");

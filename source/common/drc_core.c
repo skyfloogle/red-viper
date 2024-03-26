@@ -1856,7 +1856,7 @@ void drc_dumpDebugInfo(int code) {
         debug_dumpvbram();
     }
 
-    replay_save("debug_replay.bin");
+    replay_save("debug_replay.bin.gz");
 
     fclose(f);
 }

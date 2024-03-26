@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <zlib.h>
 #include "replay.h"
 #include "v810_mem.h"
 #include "vb_set.h"
@@ -51,18 +52,26 @@ void replay_update(HWORD inputs) {
     replay_cursor->count++;
 }
 
-void replay_save(char *fn) {
-    FILE *f = fopen(fn, "wb");
-    if (!f) return;
-    fwrite(&MAGIC, 4, 1, f);
-    fwrite(&REPLAY_VERSION, 4, 1, f);
-    fwrite(&tVBOpt.CRC32, 4, 1, f);
-    fwrite(&initial_sram_size, 4, 1, f);
-    if (initial_sram_size) {
-        fwrite(initial_sram, 1, initial_sram_size, f);
+// returns 0 on success
+static int gz_write_all(gzFile f, void *data, size_t size) {
+    int cursor = 0;
+    while (cursor < size) {
+        int bytes_written = gzwrite(f, data + cursor, size - cursor);
+        if (bytes_written == 0) return -1;
+        cursor += bytes_written;
     }
-    fwrite(replay_buf, sizeof(ReplayEntry), replay_cursor + 1 - replay_buf, f);
-    fclose(f);
+    return 0;
+}
+
+void replay_save(char *fn) {
+    gzFile f = gzopen(fn, "wb");
+    if (!f) return;
+    u32 header[4] = {MAGIC, REPLAY_VERSION, tVBOpt.CRC32, initial_sram_size};
+    if (gz_write_all(f, header, sizeof(header))) goto bail;
+    if (gz_write_all(f, initial_sram, initial_sram_size)) goto bail;
+    if (gz_write_all(f, replay_buf, (replay_cursor + 1 - replay_buf) * sizeof(*replay_buf))) goto bail;
+    bail:
+    gzclose(f);
 }
 
 static FILE *current_replay;
