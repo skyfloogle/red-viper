@@ -1559,11 +1559,11 @@ static int drc_translateBlock() {
         }
 
         if (i + 1 < num_v810_inst) {
-            if (tVBOpt.CRC32 == 0x8989FE0A && inst_cache[i + 1].PC == 0x07002446) {
+            if ((tVBOpt.CRC32 == 0x8989FE0A || tVBOpt.CRC32 == 0x1B1E5CB7) && inst_cache[i + 1].PC == 0x07002446) {
                 // virtual lab hack
                 // interrupts don't save registers, and clearing levels relies on
                 // registers getting dirty
-                HALT(0x07002466);
+                HALT(0x07002446);
             } else if (cycles >= 200) {
                 HANDLEINT(inst_cache[i + 1].PC);
             } else if (cycles != 0 && inst_cache[i + 1].is_branch_target) {
@@ -1856,7 +1856,7 @@ void drc_dumpDebugInfo(int code) {
         debug_dumpvbram();
     }
 
-    replay_save("debug_replay.bin.gz");
+    replay_save("debug_replay.bin");
 
     fclose(f);
 }
