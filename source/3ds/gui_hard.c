@@ -33,7 +33,8 @@ static C2D_TextBuf dynamic_textbuf;
 static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R,
                 text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_3ds,
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
-                text_debug_filenames, text_loading, text_loaderr, text_unloaded;
+                text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
+                text_areyousure_reset, text_areyousure_exit;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
@@ -92,6 +93,8 @@ static inline int handle_buttons(Button buttons[], int count);
         C2D_Prepare(); \
         hidScanInput(); \
 
+#define DEFAULT_RETURN
+
 #define LOOP_END(buttons) \
         button = HANDLE_BUTTONS(buttons); \
         if (button >= 0) loop = false; \
@@ -101,7 +104,7 @@ static inline int handle_buttons(Button buttons[], int count);
     if (loop) { \
         /* home menu exit */ \
         guiop = GUIEXIT; \
-        return; \
+        return DEFAULT_RETURN; \
     }
 
 static void first_menu(int initial_button);
@@ -199,6 +202,14 @@ static Button colour_filter_buttons[] = {
     {.str="Gray", .x=16, .y=128, .w=48, .h=32},
 };
 
+static bool areyousure(C2D_Text *message);
+static Button areyousure_buttons[] = {
+    #define AREYOUSURE_YES 0
+    {"Yes", .x=160+32, .y=180, .w=64, .h=48},
+    #define AREYOUSURE_NO 1
+    {"No", .x=160-48-32, .y=180, .w=64, .h=48},
+};
+
 static void sound_error();
 static Button sound_error_buttons[] = {
     {.str="Continue without sound", .x=48, .y=130, .w=320-48*2, .h=32},
@@ -225,7 +236,8 @@ static Button load_rom_buttons[] = {
     SETUP_BUTTONS(sound_error_buttons); \
     SETUP_BUTTONS(touchscreen_settings_buttons); \
     SETUP_BUTTONS(about_buttons); \
-    SETUP_BUTTONS(load_rom_buttons);
+    SETUP_BUTTONS(load_rom_buttons); \
+    SETUP_BUTTONS(areyousure_buttons);
 
 static void draw_logo() {
     C2D_SceneBegin(screenTarget);
@@ -252,8 +264,10 @@ static void first_menu(int initial_button) {
         case MAIN_MENU_OPTIONS:
             return options(0);
         case MAIN_MENU_QUIT: // Quit
+            if (areyousure(&text_areyousure_exit)) {
             guiop = GUIEXIT;
             return;
+            } else return first_menu(MAIN_MENU_QUIT);
     }
 }
 
@@ -269,14 +283,18 @@ static void game_menu(int initial_button) {
         case MAIN_MENU_OPTIONS: // Options
             return options(0);
         case MAIN_MENU_QUIT: // Quit
-            guiop = AKILL | GUIEXIT;
-            return;
+            if (areyousure(&text_areyousure_exit)) {
+                guiop = AKILL | GUIEXIT;
+                return;
+            } else return game_menu(MAIN_MENU_QUIT);
         case MAIN_MENU_RESUME: // Resume
             guiop = 0;
             return;
         case MAIN_MENU_RESET: // Reset
-            guiop = AKILL | VBRESET;
-            return;
+            if (areyousure(&text_areyousure_reset)) {
+                guiop = AKILL | VBRESET;
+                return;
+            } else return game_menu(MAIN_MENU_RESET);
     }
 }
 
@@ -985,6 +1003,17 @@ static void sound_error() {
     return;
 }
 
+static bool areyousure(C2D_Text *message) {
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN false
+    LOOP_BEGIN(areyousure_buttons, -1);
+        C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    LOOP_END(areyousure_buttons);
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN
+    return button == AREYOUSURE_YES;
+}
+
 static void about() {
     C2D_SpriteSetPos(&logo_sprite, 320 / 2, 36);
     C2D_SetTintMode(C2D_TintMult);
@@ -1276,6 +1305,10 @@ void guiInit() {
     STATIC_TEXT(&text_loading, "Loading...");
     STATIC_TEXT(&text_loaderr, "Failed to load ROM.");
     STATIC_TEXT(&text_unloaded, "The current ROM has been unloaded.");
+    STATIC_TEXT(&text_yes, "Yes");
+    STATIC_TEXT(&text_no, "No");
+    STATIC_TEXT(&text_areyousure_reset, "Are you sure you want to reset?");
+    STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?");
 }
 
 static bool shouldRedrawMenu = true;
