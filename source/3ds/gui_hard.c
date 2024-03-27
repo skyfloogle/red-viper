@@ -1179,7 +1179,7 @@ static inline int handle_buttons(Button buttons[], int count) {
         if (!buttons[i].str) continue;
 
         // move back with the B button
-        if ((kDown & KEY_B) && strcmp(buttons[i].str, "Back") == 0) {
+        if ((kDown & KEY_B) && (strcmp(buttons[i].str, "Back") == 0 || strcmp(buttons[i].str, "No") == 0)) {
             ret = i;
         }
 
