@@ -156,7 +156,7 @@ void video_hard_init() {
 static void setRegularTexEnv() {
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, 0x808080);
+	C3D_TexEnvColor(env, 0x7f7f7f);
 	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
 
