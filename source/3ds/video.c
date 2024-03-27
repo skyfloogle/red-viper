@@ -245,13 +245,13 @@ void video_render(int alt_buf) {
 			C3D_TexEnv *env = C3D_GetTexEnv(0);
 			C3D_TexEnvInit(env);
 			C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
-			C3D_TexEnvColor(env, 0x808080);
+			C3D_TexEnvColor(env, 0x7f7f7f);
 			C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
 
 			env = C3D_GetTexEnv(1);
 			C3D_TexEnvInit(env);
 			C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_CONSTANT, 0);
-			C3D_TexEnvColor(env, (brightness[1] << 16) | (brightness[2] << 8) | (brightness[3]) | 0xff808080);
+			C3D_TexEnvColor(env, ((brightness[1] << 16) | (brightness[2] << 8) | (brightness[3])) + 0xff7f7f7f);
 			C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
 
 			int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;

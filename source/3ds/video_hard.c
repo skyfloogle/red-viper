@@ -145,7 +145,7 @@ void video_hard_init() {
 	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
-	C3D_AlphaTest(true, GPU_GREATER, 1);
+	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	vbuf = linearAlloc(sizeof(vertex) * VBUF_SIZE);
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
@@ -254,9 +254,9 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
-	C3D_AlphaTest(false, GPU_GREATER, 1);
+	C3D_AlphaTest(false, GPU_GREATER, 0);
 	if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
-	C3D_AlphaTest(true, GPU_GREATER, 1);
+	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	return vcount;
 }
@@ -282,7 +282,7 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 			C3D_TexBind(i, textures[i]);
 			C3D_TexEnv *env = C3D_GetTexEnv(i * 2);
 			C3D_TexEnvInit(env);
-			C3D_TexEnvColor(env, i == 0 ? 0x8080ff : 0x80ff80);
+			C3D_TexEnvColor(env, i == 0 ? 0x7f7fff : 0x7fff7f);
 			C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE2, GPU_CONSTANT, 0);
 			C3D_TexEnvFunc(env, C3D_Both, GPU_DOT3_RGBA);
 			env = C3D_GetTexEnv(i * 2 + 1);
@@ -338,17 +338,17 @@ void video_hard_render() {
 	// clear
 	u8 clearcol = brightness[tVIPREG.BKCOL];
 	C3D_BindProgram(&sFinal);
-	C3D_AlphaTest(false, GPU_GREATER, 1);
+	C3D_AlphaTest(false, GPU_GREATER, 0);
 
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, 0x808080ff);
+	C3D_TexEnvColor(env, 0xff7f7fff);
 	C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
 	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 
 	env = C3D_GetTexEnv(1);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, clearcol | 0x80808080);
+	C3D_TexEnvColor(env, clearcol + 0x7f7f7f);
 	C3D_TexEnvSrc(env, C3D_RGB, GPU_PREVIOUS, GPU_CONSTANT, 0);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
 
@@ -368,17 +368,17 @@ void video_hard_render() {
 		C3D_ImmSendAttrib(0, 0, 0, 0);
 	}
 	C3D_ImmDrawEnd();
-	C3D_AlphaTest(true, GPU_GREATER, 1);
+	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	for (int i = 0; i < 4; i++) {
 		HWORD pal = tVIPREG.GPLT[i];
-		palettes[i].x = brightness[(pal >> 6) & 3] / 256.0 + 0.5;
-		palettes[i].y = brightness[(pal >> 4) & 3] / 256.0 + 0.5; 
-		palettes[i].z = brightness[(pal >> 2) & 3] / 256.0 + 0.5;
+		palettes[i].x = (brightness[(pal >> 6) & 3] + 0x7f) / 255.0;
+		palettes[i].y = (brightness[(pal >> 4) & 3] + 0x7f) / 255.0; 
+		palettes[i].z = (brightness[(pal >> 2) & 3] + 0x7f) / 255.0;
 		pal = tVIPREG.JPLT[i];
-		palettes[i + 4].x = brightness[(pal >> 6) & 3] / 256.0 + 0.5;
-		palettes[i + 4].y = brightness[(pal >> 4) & 3] / 256.0 + 0.5;
-		palettes[i + 4].z = brightness[(pal >> 2) & 3] / 256.0 + 0.5;
+		palettes[i + 4].x = (brightness[(pal >> 6) & 3] + 0x7f) / 255.0;
+		palettes[i + 4].y = (brightness[(pal >> 4) & 3] + 0x7f) / 255.0;
+		palettes[i + 4].z = (brightness[(pal >> 2) & 3] + 0x7f) / 255.0;
 	}
 
 	vcur = vbuf;
