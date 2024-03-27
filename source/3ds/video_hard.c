@@ -145,7 +145,7 @@ void video_hard_init() {
 	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
-	C3D_AlphaTest(true, GPU_GREATER, 16);
+	C3D_AlphaTest(true, GPU_GREATER, 1);
 
 	vbuf = linearAlloc(sizeof(vertex) * VBUF_SIZE);
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
@@ -254,9 +254,9 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
-	C3D_AlphaTest(false, GPU_GREATER, 0);
+	C3D_AlphaTest(false, GPU_GREATER, 1);
 	if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
-	C3D_AlphaTest(true, GPU_GREATER, 16);
+	C3D_AlphaTest(true, GPU_GREATER, 1);
 
 	return vcount;
 }
@@ -282,7 +282,7 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 			C3D_TexBind(i, textures[i]);
 			C3D_TexEnv *env = C3D_GetTexEnv(i * 2);
 			C3D_TexEnvInit(env);
-			C3D_TexEnvColor(env, i == 0 ? 0x0080ff : 0x80ff80);
+			C3D_TexEnvColor(env, i == 0 ? 0x8080ff : 0x80ff80);
 			C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE2, GPU_CONSTANT, 0);
 			C3D_TexEnvFunc(env, C3D_Both, GPU_DOT3_RGBA);
 			env = C3D_GetTexEnv(i * 2 + 1);
@@ -338,7 +338,7 @@ void video_hard_render() {
 	// clear
 	u8 clearcol = brightness[tVIPREG.BKCOL];
 	C3D_BindProgram(&sFinal);
-	C3D_AlphaTest(false, GPU_GREATER, 16);
+	C3D_AlphaTest(false, GPU_GREATER, 1);
 
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
@@ -368,7 +368,7 @@ void video_hard_render() {
 		C3D_ImmSendAttrib(0, 0, 0, 0);
 	}
 	C3D_ImmDrawEnd();
-	C3D_AlphaTest(true, GPU_GREATER, 16);
+	C3D_AlphaTest(true, GPU_GREATER, 1);
 
 	for (int i = 0; i < 4; i++) {
 		HWORD pal = tVIPREG.GPLT[i];
