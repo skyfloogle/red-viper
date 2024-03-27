@@ -1006,7 +1006,7 @@ static void sound_error() {
 static bool areyousure(C2D_Text *message) {
     #undef DEFAULT_RETURN
     #define DEFAULT_RETURN false
-    LOOP_BEGIN(areyousure_buttons, -1);
+    LOOP_BEGIN(areyousure_buttons, AREYOUSURE_NO);
         C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(areyousure_buttons);
     #undef DEFAULT_RETURN
