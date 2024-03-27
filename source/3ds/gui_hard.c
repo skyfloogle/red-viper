@@ -205,9 +205,9 @@ static Button colour_filter_buttons[] = {
 static bool areyousure(C2D_Text *message);
 static Button areyousure_buttons[] = {
     #define AREYOUSURE_YES 0
-    {"Yes", .x=160+32, .y=180, .w=64, .h=48},
+    {"Yes", .x=160-48-32, .y=180, .w=64, .h=48},
     #define AREYOUSURE_NO 1
-    {"No", .x=160-48-32, .y=180, .w=64, .h=48},
+    {"No", .x=160+32, .y=180, .w=64, .h=48},
 };
 
 static void sound_error();
