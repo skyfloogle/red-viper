@@ -602,7 +602,7 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
     }
 
     if (i == MAX_V810_INST) {
-        dprintf(0, "WARN:%lx-%lx exceeds max instrs", start_PC, end_PC);
+        dprintf(0, "WARN:%lx-%lx exceeds max instrs\n", start_PC, end_PC);
     }
 
     return i;
