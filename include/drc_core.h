@@ -8,8 +8,8 @@
 #define MAX_ROM_SIZE 0x1000000
 #define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
 #define CACHE_SIZE  0x200000
-#define MAX_V810_INST 4096
-#define MAX_ARM_INST  (MAX_V810_INST * 8)
+#define MAX_V810_INST 8192
+#define MAX_ARM_INST  32768
 #define ARM_CACHE_REG_START 4
 #define ARM_NUM_CACHE_REGS 6
 #define MAX_NUM_BLOCKS 4096
@@ -58,12 +58,12 @@ typedef struct {
 
 typedef struct {
     WORD PC;
+    WORD imm;
     BYTE opcode;
     BYTE reg1, reg2;
-    WORD imm;
     HWORD start_pos;
-    BYTE trans_size;
     int branch_offset;
+    BYTE trans_size;
     bool save_flags;
     bool busywait;
     bool is_branch_target;
