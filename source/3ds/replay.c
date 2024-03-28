@@ -18,20 +18,23 @@ static const int REPLAY_VERSION = 0;
 
 static BYTE *initial_sram = NULL;
 static int initial_sram_size;
+static bool has_initial_sram;
 static ReplayEntry *replay_buf = NULL, *replay_cursor;
 static bool overflowed = false;
 
-void replay_init(bool has_sram) {
-    if (initial_sram) free(initial_sram);
-    if (has_sram) {
+void replay_init() {
+    initial_sram = malloc(V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr);
+    replay_buf = malloc(sizeof(ReplayEntry) * REPLAY_COUNT);
+}
+
+void replay_reset(bool with_sram) {
+    has_initial_sram = with_sram;
+    if (with_sram) {
         initial_sram_size = V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr;
-        initial_sram = malloc(initial_sram_size);
         memcpy(initial_sram, V810_GAME_RAM.pmemory, initial_sram_size);
     } else {
         initial_sram_size = 0;
-        initial_sram = NULL;
     }
-    if (!replay_buf) replay_buf = malloc(sizeof(ReplayEntry) * REPLAY_COUNT);
     replay_cursor = replay_buf;
     replay_cursor->inputs = 0;
     replay_cursor->count = 0;

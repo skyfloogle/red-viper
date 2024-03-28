@@ -321,7 +321,7 @@ void v810_reset() {
     tHReg.hwRead = 0;
 
     // we don't reset load_sram so it will be non-null if there was sram to load
-    replay_init(is_sram || (bool)load_sram);
+    replay_reset(is_sram || (bool)load_sram);
 }
 
 // Returns number of cycles until next timer interrupt.

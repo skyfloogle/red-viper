@@ -62,6 +62,8 @@ int main() {
 
     drc_init();
 
+    replay_init();
+
     guiop = 0;
     openMenu();
     if (guiop & GUIEXIT) {
