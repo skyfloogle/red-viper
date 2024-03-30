@@ -156,9 +156,11 @@ int main() {
                 C3D_FrameEnd(0);
             }
             if (tVIPREG.XPCTRL & 0x0002) {
-                memset(V810_DISPLAY_RAM.pmemory + 0x8000 * alt_buf, 0, 0x6000);
-                memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
-                tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
+                if (tDSPCACHE.DDSPDataState[alt_buf] != GPU_CLEAR) {
+                    memset(V810_DISPLAY_RAM.pmemory + 0x8000 * alt_buf, 0, 0x6000);
+                    memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
+                    tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
+                }
             }
         } else {
             // no game graphics, draw menu if possible
