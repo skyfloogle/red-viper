@@ -38,11 +38,11 @@ void detectCitra(WORD *test_code) {
     is_citra = false;
     test_code[0] = 0xe3a00001; // mov r0, #1
     test_code[1] = 0xe12fff1e; // bx lr
-    FlushInvalidateCache();
+    FlushInvalidateCache(test_code, 8);
     bool (*code_func)() = (bool(*)())test_code;
     code_func();
     test_code[0] = 0xe3a00000; // mov r0, #0
-    FlushInvalidateCache();
+    FlushInvalidateCache(test_code, 4);
     is_citra = code_func();
 }
 
@@ -61,7 +61,9 @@ void hbHaxInit() {
 void hbHaxExit() {
 }
 
-void FlushInvalidateCache() {
+void FlushInvalidateCache(void *addr, size_t len) {
+    register void *addr_asm asm("r0") = addr;
+    register size_t len_asm asm("r1") = len;
     if (tVBOpt.DYNAREC) {
         if (!is_citra) {
             // works on hardware, does nothing on citra
@@ -71,7 +73,7 @@ void FlushInvalidateCache() {
             );
         } else {
             // works on citra, crashes on hardware
-            __asm__ volatile("svc 0x94");
+            __asm__ volatile("svc 0x93"::"r"(addr_asm),"r"(len_asm));
         }
     }
 }

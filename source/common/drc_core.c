@@ -1655,8 +1655,6 @@ void drc_clearCache() {
     memset(rom_entry_map, 0, sizeof(rom_entry_map[0])*BLOCK_MAP_COUNT);
 
     *cache_start = -1;
-
-    FlushInvalidateCache();
 }
 
 // Returns the entrypoint for the V810 instruction in location loc if it exists
@@ -1698,7 +1696,6 @@ void drc_init() {
     if (tVBOpt.DYNAREC) {
         cache_start = linearMemAlign(CACHE_SIZE, 0x1000);
         ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7);
-        FlushInvalidateCache();
         detectCitra(cache_start);
     } else {
         // cache_start = &cache_dump_bin;
@@ -1764,7 +1761,7 @@ int drc_run() {
         // TODO: make sure we have enough free space
         entrypoint = drc_getEntry(v810_state->PC, &cur_block);
         if (tVBOpt.DYNAREC && (entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc)) {
-            int result = drc_translateBlock(cur_block);
+            int result = drc_translateBlock();
             if (result == DRC_ERR_CACHE_FULL || result == DRC_ERR_NO_BLOCKS) {
                 drc_clearCache();
                 continue;
@@ -1773,10 +1770,11 @@ int drc_run() {
             }
 
 //            drc_dumpCache("cache_dump_rf.bin");
-            FlushInvalidateCache();
 
             entrypoint = drc_getEntry(entry_PC, &cur_block);
             dprintf(3, "[DRC]: ARM block size - %ld\n", cur_block->size);
+
+            FlushInvalidateCache(cur_block->phys_offset, cur_block->size * 4);
         }
         dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
         if ((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE)) {

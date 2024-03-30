@@ -10,7 +10,7 @@ s32 k_flushCaches();
 void hbHaxInit();
 void detectCitra(WORD *code);
 void hbHaxExit();
-void FlushInvalidateCache();
+void FlushInvalidateCache(void *addr, size_t len);
 Result ReprotectMemory(u32* addr, u32 pages, u32 mode);
 
 #endif // _UTILS_H
