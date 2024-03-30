@@ -1135,7 +1135,12 @@ static inline int handle_buttons(Button buttons[], int count) {
                 if (temp) {
                     int tempx = (temp->x + (temp->w / 2)) - ((temp->w / 2) * xaxis);
                     int tempy = (temp->y + (temp->h / 2)) - ((temp->h / 2) * yaxis);
-                    if (dis(selectx,selecty,buttonx,buttony) >= dis(selectx,selecty,tempx,tempy))
+                    int olddist = dis(selectx, selecty, tempx, tempy);
+                    int newdist = dis(selectx, selecty, buttonx, buttony);
+                    if (newdist > olddist)
+                        continue;
+                    // bias leftwards
+                    if (olddist == newdist && buttonx > tempx)
                         continue;
                 }
 
