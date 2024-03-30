@@ -755,14 +755,14 @@ void vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F842:    //XPCTRL
         //~ dtprintf(6,ferr,"\nWrite  HWORD VIP XPCTRL [%08x]:%04x ",addr,data);
-        tVIPREG.XPCTRL = data & 0x1F03;
-        tVIPREG.XPSTTS  = (tVIPREG.XPSTTS & 0x9F1C) | (data & 0x0002);
         if(data & 0x0001) {
             tVIPREG.INTPND &= 0x001F;
             tVIPREG.INTENB &= 0x001F;
             tVIPREG.XPCTRL &= ~0x0002;
             tVIPREG.XPSTTS &= ~0x0002;
         }
+        tVIPREG.XPCTRL = data & 0x1F03;
+        tVIPREG.XPSTTS = (tVIPREG.XPSTTS & 0x9F1C) | (data & 0x0002);
         break;
     case 0x0005F844:    //VER
         //~ dtprintf(8,ferr,"\nWrite  HWORD VIP VER [%08x]:%04x ",addr,data);
