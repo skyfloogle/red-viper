@@ -42,6 +42,7 @@ typedef struct {
 	C3D_RenderTarget *target;
 	int bg;
 	short umin, umax, vmin, vmax;
+	short lumin, lumax, lvmin, lvmax;
 	u16 tiles[64 * 64];
 	u16 GPLT[4];
 	bool visible;
@@ -187,40 +188,58 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	int vcount = 0;
 
 	int cache_id = mapid % AFFINE_CACHE_SIZE;
-	bool new_map = tileMapCache[cache_id].bg != mapid || tDSPCACHE.BrtPALMod;
-	int old_umin = tileMapCache[cache_id].umin;
-	int old_umax = tileMapCache[cache_id].umax;
-	int old_vmin = tileMapCache[cache_id].vmin;
-	int old_vmax = tileMapCache[cache_id].vmax;
-	tileMapCache[cache_id].bg = mapid;
-	tileMapCache[cache_id].used = true;
-	// move the bounds only if new map or if bigger
-	if (tileMapCache[cache_id].umin > umin || new_map)
-		tileMapCache[cache_id].umin = umin;
-	if (tileMapCache[cache_id].umax < umax || new_map)
-		tileMapCache[cache_id].umax = umax;
-	if (tileMapCache[cache_id].vmin > vmin || new_map)
-		tileMapCache[cache_id].vmin = vmin;
-	if (tileMapCache[cache_id].vmax < vmax || new_map)
-		tileMapCache[cache_id].vmax = vmax;
+	AffineCacheEntry *cache = &tileMapCache[cache_id];
+	bool force_redraw = cache->bg == -1;
+	int old_umin = cache->lumin;
+	int old_umax = cache->lumax;
+	int old_vmin = cache->lvmin;
+	int old_vmax = cache->lvmax;
+	// move the bounds only if newly used this frame or if bigger
+	if (cache->umin > umin || !cache->used)
+		cache->umin = umin;
+	if (cache->umax < umax || !cache->used)
+		cache->umax = umax;
+	if (cache->vmin > vmin || !cache->used)
+		cache->vmin = vmin;
+	if (cache->vmax < vmax || !cache->used)
+		cache->vmax = vmax;
+	
+	// increase old bounds if current bounds are bigger or if cache was forcefully invalidated
+	if (cache->lumin > umin || force_redraw)
+		cache->lumin = umin;
+	if (cache->lumax < umax || force_redraw)
+		cache->lumax = umax;
+	if (cache->lvmin > vmin || force_redraw)
+		cache->lvmin = vmin;
+	if (cache->lvmax < vmax || force_redraw)
+		cache->lvmax = vmax;
+
+	// clear tile cache if force redraw
+	if (force_redraw) {
+		memset(cache->tiles, 0, sizeof(cache->tiles));
+	}
+
+	cache->bg = mapid;
+	cache->used = true;
 
 	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid));
-	for (int y = tileMapCache[cache_id].vmin & ~7; y <= tileMapCache[cache_id].vmax; y += 8) {
-		if (y - (tileMapCache[cache_id].vmin & ~7) >= 512) break;
-		bool new_row = new_map || (old_vmax - old_vmin < 512 && (y < old_vmin || y > old_vmax));
-		for (int x = tileMapCache[cache_id].umin & ~7; x <= tileMapCache[cache_id].umax; x += 8) {
-			if (x - (tileMapCache[cache_id].umin & ~7) >= 512) break;
+	for (int y = vmin & ~7; y <= vmax; y += 8) {
+		if (y - (vmin & ~7) >= 512) break;
+		bool new_row = force_redraw || (old_vmax - old_vmin < 512 && (y < old_vmin || y > old_vmax));
+		for (int x = umin & ~7; x <= umax; x += 8) {
+			if (x - (umin & ~7) >= 512) break;
 			int xx = x & 0x1f8;
 			int yy = y & 0x1f8;
 			uint16_t tile = tilemap[(yy << 3) + (xx >> 3)];
 			uint16_t tileid = tile & 0x07ff;
+			tile |= 0x800; // flag to indicate that tile was drawn since last clear
 
 			if (!(new_row || (old_umax - old_umin < 512 && (x < old_umin || x > old_umax))
-				|| tileMapCache[cache_id].tiles[(yy << 3) + (xx >> 3)] != tile
+				|| cache->tiles[(yy << 3) + (xx >> 3)] != tile
 				|| tDSPCACHE.CharacterCache[tileid]
-				|| tileMapCache[cache_id].GPLT[tile >> 14] != tVIPREG.GPLT[tile >> 14]
+				|| cache->GPLT[tile >> 14] != tVIPREG.GPLT[tile >> 14]
 			)) continue;
-			tileMapCache[cache_id].tiles[(yy << 3) + (xx >> 3)] = tile;
+			cache->tiles[(yy << 3) + (xx >> 3)] = tile;
 
 			bool hflip = (tile & 0x2000) != 0;
 			bool vflip = (tile & 0x1000) != 0;
@@ -243,8 +262,8 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 			vcount++;
 		}
 	}
-	memcpy(tileMapCache[cache_id].GPLT, tVIPREG.GPLT, sizeof(tVIPREG.GPLT));
-	tileMapCache[cache_id].visible = true;
+	memcpy(cache->GPLT, tVIPREG.GPLT, sizeof(tVIPREG.GPLT));
+	cache->visible = true;
 
 	if (vcount == 0) {
 		// bail
@@ -252,7 +271,7 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	}
 
 	// set up cache texture
-	C3D_FrameDrawOn(tileMapCache[cache_id].target);
+	C3D_FrameDrawOn(cache->target);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
@@ -335,6 +354,14 @@ void video_hard_render() {
 
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		tileMapCache[i].used = false;
+		tileMapCache[i].lumin = tileMapCache[i].umin;
+		tileMapCache[i].lumax = tileMapCache[i].umax;
+		tileMapCache[i].lvmin = tileMapCache[i].vmin;
+		tileMapCache[i].lvmax = tileMapCache[i].vmax;
+		if (tDSPCACHE.BrtPALMod) {
+			// force invalidate
+			tileMapCache[i].bg = -1;
+		}
 	}
 
 	// clear
