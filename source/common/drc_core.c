@@ -383,9 +383,11 @@ static void drc_findLastConditionalInst(int pos) {
                     break;
             case V810_OP_JAL:
                 // nester's funky bowling calls a function to do its busywait read
-                // and it does this twice
-                if (tVBOpt.CRC32 == 0xDF4D56B4 && (inst_cache[i].PC == 0x700a01a || inst_cache[i].PC == 0x700a094))
-                    break;
+                // and it does this several times
+                if (tVBOpt.CRC32 == 0xDF4D56B4 && (
+                    inst_cache[i].PC + inst_cache[i].branch_offset == 0x07005326 ||
+                    inst_cache[i].PC + inst_cache[i].branch_offset == 0x07001f2c
+                )) break;
             case V810_OP_ADD:
             case V810_OP_OR:
                 // only certain operators are ok for busywait here, otherwise fallthrough
