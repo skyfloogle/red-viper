@@ -1374,9 +1374,21 @@ static int drc_translateBlock() {
                 STR_IO(0, 11, (35 + PSW) * 4);
                 break;
             case V810_OP_SETF: // setf imm5, reg2
-                MOV_I(arm_reg2, 0, 0);
-                // mov<cond> reg2, 1
-                new_data_proc_imm(cond_map[inst_cache[i].imm & 0xF], ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
+                if ((inst_cache[i].imm & 0xF) == (V810_OP_BNH & 0xF)) {
+                    // C or Z
+                    MOV_I(arm_reg2, 0, 0);
+                    new_data_proc_imm(ARM_COND_EQ, ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
+                    new_data_proc_imm(ARM_COND_CS, ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
+                } else if ((inst_cache[i].imm & 0xF) == (V810_OP_BH & 0xF)) {
+                    // !C and !Z
+                    MOV_I(arm_reg2, 1, 0);
+                    new_data_proc_imm(ARM_COND_EQ, ARM_OP_MOV, 0, 0, arm_reg2, 0, 0);
+                    new_data_proc_imm(ARM_COND_CS, ARM_OP_MOV, 0, 0, arm_reg2, 0, 0);
+                } else {
+                    MOV_I(arm_reg2, 0, 0);
+                    // mov<cond> reg2, 1
+                    new_data_proc_imm(cond_map[inst_cache[i].imm & 0xF], ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
+                }
                 reg2_modified = true;
                 break;
             case V810_OP_HALT: // halt
