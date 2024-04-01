@@ -208,6 +208,7 @@ int main() {
     save_sram();
 
 exit:
+    aptUnhook(&cookie);
     toggleVsync(false);
     sound_close();
     if (save_thread) threadJoin(save_thread, U64_MAX);
