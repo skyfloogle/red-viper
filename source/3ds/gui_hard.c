@@ -1511,6 +1511,8 @@ void drawTouchControls(int inputs) {
 }
 
 void guiUpdate(float total_time, float drc_time) {
+    if (!backlightEnabled) return;
+
     static int last_inputs = 0;
     static bool last_fastforward = false;
     static bool last_saving = false;
