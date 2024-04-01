@@ -163,6 +163,8 @@ void video_init() {
         GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
 
+    gfxSet3D(true);
+
 	sFinal_dvlb = DVLB_ParseFile((u32 *)final_shbin, final_shbin_size);
 	shaderProgramInit(&sFinal);
 	shaderProgramSetVsh(&sFinal, &sFinal_dvlb->DVLE[0]);
@@ -195,6 +197,13 @@ void video_init() {
 	C3D_RenderTargetSetOutput(finalScreen[0], GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
 	finalScreen[1] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, -1);
 	C3D_RenderTargetSetOutput(finalScreen[1], GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
+
+	// render one frame on the top screen and vsync to update vtotal
+	C3D_FrameBegin(0);
+	C3D_FrameDrawOn(finalScreen[0]);
+	C3D_RenderTargetClear(finalScreen[0], C3D_CLEAR_COLOR, 0, 0);
+	C3D_FrameEnd(0);
+	gspWaitForVBlank();
 }
 
 void video_render(int alt_buf) {

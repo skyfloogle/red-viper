@@ -54,8 +54,6 @@ int main() {
     video_init();
     guiInit();
 
-    gfxSet3D(true);
-
     v810_init();
 
     sound_init();
