@@ -15,6 +15,7 @@
 #include "vb_gui.h"
 #include "rom_db.h"
 #include "replay.h"
+#include "utils.h"
 
 char rom_path[256] = "sdmc:/vb/";
 char rom_name[128];
@@ -60,6 +61,10 @@ int main() {
 
     drc_init();
 
+    if (is_citra) {
+        tVBOpt.VSYNC = false;
+    }
+
     replay_init();
 
     guiop = 0;
@@ -76,7 +81,8 @@ int main() {
     osSetSpeedupEnable(true);
 
     svcCreateEvent(&frame_event, RESET_STICKY);
-    startPeriodic(frame_pacer_thread, 20000000);
+
+    toggleVsync(tVBOpt.VSYNC);
 
     TickCounter drcTickCounter;
     TickCounter frameTickCounter;
@@ -202,6 +208,7 @@ int main() {
     save_sram();
 
 exit:
+    toggleVsync(false);
     sound_close();
     if (save_thread) threadJoin(save_thread, U64_MAX);
     endThreads();

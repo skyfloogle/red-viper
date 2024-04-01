@@ -13,6 +13,7 @@
 #include "vb_types.h"
 #include "replay.h"
 #include "main.h"
+#include "periodic.h"
 #include "sprites_t3x.h"
 #include "sprites.h"
 
@@ -1340,8 +1341,36 @@ bool toggleBacklight(bool enable) {
     return enable;
 }
 
+void toggleVsync(bool enable) {
+    endThread(frame_pacer_thread);
+    u32 vtotal_top, vtotal_bottom;
+    if (enable) {
+        // 990 is closer to 50Hz but capture cards don't like when the two screens are out of sync
+        vtotal_top = 989;
+        vtotal_bottom = 494;
+        startPeriodicVsync(frame_pacer_thread);
+    } else {
+        vtotal_top = 827;
+        vtotal_bottom = 413;
+        startPeriodic(frame_pacer_thread, 20000000);
+    }
+    GSPGPU_WriteHWRegs(0x400424, &vtotal_top, 4);
+    GSPGPU_WriteHWRegs(0x400524, &vtotal_bottom, 4);
+}
+
 void aptBacklight(APT_HookType hook, void* param) {
-    if (backlightEnabled == false) {
+    if (tVBOpt.VSYNC) {
+        switch (hook) {
+            case APTHOOK_ONRESTORE:
+            case APTHOOK_ONWAKEUP:
+                toggleVsync(true);
+                break;
+            default:
+                toggleVsync(false);
+                break;
+        }
+    }
+    if (!backlightEnabled) {
         switch (hook) {
             case APTHOOK_ONRESTORE:
             case APTHOOK_ONWAKEUP:

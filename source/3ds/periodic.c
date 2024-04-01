@@ -36,6 +36,18 @@ static void periodic(void *periodArgs_v) {
     svcCloseHandle(timer);
 }
 
+static void periodic_vsync(void *periodArgs_v) {
+    PeriodArgs *periodArgs = (PeriodArgs*)periodArgs_v;
+    threadfunc_t func = periodArgs->func;
+    int id = periodArgs->id;
+    svcSignalEvent(periodArgs->readyEvent);
+
+    while (threadrunning[id]) {
+        gspWaitForVBlank();
+        func();
+    }
+}
+
 bool startPeriodic(threadfunc_t func, int periodNanos) {
     PeriodArgs periodArgs;
     periodArgs.func = func;
@@ -47,6 +59,28 @@ bool startPeriodic(threadfunc_t func, int periodNanos) {
             threadfuncs[i] = func;
             threadrunning[i] = true;
             threads[i] = threadCreate(periodic, &periodArgs, 4000, 0x18, 0, true);
+            if (!threads[i]) {
+                threadrunning[i] = false;
+                return false;
+            }
+            svcWaitSynchronization(periodArgs.readyEvent, 0);
+            svcCloseHandle(periodArgs.readyEvent);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool startPeriodicVsync(threadfunc_t func) {
+    PeriodArgs periodArgs;
+    periodArgs.func = func;
+    svcCreateEvent(&periodArgs.readyEvent, RESET_ONESHOT);
+    for (int i = 0; i < THREAD_COUNT; i++) {
+        if (!threadrunning[i]) {
+            periodArgs.id = i;
+            threadfuncs[i] = func;
+            threadrunning[i] = true;
+            threads[i] = threadCreate(periodic_vsync, &periodArgs, 4000, 0x18, 0, true);
             if (!threads[i]) {
                 threadrunning[i] = false;
                 return false;

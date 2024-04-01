@@ -78,6 +78,7 @@ typedef struct VB_OPT {
     char *PROG_NAME; // Path\Name of program
     unsigned long CRC32; // CRC32 of ROM
     bool  PERF_INFO;
+    bool  VSYNC;
 } VB_OPT;
 
 void setDefaults(void);
