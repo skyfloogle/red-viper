@@ -132,7 +132,7 @@ void sound_update(u32 cycles) {
                     if (sound_state.sweep_time != 0) {
                         if (env & 0x10) {
                             // modulation
-                            sound_state.sweep_frequency = GET_FREQ(4) + SNDMEM(MODDATA + 4 * sound_state.modulation_counter++);
+                            sound_state.sweep_frequency = GET_FREQ(4) + (s8)SNDMEM(MODDATA + 4 * sound_state.modulation_counter++);
                             if (sound_state.modulation_counter >= 32) {
                                 if (env & 0x20) {
                                     // repeat
