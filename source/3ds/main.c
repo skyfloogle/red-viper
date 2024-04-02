@@ -118,33 +118,6 @@ int main() {
             lag_frames = 0;
         }
 
-        // if hold, turn off fast forward, as it'll be turned back on while reading input
-        if (!tVBOpt.FF_TOGGLE) tVBOpt.FASTFORWARD = false;
-
-        // read inputs once per frame
-        HWORD inputs = V810_RControll();
-        tHReg.SLB =(BYTE)(inputs&0xFF);
-        tHReg.SHB =(BYTE)((inputs>>8)&0xFF);
-
-        replay_update(inputs);
-
-        float last_drc_time = osTickCounterRead(&drcTickCounter);
-
-#if DEBUGLEVEL == 0
-        consoleSelect(&debug_console);
-#endif
-        osTickCounterStart(&drcTickCounter);
-        err = drc_run();
-        osTickCounterUpdate(&drcTickCounter);
-        if (err) {
-            showError(err);
-            do {
-                hidScanInput();
-                gspWaitForVBlank();
-            } while (aptMainLoop() && !hidKeysDown());
-            goto exit;
-        }
-
         // Display a frame, only after the right number of 'skips'
         if(tVIPREG.tFrame == tVIPREG.FRMCYC) {
             int alt_buf = (tVIPREG.tFrameBuffer) % 2;
@@ -152,7 +125,7 @@ int main() {
             // it's only needed for 1 second in the mario clash intro afaik
             // so just bite the bullet and do the frameskip, rather that than slowdown
             if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
-                guiUpdate(osTickCounterRead(&frameTickCounter), last_drc_time);
+                guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
 
                 if (tVIPREG.DPCTRL & 0x0002) {
                     video_render(alt_buf);
@@ -169,9 +142,31 @@ int main() {
         } else {
             // no game graphics, draw menu if possible
             if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
-                guiUpdate(osTickCounterRead(&frameTickCounter), last_drc_time);
+                guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
                 C3D_FrameEnd(0);
             }
+        }
+
+        // if hold, turn off fast forward, as it'll be turned back on while reading input
+        if (!tVBOpt.FF_TOGGLE) tVBOpt.FASTFORWARD = false;
+
+        // read inputs once per frame
+        HWORD inputs = V810_RControll();
+        tHReg.SLB =(BYTE)(inputs&0xFF);
+        tHReg.SHB =(BYTE)((inputs>>8)&0xFF);
+
+        replay_update(inputs);
+
+        osTickCounterStart(&drcTickCounter);
+        err = drc_run();
+        osTickCounterUpdate(&drcTickCounter);
+        if (err) {
+            showError(err);
+            do {
+                hidScanInput();
+                gspWaitForVBlank();
+            } while (aptMainLoop() && !hidKeysDown());
+            goto exit;
         }
 
         // Increment frame
