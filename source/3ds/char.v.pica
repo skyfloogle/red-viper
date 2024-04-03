@@ -1,7 +1,7 @@
 .fvec posscale ; third and fourth elements must be -1 and 1
 .fvec palettes[8]
 
-.constf const2(0.00390625, 0.001953125, 0.0, 0.0)
+.constf const2(0.03125, 0.015625, 0.0, 0.0)
 
 .constfa orients[4]
 .constfa (0, 0, 0.03125, 0.03125)

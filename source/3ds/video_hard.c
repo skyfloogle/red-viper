@@ -65,8 +65,8 @@ static shaderProgram_s sAffine;
 
 typedef struct {
 	short x, y;
-	short u, v, palette, orient;
-} vertex;
+	u8 u, v, palette, orient;
+} __attribute__((aligned(4))) vertex;
 
 typedef struct {
 	short x1, y1, x2, y2;
@@ -175,7 +175,7 @@ static void setRegularDrawing() {
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 2);
-	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 4);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_BYTE, 4);
 
 	setRegularTexEnv();
 
@@ -241,8 +241,8 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 			)) continue;
 			cache->tiles[(yy << 3) + (xx >> 3)] = tile;
 
-			short u = (tileid % 32) * 8;
-			short v = (tileid / 32) * 8;
+			short u = (tileid % 32);
+			short v = (tileid / 32);
 
 			if (vcur >= vbuf + VBUF_SIZE) {
 				dprintf(0, "VBUF OVERRUN!\n");
@@ -506,8 +506,8 @@ void video_hard_render() {
 								if (x < -8) continue;
 								uint16_t tileid = tile & 0x07ff;
 								if (!tileVisible[tileid]) continue;
-								short u = (tileid % 32) * 8;
-								short v = (tileid / 32) * 8;
+								short u = (tileid % 32);
+								short v = (tileid / 32);
 
 								if (vcur >= vbuf + VBUF_SIZE) {
 									dprintf(0, "VBUF OVERRUN!\n");
@@ -767,8 +767,8 @@ void video_hard_render() {
 				s16 y = *(u8*)&obj_ptr[2];
 				if (y > 224) y = (s8)y;
 
-				short u = (tileid % 32) * 8;
-				short v = (tileid / 32) * 8;
+				short u = (tileid % 32);
+				short v = (tileid / 32);
 
 				short palette = (cw3 >> 14) | 4;
 
