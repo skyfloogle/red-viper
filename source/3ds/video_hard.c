@@ -64,8 +64,8 @@ static DVLB_s *sAffine_dvlb;
 static shaderProgram_s sAffine;
 
 typedef struct {
-	short x1, y1, x2, y2;
-	short u, v, palette;
+	short x, y;
+	short u, v, palette, orient;
 } vertex;
 
 typedef struct {
@@ -174,8 +174,8 @@ static void setRegularTexEnv() {
 static void setRegularDrawing() {
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
-	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
-	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
+	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 2);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 4);
 
 	setRegularTexEnv();
 
@@ -241,8 +241,6 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 			)) continue;
 			cache->tiles[(yy << 3) + (xx >> 3)] = tile;
 
-			bool hflip = (tile & 0x2000) != 0;
-			bool vflip = (tile & 0x1000) != 0;
 			short u = (tileid % 32) * 8;
 			short v = (tileid / 32) * 8;
 
@@ -251,13 +249,12 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 				break;
 			}
 
-			vcur->x1 = xx + 8 * hflip;
-			vcur->y1 = yy + 8 * vflip;
-			vcur->x2 = xx + 8 * !hflip;
-			vcur->y2 = yy + 8 * !vflip;
+			vcur->x = xx;
+			vcur->y = yy;
 			vcur->u = u;
 			vcur->v = v;
-			vcur++->palette = tile >> 14;
+			vcur->palette = tile >> 14;
+			vcur++->orient = (tile >> 12) & 3;
 
 			vcount++;
 		}
@@ -509,8 +506,6 @@ void video_hard_render() {
 								if (x < -8) continue;
 								uint16_t tileid = tile & 0x07ff;
 								if (!tileVisible[tileid]) continue;
-								bool hflip = (tile & 0x2000) != 0;
-								bool vflip = (tile & 0x1000) != 0;
 								short u = (tileid % 32) * 8;
 								short v = (tileid / 32) * 8;
 
@@ -519,13 +514,12 @@ void video_hard_render() {
 									break;
 								}
 
-								vcur->x1 = x + 8 * hflip;
-								vcur->y1 = y + 8 * vflip + 256 * eye;
-								vcur->x2 = x + 8 * !hflip;
-								vcur->y2 = y + 8 * !vflip + 256 * eye;
+								vcur->x = x;
+								vcur->y = y + 256 * eye;
 								vcur->u = u;
 								vcur->v = v;
-								vcur++->palette = tile >> 14;
+								vcur->palette = tile >> 14;
+								vcur++->orient = (tile >> 12) & 3;
 
 								vcount++;
 							}
@@ -773,8 +767,6 @@ void video_hard_render() {
 				s16 y = *(u8*)&obj_ptr[2];
 				if (y > 224) y = (s8)y;
 
-				bool hflip = (cw3 & 0x2000) != 0;
-				bool vflip = (cw3 & 0x1000) != 0;
 				short u = (tileid % 32) * 8;
 				short v = (tileid / 32) * 8;
 
@@ -796,13 +788,12 @@ void video_hard_render() {
 						break;
 					}
 
-					vcur->x1 = x + 8 * hflip;
-					vcur->y1 = y + 8 * vflip + 256 * eye;
-					vcur->x2 = x + 8 * !hflip;
-					vcur->y2 = y + 8 * !vflip + 256 * eye;
+					vcur->x = x;
+					vcur->y = y + 256 * eye;
 					vcur->u = u;
 					vcur->v = v;
-					vcur++->palette = palette;
+					vcur->palette = palette;
+					vcur++->orient = (cw3 >> 12) & 3;
 					vcount++;
 				}
 			}
