@@ -204,9 +204,6 @@ void video_init() {
 	C3D_RenderTargetClear(finalScreen[0], C3D_CLEAR_COLOR, 0, 0);
 	C3D_FrameEnd(0);
 	gspWaitForVBlank();
-
-	u32 vtotal = 990;
-	GSPGPU_WriteHWRegs(0x400424, &vtotal, 4);
 }
 
 void video_render(int alt_buf) {

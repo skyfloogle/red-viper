@@ -13,6 +13,7 @@
 #include "vb_types.h"
 #include "replay.h"
 #include "main.h"
+#include "utils.h"
 #include "periodic.h"
 #include "sprites_t3x.h"
 #include "sprites.h"
@@ -1346,13 +1347,23 @@ void toggleVsync(bool enable) {
     u32 vtotal_top, vtotal_bottom;
     if (enable) {
         // 990 is closer to 50Hz but capture cards don't like when the two screens are out of sync
-        vtotal_top = 989;
+        vtotal_top = old_2ds ? 494 : 989;
         vtotal_bottom = 494;
         startPeriodicVsync(frame_pacer_thread);
     } else {
-        vtotal_top = 827;
+        vtotal_top = old_2ds ? 413 : 827;
         vtotal_bottom = 413;
         startPeriodic(frame_pacer_thread, 20000000);
+    }
+    gspWaitForVBlank();
+    if (!is_citra) {
+        // wait for VCount to roll over to avoid potential glitches on IPS panels
+        // https://github.com/skyfloogle/red-viper/issues/46#issuecomment-2034326985
+        u32 old_vcount, vcount = 0;
+        do {
+            old_vcount = vcount;
+            GSPGPU_ReadHWRegs(0x400454, &vcount, 4);
+        } while (vcount >= old_vcount);
     }
     GSPGPU_WriteHWRegs(0x400424, &vtotal_top, 4);
     GSPGPU_WriteHWRegs(0x400524, &vtotal_bottom, 4);
