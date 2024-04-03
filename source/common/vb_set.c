@@ -47,7 +47,7 @@ void setDefaults(void) {
     tVBOpt.DEFAULT_EYE = 0;
     tVBOpt.PERF_INFO = false;
     tVBOpt.ROM_PATH = NULL;
-    tVBOpt.VSYNC = false;
+    tVBOpt.VSYNC = true;
 
     // Default keys
 #ifdef __3DS__
