@@ -1,5 +1,6 @@
 .fvec posscale ; third and fourth elements must be -1 and 1
 .fvec palettes[8]
+.fvec offset
 
 .constf const2(0.03125, 0.015625, 0.0, 0.0)
 
@@ -26,6 +27,7 @@
     mov r0, posscale
     mov r1, posscale
     mad r0.xy, r0.xy, v0.xy, posscale.zz
+    add r0.xy, offset.xy, r0.xy
     add r1.xy, orients[a0.x].xy, r0.xy
     mov outpos1, r1
     add r1.xy, orients[a0.x].zw, r0.xy

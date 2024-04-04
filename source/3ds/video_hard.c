@@ -57,6 +57,8 @@ static shaderProgram_s sChar;
 static s8 uLoc_posscale;
 static s8 uLoc_palettes;
 static C3D_FVec palettes[8];
+static s8 uLoc_offset;
+static C3D_FVec char_offset;
 static s8 uLoc_bgmap_offsets;
 static C3D_FVec bgmap_offsets[2];
 
@@ -87,6 +89,7 @@ void video_hard_init() {
 
 	uLoc_posscale = shaderInstanceGetUniformLocation(sChar.vertexShader, "posscale");
 	uLoc_palettes = shaderInstanceGetUniformLocation(sChar.vertexShader, "palettes");
+	uLoc_offset = shaderInstanceGetUniformLocation(sChar.vertexShader, "offset");
 
 	sAffine_dvlb = DVLB_ParseFile((u32 *)affine_shbin, affine_shbin_size);
 	shaderProgramInit(&sAffine);
@@ -284,6 +287,7 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	// set up cache texture
 	C3D_FrameDrawOn(cache->target);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_offset, 0, 0, 0, 0);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
 	C3D_AlphaTest(false, GPU_GREATER, 0);
@@ -474,78 +478,99 @@ void video_hard_render() {
 
 			if ((windows[wnd * 16] & 0x3000) == 0) {
 				// normal world
-				for (int eye = start_eye; eye < end_eye; eye++) {
-					if (!(windows[wnd * 16] & (0x8000 >> eye)))
-						continue;
+				vertex *vstart = vcur;
+				vcount = 0;
 
-					int gx = base_gx;
-					int mx = base_mx;
-					if (eye == 0) {
-						gx -= gp;
-						mx -= mp;
-					} else {
-						gx += gp;
-						mx += mp;
-					}
-					vcount = 0;
+				int left_mx = base_mx - abs(mp);
+				int right_mx = base_mx + abs(mp);
+				int left_gx = base_gx - abs(gp);
+				int right_gx = base_gx + abs(gp);
 
-					C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, (gy >= 0 ? gy : 0) + 256 * eye, gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
-					u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
-					int tsx = mx >> 3;
-					int ty = my >> 3;
-					int mapsx = tsx >> 6;
-					int mapy = ty >> 6;
-					tsx &= 63;
-					ty &= 63;
-					if (!over) {
-						mapsx &= scx - 1;
-						mapy &= scy - 1;
-					}
-					bool over_visible = !over || tileVisible[over_tile];
+				if (right_gx + w <= 0 || left_gx >= 384) continue;
+				if (gy + h <= 0 || gy >= 224) continue;
 
-					for (int y = gy - (my & 7); y < gy + h; y += 8) {
-						if (y >= 224) break;
-						if (y > -8 && (over_visible || (mapy & (scy - 1)) == mapy)) {
-							int tx = tsx;
-							int mapx = mapsx;
-							int current_map = mapid + scx * mapy + mapx;
-							for (int x = gx - (mx & 7); x < gx + w; x += 8) {
-								if (x >= 384) continue;
-								bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
-								uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
-								if (++tx >= 64) {
-									tx = 0;
-									if ((++mapx & (scx - 1)) == 0 && !over) mapx = 0;
-									current_map = mapid + scx * mapy + mapx;
-								}
-								// doing it down here so as to not mess up the above
-								if (x < -8) continue;
-								uint16_t tileid = tile & 0x07ff;
-								if (!tileVisible[tileid]) continue;
-								short u = (tileid % 32);
-								short v = (tileid / 32);
+				u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+				int tsx = left_mx >> 3;
+				int ty = my >> 3;
+				int mapsx = tsx >> 6;
+				int mapy = ty >> 6;
+				tsx &= 63;
+				ty &= 63;
+				if (!over) {
+					mapsx &= scx - 1;
+					mapy &= scy - 1;
+				}
+				bool over_visible = !over || tileVisible[over_tile];
 
-								if (vcur >= vbuf + VBUF_SIZE) {
-									dprintf(0, "VBUF OVERRUN!\n");
-									break;
-								}
-
-								vcur->x = x;
-								vcur->y = y + 256 * eye;
-								vcur->u = u;
-								vcur->v = v;
-								vcur->palette = tile >> 14;
-								vcur++->orient = (tile >> 12) & 3;
-
-								vcount++;
+				for (int y = gy - (my & 7); y < gy + h; y += 8) {
+					if (y >= 224) break;
+					if (y > -8 && (over_visible || (mapy & (scy - 1)) == mapy)) {
+						int tx = tsx;
+						int mapx = mapsx;
+						int current_map = mapid + scx * mapy + mapx;
+						for (int x = 0; x < 512; x += 8) {
+							if (x + left_gx - abs(mp) * 2 - (left_mx & 7) >= 384) break;
+							bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
+							uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
+							if (++tx >= 64) {
+								tx = 0;
+								if ((++mapx & (scx - 1)) == 0 && !over) mapx = 0;
+								current_map = mapid + scx * mapy + mapx;
 							}
-						}
-						if (++ty >= 64) {
-							ty = 0;
-							if (++mapy >= scy && !over) mapy = 0;
+							uint16_t tileid = tile & 0x07ff;
+							if (!tileVisible[tileid]) continue;
+							short u = (tileid % 32);
+							short v = (tileid / 32);
+
+							if (vcur >= vbuf + VBUF_SIZE) {
+								dprintf(0, "VBUF OVERRUN!\n");
+								break;
+							}
+
+							vcur->x = x;
+							vcur->y = y;
+							vcur->u = u;
+							vcur->v = v;
+							vcur->palette = tile >> 14;
+							vcur++->orient = (tile >> 12) & 3;
+
+							vcount++;
 						}
 					}
-					DRAW_VBUF;
+					if (++ty >= 64) {
+						ty = 0;
+						if (++mapy >= scy && !over) mapy = 0;
+					}
+				}
+
+				if (vcount != 0) {
+					for (int eye = start_eye; eye < end_eye; eye++) {
+						if (!(windows[wnd * 16] & (0x8000 >> eye)))
+							continue;
+						int gx = base_gx;
+						int mx = base_mx;
+						if (eye == 0) {
+							gx -= gp;
+							mx -= mp;
+						} else {
+							gx += gp;
+							mx += mp;
+						}
+
+						if (gx + w <= 0 || gx >= 384) continue;
+
+						int offset_x = gx - mx + (left_mx & ~7);
+
+						C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_offset,
+							offset_x / 256.0,
+							eye, 0, 0);
+
+						C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, (gy >= 0 ? gy : 0) + 256 * eye, gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
+
+						C3D_DrawArrays(GPU_GEOMETRY_PRIM, vstart - vbuf, vcount);
+
+						C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_offset, 0, 0, 0, 0);
+					}
 				}
 			} else {
 				// hbias or affine world
