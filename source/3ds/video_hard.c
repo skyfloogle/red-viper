@@ -222,24 +222,39 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	cache->bg = mapid;
 	cache->used = true;
 
+	int uumin = umin & 0x1f8;
+	int vvmin = vmin & 0x1f8;
+	int uumax = umax & 0x1f8;
+	int vvmax = vmax & 0x1f8;
+
+	if (umax - umin >= 512) {
+		uumin = 0;
+		uumax = 511;
+	}
+	if (vmax - vmin >= 512) {
+		vvmin = 0;
+		vvmax = 511;
+	}
+
+	bool uwrap = uumin > uumax;
+	bool vwrap = vvmin > vvmax;
+
 	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid));
-	for (int y = vmin & ~7; y <= vmax; y += 8) {
-		if (y - (vmin & ~7) >= 512) break;
+	for (int y = vwrap ? 0 : vvmin; y <= (vwrap ? 511 : vvmax); y += 8) {
+		if (vwrap && !(y >= vvmin || y <= vvmax)) continue;
 		bool new_row = force_redraw || (old_vmax - old_vmin < 512 && (y < old_vmin || y > old_vmax));
-		for (int x = umin & ~7; x <= umax; x += 8) {
-			if (x - (umin & ~7) >= 512) break;
-			int xx = x & 0x1f8;
-			int yy = y & 0x1f8;
-			uint16_t tile = tilemap[(yy << 3) + (xx >> 3)];
+		for (int x = uwrap ? 0 : uumin; x <= (uwrap ? 511 : uumax); x += 8) {
+			if (uwrap && !(x >= uumin || x <= uumax)) continue;
+			uint16_t tile = tilemap[(y << 3) + (x >> 3)];
 			uint16_t tileid = tile & 0x07ff;
 			tile |= 0x800; // flag to indicate that tile was drawn since last clear
 
 			if (!(new_row || (old_umax - old_umin < 512 && (x < old_umin || x > old_umax))
-				|| cache->tiles[(yy << 3) + (xx >> 3)] != tile
+				|| cache->tiles[(y << 3) + (x >> 3)] != tile
 				|| tDSPCACHE.CharacterCache[tileid]
 				|| cache->GPLT[tile >> 14] != tVIPREG.GPLT[tile >> 14]
 			)) continue;
-			cache->tiles[(yy << 3) + (xx >> 3)] = tile;
+			cache->tiles[(y << 3) + (x >> 3)] = tile;
 
 			short u = (tileid % 32);
 			short v = (tileid / 32);
@@ -249,8 +264,8 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 				break;
 			}
 
-			vcur->x = xx;
-			vcur->y = yy;
+			vcur->x = x;
+			vcur->y = y;
 			vcur->u = u;
 			vcur->v = v;
 			vcur->palette = tile >> 14;
@@ -259,7 +274,6 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 			vcount++;
 		}
 	}
-	memcpy(cache->GPLT, tVIPREG.GPLT, sizeof(tVIPREG.GPLT));
 	cache->visible = true;
 
 	if (vcount == 0) {
@@ -808,6 +822,7 @@ void video_hard_render() {
 	// invalidate any unused bgmaps
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		if (!tileMapCache[i].used) tileMapCache[i].bg = -1;
+		memcpy(tileMapCache[i].GPLT, tVIPREG.GPLT, sizeof(tVIPREG.GPLT));
 	}
 }
 
