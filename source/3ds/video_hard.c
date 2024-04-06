@@ -339,6 +339,7 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 	C3D_BufInfo *bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
 	BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 3, 0x210);
+	C3D_AlphaTest(true, GPU_GREATER, 2); // 0 is fine on hardware, but just to make citra happy
 
 	for (int eye = 0; eye < 2; eye++) {
 		if (vbufs[eye] != NULL) {
@@ -349,6 +350,7 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 		}
 	}
 
+	C3D_AlphaTest(true, GPU_GREATER, 0);
 	bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
 	BufInfo_Add(bufInfo, vbuf, sizeof(vertex), 2, 0x10);
