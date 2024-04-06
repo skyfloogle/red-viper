@@ -302,7 +302,7 @@ void sound_init() {
     memset(&sound_state, 0, sizeof(sound_state));
     ndspChnReset(0);
     ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
-    ndspChnSetInterp(0, NDSP_INTERP_NONE);
+    ndspChnSetInterp(0, NDSP_INTERP_POLYPHASE);
     ndspChnSetRate(0, SAMPLE_RATE);
     ndspSetCallback(sound_callback, NULL);
     // About as loud as it can be without clipping when all channels are max volume
