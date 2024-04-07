@@ -255,6 +255,7 @@ int v810_load_step() {
 }
 
 void v810_load_cancel() {
+    is_sram = false;
     int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
     int all_size = rom_size + load_sram_size;
     if (load_pos < rom_size) {

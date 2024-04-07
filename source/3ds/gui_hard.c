@@ -1370,6 +1370,14 @@ void toggleVsync(bool enable) {
 }
 
 void aptBacklight(APT_HookType hook, void* param) {
+    if (hook == APTHOOK_ONSLEEP) {
+        // don't save if we saved in the last 10 secs (unsure if this works)
+        static u64 last_sleep_time = 0;
+        if (osGetTime() - last_sleep_time >= 10000) {
+            save_sram();
+            last_sleep_time = osGetTime();
+        }
+    }
     if (tVBOpt.VSYNC) {
         switch (hook) {
             case APTHOOK_ONRESTORE:
