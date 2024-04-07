@@ -1159,12 +1159,12 @@ static int drc_translateBlock() {
                 }
 
                 if (i > 0 && (inst_cache[i - 1].opcode & 0x34) == 0x30 && (inst_cache[i - 1].opcode & 3) != 2) {
-                    // load immediately following another load takes 4 cycles instead of 5
+                    // load immediately following another load takes 2 cycles instead of 3
                     cycles -= 1;
                 } else if (i > 0 && opcycle[inst_cache[i - 1].opcode] > 4) {
                     // load following instruction taking "many" cycles only takes 1 cycles
                     // guessing "many" is 4 for now
-                    cycles -= 4;
+                    cycles -= 2;
                 }
                 break;
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
@@ -1190,12 +1190,12 @@ static int drc_translateBlock() {
                 }
 
                 if (i > 0 && (inst_cache[i - 1].opcode & 0x34) == 0x30 && (inst_cache[i - 1].opcode & 3) != 2) {
-                    // load immediately following another load takes 4 cycles instead of 5
+                    // load immediately following another load takes 2 cycles instead of 3
                     cycles -= 1;
                 } else if (i > 0 && opcycle[inst_cache[i - 1].opcode] > 4) {
                     // load following instruction taking "many" cycles only takes 1 cycles
                     // guessing "many" is 4 for now
-                    cycles -= 4;
+                    cycles -= 2;
                 }
                 break;
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
@@ -1238,11 +1238,9 @@ static int drc_translateBlock() {
                 ADD_I(2, 2, DRC_RELOC_WBYTE*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
-                    && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
-                ) {
-                    // with three consecutive stores, the third takes 4 cycles instead of 1
-                    cycles += 3;
+                if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2) {
+                    // with two consecutive stores, the second takes 2 cycles instead of 1
+                    cycles += 1;
                 }
                 break;
             case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
@@ -1262,11 +1260,9 @@ static int drc_translateBlock() {
                 ADD_I(2, 2, DRC_RELOC_WHWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
-                    && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
-                ) {
-                    // with three consecutive stores, the third takes 4 cycles instead of 1
-                    cycles += 3;
+                if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2) {
+                    // with two consecutive stores, the second takes 2 cycles instead of 1
+                    cycles += 1;
                 }
                 break;
             case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
@@ -1286,10 +1282,8 @@ static int drc_translateBlock() {
                 ADD_I(2, 2, DRC_RELOC_WWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
-                    && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2
-                ) {
-                    // with three consecutive stores, the third takes 4 cycles instead of 1
+                if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2) {
+                    // with two consecutive stores, the second takes 4 cycles instead of 1
                     cycles += 3;
                 }
 
