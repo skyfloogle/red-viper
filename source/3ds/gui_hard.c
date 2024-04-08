@@ -36,7 +36,7 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_3ds,
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
                 text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
-                text_areyousure_reset, text_areyousure_exit;
+                text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
@@ -120,7 +120,7 @@ static Button first_menu_buttons[] = {
 static void game_menu(int initial_button);
 static Button game_menu_buttons[] = {
     #define MAIN_MENU_LOAD_ROM 0
-    {.str="Load ROM", .x=224 - 48, .y=64, .w=80 + 48, .h=80},
+    {.str="Load ROM", .x=232 - 16, .y=64, .w=80 + 16, .h=80},
     #define MAIN_MENU_CONTROLS 1
     {.str="Controls", .x=0, .y=176, .w=80, .h=64},
     #define MAIN_MENU_OPTIONS 2
@@ -130,7 +130,9 @@ static Button game_menu_buttons[] = {
     #define MAIN_MENU_RESUME 4
     {.str="Resume", .x=0, .y=0, .w=320, .h=48},
     #define MAIN_MENU_RESET 5
-    {.str="Reset", .x=16, .y=64, .w=80 + 48, .h=80},
+    {.str="Reset", .x=8, .y=64, .w=80 + 16, .h=80},
+    #define MAIN_MENU_SAVESTATES 6
+    {.str="Savestates", .x=112, .y=64, .w=80 + 16, .h=80},
 };
 
 static void rom_loader();
@@ -210,6 +212,16 @@ static Button areyousure_buttons[] = {
     {"Yes", .x=160-48-32, .y=180, .w=64, .h=48},
     #define AREYOUSURE_NO 1
     {"No", .x=160+32, .y=180, .w=64, .h=48},
+};
+
+static void savestate_menu();
+static Button savestate_buttons[] = {
+    #define SAVESTATE_BACK 0
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+    #define SAVE_SAVESTATE 1
+    {.str="Save", .x=10, .y=50, .w=140, .h=140},
+    #define LOAD_SAVESTATE 2
+    {.str="Load", .x=10 + 140 + 20, .y=50, .w=140, .h=140},
 };
 
 static void sound_error();
@@ -297,6 +309,8 @@ static void game_menu(int initial_button) {
                 guiop = AKILL | VBRESET;
                 return;
             } else return game_menu(MAIN_MENU_RESET);
+        case MAIN_MENU_SAVESTATES:
+            return savestate_menu();
     }
 }
 
@@ -1016,6 +1030,23 @@ static bool areyousure(C2D_Text *message) {
     return button == AREYOUSURE_YES;
 }
 
+static void savestate_menu() {
+    LOOP_BEGIN(savestate_buttons, SAVE_SAVESTATE);
+        C2D_DrawText(&text_savestate_menu, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    LOOP_END(savestate_buttons);
+    
+    switch(button) {
+        case SAVESTATE_BACK:
+            return main_menu(MAIN_MENU_OPTIONS);
+        case SAVE_SAVESTATE:
+            emulation_sstate();
+            return;
+        case LOAD_SAVESTATE:
+            emulation_lstate();
+            return;
+    }
+}
+
 static void about() {
     C2D_SpriteSetPos(&logo_sprite, 320 / 2, 36);
     C2D_SetTintMode(C2D_TintMult);
@@ -1316,6 +1347,9 @@ void guiInit() {
     STATIC_TEXT(&text_no, "No");
     STATIC_TEXT(&text_areyousure_reset, "Are you sure you want to reset?");
     STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?");
+    STATIC_TEXT(&text_savestate_menu, "Savestates");
+    STATIC_TEXT(&text_save, "Save");
+    STATIC_TEXT(&text_load, "Load");
 }
 
 static bool shouldRedrawMenu = true;
