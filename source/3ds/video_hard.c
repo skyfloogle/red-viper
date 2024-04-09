@@ -126,10 +126,8 @@ void video_hard_init() {
 		tileMapCache[i].bg = -1;
 	}
 
-	#define LOAD_MASK(w,h,wp,hp) { \
-		Tex3DS_TextureFree(Tex3DS_TextureImport(map ## w ## x ## h ## _t3x, map ## w ## x ## h ## _t3x_size, &affine_masks[wp][hp], NULL, false)); \
-		C3D_TexSetWrap(&affine_masks[wp][hp], GPU_REPEAT, GPU_REPEAT); \
-	}
+	#define LOAD_MASK(w,h,wp,hp) \
+		Tex3DS_TextureFree(Tex3DS_TextureImport(map ## w ## x ## h ## _t3x, map ## w ## x ## h ## _t3x_size, &affine_masks[wp][hp], NULL, false));
 	LOAD_MASK(1, 1, 0, 0);
 	LOAD_MASK(1, 2, 0, 1);
 	LOAD_MASK(1, 4, 0, 2);
@@ -688,12 +686,12 @@ void video_hard_render() {
 				if (vbufs[0] == NULL && vbufs[1] == NULL) continue;
 
 				int map_count = scx * scy;
-				bool huge_bg = map_count > 8; // TODO make this work properly
+				bool huge_bg = map_count > 8;
 				if (huge_bg) map_count = 8;
-				// use_masks = <maskless>/3 > <masks>/2, aka <maskless>*2 > <masks>*3
-				bool use_masks = !over && map_count != 1 && (huge_bg || ((umax >> 9) - (umin >> 9)) * ((vmax >> 9) - (vmin >> 9)) * 2 > map_count);
+				bool use_masks = huge_bg || (!over && map_count != 1);
 				if (use_masks) {
 					C3D_TexBind(2, &affine_masks[scx_pow][scy_pow]);
+					C3D_TexSetWrap(&affine_masks[scx_pow][scy_pow], over ? GPU_CLAMP_TO_BORDER : GPU_REPEAT, over ? GPU_CLAMP_TO_BORDER : GPU_REPEAT);
 					bgmap_offsets[1].x = 0;
 					bgmap_offsets[1].y = 0;
 					bgmap_offsets[1].z = 1.0f / scx;
