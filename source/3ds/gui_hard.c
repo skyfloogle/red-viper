@@ -251,7 +251,8 @@ static Button load_rom_buttons[] = {
     SETUP_BUTTONS(touchscreen_settings_buttons); \
     SETUP_BUTTONS(about_buttons); \
     SETUP_BUTTONS(load_rom_buttons); \
-    SETUP_BUTTONS(areyousure_buttons);
+    SETUP_BUTTONS(areyousure_buttons); \
+    SETUP_BUTTONS(savestate_buttons);
 
 static void draw_logo() {
     C2D_SceneBegin(screenTarget);
