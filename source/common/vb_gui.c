@@ -67,12 +67,13 @@ menu_item_t options_menu_items[] = {
     {"Input", options_input, NULL, 0, NULL},
 };
 
+// are these elements being used?
 menu_item_t emulation_menu_items[] = {
     {"Resume Emulation", emulation_resume, NULL, 0, NULL},
     {"Reset System", emulation_reset, NULL, 0, NULL},
     {"Cheats", NULL, &emulation_cheat_menu, 0, NULL},
-    {"Save State", emulation_sstate, NULL, 0, NULL},
-    {"Load State", emulation_lstate, NULL, 0, NULL}
+    //{"Save State", emulation_sstate, NULL, 0, NULL},
+    //{"Load State", emulation_lstate, NULL, 0, NULL}
 };
 
 menu_item_t debug_menu_items[] = {
@@ -343,22 +344,22 @@ int emulation_reset(void) {
     return D_EXIT;
 }
 
-int emulation_rmstate(void) {
+int emulation_rmstate(int state) {
     char sspath[131];
     FILE* state_file;
-    sprintf(sspath, "%s.rds", tVBOpt.ROM_PATH);
+    sprintf(sspath, "%s_%d.rds", tVBOpt.ROM_PATH, state);
     
     return remove(sspath);
 }
 
-int emulation_sstate(void) {
+int emulation_sstate(int state) {
     int i;
     int highbyte;
     int lowbyte;
     char sspath[131];
     FILE* state_file;
 
-    sprintf(sspath, "%s.rds", tVBOpt.ROM_PATH);
+    sprintf(sspath, "%s_%d.rds", tVBOpt.ROM_PATH, state);
 
     state_file = fopen(sspath, "wb");
 
@@ -426,14 +427,14 @@ int emulation_sstate(void) {
     return D_EXIT;
 }
 
-int emulation_lstate(void) {
+int emulation_lstate(int state) {
     int i;
     int ret;
     int id,ver,crc;
     char sspath[131];
     FILE* state_file;
 
-    sprintf(sspath, "%s.rds", tVBOpt.ROM_PATH);
+    sprintf(sspath, "%s_%d.rds", tVBOpt.ROM_PATH, state);
 
     state_file = fopen(sspath, "rb");
 

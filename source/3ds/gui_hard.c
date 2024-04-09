@@ -214,16 +214,20 @@ static Button areyousure_buttons[] = {
     {"No", .x=160+32, .y=180, .w=64, .h=48},
 };
 
-static void savestate_menu();
+static void savestate_menu(int selected_state);
 static Button savestate_buttons[] = {
     #define SAVESTATE_BACK 0
-    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+    {.str="Back", .x=0, .y=208, .w=60, .h=32},
     #define SAVE_SAVESTATE 1
-    {.str="Save", .x=10, .y=50, .w=140, .h=140},
+    {.str="Save", .x=80, .y=170, .w=70, .h=70},
     #define LOAD_SAVESTATE 2
-    {.str="Load", .x=10 + 140 + 20, .y=50, .w=140, .h=140},
+    {.str="Load", .x=320 - 150, .y=170, .w=70, .h=70},
     #define DELETE_SAVESTATE 3
-    {.str="Delete", .x=272, .y=208, .w=48, .h=32},
+    {.str="Delete", .x=260, .y=208, .w=60, .h=32},
+    #define PREV_SAVESTATE 4
+    {.str="<", .x=16, .y=60, .w=40, .h=100},
+    #define NEXT_SAVESTATE 5
+    {.str=">", .x=320 - 56, .y=60, .w=40, .h=100},
 };
 
 static void sound_error();
@@ -313,7 +317,7 @@ static void game_menu(int initial_button) {
                 return;
             } else return game_menu(MAIN_MENU_RESET);
         case MAIN_MENU_SAVESTATES:
-            return savestate_menu();
+            return savestate_menu(0);
     }
 }
 
@@ -1041,23 +1045,43 @@ static void savestate_error(char *message) {
     LOOP_BEGIN(about_buttons, 0);
         C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(about_buttons);
-    return savestate_menu();
+    return savestate_menu(0);
 }
 
-static void savestate_menu() {
+static void savestate_menu(int selected_state) {
+    char dynamic_text[32];
+    sprintf(dynamic_text, "State %d", selected_state);
+
+    C2D_Text selected_state_text;
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_TextParse(&selected_state_text, dynamic_textbuf, dynamic_text);
+    C2D_TextOptimize(&selected_state_text);
+
     LOOP_BEGIN(savestate_buttons, SAVE_SAVESTATE);
         C2D_DrawText(&text_savestate_menu, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&selected_state_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 240 / 3, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(savestate_buttons);
     
     switch(button) {
         case SAVESTATE_BACK:
             return main_menu(MAIN_MENU_OPTIONS);
         case SAVE_SAVESTATE:
-            return (emulation_sstate() != D_EXIT ? savestate_error("Could not save state") : 0);
+            return emulation_sstate(selected_state) != D_EXIT ?
+                savestate_error("Could not save state") :
+                0;
         case LOAD_SAVESTATE:
-            return (emulation_lstate() != D_EXIT ? savestate_error("Could not load state") : 0);
+            return emulation_lstate(selected_state) != D_EXIT ?
+                savestate_error("Could not load state") :
+                0;
         case DELETE_SAVESTATE:
-            return (emulation_rmstate() != 0 ? savestate_error("Could not delete state") : main_menu(MAIN_MENU_OPTIONS));
+            sprintf(dynamic_text, "Successfully deleted state %d", selected_state);
+            return emulation_rmstate(selected_state) != 0 ?
+                savestate_error("Could not delete state") :
+                savestate_error("Successfully deleted state");
+        case PREV_SAVESTATE:
+            return savestate_menu(selected_state == 0 ? 9 : selected_state - 1);
+        case NEXT_SAVESTATE:
+            return savestate_menu(selected_state == 9 ? 0 : selected_state + 1);
     }
 }
 
