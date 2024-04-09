@@ -1354,8 +1354,10 @@ void guiInit() {
 }
 
 static bool shouldRedrawMenu = true;
+static bool inMenu = false;
 
 void openMenu() {
+    inMenu = true;
     shouldRedrawMenu = true;
     if (game_running) {
         sound_pause();
@@ -1366,6 +1368,7 @@ void openMenu() {
     main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
     if (guiop == 0) sound_resume();
     else if (!(guiop & GUIEXIT)) sound_reset();
+    inMenu = false;
 }
 
 bool backlightEnabled = true;
@@ -1405,7 +1408,7 @@ void toggleVsync(bool enable) {
 }
 
 void aptBacklight(APT_HookType hook, void* param) {
-    if (hook == APTHOOK_ONSLEEP) {
+    if (hook == APTHOOK_ONSLEEP && !inMenu) {
         // don't save if we saved in the last 10 secs (unsure if this works)
         static u64 last_sleep_time = 0;
         if (osGetTime() - last_sleep_time >= 10000) {
