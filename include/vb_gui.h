@@ -30,6 +30,7 @@ int options_input(void);
 int options_saveoptions(void);
 int emulation_resume(void);
 int emulation_reset(void);
+int emulation_rmstate(void);
 int emulation_sstate(void);
 int emulation_lstate(void);
 int debug_trace(void);

@@ -343,6 +343,14 @@ int emulation_reset(void) {
     return D_EXIT;
 }
 
+int emulation_rmstate(void) {
+    char sspath[131];
+    FILE* state_file;
+    sprintf(sspath, "%s.rds", tVBOpt.ROM_PATH);
+    
+    return remove(sspath);
+}
+
 int emulation_sstate(void) {
     int i;
     int highbyte;

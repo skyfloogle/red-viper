@@ -222,6 +222,8 @@ static Button savestate_buttons[] = {
     {.str="Save", .x=10, .y=50, .w=140, .h=140},
     #define LOAD_SAVESTATE 2
     {.str="Load", .x=10 + 140 + 20, .y=50, .w=140, .h=140},
+    #define DELETE_SAVESTATE 3
+    {.str="Delete", .x=272, .y=208, .w=48, .h=32},
 };
 
 static void sound_error();
@@ -1031,6 +1033,17 @@ static bool areyousure(C2D_Text *message) {
     return button == AREYOUSURE_YES;
 }
 
+static void savestate_error(char *message) {
+    C2D_Text text;
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_TextParse(&text, dynamic_textbuf, message);
+    C2D_TextOptimize(&text);
+    LOOP_BEGIN(about_buttons, 0);
+        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    LOOP_END(about_buttons);
+    return savestate_menu();
+}
+
 static void savestate_menu() {
     LOOP_BEGIN(savestate_buttons, SAVE_SAVESTATE);
         C2D_DrawText(&text_savestate_menu, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
@@ -1040,11 +1053,11 @@ static void savestate_menu() {
         case SAVESTATE_BACK:
             return main_menu(MAIN_MENU_OPTIONS);
         case SAVE_SAVESTATE:
-            emulation_sstate();
-            return;
+            return (emulation_sstate() != D_EXIT ? savestate_error("Could not save state") : 0);
         case LOAD_SAVESTATE:
-            emulation_lstate();
-            return;
+            return (emulation_lstate() != D_EXIT ? savestate_error("Could not load state") : 0);
+        case DELETE_SAVESTATE:
+            return (emulation_rmstate() != 0 ? savestate_error("Could not delete state") : main_menu(MAIN_MENU_OPTIONS));
     }
 }
 
