@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #ifdef __3DS__
 #include <3ds.h>
@@ -163,6 +164,8 @@ menu_t help_menu = {
     LENGTH(help_menu_items),
     help_menu_items
 };
+
+struct stat st = {0};
 
 u32 waitForInput() {
 #ifdef __3DS__
@@ -344,11 +347,29 @@ int emulation_reset(void) {
     return D_EXIT;
 }
 
+char * get_savestate_path(int state) {
+    char * sspath;
+    sspath = (char *) malloc(131 * sizeof(char));
+    char file_name[8];
+    char * last_slash = strrchr(tVBOpt.ROM_PATH, '/');
+    strncpy(sspath, tVBOpt.ROM_PATH, last_slash - tVBOpt.ROM_PATH);
+    sspath[last_slash - tVBOpt.ROM_PATH] = '\0';
+    strcat(sspath, "/vb_savestates");
+    if(stat(sspath, &st) == -1)
+        mkdir(sspath, 0777);
+    strcat(sspath, tVBOpt.ROM_PATH + (last_slash - tVBOpt.ROM_PATH));
+    sspath[strlen(sspath) - 3] = '\0';
+    if(stat(sspath, &st) == -1)
+        mkdir(sspath, 0777);
+    sprintf(file_name, "/%d.rds", state);
+    strcat(sspath, file_name);
+
+    return sspath;
+}
+
 int emulation_rmstate(int state) {
-    char sspath[131];
-    FILE* state_file;
-    sprintf(sspath, "%s_%d.rds", tVBOpt.ROM_PATH, state);
-    
+    char* sspath = get_savestate_path(state);
+
     return remove(sspath);
 }
 
@@ -356,10 +377,8 @@ int emulation_sstate(int state) {
     int i;
     int highbyte;
     int lowbyte;
-    char sspath[131];
     FILE* state_file;
-
-    sprintf(sspath, "%s_%d.rds", tVBOpt.ROM_PATH, state);
+    char* sspath = get_savestate_path(state);
 
     state_file = fopen(sspath, "wb");
 
@@ -431,10 +450,8 @@ int emulation_lstate(int state) {
     int i;
     int ret;
     int id,ver,crc;
-    char sspath[131];
     FILE* state_file;
-
-    sprintf(sspath, "%s_%d.rds", tVBOpt.ROM_PATH, state);
+    char* sspath = get_savestate_path(state);
 
     state_file = fopen(sspath, "rb");
 
