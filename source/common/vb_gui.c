@@ -350,7 +350,7 @@ int emulation_sstate(void) {
     char sspath[131];
     FILE* state_file;
 
-    sprintf(sspath, "%s.rds", tVBOpt.ROM_NAME);
+    sprintf(sspath, "%s.rds", tVBOpt.ROM_PATH);
 
     state_file = fopen(sspath, "wb");
 
@@ -425,7 +425,7 @@ int emulation_lstate(void) {
     char sspath[131];
     FILE* state_file;
 
-    sprintf(sspath, "%s.rds", tVBOpt.ROM_NAME);
+    sprintf(sspath, "%s.rds", tVBOpt.ROM_PATH);
 
     state_file = fopen(sspath, "rb");
 
