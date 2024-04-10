@@ -1346,6 +1346,7 @@ bool toggleBacklight(bool enable) {
 }
 
 void toggleVsync(bool enable) {
+    // setup the thread
     endThread(frame_pacer_thread);
     u32 vtotal_top, vtotal_bottom;
     if (enable) {
@@ -1358,17 +1359,16 @@ void toggleVsync(bool enable) {
         vtotal_bottom = 413;
         startPeriodic(frame_pacer_thread, 20000000);
     }
+    // update VTotal only when necessary
+    static bool old_enable = false;
+    if (enable == old_enable) return;
+    old_enable = enable;
     gspWaitForVBlank();
     if (!is_citra) {
         // wait for VCount to roll over to avoid potential glitches on IPS panels
         // https://github.com/skyfloogle/red-viper/issues/46#issuecomment-2034326985
         u32 old_vcount, vcount = 0;
-        u64 start_tick = svcGetSystemTick();
         do {
-            // if you hit the power button and return to home menu,
-            // VCount stops updating for whatever reason
-            // so this just gives up and exits if it takes too long
-            if (svcGetSystemTick() > start_tick + SYSCLOCK_ARM11 / 50) break;
             old_vcount = vcount;
             GSPGPU_ReadHWRegs(0x400454, &vcount, 4);
         } while (vcount >= old_vcount);
