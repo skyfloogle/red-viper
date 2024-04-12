@@ -1418,6 +1418,7 @@ bool toggleBacklight(bool enable) {
 }
 
 void toggleVsync(bool enable) {
+    // setup the thread
     endThread(frame_pacer_thread);
     u32 vtotal_top, vtotal_bottom;
     if (enable) {
@@ -1430,14 +1431,18 @@ void toggleVsync(bool enable) {
         vtotal_bottom = 413;
         startPeriodic(frame_pacer_thread, 20000000);
     }
+    // update VTotal only when necessary
+    static bool old_enable = false;
+    if (enable == old_enable) return;
+    old_enable = enable;
     gspWaitForVBlank();
     if (!is_citra) {
-        // wait for VCount to roll over to avoid potential glitches on IPS panels
+        // wait for touchscren's VCount to roll over to avoid potential glitches on IPS panels
         // https://github.com/skyfloogle/red-viper/issues/46#issuecomment-2034326985
         u32 old_vcount, vcount = 0;
         do {
             old_vcount = vcount;
-            GSPGPU_ReadHWRegs(0x400454, &vcount, 4);
+            GSPGPU_ReadHWRegs(0x400554, &vcount, 4);
         } while (vcount >= old_vcount);
     }
     GSPGPU_WriteHWRegs(0x400424, &vtotal_top, 4);
