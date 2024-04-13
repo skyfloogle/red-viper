@@ -381,7 +381,7 @@ int emulation_sstate(int state) {
     char* sspath = get_savestate_path(state);
 
     state_file = fopen(sspath, "wb");
-
+    free(sspath);
     if(state_file==NULL) {
 //        alert("Error creating file!", "Check that you have permission to write", NULL, b_ok, NULL, 1, (int)NULL);
         return 0;
