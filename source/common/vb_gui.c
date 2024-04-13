@@ -370,7 +370,10 @@ char * get_savestate_path(int state) {
 int emulation_rmstate(int state) {
     char* sspath = get_savestate_path(state);
 
-    return remove(sspath);
+    int result = remove(sspath);
+    free(sspath);
+
+    return result;
 }
 
 int emulation_sstate(int state) {
@@ -454,6 +457,7 @@ int emulation_lstate(int state) {
     char* sspath = get_savestate_path(state);
 
     state_file = fopen(sspath, "rb");
+    free(sspath);
 
     if(state_file==NULL) {
 //        alert("Error reading file!", "Check that it still exists", NULL, b_ok, NULL, 1, (int)NULL);
