@@ -172,8 +172,8 @@ static Button options_buttons[] = {
     {.str="Fast forward", .x=16, .y=80, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_toggle, .toggle_text_off=&text_hold},
     #define OPTIONS_SOUND 2
     {.str="Sound", .x=176, .y=80, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
-    #define OPTIONS_PERF 3
-    {.str="Perf. info", .x=16, .y=144, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define OPTIONS_DEV 3
+    {.str="Dev settings", .x=16, .y=144, .w=128, .h=48},
     #define OPTIONS_ABOUT 4
     {.str="About", .x=176, .y=144, .w=128, .h=48},
     #define OPTIONS_BACK 5
@@ -202,6 +202,16 @@ static Button colour_filter_buttons[] = {
     {.str="Red", .x=16, .y=64, .w=48, .h=32},
     #define COLOUR_GRAY 2
     {.str="Gray", .x=16, .y=128, .w=48, .h=32},
+};
+
+static void dev_options(int initial_button);
+static Button dev_options_buttons[] = {
+    #define DEV_PERF 0
+    {.str="Perf. info", .x=16, .y=16, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define DEV_N3DS 1
+    {.str="N3DS speedup", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define DEV_BACK 2
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static bool areyousure(C2D_Text *message);
@@ -235,6 +245,7 @@ static Button load_rom_buttons[] = {
     SETUP_BUTTONS(options_buttons); \
     SETUP_BUTTONS(video_settings_buttons); \
     SETUP_BUTTONS(colour_filter_buttons); \
+    SETUP_BUTTONS(dev_options_buttons); \
     SETUP_BUTTONS(sound_error_buttons); \
     SETUP_BUTTONS(touchscreen_settings_buttons); \
     SETUP_BUTTONS(about_buttons); \
@@ -944,11 +955,32 @@ static void colour_filter() {
     }
 }
 
+static void dev_options(int initial_button) {
+    bool new_3ds = false;
+    APT_CheckNew3DS(&new_3ds);
+    dev_options_buttons[DEV_N3DS].hidden = !new_3ds;
+    dev_options_buttons[DEV_PERF].toggle = tVBOpt.PERF_INFO;
+    dev_options_buttons[DEV_N3DS].toggle = tVBOpt.N3DS_SPEEDUP;
+    LOOP_BEGIN(dev_options_buttons, initial_button);
+    LOOP_END(dev_options_buttons);
+    switch (button) {
+        case DEV_PERF:
+            tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
+            return dev_options(DEV_PERF);
+        case DEV_N3DS:
+            tVBOpt.N3DS_SPEEDUP = !tVBOpt.N3DS_SPEEDUP;
+            osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
+            return dev_options(DEV_N3DS);
+        case DEV_BACK:
+            saveFileOptions();
+            return options(OPTIONS_DEV);
+    }
+}
+
 static void save_debug_info();
 static void options(int initial_button) {
     options_buttons[OPTIONS_FF].toggle = tVBOpt.FF_TOGGLE;
     options_buttons[OPTIONS_SOUND].toggle = tVBOpt.SOUND;
-    options_buttons[OPTIONS_PERF].toggle = tVBOpt.PERF_INFO;
     options_buttons[OPTIONS_DEBUG].hidden = !game_running;
     LOOP_BEGIN(options_buttons, initial_button);
     LOOP_END(options_buttons);
@@ -964,10 +996,8 @@ static void options(int initial_button) {
             //if (tVBOpt.SOUND) sound_enable();
             //else sound_disable();
             return options(OPTIONS_SOUND);
-        case OPTIONS_PERF: // Performance info
-            tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
-            saveFileOptions();
-            return options(OPTIONS_PERF);
+        case OPTIONS_DEV: // Developer settings
+            return dev_options(0);
         case OPTIONS_ABOUT: // About
             return about();
         case OPTIONS_BACK: // Back
@@ -1365,7 +1395,7 @@ void toggleVsync(bool enable) {
     old_enable = enable;
     gspWaitForVBlank();
     if (!is_citra) {
-        // wait for touchscren's VCount to roll over to avoid potential glitches on IPS panels
+        // wait for touchscreen's VCount to roll over to avoid potential glitches on IPS panels
         // https://github.com/skyfloogle/red-viper/issues/46#issuecomment-2034326985
         u32 old_vcount, vcount = 0;
         do {

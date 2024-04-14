@@ -78,7 +78,7 @@ int main() {
     clearCache();
     consoleClear();
 
-    osSetSpeedupEnable(true);
+    osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
 
     svcCreateEvent(&frame_event, RESET_STICKY);
 

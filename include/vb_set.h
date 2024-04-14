@@ -79,6 +79,7 @@ typedef struct VB_OPT {
     unsigned long CRC32; // CRC32 of ROM
     bool  PERF_INFO;
     bool  VSYNC;
+    bool  N3DS_SPEEDUP;
 } VB_OPT;
 
 void setDefaults(void);

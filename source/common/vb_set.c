@@ -48,6 +48,7 @@ void setDefaults(void) {
     tVBOpt.PERF_INFO = false;
     tVBOpt.ROM_PATH = NULL;
     tVBOpt.VSYNC = true;
+    tVBOpt.N3DS_SPEEDUP = true;
 
     // Default keys
 #ifdef __3DS__
@@ -102,6 +103,8 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->ABXY_MODE = atoi(value) % 6;
     } else if (MATCH("vbopt", "zlzr")) {
         pconfig->ZLZR_MODE = atoi(value) % 4;
+    } else if (MATCH("vbopt", "n3ds_speedup")) {
+        pconfig->N3DS_SPEEDUP = atoi(value);
     } else if (MATCH("touch", "ax")) {
         tVBOpt.TOUCH_AX = atoi(value);
     } else if (MATCH("touch", "ay")) {
@@ -141,6 +144,7 @@ int saveFileOptions(void) {
     fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH ? tVBOpt.ROM_PATH : "");
     fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
     fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
+    fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
     fprintf(f, "[touch]\n");
     fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
     fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);
