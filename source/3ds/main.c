@@ -67,6 +67,8 @@ int main() {
 
     replay_init();
 
+    toggleAnaglyph(tVBOpt.ANAGLYPH, false);
+
     guiop = 0;
     openMenu();
     if (guiop & GUIEXIT) {

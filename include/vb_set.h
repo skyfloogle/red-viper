@@ -80,6 +80,7 @@ typedef struct VB_OPT {
     bool  PERF_INFO;
     bool  VSYNC;
     bool  N3DS_SPEEDUP;
+    bool  ANAGLYPH;
 } VB_OPT;
 
 void setDefaults(void);

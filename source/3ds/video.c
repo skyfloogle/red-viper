@@ -225,7 +225,7 @@ void video_render(int alt_buf) {
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
 	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
 
-	eye_count = CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
+	eye_count = tVBOpt.ANAGLYPH || CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
 
 	if (tVIPREG.XPCTRL & 0x0002) {
 		if (tDSPCACHE.CharCacheInvalid) {
@@ -323,12 +323,12 @@ void video_flush(bool default_for_both) {
 
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, tVBOpt.TINT);
+	C3D_TexEnvColor(env, tVBOpt.ANAGLYPH ? 0xff0000ff : tVBOpt.TINT);
 	C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_CONSTANT, 0);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
 	C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
+	env = C3D_GetTexEnv(1);
 	if (minRepeat != maxRepeat) {
-		env = C3D_GetTexEnv(1);
 		C3D_TexEnvInit(env);
 		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE1, 0);
 		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
@@ -336,7 +336,6 @@ void video_flush(bool default_for_both) {
 		C3D_TexEnvScale(env, C3D_RGB, maxRepeat <= 2 ? maxRepeat - 1 : GPU_TEVSCALE_4);
 		#endif
 	} else {
-		env = C3D_GetTexEnv(1);
 		C3D_TexEnvInit(env);
 	}
 	
@@ -344,10 +343,15 @@ void video_flush(bool default_for_both) {
 	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
 	
 	for (int dst_eye = 0; dst_eye < (default_for_both ? 2 : eye_count); dst_eye++) {
-		int src_eye = default_for_both ? orig_eye : CONFIG_3D_SLIDERSTATE == 0 ? tVBOpt.DEFAULT_EYE : dst_eye;
+		int src_eye = default_for_both ? orig_eye : !tVBOpt.ANAGLYPH && CONFIG_3D_SLIDERSTATE == 0 ? tVBOpt.DEFAULT_EYE : dst_eye;
+		if (tVBOpt.ANAGLYPH && src_eye) {
+			C3D_TexEnvColor(C3D_GetTexEnv(0), 0xffffff00);
+			C3D_AlphaBlend(GPU_BLEND_ADD, 0, GPU_ONE, GPU_ONE, 0, 0);
+		}
 		float depthOffset = getDepthOffset(default_for_both, dst_eye, tVBOpt.SLIDERMODE);
-		C3D_RenderTargetClear(finalScreen[dst_eye], C3D_CLEAR_ALL, 0, 0);
-		C3D_FrameDrawOn(finalScreen[dst_eye]);
+		C3D_RenderTarget *target = finalScreen[dst_eye && !tVBOpt.ANAGLYPH];
+		C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
+		C3D_FrameDrawOn(target);
 		C3D_SetViewport(viewportY, viewportX+depthOffset, VIEWPORT_HEIGHT, VIEWPORT_WIDTH);
 		C3D_TexBind(1, &columnTableTexture[src_eye]);
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
@@ -357,10 +361,16 @@ void video_flush(bool default_for_both) {
 		C3D_ImmSendAttrib(384.0 / 512, (src_eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
 		C3D_ImmDrawEnd();
 	}
+	
+	if (tVBOpt.ANAGLYPH) {
+		C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+	}
 
 	if (minRepeat != maxRepeat) {
-		env = C3D_GetTexEnv(1);
-		C3D_TexEnvInit(env);
+		C3D_TexEnvInit(C3D_GetTexEnv(1));
+	}
+	if (tVBOpt.ANAGLYPH) {
+		for (int i = 2; i <= 4; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
 	}
 }
 

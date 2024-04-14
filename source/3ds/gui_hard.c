@@ -1381,11 +1381,11 @@ void toggleVsync(bool enable) {
     u32 vtotal_top, vtotal_bottom;
     if (enable) {
         // 990 is closer to 50Hz but capture cards don't like when the two screens are out of sync
-        vtotal_top = old_2ds ? 494 : 989;
+        vtotal_top = old_2ds || tVBOpt.ANAGLYPH ? 494 : 989;
         vtotal_bottom = 494;
         startPeriodicVsync(frame_pacer_thread);
     } else {
-        vtotal_top = old_2ds ? 413 : 827;
+        vtotal_top = old_2ds || tVBOpt.ANAGLYPH ? 413 : 827;
         vtotal_bottom = 413;
         startPeriodic(frame_pacer_thread, 20000000);
     }
@@ -1405,6 +1405,21 @@ void toggleVsync(bool enable) {
     }
     GSPGPU_WriteHWRegs(0x400424, &vtotal_top, 4);
     GSPGPU_WriteHWRegs(0x400524, &vtotal_bottom, 4);
+}
+
+void toggleAnaglyph(bool enable, bool also_update_vsync) {
+    tVBOpt.ANAGLYPH = enable;
+    gfxSet3D(!enable);
+    if (!also_update_vsync) return;
+    // updating 3d mode resets VTotal, so turn off VSync in advance to fix the cache
+    toggleVsync(false);
+    // push 1 frame and wait for VBlank to reset VTotal
+    C3D_FrameBegin(0);
+    video_flush(true);
+    C3D_FrameEnd(0);
+    gspWaitForVBlank();
+    // re-enable VSync if applicable
+    toggleVsync(tVBOpt.VSYNC);
 }
 
 void aptBacklight(APT_HookType hook, void* param) {

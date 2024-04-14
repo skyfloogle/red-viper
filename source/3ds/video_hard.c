@@ -149,7 +149,6 @@ void video_hard_init() {
 	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
-	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	vbuf = linearAlloc(sizeof(vertex) * VBUF_SIZE);
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);

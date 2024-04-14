@@ -49,6 +49,7 @@ void setDefaults(void) {
     tVBOpt.ROM_PATH = NULL;
     tVBOpt.VSYNC = true;
     tVBOpt.N3DS_SPEEDUP = true;
+    tVBOpt.ANAGLYPH = false;
 
     // Default keys
 #ifdef __3DS__
