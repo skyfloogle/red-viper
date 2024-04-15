@@ -160,7 +160,7 @@ int main() {
         replay_update(inputs);
 
         osTickCounterStart(&drcTickCounter);
-        err = drc_run();
+        err = v810_run();
         osTickCounterUpdate(&drcTickCounter);
         if (err) {
             showError(err);

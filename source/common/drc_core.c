@@ -1752,9 +1752,15 @@ int drc_run() {
     WORD* entrypoint;
     WORD entry_PC;
 
-    bool handled_timer_hack = false;
-
-    v810_state->ret = 0;
+    // set up arm flags
+    {
+        WORD psw = v810_state->S_REG[PSW];
+        WORD cpsr = v810_state->flags;
+        cpsr &= 0x0fffffff;
+        cpsr |= (psw & 0x3) << 30;
+        cpsr |= (psw & 0xc) << 26;
+        v810_state->flags = cpsr;
+    }
 
     while (true) {
         serviceDisplayInt(clocks, v810_state->PC);
@@ -1798,14 +1804,24 @@ int drc_run() {
 
         dprintf(4, "[DRC]: end - 0x%lx\n", v810_state->PC);
         if (v810_state->PC < V810_ROM1.lowaddr || v810_state->PC > V810_ROM1.highaddr) {
-            dprintf(0, "Last entry: 0x%lx\n", entry_PC);
-            return DRC_ERR_BAD_PC;
+            //dprintf(0, "Last entry: 0x%lx\n", entry_PC);
+            //return DRC_ERR_BAD_PC;
+            break;
         }
 
         if (v810_state->ret) {
-            v810_state->ret = 0;
             break;
         }
+    }
+
+    // sync arm flags to PSW
+    {
+        WORD cpsr = v810_state->flags;
+        WORD psw = v810_state->S_REG[PSW];
+        psw &= ~0xf;
+        psw |= cpsr >> 30;
+        psw |= (cpsr >> 26) & 0xc;
+        v810_state->S_REG[PSW] = psw;
     }
 
     return 0;

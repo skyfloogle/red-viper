@@ -24,6 +24,7 @@ enum {
     DRC_ERR_NO_DYNAREC  = 3,
     DRC_ERR_NO_BLOCKS   = 4,
     DRC_ERR_CACHE_FULL  = 5,
+    DRC_ERR_BAD_INST    = 6,
 };
 
 enum {

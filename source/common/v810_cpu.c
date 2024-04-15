@@ -17,6 +17,7 @@
 #include "vb_set.h"
 #include "rom_db.h"
 #include "drc_core.h"
+#include "interpreter.h"
 #include "vb_sound.h"
 
 #include "replay.h"
@@ -553,4 +554,24 @@ void v810_exp(WORD iNum, WORD eCode) {
         v810_state->PC = 0xFFFFFF00 | (iNum << 4);
         return;
     }
+}
+
+int v810_run() {
+    v810_state->ret = false;
+
+    while (true) {
+        int ret = 0;
+        if ((v810_state->PC & 0x07000000) == 0x07000000) {
+            ret = drc_run();
+        } else {
+            ret = interpreter_run();
+        }
+        if (ret != 0) return ret;
+        if (v810_state->ret) {
+            v810_state->ret = false;
+            break;
+        }
+    }
+
+    return 0;
 }

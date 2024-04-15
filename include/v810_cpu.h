@@ -133,4 +133,6 @@ void v810_exp(WORD iNum, WORD eCode);
 int serviceInt(unsigned int cycles, WORD PC);
 int serviceDisplayInt(unsigned int cycles, WORD PC);
 
+int v810_run();
+
 #endif
