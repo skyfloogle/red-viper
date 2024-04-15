@@ -5,31 +5,27 @@
 
 // Memory Structure for the VIP Reg (Could have done it with an array
 // but this is pretier...)
-typedef union{
-    struct {
-        HWORD INTPND;
-        HWORD INTENB;
-        HWORD INTCLR;
-        HWORD DPSTTS;
-        HWORD DPCTRL;
-        HWORD BRTA;
-        HWORD BRTB;
-        HWORD BRTC;
-        HWORD REST;
-        HWORD FRMCYC;
-        HWORD CTA;
-        HWORD XPSTTS;
-        HWORD XPCTRL;
-        HWORD tFrameBuffer;   //not publicly visible
-        HWORD tFrame;
-        HWORD VER;
-        HWORD SPT[4];
-        HWORD GPLT[4];
-        HWORD JPLT[4];
-        HWORD BKCOL;
-    };
-
-    HWORD V810_VIPREGARR[20];
+typedef struct{
+    HWORD INTPND;
+    HWORD INTENB;
+    HWORD INTCLR;
+    HWORD DPSTTS;
+    HWORD DPCTRL;
+    HWORD BRTA;
+    HWORD BRTB;
+    HWORD BRTC;
+    HWORD REST;
+    HWORD FRMCYC;
+    HWORD CTA;
+    HWORD XPSTTS;
+    HWORD XPCTRL;
+    HWORD tFrameBuffer;   //not publicly visible
+    HWORD tFrame;
+    HWORD VER;
+    HWORD SPT[4];
+    HWORD GPLT[4];
+    HWORD JPLT[4];
+    HWORD BKCOL;
 } V810_VIPREGDAT;
 
 typedef struct {
