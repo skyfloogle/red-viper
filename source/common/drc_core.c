@@ -1747,7 +1747,7 @@ exec_block* drc_getNextBlockStruct() {
 
 // Run V810 code until the next frame interrupt
 int drc_run() {
-    static unsigned int clocks;
+    unsigned int clocks = v810_state->cycles;
     exec_block* cur_block = NULL;
     WORD* entrypoint;
     WORD entry_PC;
