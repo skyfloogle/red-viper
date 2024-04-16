@@ -1,3 +1,4 @@
+#include <math.h>
 #include "v810_cpu.h"
 #include "v810_mem.h"
 #include "v810_opt.h"
@@ -279,7 +280,8 @@ int interpreter_run() {
                 case V810_OP_BSTR: {
                     typedef bool (*bstr_func)(WORD,WORD,WORD,WORD);
                     bstr_func func = (bstr_func)bssuboptable[reg1].func;
-                    bool res = func(v810_state->P_REG[30], v810_state->P_REG[29], v810_state->P_REG[28], ((v810_state->P_REG[27] & 31)) | ((v810_state->P_REG[26] & 31) << 16));
+                    WORD lastarg = reg1 < 4 ? v810_state->P_REG[27] & 31 : ((v810_state->P_REG[27] & 31)) | ((v810_state->P_REG[26] & 31) << 16);
+                    bool res = func(v810_state->P_REG[30], v810_state->P_REG[29], v810_state->P_REG[28], lastarg);
                     if (reg1 < 4) {
                         v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~1) | !res;
                     }
@@ -480,7 +482,78 @@ int interpreter_run() {
                     break;
                 }
                 // case V810_OP_CAXI:
-                // case V810_OP_FPP:
+                case V810_OP_FPP: {
+                    int subop = instr2 >> 10;
+                    #pragma GCC diagnostic push
+                    #pragma GCC diagnostic ignored "-Wstrict-aliasing"
+                    if (subop == V810_OP_CVT_WS) {
+                        float res = (float)(SWORD)v810_state->P_REG[reg1];
+                        bool z = res == 0;
+                        int scy = res < 0 ? 0xa : 0;
+                        v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+                        *(float*)&v810_state->P_REG[reg2] = res;
+                    } else if (!(subop & 8) || subop == V810_OP_TRNC_SW) {
+                        // float
+                        float reg1_val = *(float*)&v810_state->P_REG[reg1];
+                        if (subop == V810_OP_CVT_SW) {
+                            SWORD res = round(reg1_val);
+                            bool z = res == 0;
+                            int scy = res < 0 ? 2 : 0;
+                            v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+                            v810_state->P_REG[reg2] = res;
+                        } else if (subop == V810_OP_TRNC_SW) {
+                            SWORD res = (SWORD)(reg1_val);
+                            bool z = res == 0;
+                            int scy = res < 0 ? 2 : 0;
+                            v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+                            v810_state->P_REG[reg2] = res;
+                        } else {
+                            float reg2_val = *(float*)&v810_state->P_REG[reg2];
+                            float res;
+                            switch (subop) {
+                                case V810_OP_ADDF_S:
+                                    res = reg2_val + reg1_val;
+                                    break;
+                                case V810_OP_CMPF_S:
+                                case V810_OP_SUBF_S:
+                                    res = reg2_val - reg1_val;
+                                    break;
+                                case V810_OP_MULF_S:
+                                    res = reg2_val * reg1_val;
+                                    break;
+                                case V810_OP_DIVF_S:
+                                    res = reg2_val / reg1_val;
+                                    break;
+                                default:
+                                    return DRC_ERR_BAD_INST;
+                            }
+                            bool z = res == 0;
+                            int scy = res < 0 ? 0xa : 0;
+                            v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+                            if (subop != V810_OP_CMPF_S) *(float*)&v810_state->P_REG[reg2] = res;
+                        }
+                    } else {
+                        // extended
+                        switch (subop) {
+                            case V810_OP_MPYHW:
+                                v810_state->P_REG[reg2] *= v810_state->P_REG[reg1];
+                                break;
+                            case V810_OP_REV:
+                                v810_state->P_REG[reg2] = ins_rev(v810_state->P_REG[reg1], 0);
+                                break;
+                            case V810_OP_XB:
+                                v810_state->P_REG[reg2] = ins_xb(0, v810_state->P_REG[reg2]);
+                                break;
+                            case V810_OP_XH:
+                                v810_state->P_REG[reg2] = ins_xh(0, v810_state->P_REG[reg2]);
+                                break;
+                            default:
+                                return DRC_ERR_BAD_INST;
+                        }
+                    }
+                    #pragma GCC diagnostic pop
+                    break;
+                }
                 default: {
                     v810_state->PC = last_PC;
                     return DRC_ERR_BAD_INST;
