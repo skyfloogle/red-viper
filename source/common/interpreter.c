@@ -196,7 +196,7 @@ int interpreter_run() {
                     break;
                 }
                 case V810_OP_SETF: {
-                    v810_state->P_REG[reg2] = get_cond(reg1, v810_state->P_REG[PSW]);
+                    v810_state->P_REG[reg2] = get_cond(reg1, v810_state->S_REG[PSW]);
                     break;
                 }
                 case V810_OP_CMP_I: {
@@ -257,7 +257,16 @@ int interpreter_run() {
                         v810_state->S_REG[PSW] = v810_state->S_REG[EIPSW];
                     }
                     break;
-                // case V810_OP_HALT:
+                case V810_OP_HALT: {
+                    cycles = target;
+                    v810_state->PC = PC;
+                    do {
+                        serviceDisplayInt(cycles, PC);
+                        maxcycles = serviceInt(cycles, PC);
+                        if (maxcycles > 0) cycles += maxcycles;
+                    } while (!v810_state->ret && v810_state->PC == PC);
+                    break;
+                }
                 case V810_OP_LDSR:
                     v810_state->S_REG[reg1] = v810_state->P_REG[reg2];
                     break;
@@ -267,7 +276,15 @@ int interpreter_run() {
                 case V810_OP_SEI:
                     v810_state->S_REG[PSW] |= 1 << 12;
                     break;
-                // case V810_OP_BSTR:
+                case V810_OP_BSTR: {
+                    typedef bool (*bstr_func)(WORD,WORD,WORD,WORD);
+                    bstr_func func = (bstr_func)bssuboptable[reg1].func;
+                    bool res = func(v810_state->P_REG[30], v810_state->P_REG[29], v810_state->P_REG[28], ((v810_state->P_REG[27] & 31)) | ((v810_state->P_REG[26] & 31) << 16));
+                    if (reg1 < 4) {
+                        v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~1) | !res;
+                    }
+                    break;
+                }
                 default: {
                     v810_state->PC = last_PC;
                     return DRC_ERR_BAD_INST;
@@ -486,7 +503,7 @@ int interpreter_run() {
             return DRC_ERR_BAD_PC;
         }
         last_PC = PC;
-    } while (!v810_state->ret);
+    } while (!v810_state->ret && (DRC_AVAILABLE || (PC & 0x07000000) != 0x07000000));
     v810_state->PC = PC;
     v810_state->cycles = cycles;
     return 0;

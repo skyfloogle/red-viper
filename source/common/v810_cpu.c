@@ -561,9 +561,12 @@ int v810_run() {
 
     while (true) {
         int ret = 0;
+        #if DRC_AVAILABLE
         if ((v810_state->PC & 0x07000000) == 0x07000000) {
             ret = drc_run();
-        } else {
+        } else
+        #endif
+        {
             ret = interpreter_run();
         }
         if (ret != 0) return ret;

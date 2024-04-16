@@ -5,6 +5,8 @@
 #include "vb_types.h"
 #include "arm_emit.h"
 
+#define DRC_AVAILABLE true
+
 #define MAX_ROM_SIZE 0x1000000
 #define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
 #define CACHE_SIZE  0x200000
