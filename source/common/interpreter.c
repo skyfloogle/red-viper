@@ -576,7 +576,7 @@ int interpreter_run() {
             return DRC_ERR_BAD_PC;
         }
         last_PC = PC;
-    } while (!v810_state->ret && (DRC_AVAILABLE || (PC & 0x07000000) != 0x07000000));
+    } while (!v810_state->ret && (!DRC_AVAILABLE || (PC & 0x07000000) != 0x07000000));
     v810_state->PC = PC;
     v810_state->cycles = cycles;
     return 0;
