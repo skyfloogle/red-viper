@@ -64,6 +64,6 @@ bool guiShouldPause();
 void toggleVsync(bool enable);
 void toggleAnaglyph(bool enable, bool also_update_vsync);
 void aptBacklight(APT_HookType hook, void* param);
-int guiGetInput(bool do_switching);
+int guiGetInput(bool ingame);
 
 #endif //VB_GUI_H

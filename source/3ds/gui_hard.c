@@ -1689,25 +1689,25 @@ bool guiShouldPause() {
     return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
 }
 
-int guiGetInput(bool do_switching) {
+int guiGetInput(bool ingame) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
     if (backlightEnabled) {
         if ((hidKeysHeld() & KEY_TOUCH) && guiShouldSwitch()) {
-            if (do_switching && (hidKeysDown() & KEY_TOUCH)) setTouchControls(!buttons_on_screen);
+            if (ingame && (hidKeysDown() & KEY_TOUCH)) setTouchControls(!buttons_on_screen);
             return 0;
         }
-        if (do_switching) {
+        if (ingame) {
             if (touch_pos.px < 32 && touch_pos.py >= 240-32) {
                 if ((tVBOpt.FF_TOGGLE ? hidKeysDown() : hidKeysHeld()) & KEY_TOUCH) {
                     tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
                 }
                 return 0;
             }
-        }
-        if (hidKeysDown() & KEY_TOUCH && (touch_pos.px <= 32 && touch_pos.py <= 32) && !old_2ds) {
-            backlightEnabled = toggleBacklight(false);
-            return 0;
+            if (hidKeysDown() & KEY_TOUCH && (touch_pos.px <= 32 && touch_pos.py <= 32) && !old_2ds) {
+                backlightEnabled = toggleBacklight(false);
+                return 0;
+            }
         }
         if (touch_pos.px < tVBOpt.PAUSE_RIGHT) {
             return 0;
