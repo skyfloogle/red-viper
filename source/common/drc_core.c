@@ -996,26 +996,20 @@ static int drc_translateBlock() {
                 reg2_modified = true;
                 break;
             case V810_OP_DIV: // div reg1, reg2
-                // reg2/reg1 -> reg2 (__divsi3)
-                // reg2%reg1 -> r30 (__modsi3)
+                // reg2/reg1 -> reg2 (r0)
+                // reg2%reg1 -> r30 (r1)
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_MODSI*4, 0);
+                ADD_I(2, 2, DRC_RELOC_IDIVMOD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                RELOAD_REG1(1);
-                RELOAD_REG2(2);
-                if (!phys_regs[30])
-                    STR_IO(0, 11, 30 * 4);
-                else
-                    MOV(phys_regs[30], 0);
-                MOV(0, 2);
-
-                LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_DIVSI*4, 0);
-                BLX(ARM_COND_AL, 2);
-
+                if (inst_cache[i].reg2 != 30) {
+                    if (!phys_regs[30])
+                        STR_IO(1, 11, 30 * 4);
+                    else
+                        MOV(phys_regs[30], 1);
+                }
                 SAVE_REG2(0);
 
                 // flags
@@ -1026,21 +1020,15 @@ static int drc_translateBlock() {
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_UMODSI*4, 0);
+                ADD_I(2, 2, DRC_RELOC_UIDIVMOD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                RELOAD_REG1(1);
-                RELOAD_REG2(2);
-                if (!phys_regs[30])
-                    STR_IO(0, 11, 30 * 4);
-                else
-                    MOV(phys_regs[30], 0);
-                MOV(0, 2);
-
-                LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_UDIVSI*4, 0);
-                BLX(ARM_COND_AL, 2);
-
+                if (inst_cache[i].reg2 != 30) {
+                    if (!phys_regs[30])
+                        STR_IO(1, 11, 30 * 4);
+                    else
+                        MOV(phys_regs[30], 1);
+                }
                 SAVE_REG2(0);
 
                 // flags

@@ -30,18 +30,16 @@ enum {
 };
 
 enum {
-    DRC_RELOC_DIVSI     = 0,
-    DRC_RELOC_MODSI     = 1,
-    DRC_RELOC_UDIVSI    = 2,
-    DRC_RELOC_UMODSI    = 3,
-    DRC_RELOC_RBYTE     = 4,
-    DRC_RELOC_RHWORD    = 5,
-    DRC_RELOC_RWORD     = 6,
-    DRC_RELOC_WBYTE     = 7,
-    DRC_RELOC_WHWORD    = 8,
-    DRC_RELOC_WWORD     = 9,
-    DRC_RELOC_FPP       = 10,
-    DRC_RELOC_BSTR      = 26,
+    DRC_RELOC_IDIVMOD   = 0,
+    DRC_RELOC_UIDIVMOD  = 1,
+    DRC_RELOC_RBYTE     = 2,
+    DRC_RELOC_RHWORD    = 3,
+    DRC_RELOC_RWORD     = 4,
+    DRC_RELOC_WBYTE     = 5,
+    DRC_RELOC_WHWORD    = 6,
+    DRC_RELOC_WWORD     = 7,
+    DRC_RELOC_FPP       = 8,
+    DRC_RELOC_BSTR      = 24,
 };
 
 #define END_BLOCK 0xFF
