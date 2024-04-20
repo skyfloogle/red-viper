@@ -286,6 +286,8 @@ void v810_reset() {
     memset(&tVIPREG, 0, sizeof(tVIPREG));
     memset(&tHReg, 0, sizeof(tHReg));
 
+    tVIPREG.newframe = true;
+
     v810_state->irq_handler = &drc_handleInterrupts;
     v810_state->reloc_table = &drc_relocTable;
 
@@ -328,9 +330,6 @@ void v810_reset() {
 
 // Returns number of cycles until next timer interrupt.
 int serviceInt(unsigned int cycles, WORD PC) {
-    static unsigned int lasttime=0;
-    static unsigned int lastinput=0;
-    static unsigned int ticks=0;
     const static int MAXCYCLES = 512;
 
     //OK, this is a strange muck of code... basically it attempts to hit interrupts and
@@ -347,8 +346,8 @@ int serviceInt(unsigned int cycles, WORD PC) {
     //}
 
     bool fast_timer = !!(tHReg.TCR & 0x10);
-    int next_timer = (tHReg.TCR & 0x01) && tHReg.tCount != 0 ? tHReg.tCount * (fast_timer ? 400 : 2000) - (cycles - lasttime) : MAXCYCLES;
-    int next_input = tHReg.SCR & 2 ? tHReg.hwRead - (cycles - lastinput) : MAXCYCLES;
+    int next_timer = (tHReg.TCR & 0x01) && tHReg.tCount != 0 ? tHReg.tCount * (fast_timer ? 400 : 2000) - (cycles - tHReg.lasttime) : MAXCYCLES;
+    int next_input = tHReg.SCR & 2 ? tHReg.hwRead - (cycles - tHReg.lastinput) : MAXCYCLES;
     int next_interrupt = next_timer < next_input ? next_timer : next_input;
     next_interrupt = next_interrupt < MAXCYCLES ? next_interrupt : MAXCYCLES;
 
@@ -358,13 +357,13 @@ int serviceInt(unsigned int cycles, WORD PC) {
         if (next_input <= 0)
             tHReg.SCR &= ~2;
     }
-    lastinput = cycles;
+    tHReg.lastinput = cycles;
 
-    if ((cycles-lasttime) >= 400) {
-        int new_ticks = (cycles - lasttime) / 400;
-        lasttime += 400 * new_ticks;
-        int steps = fast_timer ? new_ticks : (ticks + new_ticks) / 5;
-        ticks = (ticks + new_ticks) % 5;
+    if ((cycles-tHReg.lasttime) >= 400) {
+        int new_ticks = (cycles - tHReg.lasttime) / 400;
+        tHReg.lasttime += 400 * new_ticks;
+        int steps = fast_timer ? new_ticks : (tHReg.ticks + new_ticks) / 5;
+        tHReg.ticks = (tHReg.ticks + new_ticks) % 5;
         if (tHReg.TCR & 0x01) { // Timer Enabled
             tHReg.tCount -= steps;
             // Sometimes (Nester's Funky Bowling) there's more steps than the
@@ -386,21 +385,17 @@ int serviceInt(unsigned int cycles, WORD PC) {
 }
 
 int serviceDisplayInt(unsigned int cycles, WORD PC) {
-    static unsigned int lastfb=0;
-    static int rowcount=0;
-    static bool drawing = false;
-    static bool newframe = true;
     int gamestart;
-    unsigned int tfb = (cycles-lastfb);
+    unsigned int tfb = (cycles-tVIPREG.lastfb);
     bool pending_int = 0;
     
     v810_state->PC = PC;
 
     //Handle DPSTTS, XPSTTS, and Frame interrupts
-    if (rowcount < 0x1C) {
-        if (newframe) {
+    if (tVIPREG.rowcount < 0x1C) {
+        if (tVIPREG.newframe) {
             // new frame
-            newframe = false;
+            tVIPREG.newframe = false;
             gamestart = 0;
             if (tVIPREG.DPCTRL & 0x02) {
                 tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
@@ -409,7 +404,7 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
                 tVIPREG.tFrame = 0;
                 gamestart = 8;
                 if (tVIPREG.XPCTRL & 0x02) {
-                    drawing = true;
+                    tVIPREG.drawing = true;
                     tVIPREG.tFrameBuffer++;
                     if ((tVIPREG.tFrameBuffer < 1) || (tVIPREG.tFrameBuffer > 2)) tVIPREG.tFrameBuffer = 1;
                     tVIPREG.XPSTTS = (0x0002|(tVIPREG.tFrameBuffer<<2));
@@ -424,17 +419,17 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             tVIPREG.XPSTTS |= 0x8000;
             pending_int = 1;
         } else if (tfb > 0x0A00) {
-            if (drawing) tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xEC)|(rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
-            rowcount++;
-            lastfb+=0x0A00;
-        } else if ((rowcount == 0x12) && (tfb > 0x670)) {
+            if (tVIPREG.drawing) tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xEC)|(tVIPREG.rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
+            tVIPREG.rowcount++;
+            tVIPREG.lastfb+=0x0A00;
+        } else if ((tVIPREG.rowcount == 0x12) && (tfb > 0x670)) {
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL & 0x0302) | (tVIPREG.tFrameBuffer & 1 ? 0xD0 : 0xC4));
             pending_int = 1;
         }
     } else {
-        if ((rowcount == 0x1C) && (tfb > 0x10000)) {            //0x100000
-            if (drawing) {
-                drawing = false;
+        if ((tVIPREG.rowcount == 0x1C) && (tfb > 0x10000)) {            //0x100000
+            if (tVIPREG.drawing) {
+                tVIPREG.drawing = false;
 
                 tVIPREG.XPSTTS = (0x1B00 | (tVIPREG.XPCTRL & 0x02));
                 pending_int = 1;
@@ -445,8 +440,8 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
 
                 tVIPREG.INTPND |= 0x4000;               //(tVIPREG.INTENB&0x4000);
             }
-            rowcount++;
-        } else if ((rowcount == 0x1D) && (tfb > 0x18000)) {     //0xE690
+            tVIPREG.rowcount++;
+        } else if ((tVIPREG.rowcount == 0x1D) && (tfb > 0x18000)) {     //0xE690
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
             if (tVIPREG.INTENB&0x0002) {
                 v810_int(4, PC);                    //LFBEND
@@ -454,16 +449,16 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             }
             tVIPREG.INTPND |= 0x0002;               //(tVIPREG.INTENB&0x0002);
             pending_int = 1;
-            rowcount++;
-        } else if ((rowcount == 0x1E) && (tfb > 0x20000)) {     //0x15E70
+            tVIPREG.rowcount++;
+        } else if ((tVIPREG.rowcount == 0x1E) && (tfb > 0x20000)) {     //0x15E70
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0x40);
             if (tVIPREG.INTENB&0x0004) {
                 v810_int(4, PC);                    //RFBEND
             }
             tVIPREG.INTPND |= 0x0004;               //(tVIPREG.INTENB&0x0004);
             pending_int = 1;
-            rowcount++;
-        } else if ((rowcount == 0x1F) && (tfb > 0x28000)) {     //0x1FAD8
+            tVIPREG.rowcount++;
+        } else if ((tVIPREG.rowcount == 0x1F) && (tfb > 0x28000)) {     //0x1FAD8
             //tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrameBuffer&1)?0x48:0x60));
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrameBuffer&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
             if (tVIPREG.INTENB&0x2000) {
@@ -471,16 +466,16 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
             }
             tVIPREG.INTPND |= 0x2000;
             pending_int = 1;
-            rowcount++;
-        } else if ((rowcount == 0x20) && (tfb > 0x38000)) {     //0x33FD8
+            tVIPREG.rowcount++;
+        } else if ((tVIPREG.rowcount == 0x20) && (tfb > 0x38000)) {     //0x33FD8
             tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0x40);
-            rowcount++;
-        } else if ((rowcount == 0x21) && (tfb > 0x50280)) {
+            tVIPREG.rowcount++;
+        } else if ((tVIPREG.rowcount == 0x21) && (tfb > 0x50280)) {
             // frame end
-            rowcount=0;
+            tVIPREG.rowcount=0;
             v810_state->ret = 1;
-            lastfb+=0x50280;
-            newframe = true;
+            tVIPREG.lastfb+=0x50280;
+            tVIPREG.newframe = true;
             pending_int = 1;
 
             sound_update(cycles);

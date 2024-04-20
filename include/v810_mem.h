@@ -26,6 +26,11 @@ typedef struct {
     HWORD GPLT[4];
     HWORD JPLT[4];
     HWORD BKCOL;
+    // timing
+    WORD lastfb;
+    BYTE rowcount;
+    bool drawing;
+    bool newframe;
 } V810_VIPREGDAT;
 
 typedef struct {
@@ -37,6 +42,9 @@ typedef struct {
     BYTE tReset;    //Timer Reset register, not publicly visible
     HWORD tTHW;     //Timer TempHWord, 	not publicly visible
     WORD tTRC;      //Timer TempResolutionCount, not publicly visible
+    WORD lasttime;
+    WORD lastinput;
+    WORD ticks;
     SWORD tCount;  //Timer Counter register, not publicly visible
     BYTE SHB;       //Serial Higher Byte,   0x02000014  //Read Only
     BYTE SLB;       //Serial Lower Byte,    0x02000010  //Read Only
