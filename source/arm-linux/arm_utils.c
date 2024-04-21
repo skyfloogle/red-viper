@@ -13,7 +13,7 @@ void hbHaxInit() {
 void hbHaxExit() {
 }
 
-void FlushInvalidateCache() {
+void FlushInvalidateCache(void *addr, size_t len) {
     __clear_cache(cache_start, cache_start + CACHE_SIZE - 1);
 }
 

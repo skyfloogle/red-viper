@@ -1,11 +1,14 @@
 #ifndef DRC_CORE_H
 #define DRC_CORE_H
 
-#include <3ds.h>
 #include "vb_types.h"
 #include "arm_emit.h"
 
+#if __ARM_ARCH == 6
 #define DRC_AVAILABLE true
+#else
+#define DRC_AVAILABLE false
+#endif
 
 #define MAX_ROM_SIZE 0x1000000
 #define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
@@ -70,14 +73,8 @@ typedef struct {
     bool is_branch_target;
 } v810_instruction;
 
-HWORD* rom_block_map;
-HWORD* rom_entry_map;
-BYTE* rom_data_code_map;
-BYTE reg_usage[32];
 extern WORD* cache_start;
 extern WORD* cache_pos;
-exec_block* block_ptr_start;
-extern void* cache_dump_bin;
 
 int __divsi3(int a, int b);
 int __modsi3(int a, int b);

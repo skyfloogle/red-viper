@@ -4,9 +4,11 @@
 #ifndef V810_DISP_H_
 #define V810_DISP_H_
 
-#include <citro3d.h>
 #include "vb_types.h"
-#include "allegro_compat.h"
+
+#ifdef __3DS__
+#include <citro3d.h>
+#endif
 
 #define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080)
 
@@ -39,79 +41,6 @@
 #define WORLD_OFFSET    0x0003D800
 #define WORLD_SIZE      0x0020
 
-#define MAXBRIGHT 64 // For brighter or darker screen...
-
-#define PAL_SIZE 256
-
-typedef RGB PALETTE[PAL_SIZE];
-
-typedef struct {
-    char            BPLTS;  // Pallete to be used (0-3)
-    bool            HFLP;   // Horizontal flip
-    bool            VFLP;   // Vertical flip
-	bool			UNDEF;
-    unsigned short  BCA;    // Chr# to be displayed 0-2047
-} VB_BGMAP;
-
-// Structure defining one Obj from the Obj Table
-// There are 1024 Obj in the obj table...
-
-typedef struct {
-    int             JX;     // Horizontal Offset (-7-383)
-    bool            JLON;   // Left Screen On
-    bool            JRON;   // Right Screen On
-    int             JP;     // Paralax (-256-255)
-    int             JY;     // Vertical Offset (-7-223)
-    bool            JHFLP;  // Horizontal Flip
-    bool            JVFLP;  // Vertical Flip
-	bool			UNDEF;
-    unsigned short  JCA;    // Chr# to be displayd 0-2047
-    char            JPLTS;  // Palet to be Used (0-3)
-} VB_OBJ;
-
-// Structure defining one world from the world table
-// there are 32 worlds in the world table
-typedef struct {
-    bool    LON;        // Apears on left screen
-    bool    RON;        // Apears on right screen
-    BYTE    BGM;        // World Type, Normal, H-bias, Affine, OBJ (0-3)
-    BYTE    SCX;        // H-Size of BG Map(0-3)
-    BYTE    SCY;        // V-Size of BG Map(0-3)
-    bool    OVER;       // Whatever???
-    bool    END;        // End of Worlds (Dont bother going any further...)
-	bool	Unknown1;	//Whatever???
-	bool	Unknown2;	//Whatever???
-    BYTE    BGMAP_BASE; // Determins the segment that SCX and SCY are based in (0-15)
-
-    int     GX;         // H-Ofset Screen (0-383)
-    int     GP;         // Paralax Screen (-256-255)
-    int     GY;         // V-Ofset Screen (0-223)
-    int     MX;         // H-Ofset BGMAP (0-383)
-    int     MP;         // Paralax BGMAP (-256-255)
-    int     MY;         // V-Ofset BGMAP (0-223)
-    HWORD   W;          // Width of BG to be cut out(From wear???)
-    HWORD   H;          // Height of BG to be cut out
-    HWORD   PARAM_BASE; // base of paramater table
-    HWORD   OVERP_CHR;  // Whatever???
-    HWORD	Dont_Write[5]; // Unused 5 HWORDS of data
-} VB_WORLD;
-
-typedef struct {
-	float pb_y;
-	int paralax;
-	float pd_y;
-	float pa;
-	float pc;
-	int u1;
-	int u2;
-	int u3;
-} AFFINE_MAP;
-
-//grab one entry from the affine param table based ont the
-//current y offset
-void getAffine(int y, int pBase,AFFINE_MAP* AFN_MP);
-
-
 typedef enum {
     CPU_WROTE,
     GPU_WROTE,
@@ -129,12 +58,9 @@ typedef struct {
     bool    BrtPALMod;              // Britness for Pallet Changed
 
     bool    ObjDataCacheInvalid;    // Object Cache Is invalid
-    VB_OBJ  ObjDataCache[0x400];    // Cache the Obj Data
 
     bool    ObjCacheInvalid;        // Object Cache Is invalid
-    BITMAP  *ObjCacheBMP[4];        // Obj Cache Bitmaps
     bool    BGCacheInvalid[14];     // Object Cache Is invalid
-    BITMAP  *BGCacheBMP[14];        // BGMap Cache Bitmaps
 	bool		CharCacheInvalid;
 	bool	CharacterCache[2048];	//Character chace
     DDSPSTATE DDSPDataState[2];     // Direct DisplayDraws True
@@ -145,46 +71,6 @@ typedef struct {
 // Keybd Fn's. Had to put it somewhere!
 // Read the Controller
 HWORD V810_RControll(void);
-
-void screen_blit(BITMAP *bitmap, int src_x, int src_y, int screen);
-
-// Blit a bgmap to the screen buffer, wraping around if we take an immage past the edge of the source bmp..
-void dt_blit(BITMAP *source[], BITMAP *dest, int source_x, int source_y, int dest_x, int dest_y, int width, int height, int source_width, int source_height);
-
-////////////////////////////////////////////////////////////////////
-// Retreaves a character(Sprite) from the character table, old!
-void getChr(HWORD num, HWORD chr[]);
-
-// Translates a chr to a sprite, old only for displayRom()!!
-void chr2sprite(HWORD chr[],BITMAP *sprt);
-
-// Translates a chr to a sprite faster (dont pass in a sprite...
-void fchr2sprite(HWORD num, BITMAP *sprt, bool hflp, bool vflp,BYTE pal[]);
-
-////////////////////////////////////////////////////////////////////
-// Returns a BGMap Buffer HWORD BGMap_Buff[4096]
-void getBGmap(HWORD num, VB_BGMAP BGMap_Buff[]);
-
-// Converts a BG Map Buffer to a World Picture, With Chrs in place.
-void BGMap2World(HWORD num, BITMAP *wPlane);
-
-////////////////////////////////////////////////////////////////////
-// Returns a OBJ_buf Buffer VB_OBJ OBJ_Buff[1024]
-void getObj(HWORD num, VB_OBJ OBJ_Buff[]);
-
-// Converts a OBJ_buf Buffer to a World Picture, With Chrs in place.
-void Obj2World(VB_OBJ OBJ_Buff[], BITMAP *wPlane, int spt_num, int img_n);
-
-////////////////////////////////////////////////////////////////////
-// Returns a WORLD_buf Buffer VB_WORLD WORLD_Buff[32]
-// Now directly acesses the video ram (Scary)
-void getWorld(HWORD num, VB_WORLD WORLD_Buff[]);
-
-void World2Display(int wNum, VB_WORLD WORLD_Buff[], BITMAP *wPlane, int img_n);
-
-////////////////////////////////////////////////////////////////////
-bool V810_DSP_Init();
-void V810_DSP_Quit();
 
 void video_init();
 void video_render(int alt_buf);
@@ -197,8 +83,6 @@ void V810_Dsp_Frame(int left);
 void clearCache();
 
 extern VB_DSPCACHE tDSPCACHE;
-extern BITMAP *dsp_bmp;
-uint16_t *framebuffer;
 
 
 // We have two ways of dealing with the colours:
@@ -215,12 +99,13 @@ extern uint8_t maxRepeat;
 
 extern int eye_count;
 
-extern shaderProgram_s sFinal;
-
 extern bool tileVisible[2048];
 extern int blankTile;
 
-extern u8 brightness[4];
+extern uint8_t brightness[4];
+
+#ifdef __3DS__
+extern shaderProgram_s sFinal;
 
 // video_hard
 extern C3D_Tex screenTexHard;
@@ -234,5 +119,7 @@ extern C3D_Tex screenTexSoft[2];
 void video_soft_init();
 void video_soft_render(int alt_buf);
 void update_texture_cache_soft();
+
+#endif
 
 #endif

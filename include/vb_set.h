@@ -1,7 +1,7 @@
 #ifndef VB_SET_H_
 #define VB_SET_H_
 
-#include "3ds/types.h"
+#include <stdbool.h>
 
 #define D_VGA       0
 #define D_VESA1     1

@@ -5,7 +5,7 @@
 #include "vb_types.h"
 
 // Condition codes
-enum {
+enum ARM_COND_CODE {
     ARM_COND_EQ, // Equal
     ARM_COND_NE, // Not Equal
     ARM_COND_CS, // Carry Set
@@ -22,10 +22,10 @@ enum {
     ARM_COND_LE, // Less or Equal
     ARM_COND_AL, // Always
     ARM_COND_NV  // NeVer
-} ARM_COND_CODE;
+};
 
 // Data processing opcodes
-enum {
+enum ARM_OPCODE {
     ARM_OP_AND, // AND
     ARM_OP_EOR, // XOR
     ARM_OP_SUB, // Subtract
@@ -42,15 +42,15 @@ enum {
     ARM_OP_MOV, // Move
     ARM_OP_BIC, // Bit clear
     ARM_OP_MVN  // Move negative
-} ARM_OPCODE;
+};
 
 // Shift types
-enum {
+enum ARM_SHIFT {
     ARM_SHIFT_LSL, // Logical shift left
     ARM_SHIFT_LSR, // Logical shift right
     ARM_SHIFT_ASR, // Arithmetic shift right
     ARM_SHIFT_ROR  // Rotate right
-} ARM_SHIFT;
+};
 
 typedef enum {
     ARM_DATA_PROC_IMM,

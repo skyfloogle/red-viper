@@ -51,12 +51,18 @@
 
 #include "replay.h"
 
+HWORD* rom_block_map;
+HWORD* rom_entry_map;
+BYTE* rom_data_code_map;
+BYTE reg_usage[32];
 WORD* cache_start;
 WORD* cache_pos;
+exec_block* block_ptr_start;
 int block_pos = 1;
 
 static v810_instruction *inst_cache;
 static arm_inst *trans_cache;
+arm_inst *inst_ptr;
 
 // Maps the most used registers in the block to V810 registers
 static void drc_mapRegs(exec_block* block) {

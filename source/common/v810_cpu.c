@@ -22,10 +22,10 @@
 
 #include "replay.h"
 
-#include "3ds/services/fs.h"
-
 #define NEG(n) ((n) >> 31)
 #define POS(n) ((~(n)) >> 31)
+
+cpu_state* v810_state;
 
 ////////////////////////////////////////////////////////////
 // Globals
@@ -50,7 +50,7 @@ void v810_init() {
     // Alocate space for it in memory
     V810_DISPLAY_RAM.pmemory = (unsigned char *)calloc(((V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr), sizeof(BYTE));
     // Offset + Lowaddr = pmemory
-    V810_DISPLAY_RAM.off = (unsigned)V810_DISPLAY_RAM.pmemory - V810_DISPLAY_RAM.lowaddr;
+    V810_DISPLAY_RAM.off = (size_t)V810_DISPLAY_RAM.pmemory - V810_DISPLAY_RAM.lowaddr;
 
     // Initialize our VIPC Reg tables....
     V810_VIPCREG.lowaddr  = 0x0005F800; //0x0005F800
@@ -69,7 +69,7 @@ void v810_init() {
     // Alocate space for it in memory
     V810_SOUND_RAM.pmemory = (unsigned char *)malloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr) * sizeof(BYTE));
     // Offset + Lowaddr = pmemory
-    V810_SOUND_RAM.off = (unsigned)V810_SOUND_RAM.pmemory - V810_SOUND_RAM.lowaddr;
+    V810_SOUND_RAM.off = (size_t)V810_SOUND_RAM.pmemory - V810_SOUND_RAM.lowaddr;
 
     // Initialize our VBRam tables....
     V810_VB_RAM.lowaddr  = 0x05000000;
@@ -77,7 +77,7 @@ void v810_init() {
     // Alocate space for it in memory
     V810_VB_RAM.pmemory = (unsigned char *)malloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr) * sizeof(BYTE));
     // Offset + Lowaddr = pmemory
-    V810_VB_RAM.off = (unsigned)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
+    V810_VB_RAM.off = (size_t)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
 
     // Initialize our GameRam tables.... (Cartrige Ram)
     V810_GAME_RAM.lowaddr  = 0x06000000;
@@ -85,7 +85,7 @@ void v810_init() {
     // Alocate space for it in memory
     V810_GAME_RAM.pmemory = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
     // Offset + Lowaddr = pmemory
-    V810_GAME_RAM.off = (unsigned)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
+    V810_GAME_RAM.off = (size_t)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
 
     // Initialize our HCREG tables.... // realy reg01
     V810_HCREG.lowaddr  = 0x02000000;
@@ -168,7 +168,7 @@ int v810_load_init() {
     // Initialize our rom tables.... (USA)
     V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
     V810_ROM1.lowaddr  = 0x07000000;
-    V810_ROM1.off = (unsigned)V810_ROM1.pmemory - V810_ROM1.lowaddr;
+    V810_ROM1.off = (size_t)V810_ROM1.pmemory - V810_ROM1.lowaddr;
     // Offset + Lowaddr = pmemory
 
     load_sram = fopen(tVBOpt.RAM_PATH, "rb");
