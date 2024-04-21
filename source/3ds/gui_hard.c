@@ -307,6 +307,11 @@ static void game_menu(int initial_button) {
             return;
         case MAIN_MENU_RESET: // Reset
             if (areyousure(&text_areyousure_reset)) {
+                // clear screen buffer
+                C2D_TargetClear(screenTarget, 0);
+                C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+                video_flush(true);
+                C3D_FrameEnd(0);
                 guiop = AKILL | VBRESET;
                 return;
             } else return game_menu(MAIN_MENU_RESET);
