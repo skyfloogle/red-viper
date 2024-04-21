@@ -17,6 +17,8 @@
 #include "periodic.h"
 #include "sprites_t3x.h"
 #include "sprites.h"
+#include "splash_t3x.h"
+#include "splash.h"
 
 #define TINT_R ( (tVBOpt.TINT & 0x000000FF) )
 #define TINT_G ( (tVBOpt.TINT & 0x0000FF00) >> 8 )
@@ -39,7 +41,9 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_areyousure_reset, text_areyousure_exit;
 
 static C2D_SpriteSheet sprite_sheet;
+static C2D_SpriteSheet splash_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
+static C2D_Sprite splash_left, splash_right;
 
 // helpers
 #define dis(X1,Y1,X2,Y2) ( (((X2)-(X1)) * ((X2)-(X1))) + (((Y2)-(Y1)) * ((Y2)-(Y1))) )
@@ -256,10 +260,8 @@ static void draw_logo() {
     C2D_SceneBegin(screenTarget);
     C2D_ViewScale(1, -1);
     C2D_ViewTranslate(0, -512);
-    C2D_SpriteSetPos(&logo_sprite, 384 / 2 - 2, 224 / 2);
-    C2D_DrawSprite(&logo_sprite);
-    C2D_SpriteSetPos(&logo_sprite, 384 / 2 + 2, 224 / 2 + 256);
-    C2D_DrawSprite(&logo_sprite);
+    C2D_DrawSprite(&splash_left);
+    C2D_DrawSprite(&splash_right);
     C2D_ViewReset();
     C2D_SceneBegin(screen);
 }
@@ -1313,6 +1315,11 @@ void guiInit() {
     C2D_SpriteFromSheet(&logo_sprite, sprite_sheet, sprites_logo_idx);
     C2D_SpriteSetCenter(&logo_sprite, 0.5, 0.5);
 
+    splash_sheet = C2D_SpriteSheetLoadFromMem(splash_t3x, splash_t3x_size);
+    C2D_SpriteFromSheet(&splash_left, splash_sheet, splash_splash_left_idx);
+    C2D_SpriteFromSheet(&splash_right, splash_sheet, splash_splash_right_idx);
+    C2D_SpriteSetPos(&splash_right, 0, 256);
+
     setTouchControls(buttons_on_screen);
 
     static_textbuf = C2D_TextBufNew(1024);
@@ -1338,7 +1345,7 @@ void guiInit() {
     STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
     STATIC_TEXT(&text_debug_filenames, "Please share debug_info.txt and\ndebug_replay.bin.gz in your bug\nreport.");
     STATIC_TEXT(&text_anykeyexit, "Press any key to exit");
-    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
+    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nSplash screen by Morintari\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
     STATIC_TEXT(&text_loading, "Loading...");
     STATIC_TEXT(&text_loaderr, "Failed to load ROM.");
     STATIC_TEXT(&text_unloaded, "The current ROM has been unloaded.");
