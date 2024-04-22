@@ -26,6 +26,7 @@ int interpreter_run() {
     // can't do this with PSW because interrupts modify it
     WORD PC = v810_state->PC;
     WORD last_PC = PC;
+    WORD start_PC = PC;
     WORD cycles = v810_state->cycles;
     BYTE last_opcode = 0;
     int maxcycles = serviceInt(cycles, PC);
@@ -260,12 +261,11 @@ int interpreter_run() {
                     break;
                 case V810_OP_HALT: {
                     cycles = target;
-                    v810_state->PC = PC;
                     do {
                         serviceDisplayInt(cycles, PC);
                         maxcycles = serviceInt(cycles, PC);
                         if (maxcycles > 0) cycles += maxcycles;
-                    } while (!v810_state->ret && v810_state->PC == PC);
+                    } while (!v810_state->ret && v810_state->PC == start_PC);
                     break;
                 }
                 case V810_OP_LDSR:
@@ -561,8 +561,11 @@ int interpreter_run() {
             }
         }
         if (cycles >= target) {
-            maxcycles = serviceInt(cycles, PC);
-            if (maxcycles <= 0 || serviceDisplayInt(cycles, PC)) {
+            do {
+                maxcycles = serviceInt(cycles, PC);
+            } while (maxcycles <= 0);
+            serviceDisplayInt(cycles, PC);
+            if (v810_state->PC != start_PC) {
                 // interrupt triggered, so we exit
                 // PC was modified so don't reset it
                 v810_state->cycles = cycles;
