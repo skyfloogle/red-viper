@@ -642,8 +642,8 @@ static int drc_translateBlock() {
 
     exec_block *block = NULL;
 
-    WORD* pool_cache_start = NULL;
 #ifdef LITERAL_POOL
+    WORD* pool_cache_start = NULL;
     pool_cache_start = linearAlloc(256*4);
 #endif
     WORD pool_offset = 0;
@@ -676,7 +676,9 @@ static int drc_translateBlock() {
         phys_regs[i] = drc_getPhysReg(i, block->reg_map);
 
     inst_ptr = &trans_cache[0];
+#ifdef LITERAL_POOL
     pool_ptr = pool_cache_start;
+#endif
 
     #define LOAD_REG1() \
         if (arm_reg1 < 4) { \
@@ -1866,11 +1868,6 @@ void drc_dumpDebugInfo(int code) {
     fprintf(f, "Cycles: %ld\n", v810_state->cycles);
     fprintf(f, "Cache start: %p\n", cache_start);
     fprintf(f, "Cache pos: %p\n", cache_pos);
-
-    if (tVBOpt.DEBUG) {
-        debug_dumpdrccache();
-        debug_dumpvbram();
-    }
 
     replay_save("debug_replay.bin");
 
