@@ -26,16 +26,22 @@ int interpreter_run() {
     // can't do this with PSW because interrupts modify it
     WORD PC = v810_state->PC;
     WORD last_PC = PC;
-    WORD start_PC = PC;
     WORD cycles = v810_state->cycles;
     BYTE last_opcode = 0;
-    int maxcycles = serviceInt(cycles, PC);
-    if (maxcycles <= 0) {
-        // interrupt happened, bail
-        return 0;
-    }
-    WORD target = cycles + maxcycles;
+    int maxcycles;
+    WORD target = 0;
     do {
+        if (cycles >= target) {
+            v810_state->PC = PC;
+            maxcycles = serviceInt(cycles, PC);
+            if ((maxcycles <= 0 || serviceDisplayInt(cycles, PC)) && PC != v810_state->PC) {
+                // interrupt triggered, so we exit
+                // PC was modified so don't reset it
+                v810_state->cycles = cycles;
+                return 0;
+            }
+            target = cycles + maxcycles;
+        }
         HWORD instr = mem_rhword(PC);
         PC += 2;
         BYTE opcode = instr >> 10;
@@ -261,11 +267,12 @@ int interpreter_run() {
                     break;
                 case V810_OP_HALT: {
                     cycles = target;
+                    v810_state->PC = PC;
                     do {
                         serviceDisplayInt(cycles, PC);
                         maxcycles = serviceInt(cycles, PC);
                         if (maxcycles > 0) cycles += maxcycles;
-                    } while (!v810_state->ret && v810_state->PC == start_PC);
+                    } while (!v810_state->ret && v810_state->PC == PC);
                     break;
                 }
                 case V810_OP_LDSR:
@@ -559,19 +566,6 @@ int interpreter_run() {
                     return DRC_ERR_BAD_INST;
                 }
             }
-        }
-        if (cycles >= target) {
-            do {
-                maxcycles = serviceInt(cycles, PC);
-            } while (maxcycles <= 0);
-            serviceDisplayInt(cycles, PC);
-            if (v810_state->PC != start_PC) {
-                // interrupt triggered, so we exit
-                // PC was modified so don't reset it
-                v810_state->cycles = cycles;
-                return 0;
-            }
-            target = cycles + maxcycles;
         }
         last_opcode = opcode;
         if ((PC & 0x07000000) < 0x05000000) {
