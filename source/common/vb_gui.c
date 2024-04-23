@@ -150,7 +150,6 @@ int emulation_sstate(int state) {
     fwrite(&tVIPREG.BRTC, 2, 1, state_file);
     fwrite(&tVIPREG.REST, 2, 1, state_file);
     fwrite(&tVIPREG.FRMCYC, 2, 1, state_file);
-    fwrite(&tVIPREG.CTA, 2, 1, state_file);
     fwrite(&tVIPREG.XPSTTS, 2, 1, state_file);
     fwrite(&tVIPREG.XPCTRL, 2, 1, state_file);
     fwrite(&tVIPREG.SPT[0], 2, 1, state_file);
@@ -176,7 +175,6 @@ int emulation_sstate(int state) {
 
     fwrite(&tHReg.tTHW, 2, 1, state_file);   //not publicly visible
     fwrite(&tHReg.tCount, 2, 1, state_file); //not publicly visible
-    fwrite(&tHReg.tTRC, 4, 1, state_file);         //not publicly visible
 
     // Next we write all the RAM contents
     fwrite(V810_DISPLAY_RAM.pmemory, 1, V810_DISPLAY_RAM.highaddr - V810_DISPLAY_RAM.lowaddr, state_file);
@@ -239,7 +237,6 @@ int emulation_lstate(int state) {
     fread(&tVIPREG.BRTC, 2, 1, state_file);
     fread(&tVIPREG.REST, 2, 1, state_file);
     fread(&tVIPREG.FRMCYC, 2, 1, state_file);
-    fread(&tVIPREG.CTA, 2, 1, state_file);
     fread(&tVIPREG.XPSTTS, 2, 1, state_file);
     fread(&tVIPREG.XPCTRL, 2, 1, state_file);
     fread(&tVIPREG.SPT[0], 2, 1, state_file);
@@ -264,7 +261,6 @@ int emulation_lstate(int state) {
     }
     fread(&tHReg.tTHW, 2, 1, state_file); //not publicly visible
     fread(&tHReg.tCount, 2, 1, state_file); //not publicly visible
-    fread(&tHReg.tTRC, 4, 1, state_file); //not publicly visible
 
     //Load the RAM
     fread(V810_DISPLAY_RAM.pmemory, 1, V810_DISPLAY_RAM.highaddr - V810_DISPLAY_RAM.lowaddr, state_file);

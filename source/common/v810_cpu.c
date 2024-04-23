@@ -318,9 +318,7 @@ void v810_reset() {
     tHReg.CCSR	= 0xFF;
     tHReg.CCR	= 0x6D;
 
-    tHReg.tTRC = 2000;
     tHReg.tCount = 0xFFFF;
-    tHReg.tReset = 0;
 
     tHReg.hwRead = 0;
 

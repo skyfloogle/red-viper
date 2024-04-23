@@ -16,12 +16,10 @@ typedef struct{
     HWORD BRTC;
     HWORD REST;
     HWORD FRMCYC;
-    HWORD CTA;
     HWORD XPSTTS;
     HWORD XPCTRL;
     HWORD tFrameBuffer;   //not publicly visible
     HWORD tFrame;
-    HWORD VER;
     HWORD SPT[4];
     HWORD GPLT[4];
     HWORD JPLT[4];
@@ -39,9 +37,7 @@ typedef struct {
     BYTE TCR;       //Timer Controll Reg,   0x02000020
     BYTE THB;       //Timer Higher Byte,    0x0200001C
     BYTE TLB;       //Timer Lower Byte,     0x02000018
-    BYTE tReset;    //Timer Reset register, not publicly visible
     HWORD tTHW;     //Timer TempHWord, 	not publicly visible
-    WORD tTRC;      //Timer TempResolutionCount, not publicly visible
     WORD lasttime;
     WORD lastinput;
     WORD ticks;
