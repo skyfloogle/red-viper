@@ -85,6 +85,7 @@ extern SOUND_STATE sound_state;
 void sound_init();
 void sound_update(uint32_t cycles);
 void sound_write(int addr, uint16_t val);
+void sound_refresh();
 void sound_close();
 void sound_pause();
 void sound_resume();

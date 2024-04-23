@@ -288,6 +288,7 @@ int emulation_lstate(int state) {
     APPLY_MEMORY(V810_SOUND_RAM);
     #undef APPLY_MEMORY
 
+    sound_refresh();
     clearCache();
 
     guiop = AKILL;
