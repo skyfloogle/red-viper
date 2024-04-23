@@ -69,7 +69,7 @@ static int gz_write_all(gzFile f, void *data, size_t size) {
 void replay_save(char *fn) {
     gzFile f = gzopen(fn, "wb");
     if (!f) return;
-    u32 header[4] = {MAGIC, REPLAY_VERSION, tVBOpt.CRC32, initial_sram_size};
+    uint32_t header[4] = {MAGIC, REPLAY_VERSION, tVBOpt.CRC32, initial_sram_size};
     if (gz_write_all(f, header, sizeof(header))) goto bail;
     if (gz_write_all(f, initial_sram, initial_sram_size)) goto bail;
     if (gz_write_all(f, replay_buf, (replay_cursor + 1 - replay_buf) * sizeof(*replay_buf))) goto bail;
@@ -84,7 +84,7 @@ void replay_load(char *fn) {
     current_entry.count = 0;
     current_replay = fopen(fn, "rb");
     if (!current_replay) return;
-    u32 buf;
+    uint32_t buf;
     fread(&buf, 4, 1, current_replay);
     if (buf != MAGIC) goto err;
     fread(&buf, 4, 1, current_replay);

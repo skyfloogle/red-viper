@@ -17,6 +17,8 @@
 #include "periodic.h"
 #include "sprites_t3x.h"
 #include "sprites.h"
+#include "splash_t3x.h"
+#include "splash.h"
 
 #define TINT_R ( (tVBOpt.TINT & 0x000000FF) )
 #define TINT_G ( (tVBOpt.TINT & 0x0000FF00) >> 8 )
@@ -39,7 +41,9 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load;
 
 static C2D_SpriteSheet sprite_sheet;
+static C2D_SpriteSheet splash_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite;
+static C2D_Sprite splash_left, splash_right;
 
 // helpers
 #define dis(X1,Y1,X2,Y2) ( (((X2)-(X1)) * ((X2)-(X1))) + (((Y2)-(Y1)) * ((Y2)-(Y1))) )
@@ -174,8 +178,8 @@ static Button options_buttons[] = {
     {.str="Fast forward", .x=16, .y=80, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_toggle, .toggle_text_off=&text_hold},
     #define OPTIONS_SOUND 2
     {.str="Sound", .x=176, .y=80, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
-    #define OPTIONS_PERF 3
-    {.str="Perf. info", .x=16, .y=144, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define OPTIONS_DEV 3
+    {.str="Dev settings", .x=16, .y=144, .w=128, .h=48},
     #define OPTIONS_ABOUT 4
     {.str="About", .x=176, .y=144, .w=128, .h=48},
     #define OPTIONS_BACK 5
@@ -204,6 +208,16 @@ static Button colour_filter_buttons[] = {
     {.str="Red", .x=16, .y=64, .w=48, .h=32},
     #define COLOUR_GRAY 2
     {.str="Gray", .x=16, .y=128, .w=48, .h=32},
+};
+
+static void dev_options(int initial_button);
+static Button dev_options_buttons[] = {
+    #define DEV_PERF 0
+    {.str="Perf. info", .x=16, .y=16, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define DEV_N3DS 1
+    {.str="N3DS speedup", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define DEV_BACK 2
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static bool areyousure(C2D_Text *message);
@@ -253,6 +267,7 @@ static Button load_rom_buttons[] = {
     SETUP_BUTTONS(options_buttons); \
     SETUP_BUTTONS(video_settings_buttons); \
     SETUP_BUTTONS(colour_filter_buttons); \
+    SETUP_BUTTONS(dev_options_buttons); \
     SETUP_BUTTONS(sound_error_buttons); \
     SETUP_BUTTONS(touchscreen_settings_buttons); \
     SETUP_BUTTONS(about_buttons); \
@@ -264,10 +279,8 @@ static void draw_logo() {
     C2D_SceneBegin(screenTarget);
     C2D_ViewScale(1, -1);
     C2D_ViewTranslate(0, -512);
-    C2D_SpriteSetPos(&logo_sprite, 384 / 2 - 2, 224 / 2);
-    C2D_DrawSprite(&logo_sprite);
-    C2D_SpriteSetPos(&logo_sprite, 384 / 2 + 2, 224 / 2 + 256);
-    C2D_DrawSprite(&logo_sprite);
+    C2D_DrawSprite(&splash_left);
+    C2D_DrawSprite(&splash_right);
     C2D_ViewReset();
     C2D_SceneBegin(screen);
 }
@@ -313,6 +326,11 @@ static void game_menu(int initial_button) {
             return;
         case MAIN_MENU_RESET: // Reset
             if (areyousure(&text_areyousure_reset)) {
+                // clear screen buffer
+                C2D_TargetClear(screenTarget, 0);
+                C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+                video_flush(true);
+                C3D_FrameEnd(0);
                 guiop = AKILL | VBRESET;
                 return;
             } else return game_menu(MAIN_MENU_RESET);
@@ -965,11 +983,32 @@ static void colour_filter() {
     }
 }
 
+static void dev_options(int initial_button) {
+    bool new_3ds = false;
+    APT_CheckNew3DS(&new_3ds);
+    dev_options_buttons[DEV_N3DS].hidden = !new_3ds;
+    dev_options_buttons[DEV_PERF].toggle = tVBOpt.PERF_INFO;
+    dev_options_buttons[DEV_N3DS].toggle = tVBOpt.N3DS_SPEEDUP;
+    LOOP_BEGIN(dev_options_buttons, initial_button);
+    LOOP_END(dev_options_buttons);
+    switch (button) {
+        case DEV_PERF:
+            tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
+            return dev_options(DEV_PERF);
+        case DEV_N3DS:
+            tVBOpt.N3DS_SPEEDUP = !tVBOpt.N3DS_SPEEDUP;
+            osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
+            return dev_options(DEV_N3DS);
+        case DEV_BACK:
+            saveFileOptions();
+            return options(OPTIONS_DEV);
+    }
+}
+
 static void save_debug_info();
 static void options(int initial_button) {
     options_buttons[OPTIONS_FF].toggle = tVBOpt.FF_TOGGLE;
     options_buttons[OPTIONS_SOUND].toggle = tVBOpt.SOUND;
-    options_buttons[OPTIONS_PERF].toggle = tVBOpt.PERF_INFO;
     options_buttons[OPTIONS_DEBUG].hidden = !game_running;
     LOOP_BEGIN(options_buttons, initial_button);
     LOOP_END(options_buttons);
@@ -985,10 +1024,8 @@ static void options(int initial_button) {
             //if (tVBOpt.SOUND) sound_enable();
             //else sound_disable();
             return options(OPTIONS_SOUND);
-        case OPTIONS_PERF: // Performance info
-            tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
-            saveFileOptions();
-            return options(OPTIONS_PERF);
+        case OPTIONS_DEV: // Developer settings
+            return dev_options(0);
         case OPTIONS_ABOUT: // About
             return about();
         case OPTIONS_BACK: // Back
@@ -1066,11 +1103,11 @@ static void savestate_menu(int selected_state) {
         case SAVESTATE_BACK:
             return main_menu(MAIN_MENU_OPTIONS);
         case SAVE_SAVESTATE:
-            return emulation_sstate(selected_state) != D_EXIT ?
+            return emulation_sstate(selected_state) ?
                 savestate_error("Could not save state") :
                 0;
         case LOAD_SAVESTATE:
-            return emulation_lstate(selected_state) != D_EXIT ?
+            return emulation_lstate(selected_state) ?
                 savestate_error("Could not load state") :
                 0;
         case DELETE_SAVESTATE:
@@ -1352,6 +1389,11 @@ void guiInit() {
     C2D_SpriteFromSheet(&logo_sprite, sprite_sheet, sprites_logo_idx);
     C2D_SpriteSetCenter(&logo_sprite, 0.5, 0.5);
 
+    splash_sheet = C2D_SpriteSheetLoadFromMem(splash_t3x, splash_t3x_size);
+    C2D_SpriteFromSheet(&splash_left, splash_sheet, splash_splash_left_idx);
+    C2D_SpriteFromSheet(&splash_right, splash_sheet, splash_splash_right_idx);
+    C2D_SpriteSetPos(&splash_right, 0, 256);
+
     setTouchControls(buttons_on_screen);
 
     static_textbuf = C2D_TextBufNew(1024);
@@ -1377,7 +1419,7 @@ void guiInit() {
     STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
     STATIC_TEXT(&text_debug_filenames, "Please share debug_info.txt and\ndebug_replay.bin.gz in your bug\nreport.");
     STATIC_TEXT(&text_anykeyexit, "Press any key to exit");
-    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
+    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nSplash screen by Morintari\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
     STATIC_TEXT(&text_loading, "Loading...");
     STATIC_TEXT(&text_loaderr, "Failed to load ROM.");
     STATIC_TEXT(&text_unloaded, "The current ROM has been unloaded.");
@@ -1423,11 +1465,11 @@ void toggleVsync(bool enable) {
     u32 vtotal_top, vtotal_bottom;
     if (enable) {
         // 990 is closer to 50Hz but capture cards don't like when the two screens are out of sync
-        vtotal_top = old_2ds ? 494 : 989;
+        vtotal_top = old_2ds || tVBOpt.ANAGLYPH ? 494 : 989;
         vtotal_bottom = 494;
         startPeriodicVsync(frame_pacer_thread);
     } else {
-        vtotal_top = old_2ds ? 413 : 827;
+        vtotal_top = old_2ds || tVBOpt.ANAGLYPH ? 413 : 827;
         vtotal_bottom = 413;
         startPeriodic(frame_pacer_thread, 20000000);
     }
@@ -1437,7 +1479,7 @@ void toggleVsync(bool enable) {
     old_enable = enable;
     gspWaitForVBlank();
     if (!is_citra) {
-        // wait for touchscren's VCount to roll over to avoid potential glitches on IPS panels
+        // wait for touchscreen's VCount to roll over to avoid potential glitches on IPS panels
         // https://github.com/skyfloogle/red-viper/issues/46#issuecomment-2034326985
         u32 old_vcount, vcount = 0;
         do {
@@ -1447,6 +1489,21 @@ void toggleVsync(bool enable) {
     }
     GSPGPU_WriteHWRegs(0x400424, &vtotal_top, 4);
     GSPGPU_WriteHWRegs(0x400524, &vtotal_bottom, 4);
+}
+
+void toggleAnaglyph(bool enable, bool also_update_vsync) {
+    tVBOpt.ANAGLYPH = enable;
+    gfxSet3D(!enable);
+    if (!also_update_vsync) return;
+    // updating 3d mode resets VTotal, so turn off VSync in advance to fix the cache
+    toggleVsync(false);
+    // push 1 frame and wait for VBlank to reset VTotal
+    C3D_FrameBegin(0);
+    video_flush(true);
+    C3D_FrameEnd(0);
+    gspWaitForVBlank();
+    // re-enable VSync if applicable
+    toggleVsync(tVBOpt.VSYNC);
 }
 
 void aptBacklight(APT_HookType hook, void* param) {
@@ -1716,25 +1773,25 @@ bool guiShouldPause() {
     return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
 }
 
-int guiGetInput(bool do_switching) {
+int guiGetInput(bool ingame) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
     if (backlightEnabled) {
         if ((hidKeysHeld() & KEY_TOUCH) && guiShouldSwitch()) {
-            if (do_switching && (hidKeysDown() & KEY_TOUCH)) setTouchControls(!buttons_on_screen);
+            if (ingame && (hidKeysDown() & KEY_TOUCH)) setTouchControls(!buttons_on_screen);
             return 0;
         }
-        if (do_switching) {
+        if (ingame) {
             if (touch_pos.px < 32 && touch_pos.py >= 240-32) {
                 if ((tVBOpt.FF_TOGGLE ? hidKeysDown() : hidKeysHeld()) & KEY_TOUCH) {
                     tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
                 }
                 return 0;
             }
-        }
-        if (hidKeysDown() & KEY_TOUCH && (touch_pos.px <= 32 && touch_pos.py <= 32) && !old_2ds) {
-            backlightEnabled = toggleBacklight(false);
-            return 0;
+            if (hidKeysDown() & KEY_TOUCH && (touch_pos.px <= 32 && touch_pos.py <= 32) && !old_2ds) {
+                backlightEnabled = toggleBacklight(false);
+                return 0;
+            }
         }
         if (touch_pos.px < tVBOpt.PAUSE_RIGHT) {
             return 0;

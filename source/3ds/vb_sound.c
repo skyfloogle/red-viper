@@ -106,7 +106,7 @@ static void update_buf_with_freq(int ch, int samples) {
     }
 }
 
-void sound_update(u32 cycles) {
+void sound_update(uint32_t cycles) {
     int remaining_samples = (cycles - sound_state.last_cycles) / CYCLES_PER_SAMPLE;
     if (remaining_samples <= 0) return;
     sound_state.last_cycles += remaining_samples * CYCLES_PER_SAMPLE;
@@ -229,7 +229,7 @@ void sound_update(u32 cycles) {
 }
 
 // technically always u8 but gotta pass u16 because otherwise optimizations break everything
-void sound_write(int addr, u16 data) {
+void sound_write(int addr, uint16_t data) {
     sound_update(v810_state->cycles);
     SNDMEM(addr) = data;
     int ch = (addr >> 6) & 7;

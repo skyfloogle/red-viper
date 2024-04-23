@@ -67,6 +67,8 @@ int main() {
 
     replay_init();
 
+    toggleAnaglyph(tVBOpt.ANAGLYPH, false);
+
     guiop = 0;
     openMenu();
     if (guiop & GUIEXIT) {
@@ -78,7 +80,7 @@ int main() {
     clearCache();
     consoleClear();
 
-    osSetSpeedupEnable(true);
+    osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
 
     svcCreateEvent(&frame_event, RESET_STICKY);
 
@@ -158,7 +160,7 @@ int main() {
         replay_update(inputs);
 
         osTickCounterStart(&drcTickCounter);
-        err = drc_run();
+        err = v810_run();
         osTickCounterUpdate(&drcTickCounter);
         if (err) {
             showError(err);

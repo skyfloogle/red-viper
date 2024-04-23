@@ -29,9 +29,11 @@
 
 #include "arm_types.h"
 
+#ifdef LITERAL_POOL
 WORD* pool_ptr;
 WORD* pool_start;
-arm_inst* inst_ptr;
+#endif
+extern arm_inst* inst_ptr;
 
 // Conditional instructions
 

@@ -51,12 +51,18 @@
 
 #include "replay.h"
 
+HWORD* rom_block_map;
+HWORD* rom_entry_map;
+BYTE* rom_data_code_map;
+BYTE reg_usage[32];
 WORD* cache_start;
 WORD* cache_pos;
+exec_block* block_ptr_start;
 int block_pos = 1;
 
 static v810_instruction *inst_cache;
 static arm_inst *trans_cache;
+arm_inst *inst_ptr;
 
 // Maps the most used registers in the block to V810 registers
 static void drc_mapRegs(exec_block* block) {
@@ -636,8 +642,8 @@ static int drc_translateBlock() {
 
     exec_block *block = NULL;
 
-    WORD* pool_cache_start = NULL;
 #ifdef LITERAL_POOL
+    WORD* pool_cache_start = NULL;
     pool_cache_start = linearAlloc(256*4);
 #endif
     WORD pool_offset = 0;
@@ -670,7 +676,9 @@ static int drc_translateBlock() {
         phys_regs[i] = drc_getPhysReg(i, block->reg_map);
 
     inst_ptr = &trans_cache[0];
+#ifdef LITERAL_POOL
     pool_ptr = pool_cache_start;
+#endif
 
     #define LOAD_REG1() \
         if (arm_reg1 < 4) { \
@@ -996,26 +1004,20 @@ static int drc_translateBlock() {
                 reg2_modified = true;
                 break;
             case V810_OP_DIV: // div reg1, reg2
-                // reg2/reg1 -> reg2 (__divsi3)
-                // reg2%reg1 -> r30 (__modsi3)
+                // reg2/reg1 -> reg2 (r0)
+                // reg2%reg1 -> r30 (r1)
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_MODSI*4, 0);
+                ADD_I(2, 2, DRC_RELOC_IDIVMOD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                RELOAD_REG1(1);
-                RELOAD_REG2(2);
-                if (!phys_regs[30])
-                    STR_IO(0, 11, 30 * 4);
-                else
-                    MOV(phys_regs[30], 0);
-                MOV(0, 2);
-
-                LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_DIVSI*4, 0);
-                BLX(ARM_COND_AL, 2);
-
+                if (inst_cache[i].reg2 != 30) {
+                    if (!phys_regs[30])
+                        STR_IO(1, 11, 30 * 4);
+                    else
+                        MOV(phys_regs[30], 1);
+                }
                 SAVE_REG2(0);
 
                 // flags
@@ -1026,21 +1028,15 @@ static int drc_translateBlock() {
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_UMODSI*4, 0);
+                ADD_I(2, 2, DRC_RELOC_UIDIVMOD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                RELOAD_REG1(1);
-                RELOAD_REG2(2);
-                if (!phys_regs[30])
-                    STR_IO(0, 11, 30 * 4);
-                else
-                    MOV(phys_regs[30], 0);
-                MOV(0, 2);
-
-                LDR_IO(2, 11, 69 * 4);
-                ADD_I(2, 2, DRC_RELOC_UDIVSI*4, 0);
-                BLX(ARM_COND_AL, 2);
-
+                if (inst_cache[i].reg2 != 30) {
+                    if (!phys_regs[30])
+                        STR_IO(1, 11, 30 * 4);
+                    else
+                        MOV(phys_regs[30], 1);
+                }
                 SAVE_REG2(0);
 
                 // flags
@@ -1747,14 +1743,20 @@ exec_block* drc_getNextBlockStruct() {
 
 // Run V810 code until the next frame interrupt
 int drc_run() {
-    static unsigned int clocks;
+    unsigned int clocks = v810_state->cycles;
     exec_block* cur_block = NULL;
     WORD* entrypoint;
     WORD entry_PC;
 
-    bool handled_timer_hack = false;
-
-    v810_state->ret = 0;
+    // set up arm flags
+    {
+        WORD psw = v810_state->S_REG[PSW];
+        WORD cpsr = v810_state->flags;
+        cpsr &= 0x0fffffff;
+        cpsr |= (psw & 0x3) << 30;
+        cpsr |= (psw & 0xc) << 26;
+        v810_state->flags = cpsr;
+    }
 
     while (true) {
         serviceDisplayInt(clocks, v810_state->PC);
@@ -1798,14 +1800,24 @@ int drc_run() {
 
         dprintf(4, "[DRC]: end - 0x%lx\n", v810_state->PC);
         if (v810_state->PC < V810_ROM1.lowaddr || v810_state->PC > V810_ROM1.highaddr) {
-            dprintf(0, "Last entry: 0x%lx\n", entry_PC);
-            return DRC_ERR_BAD_PC;
+            //dprintf(0, "Last entry: 0x%lx\n", entry_PC);
+            //return DRC_ERR_BAD_PC;
+            break;
         }
 
         if (v810_state->ret) {
-            v810_state->ret = 0;
             break;
         }
+    }
+
+    // sync arm flags to PSW
+    {
+        WORD cpsr = v810_state->flags;
+        WORD psw = v810_state->S_REG[PSW];
+        psw &= ~0xf;
+        psw |= cpsr >> 30;
+        psw |= (cpsr >> 26) & 0xc;
+        v810_state->S_REG[PSW] = psw;
     }
 
     return 0;
@@ -1856,11 +1868,6 @@ void drc_dumpDebugInfo(int code) {
     fprintf(f, "Cycles: %ld\n", v810_state->cycles);
     fprintf(f, "Cache start: %p\n", cache_start);
     fprintf(f, "Cache pos: %p\n", cache_pos);
-
-    if (tVBOpt.DEBUG) {
-        debug_dumpdrccache();
-        debug_dumpvbram();
-    }
 
     replay_save("debug_replay.bin");
 

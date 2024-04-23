@@ -2,10 +2,8 @@
 
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/common source/arm-linux source/common/inih
+SOURCES		:=	source/common source/linux-test source/common/inih
 INCLUDES	:=	include source/common/inih
-
-ARCH	:=	-march=armv6 -mfloat-abi=hard
 
 CFLAGS	:=	-Wall -Wno-unused \
 			-fomit-frame-pointer -ffast-math \
@@ -28,7 +26,7 @@ INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 CFLAGS	+=	$(INCLUDE)
 ASFLAGS	:=	-g $(ARCH)
-LIBS	:=	-lm
+LIBS	:=	-lm -lminizip -lz
 
 all: slowdebug
 release:	CFLAGS += -O3 -DDEBUGLEVEL=0

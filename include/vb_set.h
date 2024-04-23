@@ -1,7 +1,7 @@
 #ifndef VB_SET_H_
 #define VB_SET_H_
 
-#include "3ds/types.h"
+#include <stdbool.h>
 
 #define D_VGA       0
 #define D_VESA1     1
@@ -79,6 +79,8 @@ typedef struct VB_OPT {
     unsigned long CRC32; // CRC32 of ROM
     bool  PERF_INFO;
     bool  VSYNC;
+    bool  N3DS_SPEEDUP;
+    bool  ANAGLYPH;
 } VB_OPT;
 
 void setDefaults(void);

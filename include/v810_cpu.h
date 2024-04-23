@@ -69,7 +69,7 @@
 typedef struct {
     WORD lowaddr;  // Start of ram
     WORD highaddr; // end of ram
-    WORD off;              // Displacement... (off+addr = pmempry...)
+    size_t off;    // Displacement... (off+addr = pmempry...)
     BYTE *pmemory; // Pointer to memory
 } V810_MEMORYFETCH;
 
@@ -99,7 +99,7 @@ typedef struct {
     BYTE ret;
 } cpu_state;
 
-cpu_state* v810_state;
+extern cpu_state* v810_state;
 
 ///////////////////////////////////////////////////////////////////
 // Define CPU Globals
@@ -132,5 +132,7 @@ void v810_exp(WORD iNum, WORD eCode);
 
 int serviceInt(unsigned int cycles, WORD PC);
 int serviceDisplayInt(unsigned int cycles, WORD PC);
+
+int v810_run();
 
 #endif

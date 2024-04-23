@@ -1,9 +1,14 @@
 #ifndef DRC_CORE_H
 #define DRC_CORE_H
 
-#include <3ds.h>
 #include "vb_types.h"
 #include "arm_emit.h"
+
+#if __ARM_ARCH == 6
+#define DRC_AVAILABLE true
+#else
+#define DRC_AVAILABLE false
+#endif
 
 #define MAX_ROM_SIZE 0x1000000
 #define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
@@ -24,21 +29,20 @@ enum {
     DRC_ERR_NO_DYNAREC  = 3,
     DRC_ERR_NO_BLOCKS   = 4,
     DRC_ERR_CACHE_FULL  = 5,
+    DRC_ERR_BAD_INST    = 6,
 };
 
 enum {
-    DRC_RELOC_DIVSI     = 0,
-    DRC_RELOC_MODSI     = 1,
-    DRC_RELOC_UDIVSI    = 2,
-    DRC_RELOC_UMODSI    = 3,
-    DRC_RELOC_RBYTE     = 4,
-    DRC_RELOC_RHWORD    = 5,
-    DRC_RELOC_RWORD     = 6,
-    DRC_RELOC_WBYTE     = 7,
-    DRC_RELOC_WHWORD    = 8,
-    DRC_RELOC_WWORD     = 9,
-    DRC_RELOC_FPP       = 10,
-    DRC_RELOC_BSTR      = 26,
+    DRC_RELOC_IDIVMOD   = 0,
+    DRC_RELOC_UIDIVMOD  = 1,
+    DRC_RELOC_RBYTE     = 2,
+    DRC_RELOC_RHWORD    = 3,
+    DRC_RELOC_RWORD     = 4,
+    DRC_RELOC_WBYTE     = 5,
+    DRC_RELOC_WHWORD    = 6,
+    DRC_RELOC_WWORD     = 7,
+    DRC_RELOC_FPP       = 8,
+    DRC_RELOC_BSTR      = 24,
 };
 
 #define END_BLOCK 0xFF
@@ -69,14 +73,8 @@ typedef struct {
     bool is_branch_target;
 } v810_instruction;
 
-HWORD* rom_block_map;
-HWORD* rom_entry_map;
-BYTE* rom_data_code_map;
-BYTE reg_usage[32];
 extern WORD* cache_start;
 extern WORD* cache_pos;
-exec_block* block_ptr_start;
-extern void* cache_dump_bin;
 
 int __divsi3(int a, int b);
 int __modsi3(int a, int b);

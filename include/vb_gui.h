@@ -1,8 +1,6 @@
 #ifndef VB_GUI_H
 #define VB_GUI_H
 
-#include "3ds.h"
-#include "allegro_compat.h"
 
 #define AKILL           0x01
 #define GUISTATUS       0x02
@@ -59,11 +57,14 @@ void openMenu();
 void showSoundError();
 void showError(int code);
 
-extern Thread save_thread;
-
 bool guiShouldPause();
 void toggleVsync(bool enable);
+void toggleAnaglyph(bool enable, bool also_update_vsync);
+int guiGetInput(bool ingame);
+
+#ifdef __3DS__
+extern Thread save_thread;
 void aptBacklight(APT_HookType hook, void* param);
-int guiGetInput(bool do_switching);
+#endif
 
 #endif //VB_GUI_H

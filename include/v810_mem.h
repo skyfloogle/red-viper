@@ -26,6 +26,11 @@ typedef struct{
     HWORD GPLT[4];
     HWORD JPLT[4];
     HWORD BKCOL;
+    // timing
+    WORD lastfb;
+    BYTE rowcount;
+    bool drawing;
+    bool newframe;
 } V810_VIPREGDAT;
 
 typedef struct {
@@ -37,6 +42,9 @@ typedef struct {
     BYTE tReset;    //Timer Reset register, not publicly visible
     HWORD tTHW;     //Timer TempHWord, 	not publicly visible
     WORD tTRC;      //Timer TempResolutionCount, not publicly visible
+    WORD lasttime;
+    WORD lastinput;
+    WORD ticks;
     SWORD tCount;  //Timer Counter register, not publicly visible
     BYTE SHB;       //Serial Higher Byte,   0x02000014  //Read Only
     BYTE SLB;       //Serial Lower Byte,    0x02000010  //Read Only
@@ -53,23 +61,10 @@ extern V810_MEMORYFETCH V810_DISPLAY_RAM;
 extern V810_MEMORYFETCH V810_SOUND_RAM;
 extern V810_MEMORYFETCH V810_VB_RAM;
 extern V810_MEMORYFETCH V810_GAME_RAM;
+extern V810_REGFETCH    V810_VIPCREG;
+extern V810_REGFETCH    V810_HCREG;
 extern V810_VIPREGDAT   tVIPREG;
 extern V810_HREGDAT     tHReg;
-
-//////////////////////////////////////////////////////////
-// Global CPU Objects
-V810_MEMORYFETCH V810_ROM1; // US Games
-
-V810_MEMORYFETCH V810_DISPLAY_RAM;
-V810_MEMORYFETCH V810_SOUND_RAM;
-V810_MEMORYFETCH V810_VB_RAM;
-V810_MEMORYFETCH V810_GAME_RAM;
-
-V810_REGFETCH V810_VIPCREG;
-V810_REGFETCH V810_HCREG;
-
-V810_VIPREGDAT tVIPREG;
-V810_HREGDAT   tHReg;
 
 extern int is_sram; //Flag if writes to sram...
 
