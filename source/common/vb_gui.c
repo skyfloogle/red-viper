@@ -9,6 +9,7 @@
 #include "vb_types.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"
+#include "vb_dsp.h"
 #include "vb_gui.h"
 #include "vb_set.h"
 #include "vb_sound.h"
@@ -116,9 +117,6 @@ int emulation_rmstate(int state) {
 }
 
 int emulation_sstate(int state) {
-    int i;
-    int highbyte;
-    int lowbyte;
     FILE* state_file;
     char* sspath = get_savestate_path(state);
 
@@ -129,67 +127,66 @@ int emulation_sstate(int state) {
         return 1;
     }
 
+    WORD size;
+
+    #define FWRITE(buffer, size, count, stream) if (fwrite(buffer, size, count, stream) < (count)) goto bail;
+    #define WRITE_VAR(V) FWRITE(&V, 1, sizeof(V), state_file)
+
     // Write header
-    putw(0x53534452, state_file); // "RDSS"
-    putw(SAVESTATE_VER, state_file); // version number
-    fwrite(&tVBOpt.CRC32, 4, 1, state_file); // CRC32
+    WORD id = 0x53535652; // "RVSS"
+    WORD ver = SAVESTATE_VER; // version number
+    WRITE_VAR(id);
+    WRITE_VAR(ver);
+    WRITE_VAR(tVBOpt.CRC32); // CRC32
 
     // Write registers
-    fwrite(v810_state->P_REG, 4, 32, state_file);
-    fwrite(v810_state->S_REG, 4, 32, state_file);
-    fwrite(&v810_state->PC, 4, 1, state_file);
+    WRITE_VAR(v810_state->P_REG);
+    WRITE_VAR(v810_state->S_REG);
+    WRITE_VAR(v810_state->PC);
+    WRITE_VAR(v810_state->cycles);
+    WRITE_VAR(v810_state->except_flags);
 
-    // Write the VIP registers first (could be done better!)
-    fwrite(&tVIPREG.INTPND, 2, 1, state_file);
-    fwrite(&tVIPREG.INTENB, 2, 1, state_file);
-    fwrite(&tVIPREG.INTCLR, 2, 1, state_file);
-    fwrite(&tVIPREG.DPSTTS, 2, 1, state_file);
-    fwrite(&tVIPREG.DPCTRL, 2, 1, state_file);
-    fwrite(&tVIPREG.BRTA, 2, 1, state_file);
-    fwrite(&tVIPREG.BRTB, 2, 1, state_file);
-    fwrite(&tVIPREG.BRTC, 2, 1, state_file);
-    fwrite(&tVIPREG.REST, 2, 1, state_file);
-    fwrite(&tVIPREG.FRMCYC, 2, 1, state_file);
-    fwrite(&tVIPREG.XPSTTS, 2, 1, state_file);
-    fwrite(&tVIPREG.XPCTRL, 2, 1, state_file);
-    fwrite(&tVIPREG.SPT[0], 2, 1, state_file);
-    fwrite(&tVIPREG.SPT[1], 2, 1, state_file);
-    fwrite(&tVIPREG.SPT[2], 2, 1, state_file);
-    fwrite(&tVIPREG.SPT[3], 2, 1, state_file);
-    fwrite(&tVIPREG.GPLT[0], 2, 1, state_file);
-    fwrite(&tVIPREG.GPLT[1], 2, 1, state_file);
-    fwrite(&tVIPREG.GPLT[2], 2, 1, state_file);
-    fwrite(&tVIPREG.GPLT[3], 2, 1, state_file);
-    fwrite(&tVIPREG.JPLT[0], 2, 1, state_file);
-    fwrite(&tVIPREG.JPLT[1], 2, 1, state_file);
-    fwrite(&tVIPREG.JPLT[2], 2, 1, state_file);
-    fwrite(&tVIPREG.JPLT[3], 2, 1, state_file);
-    fwrite(&tVIPREG.BKCOL, 2, 1, state_file);
-    fwrite(&tVIPREG.tFrameBuffer, 2, 1, state_file); //not publicly visible
-    fwrite(&tVIPREG.tFrame, 2, 1, state_file); //not publicly visible
+    // Write VIP registers
+    size = sizeof(tVIPREG);
+    WRITE_VAR(size);
+    WRITE_VAR(tVIPREG);
 
     // Write hardware control registers
-    for(i=0x02000000;i<=0x02000028;i=i+4) {
-        fputc(hcreg_rbyte(i), state_file);
-    }
+    size = sizeof(tHReg);
+    WRITE_VAR(size);
+    WRITE_VAR(tHReg);
 
-    fwrite(&tHReg.tTHW, 2, 1, state_file);   //not publicly visible
-    fwrite(&tHReg.tCount, 2, 1, state_file); //not publicly visible
+    // Write audio registers
+    size = sizeof(sound_state);
+    WRITE_VAR(size);
+    WRITE_VAR(sound_state);
 
-    // Next we write all the RAM contents
-    fwrite(V810_DISPLAY_RAM.pmemory, 1, V810_DISPLAY_RAM.highaddr - V810_DISPLAY_RAM.lowaddr, state_file);
-    fwrite(V810_SOUND_RAM.pmemory, 1, V810_SOUND_RAM.highaddr - V810_SOUND_RAM.lowaddr, state_file);
-    fwrite(V810_VB_RAM.pmemory, 1, V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr, state_file);
-    fwrite(V810_GAME_RAM.pmemory, 1, V810_GAME_RAM.highaddr - V810_GAME_RAM.lowaddr, state_file);
+    // Write RAM
+    #define WRITE_MEMORY(area) \
+        size = area.highaddr + 1 - area.lowaddr; \
+        WRITE_VAR(size); \
+        FWRITE(area.pmemory, 1, size, state_file);
+    WRITE_MEMORY(V810_DISPLAY_RAM);
+    WRITE_MEMORY(V810_SOUND_RAM);
+    WRITE_MEMORY(V810_VB_RAM);
+    WRITE_MEMORY(V810_SOUND_RAM);
+    #undef WRITE_MEMORY
+    #undef WRITE_VAR
+    #undef FWRITE
 
     fclose(state_file);
     return 0;
+
+    bail:
+    fclose(state_file);
+    return 1;
 }
 
 int emulation_lstate(int state) {
     int i;
     int ret;
-    int id,ver,crc;
+    uint32_t size;
+    uint32_t id,ver,crc;
     FILE* state_file;
     char* sspath = get_savestate_path(state);
 
@@ -197,79 +194,106 @@ int emulation_lstate(int state) {
     free(sspath);
 
     if(state_file==NULL) {
-//        alert("Error reading file!", "Check that it still exists", NULL, b_ok, NULL, 1, (int)NULL);
         return 1;
     }
 
-    // fix for cheat searching!
-//    cheat_save_old_ram();
+    #define FREAD(buffer,size,count,stream) if (fread(buffer,size,count,stream) < (count)) goto bail;
 
     // Load header
-    fread(&id, 4, 1, state_file);
-    fread(&ver, 4, 1, state_file);
-    if ((id != 0x53534452) || (ver != SAVESTATE_VER)) {
-//        sprintf(str1, "ID:      %c%c%c%c",(id>>24),((id>>16)&0xFF),((id>>8)&0xFF),(id&0xFF));
-//        sprintf(str2, "Version: %04x",ver);
-//        if (alert("Invalid header. Load anyway?", str1, str2, b_ok, b_cancel, KEY_ENTER, KEY_ESC) == 2)
-        return 1;
+    FREAD(&id, 4, 1, state_file);
+    FREAD(&ver, 4, 1, state_file);
+    if ((id != 0x53535652) || (ver != SAVESTATE_VER)) {
+        goto bail;
     }
-    fread(&crc, 4, 1, state_file);
+    FREAD(&crc, 4, 1, state_file);
     if (crc != tVBOpt.CRC32) {
-//        sprintf(str1, "Loaded crc32:   %08X",crc);
-//        sprintf(str2, "Expected crc32: %08X",tVBOpt.CRC32);
-//        if (alert("Invalid CRC32. Load anyway?", str1, str2, b_ok, b_cancel, KEY_ENTER, KEY_ESC) == 2)
-        return 1;
+        goto bail;
     }
 
     //Load registers
-    fread(v810_state->P_REG, 4, 32, state_file);
-    fread(v810_state->S_REG, 4, 32, state_file);
-    fread(&v810_state->PC, 4, 1, state_file);
+    cpu_state new_state = *v810_state;
+    #define READ_VAR(V) FREAD(&V, 1, sizeof(V), state_file)
+    READ_VAR(new_state.P_REG);
+    READ_VAR(new_state.S_REG);
+    READ_VAR(new_state.PC);
+    READ_VAR(new_state.cycles);
+    READ_VAR(new_state.except_flags);
 
     //Load VIP registers
-    fread(&tVIPREG.INTPND, 2, 1, state_file);
-    fread(&tVIPREG.INTENB, 2, 1, state_file);
-    fread(&tVIPREG.INTCLR, 2, 1, state_file);
-    fread(&tVIPREG.DPSTTS, 2, 1, state_file);
-    fread(&tVIPREG.DPCTRL, 2, 1, state_file);
-    fread(&tVIPREG.BRTA, 2, 1, state_file);
-    fread(&tVIPREG.BRTB, 2, 1, state_file);
-    fread(&tVIPREG.BRTC, 2, 1, state_file);
-    fread(&tVIPREG.REST, 2, 1, state_file);
-    fread(&tVIPREG.FRMCYC, 2, 1, state_file);
-    fread(&tVIPREG.XPSTTS, 2, 1, state_file);
-    fread(&tVIPREG.XPCTRL, 2, 1, state_file);
-    fread(&tVIPREG.SPT[0], 2, 1, state_file);
-    fread(&tVIPREG.SPT[1], 2, 1, state_file);
-    fread(&tVIPREG.SPT[2], 2, 1, state_file);
-    fread(&tVIPREG.SPT[3], 2, 1, state_file);
-    fread(&tVIPREG.GPLT[0], 2, 1, state_file);
-    fread(&tVIPREG.GPLT[1], 2, 1, state_file);
-    fread(&tVIPREG.GPLT[2], 2, 1, state_file);
-    fread(&tVIPREG.GPLT[3], 2, 1, state_file);
-    fread(&tVIPREG.JPLT[0], 2, 1, state_file);
-    fread(&tVIPREG.JPLT[1], 2, 1, state_file);
-    fread(&tVIPREG.JPLT[2], 2, 1, state_file);
-    fread(&tVIPREG.JPLT[3], 2, 1, state_file);
-    fread(&tVIPREG.BKCOL, 2, 1, state_file);
-    fread(&tVIPREG.tFrameBuffer, 2, 1, state_file); //not publicly visible
-    fread(&tVIPREG.tFrame, 2, 1, state_file); //not publicly visible
+    V810_VIPREGDAT new_vipreg;
+    READ_VAR(size);
+    if (size != sizeof(new_vipreg)) {
+        goto bail;
+    }
+    READ_VAR(new_vipreg);
+    //Validity checks
+    if (new_vipreg.tFrameBuffer > 2 ||
+        new_vipreg.rowcount > 0x21
+    ) {
+        goto bail;
+    }
 
     //Load hardware control registers
-    for(i=0x02000000;i<=0x02000028;i=i+4) {
-        hcreg_wbyte(i, fgetc(state_file));
+    V810_HREGDAT new_hreg;
+    READ_VAR(size);
+    if (size != sizeof(new_hreg)) {
+        goto bail;
     }
-    fread(&tHReg.tTHW, 2, 1, state_file); //not publicly visible
-    fread(&tHReg.tCount, 2, 1, state_file); //not publicly visible
+    READ_VAR(new_hreg);
+    //Validity checks
+    if (new_hreg.ticks >= 5) {
+        goto bail;
+    }
+
+    //Load audio registers
+    SOUND_STATE new_soundstate;
+    READ_VAR(size);
+    if (size != sizeof(new_soundstate)) {
+        goto bail;
+    }
+    READ_VAR(new_soundstate);
+    //Validity checks
+    if (new_soundstate.modulation_counter > 32) goto bail;
+    for (int i = 0; i < 6; i++) {
+        if (new_soundstate.channels[i].sample_pos >= 32) goto bail;
+    }
 
     //Load the RAM
-    fread(V810_DISPLAY_RAM.pmemory, 1, V810_DISPLAY_RAM.highaddr - V810_DISPLAY_RAM.lowaddr, state_file);
-    fread(V810_SOUND_RAM.pmemory, 1, V810_SOUND_RAM.highaddr - V810_SOUND_RAM.lowaddr, state_file);
-    fread(V810_VB_RAM.pmemory, 1, V810_VB_RAM.highaddr - V810_VB_RAM.lowaddr, state_file);
-    fread(V810_GAME_RAM.pmemory, 1, V810_GAME_RAM.highaddr - V810_GAME_RAM.lowaddr, state_file);
+    #define READ_MEMORY(area) \
+        FREAD(&size, 4, 1, state_file); \
+        if (size != area.highaddr + 1 - area.lowaddr) goto bail; \
+        FREAD(area.pbackup, 1, size, state_file);
+    READ_MEMORY(V810_DISPLAY_RAM);
+    READ_MEMORY(V810_SOUND_RAM);
+    READ_MEMORY(V810_VB_RAM);
+    READ_MEMORY(V810_SOUND_RAM);
+    #undef READ_MEMORY
+    #undef READ_VAR
+
+    fgetc(state_file); // set eof flag
+    if (!feof(state_file)) goto bail;
 
     fclose(state_file);
 
+    // Everything was loaded safely, now apply
+    memcpy(v810_state, &new_state, sizeof(new_state));
+    memcpy(&tVIPREG, &new_vipreg, sizeof(new_vipreg));
+    memcpy(&tHReg, &new_hreg, sizeof(new_hreg));
+    memcpy(&sound_state, &new_soundstate, sizeof(new_soundstate));
+    #define APPLY_MEMORY(area) \
+        memcpy(area.pmemory, area.pbackup, area.highaddr + 1 - area.lowaddr)
+    APPLY_MEMORY(V810_DISPLAY_RAM);
+    APPLY_MEMORY(V810_SOUND_RAM);
+    APPLY_MEMORY(V810_VB_RAM);
+    APPLY_MEMORY(V810_SOUND_RAM);
+    #undef APPLY_MEMORY
+
+    clearCache();
+
     guiop = AKILL;
     return 0;
+
+    bail:
+    fclose(state_file);
+    return 1;
 }

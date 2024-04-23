@@ -37,10 +37,10 @@ typedef struct {
     BYTE TCR;       //Timer Controll Reg,   0x02000020
     BYTE THB;       //Timer Higher Byte,    0x0200001C
     BYTE TLB;       //Timer Lower Byte,     0x02000018
+    BYTE ticks;
     HWORD tTHW;     //Timer TempHWord, 	not publicly visible
     WORD lasttime;
     WORD lastinput;
-    WORD ticks;
     SWORD tCount;  //Timer Counter register, not publicly visible
     BYTE SHB;       //Serial Higher Byte,   0x02000014  //Read Only
     BYTE SLB;       //Serial Lower Byte,    0x02000010  //Read Only

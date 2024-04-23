@@ -5,6 +5,24 @@
 #define VB_SOUND_H_
 
 #include <stdbool.h>
+#include <stdint.h>
+
+typedef struct {
+    uint8_t shutoff_time, envelope_time, envelope_value, sample_pos;
+    uint32_t freq_time;
+} ChannelState;
+typedef struct {
+    ChannelState channels[6];
+    bool modulation_enabled;
+    uint8_t modulation_counter;
+    int8_t sweep_time;
+    int16_t sweep_frequency;
+    uint16_t effect_time;
+    uint32_t last_cycles;
+    uint16_t noise_shift;
+    int8_t shutoff_divider, envelope_divider;
+} SOUND_STATE;
+extern SOUND_STATE sound_state;
 
 //wave data number does not necessarily correspond to channel number
 //(value set in Waveform RAM Address)

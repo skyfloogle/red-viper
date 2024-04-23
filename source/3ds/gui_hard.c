@@ -1103,11 +1103,11 @@ static void savestate_menu(int selected_state) {
         case SAVESTATE_BACK:
             return main_menu(MAIN_MENU_OPTIONS);
         case SAVE_SAVESTATE:
-            return emulation_sstate(selected_state) ?
+            return emulation_sstate(selected_state) != 0 ?
                 savestate_error("Could not save state") :
                 0;
         case LOAD_SAVESTATE:
-            return emulation_lstate(selected_state) ?
+            return emulation_lstate(selected_state) != 0 ?
                 savestate_error("Could not load state") :
                 0;
         case DELETE_SAVESTATE:

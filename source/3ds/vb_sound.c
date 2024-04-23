@@ -12,21 +12,7 @@
 #define SAMPLE_COUNT (SAMPLE_RATE / 100)
 #define BUF_COUNT 9
 
-typedef struct {
-    u8 shutoff_time, envelope_time, envelope_value, sample_pos;
-    u32 freq_time;
-} ChannelState;
-static struct {
-    ChannelState channels[6];
-    bool modulation_enabled;
-    u8 modulation_counter;
-    s8 sweep_time;
-    s16 sweep_frequency;
-    u16 effect_time;
-    u32 last_cycles;
-    u16 noise_shift;
-    s8 shutoff_divider, envelope_divider;
-} sound_state;
+SOUND_STATE sound_state;
 
 static int constant_sample[5] = {-1, -1, -1, -1, -1};
 
