@@ -88,27 +88,37 @@ void save_sram(void) {
 }
 
 char * get_savestate_path(int state) {
-    char * sspath;
-    sspath = (char *) malloc(131 * sizeof(char));
-    char file_name[8];
-    char * last_slash = strrchr(tVBOpt.ROM_PATH, '/');
-    strncpy(sspath, tVBOpt.ROM_PATH, last_slash - tVBOpt.ROM_PATH);
-    sspath[last_slash - tVBOpt.ROM_PATH] = '\0';
-    strcat(sspath, "/vb_savestates");
-    if(stat(sspath, &st) == -1)
-        mkdir(sspath, 0777);
-    strcat(sspath, tVBOpt.ROM_PATH + (last_slash - tVBOpt.ROM_PATH));
-    sspath[strlen(sspath) - 3] = '\0';
-    if(stat(sspath, &st) == -1)
-        mkdir(sspath, 0777);
-    sprintf(file_name, "/%d.rds", state);
-    strcat(sspath, file_name);
-
+    char *last_slash = strrchr(tVBOpt.ROM_PATH, '/');
+    if (last_slash == NULL) return NULL;
+    // maxpath measured to be around 260, but pick 300 just to be safe
+    const int MAX_PATH_LEN = 300;
+    char *sspath = (char *) malloc(MAX_PATH_LEN * sizeof(char));
+    snprintf(sspath, MAX_PATH_LEN, "sdmc:/red-viper/savestates/%s", last_slash + 1);
+    int sspath_len = strlen(sspath);
+    char *end = strrchr(sspath, '.');
+    if (!end) end = sspath + strlen(sspath);
+    if (end - sspath + 20 >= MAX_PATH_LEN) goto bail;
+    *end = 0;
+    if (stat("sdmc:/red-viper", &st) == -1) {
+        if (mkdir("sdmc:/red-viper", 0777)) goto bail;
+    }
+    if (stat("sdmc:/red-viper/savestates", &st) == -1) {
+        if (mkdir("sdmc:/red-viper/savestates", 0777)) goto bail;
+    }
+    if (stat(sspath, &st) == -1) {
+        if (mkdir(sspath, 0777)) goto bail;
+    }
+    snprintf(end, 10, "/st%d.rds", state);
     return sspath;
+
+    bail:
+    free(sspath);
+    return NULL;
 }
 
 int emulation_rmstate(int state) {
     char* sspath = get_savestate_path(state);
+    if (sspath == NULL) return 1;
 
     int result = remove(sspath);
     free(sspath);
@@ -119,6 +129,7 @@ int emulation_rmstate(int state) {
 int emulation_sstate(int state) {
     FILE* state_file;
     char* sspath = get_savestate_path(state);
+    if (sspath == NULL) return 1;
 
     state_file = fopen(sspath, "wb");
     free(sspath);
@@ -189,6 +200,7 @@ int emulation_lstate(int state) {
     uint32_t id,ver,crc;
     FILE* state_file;
     char* sspath = get_savestate_path(state);
+    if (sspath == NULL) return 1;
 
     state_file = fopen(sspath, "rb");
     free(sspath);
@@ -280,8 +292,12 @@ int emulation_lstate(int state) {
     memcpy(&tVIPREG, &new_vipreg, sizeof(new_vipreg));
     memcpy(&tHReg, &new_hreg, sizeof(new_hreg));
     memcpy(&sound_state, &new_soundstate, sizeof(new_soundstate));
+    BYTE *tmp;
     #define APPLY_MEMORY(area) \
-        memcpy(area.pmemory, area.pbackup, area.highaddr + 1 - area.lowaddr)
+        tmp = area.pmemory; \
+        area.pmemory = area.pbackup; \
+        area.pbackup = tmp; \
+        area.off = (size_t)area.pmemory - area.lowaddr;
     APPLY_MEMORY(V810_DISPLAY_RAM);
     APPLY_MEMORY(V810_SOUND_RAM);
     APPLY_MEMORY(V810_VB_RAM);
