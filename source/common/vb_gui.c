@@ -108,7 +108,7 @@ char * get_savestate_path(int state) {
     if (stat(sspath, &st) == -1) {
         if (mkdir(sspath, 0777)) goto bail;
     }
-    snprintf(end, 10, "/st%d.rds", state);
+    snprintf(end, 10, "/st%d.rvs", state);
     return sspath;
 
     bail:
