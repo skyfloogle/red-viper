@@ -438,9 +438,11 @@ static void rom_loader() {
         if (filename++) {
             for (int i = 0; i < fileCount; i++) {
                 if (strcmp(files[i], filename) == 0) {
+                    i += dirCount;
                     int button_y = i * entry_height;
                     scroll_pos = C2D_Clamp(button_y - (240 / 2), scroll_top, scroll_bottom);
                     cursor = i;
+                    break;
                 }
             }
         }
