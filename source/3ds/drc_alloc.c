@@ -43,7 +43,7 @@ WORD *drc_alloc(uint32_t inst_count) {
         mark_block(new_block, inst_count, -1);
         return new_block;
     }
-    if ((cache_pos - cache_start + inst_count)*4 > CACHE_SIZE)
+    if ((cache_pos - cache_start + inst_count)*4 >= CACHE_SIZE)
         return NULL;
     WORD *new_block = cache_pos;
     cache_pos += inst_count + 1;
