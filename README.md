@@ -8,15 +8,13 @@ hardware-accelerated renderer to achieve high performance on the 3DS's limited h
 ## Features
 * All officially licensed games are playable at full speed, even on the original 3DS
 * 3D support
-* Game saves are supported
+* Game saves and savestates are supported
 * Map either the A/B buttons or the right D-Pad to the face buttons, with the other being on the touch screen
 * New 3DS C-Stick is also supported
 * Configurable face button mapping
 * Configurable color filter
 
 Future additions:
-* Savestates
-* Homebrew support
 * Circle Pad Pro support
 * More versatile color filter
 * A forwarder to allow loading a specific game from the home menu
@@ -144,5 +142,5 @@ Reality Boy is in no way affiliated with either of these parties
 * danielps - Initial 3DS port and V810 dynarec.
 * Floogle - 3DS hardware renderer; many optimizations, bugfixes, and other improvements.
 * djedditt - Enhanced 3D depth slider support.
-* Morintari - splash screen artwork (for next version)
+* Morintari - splash screen artwork
 * All GitHub contributors
