@@ -1094,6 +1094,8 @@ static void savestate_menu(int selected_state) {
     C2D_TextParse(&selected_state_text, dynamic_textbuf, dynamic_text);
     C2D_TextOptimize(&selected_state_text);
 
+    savestate_buttons[LOAD_SAVESTATE].hidden = savestate_buttons[DELETE_SAVESTATE].hidden = !emulation_hasstate(selected_state);
+
     LOOP_BEGIN(savestate_buttons, SAVE_SAVESTATE);
         C2D_DrawText(&text_savestate_menu, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
         C2D_DrawText(&selected_state_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 240 / 3, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));

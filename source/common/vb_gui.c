@@ -116,6 +116,14 @@ char * get_savestate_path(int state) {
     return NULL;
 }
 
+bool emulation_hasstate(int state) {
+    char *sspath = get_savestate_path(state);
+    if (sspath == NULL) return false;
+    bool result = stat(sspath, &st) != -1;
+    free(sspath);
+    return result;
+}
+
 int emulation_rmstate(int state) {
     char* sspath = get_savestate_path(state);
     if (sspath == NULL) return 1;

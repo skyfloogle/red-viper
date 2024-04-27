@@ -28,6 +28,7 @@ int options_input(void);
 int options_saveoptions(void);
 int emulation_resume(void);
 int emulation_reset(void);
+bool emulation_hasstate(int state);
 int emulation_rmstate(int state);
 int emulation_sstate(int state);
 int emulation_lstate(int state);
