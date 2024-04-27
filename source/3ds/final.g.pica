@@ -3,36 +3,46 @@
 .constf const1(1.0, 0.0, 0.0, 0.0)
 
 ; for final screen output
-; also mirrored diagonally for 3ds screen
-; texcoord 1 is the input texcoord but only the bottom
+; texcoord 0 (vip) is mirrored diagonally for 3ds screen
+; texcoord 1 (softbuf) is not mirrored
+; texcoord 2 (column table) is the input texcoord but only the bottom
 ; v0: top left pos
 ; v1: top left texcoord
 ; v2: bottom right pos
 ; v3: bottom right texcoord
 
 .out outpos position
-.out outtc0 texcoord0
-.out outtc1 texcoord1
+.out viptc texcoord0
+.out softtc texcoord1
+.out coltc texcoord2
 
 .entry gmain
 .proc gmain
     ; top left
     setemit 0
     mov outpos, v0
-    mov outtc0, v1
+    mov viptc, v1
+    mov r2.x, v1.y
+    mov r2.y, v1.x
+    mov softtc, r2
     ; texcoord shading: bottom left (v1.x, 0)
-    mov r0, v1
-    mov r0.y, const1.x
-    mov outtc1, r0
+    mov r1, v1
+    mov r1.y, const1.x
+    mov coltc, r1
     emit
 
     ; bottom left
     setemit 1
     ; texcoord shading: reuse previous
-    mov outtc1, r0
-    ; texcoord: (v1.x, v3.y)
-    mov r0.y, v3.y
-    mov outtc0, r0
+    mov coltc, r1
+    ; texcoord vip: (v1.x, v3.y)
+    mov r1, v1
+    mov r1.y, v3.y
+    mov viptc, r1
+    ; texcoord softbuf: v3.x, v1.y
+    mov r2.x, v3.y
+    mov r2.y, v1.x
+    mov softtc, r2
     ; position: v2.x, v0.y (really top right)
     mov r0, v2
     mov r0.y, v0.y
@@ -45,21 +55,28 @@
     mov r0, v2
     mov r0.x, v0.x
     mov outpos, r0
-    ; texcoord: v3.x, v1.y
-    mov r0, v3
-    mov r0.y, v1.y
-    mov outtc0, r0
+    ; texcoord vip: v3.x, v1.y
+    mov r1, v3
+    mov r1.y, v1.y
+    mov viptc, r1
+    ; texcoord softbuf: v1.x, v3.y
+    mov r2.x, v1.y
+    mov r2.y, v3.x
+    mov softtc, r2
     ; texcoord shading: (v3.x, 0)
-    mov r0.y, const1.x
-    mov outtc1, r0
+    mov r1.y, const1.x
+    mov coltc, r1
     emit
 
     ; bottom right
     setemit 0, prim inv
     mov outpos, v2
-    mov outtc0, v3
+    mov viptc, v3
+    mov r0.x, v3.y
+    mov r0.y, v3.x
+    mov softtc, r0
     ; texcoord shading: reuse previous
-    mov outtc1, r0
+    mov coltc, r1
     emit
 
     end
