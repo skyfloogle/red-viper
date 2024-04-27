@@ -5,7 +5,7 @@
 
 // Memory Structure for the VIP Reg (Could have done it with an array
 // but this is pretier...)
-typedef struct {
+typedef struct{
     HWORD INTPND;
     HWORD INTENB;
     HWORD INTCLR;
@@ -16,12 +16,10 @@ typedef struct {
     HWORD BRTC;
     HWORD REST;
     HWORD FRMCYC;
-    HWORD CTA;
     HWORD XPSTTS;
     HWORD XPCTRL;
     HWORD tFrameBuffer;   //not publicly visible
     HWORD tFrame;
-    HWORD VER;
     HWORD SPT[4];
     HWORD GPLT[4];
     HWORD JPLT[4];
@@ -39,12 +37,10 @@ typedef struct {
     BYTE TCR;       //Timer Controll Reg,   0x02000020
     BYTE THB;       //Timer Higher Byte,    0x0200001C
     BYTE TLB;       //Timer Lower Byte,     0x02000018
-    BYTE tReset;    //Timer Reset register, not publicly visible
+    BYTE ticks;
     HWORD tTHW;     //Timer TempHWord, 	not publicly visible
-    WORD tTRC;      //Timer TempResolutionCount, not publicly visible
     WORD lasttime;
     WORD lastinput;
-    WORD ticks;
     SWORD tCount;  //Timer Counter register, not publicly visible
     BYTE SHB;       //Serial Higher Byte,   0x02000014  //Read Only
     BYTE SLB;       //Serial Lower Byte,    0x02000010  //Read Only

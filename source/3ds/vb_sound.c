@@ -12,21 +12,7 @@
 #define SAMPLE_COUNT (SAMPLE_RATE / 100)
 #define BUF_COUNT 9
 
-typedef struct {
-    u8 shutoff_time, envelope_time, envelope_value, sample_pos;
-    u32 freq_time;
-} ChannelState;
-static struct {
-    ChannelState channels[6];
-    bool modulation_enabled;
-    u8 modulation_counter;
-    s8 sweep_time;
-    s16 sweep_frequency;
-    u16 effect_time;
-    u32 last_cycles;
-    u16 noise_shift;
-    s8 shutoff_divider, envelope_divider;
-} sound_state;
+SOUND_STATE sound_state;
 
 static int constant_sample[5] = {-1, -1, -1, -1, -1};
 
@@ -279,6 +265,22 @@ void sound_write(int addr, uint16_t data) {
     }
 }
 
+void sound_refresh() {
+    for (int sample = 0; sample < 5; sample++) {
+        constant_sample[sample] = SNDMEM(0x80 * sample);
+        for (int i = 1; i < 32; i++) {
+            if (SNDMEM(0x80 * sample + 4 * i) != constant_sample[sample]) {
+                constant_sample[sample] = -1;
+                break;
+            }
+        }
+    }
+    for (int i = 0; i < BUF_COUNT; i++) {
+        memset(wavebufs[i].data_pcm16, 0, SAMPLE_COUNT * 4);
+    }
+    paused = false;
+}
+
 void sound_callback(void *data) {
     if (paused) return;
     int last_buf = (fill_buf + BUF_COUNT - 2) % BUF_COUNT;
@@ -337,8 +339,5 @@ void sound_reset() {
     for (int i = 0; i < 6; i++) {
         SNDMEM(S1INT + 0x40 * i) = 0;
     }
-    for (int i = 0; i < BUF_COUNT; i++) {
-        memset(wavebufs[i].data_pcm16, 0, SAMPLE_COUNT * 4);
-    }
-    paused = false;
+    sound_refresh();
 }

@@ -495,10 +495,6 @@ void hcreg_wbyte(WORD addr, BYTE data) {
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG TCR [%08x]:%02x ",addr,data);
         if ((tHReg.TCR & 1) && ((data & 0x05) == 0x04)) break; //Cannot disable timer and clear ZStat at the same time!
 
-        if (data & 0x01) {
-            if (!(tHReg.TCR & 0x01)) tHReg.tReset = 1;
-        }
-
         BYTE zstat = tHReg.TCR & 0x02;
         if (!(data & 0x08) || // not accurate, but galactic pinball doesn't boot without this rn
             ((data & 0x04) && !((tHReg.TCR & 1) && !(data & 1))) // can't clear zstat while disabling timer
@@ -632,7 +628,7 @@ HWORD vipcreg_rhword(WORD addr) {
         break;
     case 0x0005F844:    //VER
         //~ dtprintf(8,ferr,"\nRead  HWORD VIP VER [%08x]:%04x ",addr,tVIPREG.VER);
-        return tVIPREG.VER;
+        return 2;
         break;
     case 0x0005F848:    //SPT0
         //~ dtprintf(1,ferr,"\nRead  HWORD VIP SPT0 [%08x]:%04x ",addr,tVIPREG.SPT[0]);
@@ -761,7 +757,6 @@ void vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F830:    //CTA
         //~ dtprintf(8,ferr,"\nWrite  HWORD VIP CTA [%08x]:%04x ",addr,data);
-        tVIPREG.CTA = data;
         break;
     case 0x0005F840:    //XPSTTS
         //~ dtprintf(6,ferr,"\nWrite  HWORD VIP XPSTTS [%08x]:%04x ",addr,data);
@@ -779,7 +774,6 @@ void vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F844:    //VER
         //~ dtprintf(8,ferr,"\nWrite  HWORD VIP VER [%08x]:%04x ",addr,data);
-        tVIPREG.VER = data;
         break;
     case 0x0005F848:    //SPT0   // Pointers to the 4 OBJ groupes in OBJ Mem
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP SPT0 [%08x]:%04x ",addr,data);

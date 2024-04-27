@@ -1751,7 +1751,8 @@ int drc_run() {
     // set up arm flags
     {
         WORD psw = v810_state->S_REG[PSW];
-        WORD cpsr = v810_state->flags;
+        WORD cpsr;
+        asm volatile ("mrs %0, CPSR" : "=r" (cpsr));
         cpsr &= 0x0fffffff;
         cpsr |= (psw & 0x3) << 30;
         cpsr |= (psw & 0xc) << 26;

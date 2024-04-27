@@ -43,12 +43,14 @@ void v810_init() {
     unsigned int ram_size = 0;
 
     V810_ROM1.pmemory = malloc(MAX_ROM_SIZE);
+    // no backup because rom isn't volatile
 
     // Initialize our ram1 tables....
     V810_DISPLAY_RAM.lowaddr  = 0x00000000;
     V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
     // Alocate space for it in memory
     V810_DISPLAY_RAM.pmemory = (unsigned char *)calloc(((V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr), sizeof(BYTE));
+    V810_DISPLAY_RAM.pbackup = (unsigned char *)calloc(((V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr), sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_DISPLAY_RAM.off = (size_t)V810_DISPLAY_RAM.pmemory - V810_DISPLAY_RAM.lowaddr;
 
@@ -67,7 +69,8 @@ void v810_init() {
     V810_SOUND_RAM.lowaddr  = 0x01000000;
     V810_SOUND_RAM.highaddr = 0x010007FF; //0x010002FF
     // Alocate space for it in memory
-    V810_SOUND_RAM.pmemory = (unsigned char *)malloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr) * sizeof(BYTE));
+    V810_SOUND_RAM.pmemory = (unsigned char *)calloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr), sizeof(BYTE));
+    V810_SOUND_RAM.pbackup = (unsigned char *)calloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr), sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_SOUND_RAM.off = (size_t)V810_SOUND_RAM.pmemory - V810_SOUND_RAM.lowaddr;
 
@@ -75,7 +78,8 @@ void v810_init() {
     V810_VB_RAM.lowaddr  = 0x05000000;
     V810_VB_RAM.highaddr = 0x0500FFFF;
     // Alocate space for it in memory
-    V810_VB_RAM.pmemory = (unsigned char *)malloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr) * sizeof(BYTE));
+    V810_VB_RAM.pmemory = (unsigned char *)calloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr), sizeof(BYTE));
+    V810_VB_RAM.pbackup = (unsigned char *)calloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr), sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_VB_RAM.off = (size_t)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
 
@@ -84,6 +88,7 @@ void v810_init() {
     V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
     // Alocate space for it in memory
     V810_GAME_RAM.pmemory = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
+    V810_GAME_RAM.pbackup = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_GAME_RAM.off = (size_t)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
 
@@ -318,9 +323,7 @@ void v810_reset() {
     tHReg.CCSR	= 0xFF;
     tHReg.CCR	= 0x6D;
 
-    tHReg.tTRC = 2000;
     tHReg.tCount = 0xFFFF;
-    tHReg.tReset = 0;
 
     tHReg.hwRead = 0;
 
