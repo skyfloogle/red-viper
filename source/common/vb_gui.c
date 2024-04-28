@@ -87,7 +87,7 @@ void save_sram(void) {
 #endif
 }
 
-char * get_savestate_path(int state) {
+char * get_savestate_path(int state, bool write) {
     char *last_slash = strrchr(tVBOpt.ROM_PATH, '/');
     if (last_slash == NULL) return NULL;
     // maxpath measured to be around 260, but pick 300 just to be safe
@@ -100,13 +100,13 @@ char * get_savestate_path(int state) {
     if (end - sspath + 20 >= MAX_PATH_LEN) goto bail;
     *end = 0;
     if (stat("sdmc:/red-viper", &st) == -1) {
-        if (mkdir("sdmc:/red-viper", 0777)) goto bail;
+        if (!write || mkdir("sdmc:/red-viper", 0777)) goto bail;
     }
     if (stat("sdmc:/red-viper/savestates", &st) == -1) {
-        if (mkdir("sdmc:/red-viper/savestates", 0777)) goto bail;
+        if (!write || mkdir("sdmc:/red-viper/savestates", 0777)) goto bail;
     }
     if (stat(sspath, &st) == -1) {
-        if (mkdir(sspath, 0777)) goto bail;
+        if (!write || mkdir(sspath, 0777)) goto bail;
     }
     snprintf(end, 10, "/st%d.rvs", state);
     return sspath;
@@ -117,7 +117,7 @@ char * get_savestate_path(int state) {
 }
 
 bool emulation_hasstate(int state) {
-    char *sspath = get_savestate_path(state);
+    char *sspath = get_savestate_path(state, false);
     if (sspath == NULL) return false;
     bool result = stat(sspath, &st) != -1;
     free(sspath);
@@ -125,7 +125,7 @@ bool emulation_hasstate(int state) {
 }
 
 int emulation_rmstate(int state) {
-    char* sspath = get_savestate_path(state);
+    char* sspath = get_savestate_path(state, false);
     if (sspath == NULL) return 1;
 
     int result = remove(sspath);
@@ -136,7 +136,7 @@ int emulation_rmstate(int state) {
 
 int emulation_sstate(int state) {
     FILE* state_file;
-    char* sspath = get_savestate_path(state);
+    char* sspath = get_savestate_path(state, true);
     if (sspath == NULL) return 1;
 
     state_file = fopen(sspath, "wb");
@@ -207,7 +207,7 @@ int emulation_lstate(int state) {
     uint32_t size;
     uint32_t id,ver,crc;
     FILE* state_file;
-    char* sspath = get_savestate_path(state);
+    char* sspath = get_savestate_path(state, false);
     if (sspath == NULL) return 1;
 
     state_file = fopen(sspath, "rb");
