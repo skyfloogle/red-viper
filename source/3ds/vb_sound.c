@@ -265,7 +265,7 @@ void sound_write(int addr, uint16_t data) {
     }
 }
 
-void sound_refresh() {
+void sound_refresh(void) {
     for (int sample = 0; sample < 5; sample++) {
         constant_sample[sample] = SNDMEM(0x80 * sample);
         for (int i = 1; i < 32; i++) {
@@ -295,7 +295,7 @@ void sound_callback(void *data) {
     }
 }
 
-void sound_init() {
+void sound_init(void) {
     if (ndspInit()) {
         showSoundError();
         tVBOpt.SOUND = 0;
@@ -319,22 +319,22 @@ void sound_init() {
     }
 }
 
-void sound_close() {
+void sound_close(void) {
     ndspExit();
     for (int i = 0; i < BUF_COUNT; i++) linearFree(wavebufs[i].data_pcm16);
 }
 
-void sound_pause() {
+void sound_pause(void) {
     paused = true;
     dc_offset = 0;
     ndspChnWaveBufClear(0);
 }
 
-void sound_resume() {
+void sound_resume(void) {
     paused = false;
 }
 
-void sound_reset() {
+void sound_reset(void) {
     memset(&sound_state, 0, sizeof(sound_state));
     for (int i = 0; i < 6; i++) {
         SNDMEM(S1INT + 0x40 * i) = 0;

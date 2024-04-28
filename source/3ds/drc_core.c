@@ -617,7 +617,7 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
 }
 
 // Translates a V810 block into ARM code
-static int drc_translateBlock() {
+static int drc_translateBlock(void) {
     int i, j;
     int err = 0;
     // Stores the number of clock cycles since the last branch
@@ -1648,7 +1648,7 @@ cleanup:
 }
 
 // Clear and invalidate the dynarec cache
-void drc_clearCache() {
+void drc_clearCache(void) {
     dprintf(0, "[DRC]: clearing cache...\n");
     cache_pos = cache_start + 1;
     block_pos = 1;
@@ -1685,7 +1685,7 @@ void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
 }
 
 // Initialize the dynarec
-void drc_init() {
+void drc_init(void) {
     // V810 instructions are 16-bit aligned, so we can ignore the last bit of the PC
     rom_block_map = calloc(sizeof(rom_block_map[0]), BLOCK_MAP_COUNT);
     rom_entry_map = linearAlloc(sizeof(rom_entry_map[0]) * BLOCK_MAP_COUNT);
@@ -1711,13 +1711,13 @@ void drc_init() {
     dprintf(0, "[DRC]: cache_start = %p\n", cache_start);
 }
 
-void drc_reset() {
+void drc_reset(void) {
     memset(rom_data_code_map, 0, sizeof(rom_data_code_map[0])*(BLOCK_MAP_COUNT >> 3));
     drc_clearCache();
 }
 
 // Cleanup and exit
-void drc_exit() {
+void drc_exit(void) {
     if (tVBOpt.DYNAREC)
         linearFree(cache_start);
     free(rom_block_map);
@@ -1729,7 +1729,7 @@ void drc_exit() {
     hbHaxExit();
 }
 
-exec_block* drc_getNextBlockStruct() {
+exec_block* drc_getNextBlockStruct(void) {
     if (block_pos >= MAX_NUM_BLOCKS) {
         for (int i = 0; i < MAX_NUM_BLOCKS; i++) {
             if (block_ptr_start[i].free) {
@@ -1742,7 +1742,7 @@ exec_block* drc_getNextBlockStruct() {
 }
 
 // Run V810 code until the next frame interrupt
-int drc_run() {
+int drc_run(void) {
     unsigned int clocks = v810_state->cycles;
     exec_block* cur_block = NULL;
     WORD* entrypoint;
@@ -1824,7 +1824,7 @@ int drc_run() {
     return 0;
 }
 
-void drc_loadSavedCache() {
+void drc_loadSavedCache(void) {
     FILE* f;
     f = fopen("rom_block_map", "r");
     fread(rom_block_map, sizeof(rom_block_map[0]), BLOCK_MAP_COUNT, f);

@@ -73,15 +73,15 @@ typedef struct {
 // Read the Controller
 HWORD V810_RControll(void);
 
-void video_init();
+void video_init(void);
 void video_render(int alt_buf);
 void video_flush(bool left_for_both);
-void video_quit();
+void video_quit(void);
 
 void V810_SetPal(int BRTA, int BRTB, int BRTC);
 
 void V810_Dsp_Frame(int left);
-void clearCache();
+void clearCache(void);
 
 extern VB_DSPCACHE tDSPCACHE;
 
@@ -111,15 +111,15 @@ extern shaderProgram_s sFinal;
 // video_hard
 extern C3D_Tex screenTexHard;
 extern C3D_RenderTarget *screenTarget;
-void video_hard_init();
-void video_hard_render();
-void update_texture_cache_hard();
+void video_hard_init(void);
+void video_hard_render(void);
+void update_texture_cache_hard(void);
 
 // video_soft
 extern C3D_Tex screenTexSoft[2];
-void video_soft_init();
+void video_soft_init(void);
 void video_soft_render(int alt_buf);
-void update_texture_cache_soft();
+void update_texture_cache_soft(void);
 
 #endif
 

@@ -38,7 +38,7 @@ const BYTE opcycle[0x50] = {
     0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x01,0x03,0x03
 };
 
-void v810_init() {
+void v810_init(void) {
     char ram_name[32];
     unsigned int ram_size = 0;
 
@@ -112,7 +112,7 @@ static FILE *load_file;
 static size_t load_pos;
 static FILE *load_sram;
 static size_t load_sram_size;
-int v810_load_init() {
+int v810_load_init(void) {
     int rom_size;
 
     char *ext = strrchr(tVBOpt.ROM_PATH, '.');
@@ -192,7 +192,7 @@ int v810_load_init() {
     return 0;
 }
 
-int v810_load_step() {
+int v810_load_step(void) {
     int chunk_size = 0x10000;
     int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
     int ram_size = load_sram_size;
@@ -260,7 +260,7 @@ int v810_load_step() {
     return load_pos * 100 / all_size;
 }
 
-void v810_load_cancel() {
+void v810_load_cancel(void) {
     is_sram = false;
     int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
     int all_size = rom_size + load_sram_size;
@@ -276,7 +276,7 @@ void v810_load_cancel() {
     }
 }
 
-void v810_exit() {
+void v810_exit(void) {
     free(v810_state);
     free(V810_ROM1.pmemory);
     free(V810_DISPLAY_RAM.pmemory);
@@ -286,7 +286,7 @@ void v810_exit() {
 }
 
 // Reinitialize the defaults in the CPU
-void v810_reset() {
+void v810_reset(void) {
     memset(v810_state, 0, sizeof(cpu_state));
     memset(&tVIPREG, 0, sizeof(tVIPREG));
     memset(&tHReg, 0, sizeof(tHReg));
@@ -554,7 +554,7 @@ void v810_exp(WORD iNum, WORD eCode) {
     }
 }
 
-int v810_run() {
+int v810_run(void) {
     v810_state->ret = false;
 
     while (true) {

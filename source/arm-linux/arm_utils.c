@@ -6,11 +6,11 @@
 #include "vb_types.h"
 #include "vb_set.h"
 
-void hbHaxInit() {
+void hbHaxInit(void) {
 	tVBOpt.DYNAREC = 1;
 }
 
-void hbHaxExit() {
+void hbHaxExit(void) {
 }
 
 void FlushInvalidateCache(void *addr, size_t len) {

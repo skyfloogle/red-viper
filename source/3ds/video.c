@@ -34,7 +34,7 @@ VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
 
 extern int arm_keys;
 // Read the Controller, Fix Me....
-HWORD V810_RControll() {
+HWORD V810_RControll(void) {
 
 	if (replay_playing()) {
 		guiGetInput(true);
@@ -75,7 +75,7 @@ HWORD V810_RControll() {
     return ret_keys;
 }
 
-void clearCache() {
+void clearCache(void) {
     int i;
     tDSPCACHE.BgmPALMod = 1;                // World Palette Changed
     tDSPCACHE.ObjPALMod = 1;                // Obj Palette Changed
@@ -121,7 +121,7 @@ u8 brightness[4];
 bool tileVisible[2048];
 int blankTile;
 
-void processColumnTable() {
+void processColumnTable(void) {
 	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
 	uint8_t newMaxRepeat, newMinRepeat;
 	newMinRepeat = newMaxRepeat = table[160];
@@ -157,7 +157,7 @@ void processColumnTable() {
 	}
 }
 
-void video_init() {
+void video_init(void) {
     #define DISPLAY_TRANSFER_FLAGS                                                                     \
         (GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |               \
         GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
@@ -369,6 +369,6 @@ void video_flush(bool default_for_both) {
 	for (int i = 0; i <= 4; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
 }
 
-void video_quit() {
+void video_quit(void) {
 	C3D_Fini();
 }

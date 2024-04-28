@@ -22,7 +22,7 @@ static bool has_initial_sram;
 static ReplayEntry *replay_buf = NULL, *replay_cursor;
 static bool overflowed = false;
 
-void replay_init() {
+void replay_init(void) {
     initial_sram = malloc(V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr);
     replay_buf = malloc(sizeof(ReplayEntry) * REPLAY_COUNT);
 }
@@ -101,11 +101,11 @@ void replay_load(char *fn) {
     return;
 }
 
-bool replay_playing() {
+bool replay_playing(void) {
     return (bool)current_replay;
 }
 
-HWORD replay_read() {
+HWORD replay_read(void) {
     while (current_entry.count == 0) {
         fread(&current_entry, 4, 1, current_replay);
         if (feof(current_replay)) {

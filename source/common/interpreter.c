@@ -21,7 +21,7 @@ static bool get_cond(BYTE code, WORD psw) {
     return cond;
 }
 
-int interpreter_run() {
+int interpreter_run(void) {
     // keep PC and cycles in local variables for extra speed
     // can't do this with PSW because interrupts modify it
     WORD PC = v810_state->PC;

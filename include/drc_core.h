@@ -88,13 +88,13 @@ void drc_clearCache(void);
 
 WORD* drc_getEntry(WORD loc, exec_block **p_block);
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block);
-exec_block* drc_getNextBlockStruct();
+exec_block* drc_getNextBlockStruct(void);
 
-void drc_init();
-void drc_reset();
-void drc_exit();
-int drc_run();
-void drc_loadSavedCache();
+void drc_init(void);
+void drc_reset(void);
+void drc_exit(void);
+int drc_run(void);
+void drc_loadSavedCache(void);
 void drc_dumpCache(char* filename);
 void drc_dumpDebugInfo(int code);
 

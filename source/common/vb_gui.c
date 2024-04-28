@@ -18,7 +18,7 @@
 #include "main.h"
 
 #ifdef __3DS__
-#define GUI_STUB() { \
+#define GUI_STUB(void) { \
     consoleClear(); \
     printf("STUBBED"); \
     waitForInput(); \
@@ -30,7 +30,7 @@
 
 struct stat st = {0};
 
-u32 waitForInput() {
+u32 waitForInput(void) {
 #ifdef __3DS__
     u32 keys;
     do {

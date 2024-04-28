@@ -3,7 +3,7 @@
 #include "vb_set.h"
 #include <stdio.h>
 
-s32 k_patchSVC() {
+s32 k_patchSVC(void) {
     __asm__ volatile("cpsid aif");
 
     u32*  svc_access_control = *(*(u32***)0xFFFF9000 + 0x22) - 0x6;
@@ -16,7 +16,7 @@ s32 k_patchSVC() {
 }
 
 
-s32 k_flushCaches() {
+s32 k_flushCaches(void) {
     __asm__ volatile(
         "cpsid aif\n\t"
         "mov r0, #0\n\t"
@@ -46,7 +46,7 @@ void detectCitra(WORD *test_code) {
     is_citra = code_func();
 }
 
-void hbHaxInit() {
+void hbHaxInit(void) {
     Handle tempHandle;
 
     if (tVBOpt.DYNAREC) {
@@ -58,7 +58,7 @@ void hbHaxInit() {
 }
 
 
-void hbHaxExit() {
+void hbHaxExit(void) {
 }
 
 void FlushInvalidateCache(void *addr, size_t len) {

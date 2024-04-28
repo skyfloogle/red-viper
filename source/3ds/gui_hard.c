@@ -26,7 +26,7 @@
 
 static bool buttons_on_screen = false;
 void setTouchControls(bool button);
-bool guiShouldSwitch();
+bool guiShouldSwitch(void);
 void drawTouchControls(int inputs);
 
 static C3D_RenderTarget *screen;
@@ -139,7 +139,7 @@ static Button game_menu_buttons[] = {
     {.str="Savestates", .x=112, .y=64, .w=80 + 16, .h=80},
 };
 
-static void rom_loader();
+static void rom_loader(void);
 static Button rom_loader_buttons[] = {
     #define ROM_LOADER_UP 0
     {.str="Up", .x=0, .y=0, .w=32, .h=32},
@@ -162,7 +162,7 @@ static Button controls_buttons[] = {
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
-static void touchscreen_settings();
+static void touchscreen_settings(void);
 static Button touchscreen_settings_buttons[] = {
     #define TOUCHSCREEN_BACK 0
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
@@ -200,7 +200,7 @@ static Button video_settings_buttons[] = {
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
-static void colour_filter();
+static void colour_filter(void);
 static Button colour_filter_buttons[] = {
     #define COLOUR_BACK 0
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
@@ -250,17 +250,17 @@ static Button savestate_confirm_buttons[] = {
     {.str="Return to menu", .x=160-96, .y=190, .w=96*2, .h=48},
 };
 
-static void sound_error();
+static void sound_error(void);
 static Button sound_error_buttons[] = {
     {.str="Continue without sound", .x=48, .y=130, .w=320-48*2, .h=32},
 };
 
-static void about();
+static void about(void);
 static Button about_buttons[] = {
     {.str="Back", .x=160-48, .y=180, .w=48*2, .h=48},
 };
 
-static void load_rom();
+static void load_rom(void);
 static Button load_rom_buttons[] = {
     {.str="Unload & cancel", .x=160-80, .y=180, .w=80*2, .h=48},
 };
@@ -284,7 +284,7 @@ static Button load_rom_buttons[] = {
 
 static int last_savestate = 0;
 
-static void draw_logo() {
+static void draw_logo(void) {
     C2D_SceneBegin(screenTarget);
     C2D_ViewScale(1, -1);
     C2D_ViewTranslate(0, -512);
@@ -357,7 +357,7 @@ int strptrcmp(const void *s1, const void *s2) {
     return strcasecmp(*(const char**)s1, *(const char**)s2);
 }
 
-static void rom_loader() {
+static void rom_loader(void) {
     static char *path = NULL;
     static int path_cap = 128;
     if (!path) {
@@ -889,7 +889,7 @@ static void touchscreen_settings() {
     }
 }
 
-static void colour_filter() {
+static void colour_filter(void) {
     bool dragging = false;
     const float circle_x = colour_wheel_sprite.params.pos.x;
     const float circle_y = colour_wheel_sprite.params.pos.y;
@@ -1016,7 +1016,7 @@ static void dev_options(int initial_button) {
     }
 }
 
-static void save_debug_info();
+static void save_debug_info(void);
 static void options(int initial_button) {
     options_buttons[OPTIONS_FF].toggle = tVBOpt.FF_TOGGLE;
     options_buttons[OPTIONS_SOUND].toggle = tVBOpt.SOUND;
@@ -1067,7 +1067,7 @@ static void video_settings(int initial_button) {
     }
 }
 
-static void sound_error() {
+static void sound_error(void) {
     LOOP_BEGIN(sound_error_buttons, 0);
         C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(sound_error_buttons);
@@ -1159,7 +1159,7 @@ static void savestate_menu(int initial_button, int selected_state) {
     }
 }
 
-static void about() {
+static void about(void) {
     C2D_SpriteSetPos(&logo_sprite, 320 / 2, 36);
     C2D_SetTintMode(C2D_TintMult);
     C2D_ImageTint tint;
@@ -1181,7 +1181,7 @@ static void load_error(int err, bool unloaded) {
     return rom_loader();
 }
 
-static void load_rom() {
+static void load_rom(void) {
     if (save_thread) threadJoin(save_thread, U64_MAX);
     int ret;
     if ((ret = v810_load_init())) {
@@ -1410,7 +1410,7 @@ static void draw_status_bar(float total_time, float drc_time) {
 
 bool old_2ds = 0;
 
-void guiInit() {
+void guiInit(void) {
     u8 model = 0;
     cfguInit();
     CFGU_GetSystemModel(&model);
@@ -1473,7 +1473,7 @@ void guiInit() {
 static bool shouldRedrawMenu = true;
 static bool inMenu = false;
 
-void openMenu() {
+void openMenu(void) {
     inMenu = true;
     shouldRedrawMenu = true;
     if (game_running) {
@@ -1578,13 +1578,13 @@ void aptBacklight(APT_HookType hook, void* param) {
     }
 }
 
-void showSoundError() {
+void showSoundError(void) {
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     sound_error();
 }
 
-static void save_debug_info() {
+static void save_debug_info(void) {
     C3D_FrameBegin(0);
     C2D_TargetClear(screen, 0);
     C2D_SceneBegin(screen);
@@ -1653,7 +1653,7 @@ void setTouchControls(bool buttons) {
     }
 }
 
-bool guiShouldSwitch() {
+bool guiShouldSwitch(void) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
     return touch_pos.px >= 320 - 64 && touch_pos.py < 32;
@@ -1806,7 +1806,7 @@ void guiUpdate(float total_time, float drc_time) {
     C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 }
 
-bool guiShouldPause() {
+bool guiShouldPause(void) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
     return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;

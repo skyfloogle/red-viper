@@ -11,6 +11,6 @@ extern char rom_name[128];
 
 extern bool game_running;
 
-void frame_pacer_thread();
+void frame_pacer_thread(void);
 
 #endif

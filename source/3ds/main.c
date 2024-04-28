@@ -24,12 +24,12 @@ bool game_running = false;
 
 Handle frame_event;
 volatile int lag_frames;
-void frame_pacer_thread() {
+void frame_pacer_thread(void) {
     lag_frames++;
     svcSignalEvent(frame_event);
 }
 
-int main() {
+int main(void) {
     int qwe;
     int frame = 0;
     int err = 0;

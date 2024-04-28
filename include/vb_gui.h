@@ -13,7 +13,7 @@
 
 int guiop;
 
-u32 waitForInput();
+u32 waitForInput(void);
 void save_sram(void);
 int file_loadrom(void);
 int file_closerom(void);
@@ -52,13 +52,13 @@ int debug_cheat_search_comp(void);
 int debug_cheat_view(void);
 int help_about(void);
 
-void guiInit();
+void guiInit(void);
 void guiUpdate(float total_time, float drc_time);
-void openMenu();
-void showSoundError();
+void openMenu(void);
+void showSoundError(void);
 void showError(int code);
 
-bool guiShouldPause();
+bool guiShouldPause(void);
 void toggleVsync(bool enable);
 void toggleAnaglyph(bool enable, bool also_update_vsync);
 int guiGetInput(bool ingame);

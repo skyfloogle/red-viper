@@ -114,16 +114,16 @@ extern const BYTE opcycle[0x50]; //clock cycles
 //////////////////////////////////////////////////////////////////////////
 // Define CPU Functions
 
-void v810_init();
-void v810_exit();
+void v810_init(void);
+void v810_exit(void);
 
 // Load ROM
-int v810_load_init();
-int v810_load_step();
-void v810_load_cancel();
+int v810_load_init(void);
+int v810_load_step(void);
+void v810_load_cancel(void);
 
 // Reset the registers
-void v810_reset();
+void v810_reset(void);
 
 // Generate Interupt #n
 bool v810_int(WORD iNum, WORD PC);
@@ -134,6 +134,6 @@ void v810_exp(WORD iNum, WORD eCode);
 int serviceInt(unsigned int cycles, WORD PC);
 int serviceDisplayInt(unsigned int cycles, WORD PC);
 
-int v810_run();
+int v810_run(void);
 
 #endif

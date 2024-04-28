@@ -81,7 +81,7 @@ static vertex *vbuf, *vcur;
 #define AVBUF_SIZE 4096 * 8
 static avertex *avbuf, *avcur;
 
-void video_hard_init() {
+void video_hard_init(void) {
 	char_dvlb = DVLB_ParseFile((u32 *)char_shbin, char_shbin_size);
 	shaderProgramInit(&sChar);
 	shaderProgramSetVsh(&sChar, &char_dvlb->DVLE[0]);
@@ -154,7 +154,7 @@ void video_hard_init() {
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
 }
 
-static void setRegularTexEnv() {
+static void setRegularTexEnv(void) {
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
 	C3D_TexEnvColor(env, 0x7f7f7f);
@@ -171,7 +171,7 @@ static void setRegularTexEnv() {
 	C3D_TexEnvInit(C3D_GetTexEnv(3));
 }
 
-static void setRegularDrawing() {
+static void setRegularDrawing(void) {
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 2);
@@ -360,7 +360,7 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 	setRegularDrawing();
 }
 
-void video_hard_render() {
+void video_hard_render(void) {
 	C3D_FrameDrawOn(screenTarget);
 
 	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
@@ -850,7 +850,7 @@ void video_hard_render() {
 	}
 }
 
-void update_texture_cache_hard() {
+void update_texture_cache_hard(void) {
 	uint16_t *texImage = C3D_Tex2DGetImagePtr(&tileTexture, 0, NULL);
 	blankTile = -1;
 	for (int t = 0; t < 2048; t++) {

@@ -82,13 +82,13 @@ extern SOUND_STATE sound_state;
 #define S6EV1 0x01000554
 #define SSTOP 0x01000580
 
-void sound_init();
+void sound_init(void);
 void sound_update(uint32_t cycles);
 void sound_write(int addr, uint16_t val);
-void sound_refresh();
-void sound_close();
-void sound_pause();
-void sound_resume();
-void sound_reset();
+void sound_refresh(void);
+void sound_close(void);
+void sound_pause(void);
+void sound_resume(void);
+void sound_reset(void);
 
 #endif //VB_SOUND_H_

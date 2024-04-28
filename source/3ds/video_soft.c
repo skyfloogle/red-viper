@@ -17,7 +17,7 @@ CachedTile tileCache[2048];
 
 C3D_Tex screenTexSoft[2];
 
-void video_soft_init() {
+void video_soft_init(void) {
 	C3D_TexInitParams params;
 	params.width = 512;
 	params.height = 512;
@@ -29,7 +29,7 @@ void video_soft_init() {
         C3D_TexInitWithParams(&screenTexSoft[i], NULL, params);
 }
 
-void update_texture_cache_soft() {
+void update_texture_cache_soft(void) {
     for (int t = 0; t < 2048; t++) {
 		// skip if this tile wasn't modified
 		if (tDSPCACHE.CharacterCache[t])
