@@ -312,8 +312,10 @@ int emulation_lstate(int state) {
     APPLY_MEMORY(V810_GAME_RAM);
     #undef APPLY_MEMORY
 
-    sound_refresh();
     clearCache();
+    C3D_FrameBegin(0);
+    video_render((tVIPREG.tFrameBuffer) % 2);
+    C3D_FrameEnd(0);
 
     guiop = AKILL;
     return 0;

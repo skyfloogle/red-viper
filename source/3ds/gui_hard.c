@@ -223,9 +223,9 @@ static Button dev_options_buttons[] = {
 static bool areyousure(C2D_Text *message);
 static Button areyousure_buttons[] = {
     #define AREYOUSURE_YES 0
-    {"Yes", .x=160-48-32, .y=180, .w=64, .h=48},
+    {.str="Yes", .x=160-48-32, .y=180, .w=64, .h=48},
     #define AREYOUSURE_NO 1
-    {"No", .x=160+32, .y=180, .w=64, .h=48},
+    {.str="No", .x=160+32, .y=180, .w=64, .h=48},
 };
 
 static void savestate_menu(int initial_button, int selected_state);
@@ -244,6 +244,12 @@ static Button savestate_buttons[] = {
     {.str=">\n\uE005", .x=320 - 56, .y=60, .w=40, .h=100},
 };
 
+static void savestate_confirm(char *message, int last_button, int selected_state);
+static Button savestate_confirm_buttons[] = {
+    {.str="Return to game", .x=160-96, .y=140, .w=96*2, .h=48},
+    {.str="Return to menu", .x=160-96, .y=190, .w=96*2, .h=48},
+};
+
 static void sound_error();
 static Button sound_error_buttons[] = {
     {.str="Continue without sound", .x=48, .y=130, .w=320-48*2, .h=32},
@@ -251,12 +257,12 @@ static Button sound_error_buttons[] = {
 
 static void about();
 static Button about_buttons[] = {
-    {"Back", .x=160-48, .y=180, .w=48*2, .h=48},
+    {.str="Back", .x=160-48, .y=180, .w=48*2, .h=48},
 };
 
 static void load_rom();
 static Button load_rom_buttons[] = {
-    {"Unload & cancel", .x=160-80, .y=180, .w=80*2, .h=48},
+    {.str="Unload & cancel", .x=160-80, .y=180, .w=80*2, .h=48},
 };
 
 #define SETUP_ALL_BUTTONS \
@@ -273,7 +279,8 @@ static Button load_rom_buttons[] = {
     SETUP_BUTTONS(about_buttons); \
     SETUP_BUTTONS(load_rom_buttons); \
     SETUP_BUTTONS(areyousure_buttons); \
-    SETUP_BUTTONS(savestate_buttons);
+    SETUP_BUTTONS(savestate_buttons); \
+    SETUP_BUTTONS(savestate_confirm_buttons);
 
 static int last_savestate = 0;
 
@@ -1084,9 +1091,21 @@ static void savestate_error(char *message, int last_button, int selected_state) 
     C2D_TextParse(&text, dynamic_textbuf, message);
     C2D_TextOptimize(&text);
     LOOP_BEGIN(about_buttons, 0);
-        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
     LOOP_END(about_buttons);
     return savestate_menu(last_button, selected_state);
+}
+
+static void savestate_confirm(char *message, int last_button, int selected_state) {
+    C2D_Text text;
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_TextParse(&text, dynamic_textbuf, message);
+    C2D_TextOptimize(&text);
+    LOOP_BEGIN(savestate_confirm_buttons, 0);
+        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    LOOP_END(savestate_confirm_buttons);
+    if (button) return savestate_menu(last_button, selected_state);
+    else return;
 }
 
 static void savestate_menu(int initial_button, int selected_state) {
@@ -1124,11 +1143,11 @@ static void savestate_menu(int initial_button, int selected_state) {
         case SAVE_SAVESTATE:
             return emulation_sstate(selected_state) != 0 ?
                 savestate_error("Could not save state", SAVE_SAVESTATE, selected_state) :
-                0;
+                savestate_confirm("Save complete!", SAVE_SAVESTATE, selected_state);
         case LOAD_SAVESTATE:
             return emulation_lstate(selected_state) != 0 ?
                 savestate_error("Could not load state", LOAD_SAVESTATE, selected_state) :
-                0;
+                savestate_confirm("Load complete!", LOAD_SAVESTATE, selected_state);
         case DELETE_SAVESTATE:
             return emulation_rmstate(selected_state) != 0 ?
                 savestate_error("Could not delete state", DELETE_SAVESTATE, selected_state) :
@@ -1464,7 +1483,8 @@ void openMenu() {
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
-    if (guiop == 0 || guiop == AKILL) sound_resume();
+    if (guiop == 0) sound_resume();
+    else if (guiop == AKILL) sound_refresh();
     else if (!(guiop & GUIEXIT)) sound_reset();
     inMenu = false;
 }
