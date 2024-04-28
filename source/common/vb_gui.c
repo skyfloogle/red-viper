@@ -188,7 +188,7 @@ int emulation_sstate(int state) {
     WRITE_MEMORY(V810_DISPLAY_RAM);
     WRITE_MEMORY(V810_SOUND_RAM);
     WRITE_MEMORY(V810_VB_RAM);
-    WRITE_MEMORY(V810_SOUND_RAM);
+    WRITE_MEMORY(V810_GAME_RAM);
     #undef WRITE_MEMORY
     #undef WRITE_VAR
     #undef FWRITE
@@ -286,7 +286,7 @@ int emulation_lstate(int state) {
     READ_MEMORY(V810_DISPLAY_RAM);
     READ_MEMORY(V810_SOUND_RAM);
     READ_MEMORY(V810_VB_RAM);
-    READ_MEMORY(V810_SOUND_RAM);
+    READ_MEMORY(V810_GAME_RAM);
     #undef READ_MEMORY
     #undef READ_VAR
 
@@ -309,7 +309,7 @@ int emulation_lstate(int state) {
     APPLY_MEMORY(V810_DISPLAY_RAM);
     APPLY_MEMORY(V810_SOUND_RAM);
     APPLY_MEMORY(V810_VB_RAM);
-    APPLY_MEMORY(V810_SOUND_RAM);
+    APPLY_MEMORY(V810_GAME_RAM);
     #undef APPLY_MEMORY
 
     sound_refresh();
