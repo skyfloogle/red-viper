@@ -61,7 +61,8 @@ typedef struct {
 
     bool    ObjCacheInvalid;        // Object Cache Is invalid
     bool    BGCacheInvalid[14];     // Object Cache Is invalid
-	bool		CharCacheInvalid;
+	bool	CharCacheInvalid;
+    bool    CharCacheForceInvalid;
 	bool	CharacterCache[2048];	//Character chace
     DDSPSTATE DDSPDataState[2];     // Direct DisplayDraws True
     bool    ColumnTableInvalid;     // Column Table is invalid

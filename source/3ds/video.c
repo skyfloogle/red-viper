@@ -85,8 +85,9 @@ void clearCache() {
     for(i = 0; i < 14; i++)
         tDSPCACHE.BGCacheInvalid[i] = 1;    // Object Cache Is invalid
     for (i = 0; i < 2; i++)
-		tDSPCACHE.DDSPDataState[i] = CPU_CLEAR; // Direct Screen Draw changed
+		tDSPCACHE.DDSPDataState[i] = CPU_WROTE; // Direct Screen Draw changed
 	tDSPCACHE.CharCacheInvalid = true;
+	tDSPCACHE.CharCacheForceInvalid = true;
 	for (i = 0; i < 2048; i++)
 		tDSPCACHE.CharacterCache[i] = true;
 	tDSPCACHE.ColumnTableInvalid = true;
@@ -230,7 +231,8 @@ void video_render(int alt_buf) {
 
 	eye_count = tVBOpt.ANAGLYPH || CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
 
-	if (tVIPREG.XPCTRL & 0x0002) {
+	if ((tVIPREG.XPCTRL & 0x0002) || tDSPCACHE.CharCacheForceInvalid) {
+		tDSPCACHE.CharCacheForceInvalid = false;
 		if (tDSPCACHE.CharCacheInvalid) {
 			tDSPCACHE.CharCacheInvalid = false;
 			if (tVBOpt.RENDERMODE < 2)
