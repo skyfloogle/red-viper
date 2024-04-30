@@ -1,1 +1,1 @@
-int interpreter_run();
+int interpreter_run(void);
