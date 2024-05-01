@@ -4,10 +4,16 @@
 #include <string.h>
 #include <strings.h>
 #include <time.h>
+#include <malloc.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <zlib.h>
+#include "rom_db.h"
 #include <citro2d.h>
 #include "drc_core.h"
 #include "vb_dsp.h"
 #include "vb_gui.h"
+#include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_sound.h"
 #include "vb_types.h"
@@ -215,13 +221,18 @@ static Button colour_filter_buttons[] = {
     {.str="Gray", .x=16, .y=128, .w=48, .h=32},
 };
 
+static void vblink(void);
+static Button vblink_buttons[] = {};
+
 static void dev_options(int initial_button);
 static Button dev_options_buttons[] = {
     #define DEV_PERF 0
     {.str="Perf. info", .x=16, .y=16, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
-    #define DEV_N3DS 1
-    {.str="N3DS speedup", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
-    #define DEV_BACK 2
+    #define DEV_VBLINK 1
+    {.str="VBLink", .x=16, .y=80, .w=288, .h=48},
+    #define DEV_N3DS 2
+    {.str="N3DS speedup", .x=16, .y=80+64, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define DEV_BACK 3
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -1002,6 +1013,101 @@ static void colour_filter(void) {
             return colour_filter();
     }
 }
+HWORD* rom_block_map;
+int recvall(int sock, void *addr, int size, int flags) {
+    int remaining = size;
+    while (remaining > 0) {
+        int ret = recv(sock, addr, remaining, flags);
+        if (ret <= 0) return ret;
+        addr += ret;
+        remaining -= ret;
+    }
+    return size;
+}
+static void vblink() {
+    int err = 0;
+    int listenfd = -1, datafd = -1;
+    bool inflate_started = false;
+    int ret;
+    struct sockaddr_in serv_addr = {
+        .sin_family = AF_INET,
+        .sin_addr.s_addr = htonl(INADDR_ANY),
+        .sin_port = htons(22082),
+    };
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (listenfd < 0) {err = errno; goto bail;}
+    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+    // set nonblocking
+    //fnctl(listenfd, F_SETFL, fnctl(listenfd, F_GETFL) | O_NONBLOCK);
+    listen(listenfd, 10);
+    datafd = accept(listenfd, NULL, NULL);
+    if (datafd < 0) {err = errno; goto bail;}
+    dprintf(0, "accepted\n");
+    uint32_t size;
+    if (recvall(datafd, &size, 4, 0) != 4) {err = errno; goto bail;}
+    dprintf(0, "fnsize\n");
+    char fname[300];
+    if (recvall(datafd, fname, size, 0) != size) {err = errno; goto bail;}
+    dprintf(0, "fn\n");
+    if (recvall(datafd, &size, 4, 0) != 4) {err = errno; goto bail;};
+    dprintf(0, "romsize\n");
+    static uint8_t in[32768];
+    z_stream strm = {0};
+    inflateInit(&strm);
+    inflate_started = true;
+    uint8_t *out = V810_ROM1.pmemory;
+    strm.next_out = out;
+    strm.avail_out = 0x1000000;
+    int checksum = 0;
+    int ok = 0;
+    if (send(datafd, &ok, 4, 0) < 0) {err = errno; goto bail;}
+    int total = 0;
+    while (true) {
+        if (recvall(datafd, &strm.avail_in, 4, 0) != 4) {err = errno; goto bail;}
+        dprintf(0, "recving %d\n", strm.avail_in);
+        if (recvall(datafd, in, strm.avail_in, 0) != strm.avail_in) {err = errno; goto bail;}
+        dprintf(0, "recvd\n");
+        for (int i = 0; i < strm.avail_in; i++) {
+            checksum += in[i];
+        }
+        dprintf(0, "checksum %d\n", checksum);
+        strm.next_in = in;
+        int last_out = strm.avail_out;
+        int ret;
+        while (strm.avail_in > 0) {
+            ret = inflate(&strm, Z_NO_FLUSH);
+            total += last_out - strm.avail_out;
+            dprintf(0, "inflated, progress: %d\n", total);
+            if (ret == Z_STREAM_END) goto inflate_done;
+            else if (ret) {
+                err = ret;
+                goto bail;
+            }
+        }
+        dprintf(0, "inflation success\n");
+    }
+    inflate_done:
+    inflateEnd(&strm);
+    dprintf(0, "done, total recv'd: %d\n", total);
+    if (total < size) goto bail;
+    if (send(datafd, &ok, 4, 0) < 0) {err = errno; goto bail;}
+    close(datafd);
+    close(listenfd);
+    V810_ROM1.highaddr = 0x7000000 + size - 1;
+    is_sram = false;
+    gen_table();
+    tVBOpt.CRC32 = get_crc(size);
+    v810_reset();
+    guiop = AKILL | VBRESET;
+    return;
+    bail:
+    dprintf(0, "error %d\n", err);
+    if (inflate_started) inflateEnd(&strm);
+    if (datafd >= 0) close(datafd);
+    if (listenfd >= 0) close(listenfd);
+    socExit();
+    return dev_options(DEV_VBLINK);
+}
 
 static void dev_options(int initial_button) {
     bool new_3ds = false;
@@ -1015,6 +1121,8 @@ static void dev_options(int initial_button) {
         case DEV_PERF:
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
             return dev_options(DEV_PERF);
+        case DEV_VBLINK:
+            return vblink();
         case DEV_N3DS:
             tVBOpt.N3DS_SPEEDUP = !tVBOpt.N3DS_SPEEDUP;
             osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);

@@ -45,6 +45,11 @@ void v810_init(void) {
     V810_ROM1.pmemory = malloc(MAX_ROM_SIZE);
     // no backup because rom isn't volatile
 
+    // Initialize our rom tables.... (USA)
+    V810_ROM1.lowaddr  = 0x07000000;
+    V810_ROM1.off = (size_t)V810_ROM1.pmemory - V810_ROM1.lowaddr;
+    // Offset + Lowaddr = pmemory
+
     // Initialize our ram1 tables....
     V810_DISPLAY_RAM.lowaddr  = 0x00000000;
     V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
@@ -170,11 +175,7 @@ int v810_load_init(void) {
         }
     }
     ok:
-    // Initialize our rom tables.... (USA)
     V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
-    V810_ROM1.lowaddr  = 0x07000000;
-    V810_ROM1.off = (size_t)V810_ROM1.pmemory - V810_ROM1.lowaddr;
-    // Offset + Lowaddr = pmemory
 
     load_sram = fopen(tVBOpt.RAM_PATH, "rb");
     if (load_sram) {
