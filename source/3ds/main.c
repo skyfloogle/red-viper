@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <malloc.h>
 #include <citro3d.h>
 
 #include "main.h"
@@ -49,6 +50,10 @@ int main(void) {
     setDefaults();
     if (loadFileOptions() < 0)
         saveFileOptions();
+    
+    socInit(memalign(0x1000, 0x40000), 0x40000);
+
+    drc_init();
 
     consoleDebugInit(debugDevice_3DMOO);
 
@@ -58,8 +63,6 @@ int main(void) {
     v810_init();
 
     sound_init();
-
-    drc_init();
 
     if (is_citra) {
         tVBOpt.VSYNC = false;
