@@ -50,6 +50,7 @@ void setDefaults(void) {
     tVBOpt.VSYNC = true;
     tVBOpt.N3DS_SPEEDUP = true;
     tVBOpt.ANAGLYPH = false;
+    strcpy(tVBOpt.HOME_PATH, "sdmc:/red-viper");
 
     // Default keys
 #ifdef __3DS__
@@ -106,6 +107,13 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->ZLZR_MODE = atoi(value) % 4;
     } else if (MATCH("vbopt", "n3ds_speedup")) {
         pconfig->N3DS_SPEEDUP = atoi(value);
+    } else if (MATCH("vbopt", "homepath")) {
+        strncpy(pconfig->HOME_PATH, value, sizeof(pconfig->HOME_PATH));
+        pconfig->HOME_PATH[sizeof(pconfig->HOME_PATH)-1] = 0;
+        // remove trailing slash
+        char *last_slash = strrchr(pconfig->HOME_PATH, '/');
+        if (last_slash != NULL && last_slash[1] == 0)
+            *last_slash = 0;
     } else if (MATCH("touch", "ax")) {
         tVBOpt.TOUCH_AX = atoi(value);
     } else if (MATCH("touch", "ay")) {
@@ -146,6 +154,7 @@ int saveFileOptions(void) {
     fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
     fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
     fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
+    fprintf(f, "homepath=%s\n", tVBOpt.HOME_PATH);
     fprintf(f, "[touch]\n");
     fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
     fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);

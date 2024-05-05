@@ -76,6 +76,7 @@ typedef struct VB_OPT {
     char *RAM_PATH;
     char *ROM_NAME; // Path\Name of game to open
     char *PROG_NAME; // Path\Name of program
+    char HOME_PATH[240];
     unsigned long CRC32; // CRC32 of ROM
     bool  PERF_INFO;
     bool  VSYNC;

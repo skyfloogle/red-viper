@@ -91,19 +91,23 @@ char * get_savestate_path(int state, bool write) {
     char *last_slash = strrchr(tVBOpt.ROM_PATH, '/');
     if (last_slash == NULL) return NULL;
     // maxpath measured to be around 260, but pick 300 just to be safe
-    const int MAX_PATH_LEN = 300;
+    #define MAX_PATH_LEN 300
+    // $HOME/savestates
+    char sshome[MAX_PATH_LEN - 20];
+    snprintf(sshome, sizeof(sshome), "%s/savestates", tVBOpt.HOME_PATH);
+    // $HOME/savestates/game
     char *sspath = (char *) malloc(MAX_PATH_LEN * sizeof(char));
-    snprintf(sspath, MAX_PATH_LEN, "sdmc:/red-viper/savestates/%s", last_slash + 1);
+    snprintf(sspath, MAX_PATH_LEN, "%s/%s", sshome, last_slash + 1);
     int sspath_len = strlen(sspath);
     char *end = strrchr(sspath, '.');
     if (!end) end = sspath + strlen(sspath);
     if (end - sspath + 20 >= MAX_PATH_LEN) goto bail;
     *end = 0;
-    if (stat("sdmc:/red-viper", &st) == -1) {
-        if (!write || mkdir("sdmc:/red-viper", 0777)) goto bail;
+    if (stat(tVBOpt.HOME_PATH, &st) == -1) {
+        if (!write || mkdir(tVBOpt.HOME_PATH, 0777)) goto bail;
     }
-    if (stat("sdmc:/red-viper/savestates", &st) == -1) {
-        if (!write || mkdir("sdmc:/red-viper/savestates", 0777)) goto bail;
+    if (stat(sshome, &st) == -1) {
+        if (!write || mkdir(sshome, 0777)) goto bail;
     }
     if (stat(sspath, &st) == -1) {
         if (!write || mkdir(sspath, 0777)) goto bail;
