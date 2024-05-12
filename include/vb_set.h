@@ -72,6 +72,7 @@ typedef struct VB_OPT {
     int   TOUCH_PADY;
     int   ABXY_MODE; // 0: A=A B=B, 1: B=A Y=B, 2: A=B B=A, 3: B=B Y=A
     int   ZLZR_MODE; // 0: ZL=B ZR=A, 1: ZL=A, ZR=B, 2: L=B R=A, 3: L=A R=B
+    int   DPAD_MODE; // Left 3DS DPAD Behavior: 0: VB LPAD, 1: VB RPAD, 2: Mirror ABXY buttons
     char *ROM_PATH;
     char *RAM_PATH;
     char *ROM_NAME; // Path\Name of game to open

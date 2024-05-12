@@ -38,7 +38,8 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_3ds,
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
                 text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
-                text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load;
+                text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
+                text_vb_lpad, text_vb_rpad, text_mirror_abxy;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_SpriteSheet splash_sheet;
@@ -62,9 +63,11 @@ typedef struct Button_t Button;
 struct Button_t {
     char *str;
     float x, y, w, h;
-    bool show_toggle, toggle, hidden;
+    bool show_toggle, toggle, show_option, hidden;
+    int option;
     C2D_Text *toggle_text_on;
     C2D_Text *toggle_text_off;
+    C2D_Text **option_texts;
     C2D_Text text;
     void (*custom_draw)(Button*);
 };
@@ -157,8 +160,10 @@ static Button controls_buttons[] = {
     #define CONTROLS_SHOULDER 1
     {.x=160-64, .y=0, .w=128, .h=40, .custom_draw=draw_shoulders},
     #define CONTROLS_TOUCHSCREEN 2
-    {.str="Touchscreen\nsettings", .x=96, .y=144, .w=128, .h=64},
-    #define CONTROLS_BACK 3
+    {.str="Touchscreen settings", .x=60, .y=144, .w=200, .h=40},
+    #define CONTROLS_DPAD_MODE 3
+    {.str="3DS D-Pad Mode", .x=60, .y=196, .w=200, .h=44, .show_option=true, .option_texts=(C2D_Text*[]){&text_vb_lpad, &text_vb_rpad, &text_mirror_abxy}},
+    #define CONTROLS_BACK 4
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -713,6 +718,7 @@ static void controls(int initial_button) {
     APT_CheckNew3DS(&new_3ds);
     controls_buttons[CONTROLS_FACE].y = new_3ds ? 52 : 40;
     controls_buttons[CONTROLS_SHOULDER].hidden = !new_3ds;
+    controls_buttons[CONTROLS_DPAD_MODE].option = tVBOpt.DPAD_MODE;
     const int SHOULDX = 160;
     const int SHOULDY = 0;
     const int SHOULDW = 128;
@@ -734,6 +740,9 @@ static void controls(int initial_button) {
             return controls(CONTROLS_SHOULDER);
         case CONTROLS_TOUCHSCREEN:
             return touchscreen_settings();
+        case CONTROLS_DPAD_MODE:
+            tVBOpt.DPAD_MODE = (tVBOpt.DPAD_MODE + 1) % 3;
+            return controls(CONTROLS_DPAD_MODE);
         case CONTROLS_BACK:
             setTouchControls(buttons_on_screen);
             saveFileOptions();
@@ -1364,6 +1373,7 @@ static inline int handle_buttons(Button buttons[], int count) {
             C2D_DrawText(&buttons[i].text, C2D_AlignCenter, buttons[i].x + buttons[i].w / 2, buttons[i].y + buttons[i].h / 2 + yoff, 0, 0.7, 0.7);
         }
         if (buttons[i].show_toggle) C2D_DrawText(buttons[i].toggle ? buttons[i].toggle_text_on : buttons[i].toggle_text_off, C2D_AlignLeft, buttons[i].x, buttons[i].y, 0, 0.5, 0.5);
+        if (buttons[i].show_option) C2D_DrawText(buttons[i].option_texts[buttons[i].option], C2D_AlignLeft, buttons[i].x, buttons[i].y, 0, 0.5, 0.5);
     }
     if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);
     if (ret >= 0) pressed = -1;
@@ -1452,6 +1462,9 @@ void guiInit(void) {
     STATIC_TEXT(&text_hold, "Hold");
     STATIC_TEXT(&text_3ds, "Nintendo 3DS");
     STATIC_TEXT(&text_vbipd, "Virtual Boy IPD");
+    STATIC_TEXT(&text_vb_lpad, "Virtual Boy Left D-Pad");
+    STATIC_TEXT(&text_vb_rpad, "Virtual Boy Right D-Pad");
+    STATIC_TEXT(&text_mirror_abxy, "Mirror ABXY Buttons");
     STATIC_TEXT(&text_left, "Left");
     STATIC_TEXT(&text_right, "Right");
     STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
@@ -1642,6 +1655,26 @@ void setTouchControls(bool buttons) {
         vbkey[__builtin_ctz(KEY_Y)] = tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 5 ? VB_KEY_B : VB_KEY_A;
         vbkey[__builtin_ctz(KEY_B)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 4 ? VB_KEY_B : VB_KEY_A;
         vbkey[__builtin_ctz(KEY_X)] = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 5 ? VB_KEY_A : VB_KEY_B;
+    }
+    switch (tVBOpt.DPAD_MODE) {
+        default: // VB LPAD
+            vbkey[__builtin_ctz(KEY_DUP)] = VB_LPAD_U;
+            vbkey[__builtin_ctz(KEY_DDOWN)] = VB_LPAD_D;
+            vbkey[__builtin_ctz(KEY_DLEFT)] = VB_LPAD_L;
+            vbkey[__builtin_ctz(KEY_DRIGHT)] = VB_LPAD_R;
+            break;
+        case 1: // VB RPAD
+            vbkey[__builtin_ctz(KEY_DUP)] = VB_RPAD_U;
+            vbkey[__builtin_ctz(KEY_DDOWN)] = VB_RPAD_D;
+            vbkey[__builtin_ctz(KEY_DLEFT)] = VB_RPAD_L;
+            vbkey[__builtin_ctz(KEY_DRIGHT)] = VB_RPAD_R;
+            break;
+        case 2: // Mirror ABXY buttons
+            vbkey[__builtin_ctz(KEY_DUP)] = vbkey[__builtin_ctz(KEY_X)];
+            vbkey[__builtin_ctz(KEY_DDOWN)] = vbkey[__builtin_ctz(KEY_B)];
+            vbkey[__builtin_ctz(KEY_DLEFT)] = vbkey[__builtin_ctz(KEY_Y)];
+            vbkey[__builtin_ctz(KEY_DRIGHT)] = vbkey[__builtin_ctz(KEY_X)];
+            break;
     }
     bool new_3ds = false;
     APT_CheckNew3DS(&new_3ds);

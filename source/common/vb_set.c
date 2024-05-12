@@ -42,6 +42,7 @@ void setDefaults(void) {
     tVBOpt.TOUCH_PADY = 128;
     tVBOpt.ABXY_MODE = 0;
     tVBOpt.ZLZR_MODE = 0;
+    tVBOpt.DPAD_MODE = 0;
     tVBOpt.TINT = 0xff0000ff;
     tVBOpt.SLIDERMODE = SLIDER_3DS;
     tVBOpt.DEFAULT_EYE = 0;
@@ -105,6 +106,8 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->ABXY_MODE = atoi(value) % 6;
     } else if (MATCH("vbopt", "zlzr")) {
         pconfig->ZLZR_MODE = atoi(value) % 4;
+    } else if (MATCH("vbopt", "dpad_mode")) {
+        pconfig->DPAD_MODE = atoi(value) % 3;
     } else if (MATCH("vbopt", "n3ds_speedup")) {
         pconfig->N3DS_SPEEDUP = atoi(value);
     } else if (MATCH("vbopt", "homepath")) {
@@ -153,6 +156,7 @@ int saveFileOptions(void) {
     fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH ? tVBOpt.ROM_PATH : "");
     fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
     fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
+    fprintf(f, "dpad_mode=%d\n", tVBOpt.DPAD_MODE);
     fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
     fprintf(f, "homepath=%s\n", tVBOpt.HOME_PATH);
     fprintf(f, "[touch]\n");
