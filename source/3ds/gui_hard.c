@@ -690,6 +690,7 @@ static void rom_loader(void) {
         memcpy(tVBOpt.ROM_PATH, path, path_cap);
         tVBOpt.RAM_PATH = realloc(tVBOpt.RAM_PATH, path_cap);
         memcpy(tVBOpt.RAM_PATH, path, path_cap);
+        // we know there's a dot
         strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
         saveFileOptions();
         return load_rom();
@@ -1029,17 +1030,22 @@ static void vblink() {
     int listenfd = -1, datafd = -1;
     bool inflate_started = false;
     int ret;
+    FILE *f = fopen("vblink.log", "w");
     struct sockaddr_in serv_addr = {
         .sin_family = AF_INET,
         .sin_addr.s_addr = htonl(INADDR_ANY),
         .sin_port = htons(22082),
     };
+    fputs("hi", f);
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    fputs("socket made", f);
     if (listenfd < 0) {err = errno; goto bail;}
     bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+    fputs("bound", f);
     // set nonblocking
     //fnctl(listenfd, F_SETFL, fnctl(listenfd, F_GETFL) | O_NONBLOCK);
     listen(listenfd, 10);
+    fputs("listened", f);
     datafd = accept(listenfd, NULL, NULL);
     if (datafd < 0) {err = errno; goto bail;}
     dprintf(0, "accepted\n");
@@ -1101,6 +1107,8 @@ static void vblink() {
     guiop = AKILL | VBRESET;
     return;
     bail:
+    fprintf(f, "error %d\n", err);
+    fclose(f);
     dprintf(0, "error %d\n", err);
     if (inflate_started) inflateEnd(&strm);
     if (datafd >= 0) close(datafd);

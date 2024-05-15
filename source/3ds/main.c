@@ -17,6 +17,7 @@
 #include "rom_db.h"
 #include "replay.h"
 #include "utils.h"
+#include "vblink.h"
 
 char rom_path[256] = "sdmc:/vb/";
 char rom_name[128];
@@ -51,7 +52,7 @@ int main(void) {
     if (loadFileOptions() < 0)
         saveFileOptions();
     
-    socInit(memalign(0x1000, 0x40000), 0x40000);
+    vblink_init();
 
     drc_init();
 
