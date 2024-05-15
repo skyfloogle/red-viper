@@ -10,33 +10,49 @@
 
 volatile int vblink_progress = -1;
 volatile int vblink_error = 0;
-int vblink_listenfd = -1;
-
 Handle vblink_event;
 
-void vblink_init() {
+static int listenfd = -1, datafd = -1;
+static Thread thread;
+
+void vblink_init(void) {
     socInit(memalign(0x1000, 0x40000), 0x40000);
-    vblink_listenfd = svcCreateEvent(&vblink_event, RESET_STICKY);
+    svcCreateEvent(&vblink_event, RESET_STICKY);
 }
 
-void vblink_thread() {
-    int err, ok;
-    int datafd = -1;
+int vblink_open(void) {
     struct sockaddr_in serv_addr = {
         .sin_family = AF_INET,
         .sin_addr.s_addr = htonl(INADDR_ANY),
         .sin_port = htons(22082),
     };
-    vblink_listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (vblink_listenfd < 0) {vblink_error = errno; goto bail;}
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (listenfd < 0) return errno;
 
-    if (bind(vblink_listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {vblink_error = errno; goto bail;}
+    if (bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        close(listenfd);
+        return errno;
+    }
 
-    listen(vblink_listenfd, 1);
+    listen(listenfd, 1);
+    
+    datafd = -1;
 
+    thread = threadCreate(vblink_thread, NULL, 4000, 0x18, 1, true);
+    return 0;
+}
+
+void vblink_close(void) {
+    thread = NULL;
+    if (listenfd >= 0) close(listenfd);
+    if (datafd >= 0) close(datafd);
+}
+
+void vblink_thread(void*) {
+    int ok;
     while (true) {
         bool inflate_started = false;
-        datafd = accept(vblink_listenfd, NULL, NULL);
+        datafd = accept(listenfd, NULL, NULL);
         if (datafd < 0) {vblink_error = errno; goto conn_abort;}
 
         vblink_progress = 0;
