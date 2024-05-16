@@ -25,6 +25,7 @@
 #include "sprites.h"
 #include "splash_t3x.h"
 #include "splash.h"
+#include "vblink.h"
 
 #define TINT_R ( (tVBOpt.TINT & 0x000000FF) )
 #define TINT_G ( (tVBOpt.TINT & 0x0000FF00) >> 8 )
@@ -1015,106 +1016,49 @@ static void colour_filter(void) {
     }
 }
 HWORD* rom_block_map;
-int recvall(int sock, void *addr, int size, int flags) {
-    int remaining = size;
-    while (remaining > 0) {
-        int ret = recv(sock, addr, remaining, flags);
-        if (ret <= 0) return ret;
-        addr += ret;
-        remaining -= ret;
-    }
-    return size;
+
+static bool vblink_transfer() {
+    C2D_Text fname;
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_TextParse(&fname, dynamic_textbuf, vblink_fname);
+    C2D_TextOptimize(&fname);
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN false
+    LOOP_BEGIN(load_rom_buttons, -1);
+        C2D_DrawText(&fname, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text_loading, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.8, 0.8, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawRectSolid(60, 140, 0, 200, 16, C2D_Color32(0.5 * TINT_R, 0.5 * TINT_G, 0.5 * TINT_B, 255));
+        C2D_DrawRectSolid(60, 140, 0, 2 * vblink_progress, 16, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        if (vblink_progress == 100) {
+            // complete, all good
+            svcSignalEvent(vblink_event);
+            guiop = AKILL | VBRESET;
+            game_running = true;
+            last_savestate = 0;
+            loop = false;
+        } else if (vblink_error) {
+            loop = false;
+        }
+    LOOP_END(load_rom_buttons);
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN
+    return vblink_progress == 100;
 }
+
 static void vblink() {
-    int err = 0;
-    int listenfd = -1, datafd = -1;
-    bool inflate_started = false;
-    int ret;
-    FILE *f = fopen("vblink.log", "w");
-    struct sockaddr_in serv_addr = {
-        .sin_family = AF_INET,
-        .sin_addr.s_addr = htonl(INADDR_ANY),
-        .sin_port = htons(22082),
-    };
-    fputs("hi", f);
-    listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    fputs("socket made", f);
-    if (listenfd < 0) {err = errno; goto bail;}
-    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-    fputs("bound", f);
-    // set nonblocking
-    //fnctl(listenfd, F_SETFL, fnctl(listenfd, F_GETFL) | O_NONBLOCK);
-    listen(listenfd, 10);
-    fputs("listened", f);
-    datafd = accept(listenfd, NULL, NULL);
-    if (datafd < 0) {err = errno; goto bail;}
-    dprintf(0, "accepted\n");
-    uint32_t size;
-    if (recvall(datafd, &size, 4, 0) != 4) {err = errno; goto bail;}
-    dprintf(0, "fnsize\n");
-    char fname[300];
-    if (recvall(datafd, fname, size, 0) != size) {err = errno; goto bail;}
-    dprintf(0, "fn\n");
-    if (recvall(datafd, &size, 4, 0) != 4) {err = errno; goto bail;};
-    dprintf(0, "romsize\n");
-    static uint8_t in[32768];
-    z_stream strm = {0};
-    inflateInit(&strm);
-    inflate_started = true;
-    uint8_t *out = V810_ROM1.pmemory;
-    strm.next_out = out;
-    strm.avail_out = 0x1000000;
-    int checksum = 0;
-    int ok = 0;
-    if (send(datafd, &ok, 4, 0) < 0) {err = errno; goto bail;}
-    int total = 0;
-    while (true) {
-        if (recvall(datafd, &strm.avail_in, 4, 0) != 4) {err = errno; goto bail;}
-        dprintf(0, "recving %d\n", strm.avail_in);
-        if (recvall(datafd, in, strm.avail_in, 0) != strm.avail_in) {err = errno; goto bail;}
-        dprintf(0, "recvd\n");
-        for (int i = 0; i < strm.avail_in; i++) {
-            checksum += in[i];
-        }
-        dprintf(0, "checksum %d\n", checksum);
-        strm.next_in = in;
-        int last_out = strm.avail_out;
-        int ret;
-        while (strm.avail_in > 0) {
-            ret = inflate(&strm, Z_NO_FLUSH);
-            total += last_out - strm.avail_out;
-            dprintf(0, "inflated, progress: %d\n", total);
-            if (ret == Z_STREAM_END) goto inflate_done;
-            else if (ret) {
-                err = ret;
-                goto bail;
-            }
-        }
-        dprintf(0, "inflation success\n");
-    }
-    inflate_done:
-    inflateEnd(&strm);
-    dprintf(0, "done, total recv'd: %d\n", total);
-    if (total < size) goto bail;
-    if (send(datafd, &ok, 4, 0) < 0) {err = errno; goto bail;}
-    close(datafd);
-    close(listenfd);
-    V810_ROM1.highaddr = 0x7000000 + size - 1;
-    is_sram = false;
-    gen_table();
-    tVBOpt.CRC32 = get_crc(size);
-    v810_reset();
-    guiop = AKILL | VBRESET;
-    return;
-    bail:
-    fprintf(f, "error %d\n", err);
-    fclose(f);
-    dprintf(0, "error %d\n", err);
-    if (inflate_started) inflateEnd(&strm);
-    if (datafd >= 0) close(datafd);
-    if (listenfd >= 0) close(listenfd);
-    socExit();
-    return dev_options(DEV_VBLINK);
+    bool loaded = false;
+    vblink_open();
+    LOOP_BEGIN(about_buttons, 0);
+        if (vblink_progress == 0) loop = false;
+    LOOP_END(about_buttons);
+    if (vblink_progress == 0) {
+        // ready to receive
+        svcSignalEvent(vblink_event);
+        if (vblink_transfer()) {
+            // success
+            return;
+        } else return vblink();
+    } else return dev_options(DEV_VBLINK);
 }
 
 static void dev_options(int initial_button) {

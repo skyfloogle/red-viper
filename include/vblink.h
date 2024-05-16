@@ -1,9 +1,10 @@
 #include <3ds.h>
 
 void vblink_init(void);
-void vblink_open(void);
+int vblink_open(void);
 void vblink_close(void);
 
-volatile int vblink_progress = -1;
-volatile int vblink_error = 0;
-Handle vblink_event;
+extern volatile int vblink_progress;
+extern volatile int vblink_error;
+extern char vblink_fname[300];
+extern Handle vblink_event;

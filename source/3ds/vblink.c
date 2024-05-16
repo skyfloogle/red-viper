@@ -7,13 +7,17 @@
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vblink.h"
+#include "rom_db.h"
 
 volatile int vblink_progress = -1;
 volatile int vblink_error = 0;
+char vblink_fname[300];
 Handle vblink_event;
 
 static int listenfd = -1, datafd = -1;
 static Thread thread;
+
+static void vblink_thread(void*);
 
 void vblink_init(void) {
     socInit(memalign(0x1000, 0x40000), 0x40000);
@@ -38,7 +42,10 @@ int vblink_open(void) {
     
     datafd = -1;
 
-    thread = threadCreate(vblink_thread, NULL, 4000, 0x18, 1, true);
+    svcClearEvent(vblink_event);
+
+    APT_SetAppCpuTimeLimit(30);
+    thread = threadCreate(vblink_thread, NULL, 4000, 0x20, 1, true);
     return 0;
 }
 
@@ -46,14 +53,29 @@ void vblink_close(void) {
     thread = NULL;
     if (listenfd >= 0) close(listenfd);
     if (datafd >= 0) close(datafd);
+    svcSignalEvent(vblink_event);
 }
 
-void vblink_thread(void*) {
+int recvall(int sock, void *addr, int size, int flags) {
+    int remaining = size;
+    while (remaining > 0) {
+        int ret = recv(sock, addr, remaining, flags);
+        if (ret <= 0) return ret;
+        addr += ret;
+        remaining -= ret;
+    }
+    return size;
+}
+
+static void vblink_thread(void*) {
     int ok;
     while (true) {
-        bool inflate_started = false;
+        bool inflate_running = false;
         datafd = accept(listenfd, NULL, NULL);
-        if (datafd < 0) {vblink_error = errno; goto conn_abort;}
+        if (datafd < 0) {
+            vblink_error = errno;
+            return;
+        }
 
         vblink_progress = 0;
         // get acknowledged by main thread
@@ -72,12 +94,11 @@ void vblink_thread(void*) {
         }
 
         // get filename
-        char fname[300];
-        if (recvall(datafd, fname, size, 0) != size) {vblink_error = errno; goto conn_abort;}
-        fname[size] = 0;
+        if (recvall(datafd, vblink_fname, size, 0) != size) {vblink_error = errno; goto conn_abort;}
+        vblink_fname[size] = 0;
 
-        char *ext = strrchr(fname, '.');
-        if (strchr(fname, '/') || !ext || strcasecmp(ext, ".vb")) {
+        char *ext = strrchr(vblink_fname, '.');
+        if (strchr(vblink_fname, '/') || !ext || strcasecmp(ext, ".vb")) {
             // bad filename
             ok = -2;
             goto conn_fail;
@@ -100,8 +121,8 @@ void vblink_thread(void*) {
         static uint8_t in[32768];
         z_stream strm = {0};
         int ret;
-        if ((ret = inflateInit(&strm)) != Z_OK) {vblink_error = ret; goto conn_abort};
-        inflate_started = true;
+        if ((ret = inflateInit(&strm)) != Z_OK) {vblink_error = ret; goto conn_abort;};
+        inflate_running = true;
         uint8_t *out = V810_ROM1.pmemory;
         strm.next_out = out;
         strm.avail_out = 0x1000000;
@@ -110,7 +131,7 @@ void vblink_thread(void*) {
 
         while (true) {
             // set progress first so it's 99% at the end
-            vblink_progress = total / size;
+            vblink_progress = 100 * total / size;
 
             // read chunk size
             if (recvall(datafd, &strm.avail_in, 4, 0) != 4) {vblink_error = errno; goto conn_abort;}
@@ -141,14 +162,23 @@ void vblink_thread(void*) {
         }
         inflate_done:
         inflateEnd(&strm);
+        inflate_running = false;
         if (total != size) {
             // data too small
             goto conn_abort;
         }
 
-        vblink_progress = 100;
         // all looks good, send the ok (it's fine if it fails)
         send(datafd, &ok, 4, 0);
+
+        // final setup
+        V810_ROM1.highaddr = 0x7000000 + size - 1;
+        is_sram = false;
+        gen_table();
+        tVBOpt.CRC32 = get_crc(size);
+        v810_reset();
+
+        vblink_progress = 100;
         // get acknowledged by main thread
         svcWaitSynchronization(vblink_event, INT64_MAX);
         svcClearEvent(vblink_event);
@@ -157,9 +187,9 @@ void vblink_thread(void*) {
         close(datafd);
 
         // save file
-        int path_len = strlen(tVBOpt.HOME_PATH) + strlen("/vblink/") + strlen(fname);
+        int path_len = strlen(tVBOpt.HOME_PATH) + strlen("/vblink/") + strlen(vblink_fname);
         tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_len);
-        sprintf(tVBOpt.ROM_PATH, "%s/vblink/%s", tVBOpt.HOME_PATH, fname);
+        sprintf(tVBOpt.ROM_PATH, "%s/vblink/%s", tVBOpt.HOME_PATH, vblink_fname);
         tVBOpt.RAM_PATH = realloc(tVBOpt.RAM_PATH, path_len + 1);
         strcpy(tVBOpt.RAM_PATH, tVBOpt.ROM_PATH);
         // we know there's a dot
@@ -170,7 +200,7 @@ void vblink_thread(void*) {
             goto write_fail;
         }
 
-        if (fwrite(f, 1, size, V810_ROM1.pmemory) != size) {
+        if (fwrite(V810_ROM1.pmemory, 1, size, f) != size) {
             goto write_fail;
         }
 
@@ -189,11 +219,9 @@ void vblink_thread(void*) {
         send(datafd, &ok, 4, 0);
         conn_abort:
         close(datafd);
+        if (inflate_running) inflateEnd(&strm);
         // get acknowledged by main thread
         svcWaitSynchronization(vblink_event, INT64_MAX);
         svcClearEvent(vblink_event);
     }
-
-    bail:
-    if (vblink_listenfd >= 0) close(vblink_listenfd);
 }
