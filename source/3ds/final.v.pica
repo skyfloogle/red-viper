@@ -1,11 +1,15 @@
 .out outpos position
 .out outtc0 texcoord0
 
+; workaround libctru#535
+.constf const1(0.0, 0.0, 0.0, 0.0)
+
 ; basic passthrough, no transforming at all
 
 .entry vmain
 .proc vmain
-    mov outpos, v0
+    add r0, const1, v0
+    mov outpos, r0
     mov outtc0, v1
     end
 .end
