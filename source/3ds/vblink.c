@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <malloc.h>
 #include <string.h>
 #include <zlib.h>
@@ -25,6 +26,7 @@ void vblink_init(void) {
 }
 
 int vblink_open(void) {
+    vblink_error = 0;
     struct sockaddr_in serv_addr = {
         .sin_family = AF_INET,
         .sin_addr.s_addr = htonl(INADDR_ANY),
@@ -35,10 +37,16 @@ int vblink_open(void) {
 
     if (bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         close(listenfd);
+        listenfd = -1;
         return errno;
     }
 
     listen(listenfd, 1);
+
+    // set nonblocking
+    int flags = fcntl(listenfd, F_GETFL);
+    if (flags == -1) return errno;
+    if (fcntl(listenfd, F_SETFL, flags | O_NONBLOCK) == -1) return errno;
     
     datafd = -1;
 
@@ -50,17 +58,37 @@ int vblink_open(void) {
 }
 
 void vblink_close(void) {
-    thread = NULL;
     if (listenfd >= 0) close(listenfd);
     if (datafd >= 0) close(datafd);
+    listenfd = -1;
+    datafd = -1;
     svcSignalEvent(vblink_event);
+    threadJoin(thread, U64_MAX);
+    thread = NULL;
+}
+
+int sendall(int sock, const void *addr, int size, int flags) {
+    int remaining = size;
+    while (remaining > 0) {
+        int ret = send(sock, addr, remaining, flags);
+        if (ret <= 0) {
+            if (errno == EWOULDBLOCK) continue;
+            return ret;
+        }
+        addr += ret;
+        remaining -= ret;
+    }
+    return size;
 }
 
 int recvall(int sock, void *addr, int size, int flags) {
     int remaining = size;
     while (remaining > 0) {
         int ret = recv(sock, addr, remaining, flags);
-        if (ret <= 0) return ret;
+        if (ret <= 0) {
+            if (errno == EWOULDBLOCK) continue;
+            return ret;
+        }
         addr += ret;
         remaining -= ret;
     }
@@ -71,10 +99,16 @@ static void vblink_thread(void*) {
     int ok;
     while (true) {
         bool inflate_running = false;
-        datafd = accept(listenfd, NULL, NULL);
-        if (datafd < 0) {
-            vblink_error = errno;
-            return;
+        while (true) {
+            datafd = accept(listenfd, NULL, NULL);
+            if (datafd >= 0) {
+                break;
+            } else if (errno != EWOULDBLOCK) {
+                vblink_error = errno;
+                svcClearEvent(vblink_event);
+                return;
+            }
+            svcSleepThread(100000000);
         }
 
         vblink_progress = 0;
@@ -115,10 +149,10 @@ static void vblink_thread(void*) {
 
         // looking good so far
         ok = 0;
-        if (send(datafd, &ok, 4, 0) < 0) {vblink_error = errno; goto conn_abort;}
+        if (sendall(datafd, &ok, 4, 0) < 0) {vblink_error = errno; goto conn_abort;}
 
         // zlib setup
-        static uint8_t in[32768];
+        static uint8_t in[65536];
         z_stream strm = {0};
         int ret;
         if ((ret = inflateInit(&strm)) != Z_OK) {vblink_error = ret; goto conn_abort;};
@@ -169,7 +203,7 @@ static void vblink_thread(void*) {
         }
 
         // all looks good, send the ok (it's fine if it fails)
-        send(datafd, &ok, 4, 0);
+        sendall(datafd, &ok, 4, 0);
 
         // final setup
         V810_ROM1.highaddr = 0x7000000 + size - 1;
@@ -185,6 +219,7 @@ static void vblink_thread(void*) {
 
         // we don't need the network connection anymore
         close(datafd);
+        datafd = -1;
 
         // save file
         int path_len = strlen(tVBOpt.HOME_PATH) + strlen("/vblink/") + strlen(vblink_fname);
@@ -216,9 +251,11 @@ static void vblink_thread(void*) {
         continue;
 
         conn_fail:
-        send(datafd, &ok, 4, 0);
+        sendall(datafd, &ok, 4, 0);
         conn_abort:
         close(datafd);
+        datafd = -1;
+        vblink_progress = -1;
         if (inflate_running) inflateEnd(&strm);
         // get acknowledged by main thread
         svcWaitSynchronization(vblink_event, INT64_MAX);

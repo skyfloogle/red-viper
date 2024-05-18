@@ -1036,12 +1036,21 @@ static bool vblink_transfer() {
             game_running = true;
             last_savestate = 0;
             loop = false;
-        } else if (vblink_error) {
+        } else if (vblink_progress < 0 || vblink_error) {
+            vblink_error = 0;
+            svcSignalEvent(vblink_event);
             loop = false;
         }
     LOOP_END(load_rom_buttons);
     #undef DEFAULT_RETURN
     #define DEFAULT_RETURN
+    if (vblink_progress != 100) {
+        game_running = false;
+        // redraw logo since we unloaded
+        C3D_FrameBegin(0);
+        draw_logo();
+        C3D_FrameEnd(0);
+    }
     return vblink_progress == 100;
 }
 
@@ -1054,11 +1063,16 @@ static void vblink() {
     if (vblink_progress == 0) {
         // ready to receive
         svcSignalEvent(vblink_event);
-        if (vblink_transfer()) {
+        bool success = vblink_transfer();
+        vblink_close();
+        if (success) {
             // success
             return;
         } else return vblink();
-    } else return dev_options(DEV_VBLINK);
+    } else {
+        vblink_close();
+        return dev_options(DEV_VBLINK);
+    }
 }
 
 static void dev_options(int initial_button) {
