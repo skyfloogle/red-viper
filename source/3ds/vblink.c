@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
+#include <sys/stat.h>
 #include <string.h>
 #include <zlib.h>
 #include <3ds.h>
@@ -118,6 +119,8 @@ static void vblink_thread(void*) {
 
         uint32_t size;
 
+        FILE *f = NULL;
+
         // get filename length
         if (recvall(datafd, &size, 4, 0) != 4) {vblink_error = errno; goto conn_abort;}
 
@@ -163,6 +166,25 @@ static void vblink_thread(void*) {
 
         int total = 0;
 
+        // file write setup
+        char vblink_path[300];
+        snprintf(vblink_path, sizeof(vblink_path), "%s/vblink", tVBOpt.HOME_PATH);
+        struct stat st;
+        if (stat(vblink_path, &st) == -1) {
+            if (mkdir(vblink_path, 0777)) goto after_file_open;
+        }
+        int path_len = strlen(tVBOpt.HOME_PATH) + strlen("/vblink/") + strlen(vblink_fname);
+        tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_len);
+        sprintf(tVBOpt.ROM_PATH, "%s/vblink/%s", tVBOpt.HOME_PATH, vblink_fname);
+        tVBOpt.RAM_PATH = realloc(tVBOpt.RAM_PATH, path_len + 1);
+        strcpy(tVBOpt.RAM_PATH, tVBOpt.ROM_PATH);
+        // we know there's a dot
+        strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
+
+        f = fopen(tVBOpt.ROM_PATH, "wb");
+
+        after_file_open:
+
         while (true) {
             int new_progress = 100 * total / size;
             vblink_progress = new_progress < 99 ? new_progress : 99;
@@ -178,11 +200,19 @@ static void vblink_thread(void*) {
 
             // decompress chunk
             strm.next_in = in;
-            int last_out = strm.avail_out;
+            void *last_out = strm.next_out;
+            int last_avail = strm.avail_out;
             int ret;
             while (strm.avail_in > 0) {
                 ret = inflate(&strm, Z_NO_FLUSH);
-                total += last_out - strm.avail_out;
+                int count = last_avail - strm.avail_out;
+                if (f != NULL) {
+                    if (fwrite(last_out, 1, count, f) < count) {
+                        fclose(f);
+                        f = NULL;
+                    }
+                }
+                total += count;
                 if (total > size) {
                     // data too big
                     goto conn_abort;
@@ -213,38 +243,14 @@ static void vblink_thread(void*) {
         v810_reset();
 
         vblink_progress = 100;
-        // get acknowledged by main thread
-        svcWaitSynchronization(vblink_event, INT64_MAX);
-        svcClearEvent(vblink_event);
 
         // we don't need the network connection anymore
         close(datafd);
         datafd = -1;
 
-        // save file
-        int path_len = strlen(tVBOpt.HOME_PATH) + strlen("/vblink/") + strlen(vblink_fname);
-        tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_len);
-        sprintf(tVBOpt.ROM_PATH, "%s/vblink/%s", tVBOpt.HOME_PATH, vblink_fname);
-        tVBOpt.RAM_PATH = realloc(tVBOpt.RAM_PATH, path_len + 1);
-        strcpy(tVBOpt.RAM_PATH, tVBOpt.ROM_PATH);
-        // we know there's a dot
-        strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
-
-        FILE *f = fopen(tVBOpt.ROM_PATH, "wb");
-        if (f == NULL) {
-            goto write_fail;
-        }
-
-        if (fwrite(V810_ROM1.pmemory, 1, size, f) != size) {
-            goto write_fail;
-        }
-
         fclose(f);
-        continue;
+        f = NULL;
 
-        write_fail:
-        vblink_error = errno;
-        if (f != NULL) fclose(f);
         // get acknowledged by main thread
         svcWaitSynchronization(vblink_event, INT64_MAX);
         svcClearEvent(vblink_event);
@@ -257,6 +263,10 @@ static void vblink_thread(void*) {
         datafd = -1;
         vblink_progress = -1;
         if (inflate_running) inflateEnd(&strm);
+        if (f != NULL) {
+            fclose(f);
+            f = NULL;
+        }
         // get acknowledged by main thread
         svcWaitSynchronization(vblink_event, INT64_MAX);
         svcClearEvent(vblink_event);
