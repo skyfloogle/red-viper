@@ -164,8 +164,8 @@ static void vblink_thread(void*) {
         int total = 0;
 
         while (true) {
-            // set progress first so it's 99% at the end
-            vblink_progress = 100 * total / size;
+            int new_progress = 100 * total / size;
+            vblink_progress = new_progress < 99 ? new_progress : 99;
 
             // read chunk size
             if (recvall(datafd, &strm.avail_in, 4, 0) != 4) {vblink_error = errno; goto conn_abort;}
