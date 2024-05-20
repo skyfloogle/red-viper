@@ -46,7 +46,7 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
                 text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
                 text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
-                text_vb_lpad, text_vb_rpad, text_mirror_abxy;
+                text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink;
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_SpriteSheet splash_sheet;
@@ -222,7 +222,7 @@ static Button colour_filter_buttons[] = {
     {.str="Gray", .x=16, .y=128, .w=48, .h=32},
 };
 
-static void vblink(void);
+static void vblink(bool backtomain);
 static Button vblink_buttons[] = {};
 
 static void dev_options(int initial_button);
@@ -314,7 +314,9 @@ static void draw_logo(void) {
 static void first_menu(int initial_button) {
     LOOP_BEGIN(first_menu_buttons, initial_button);
         draw_logo();
+        if (hidKeysDown() & KEY_Y) loop = false;
     LOOP_END(first_menu_buttons);
+    if (hidKeysDown() & KEY_Y) return vblink(true);
     guiop = 0;
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
@@ -333,7 +335,9 @@ static void first_menu(int initial_button) {
 
 static void game_menu(int initial_button) {
     LOOP_BEGIN(game_menu_buttons, initial_button);
+        if (hidKeysDown() & KEY_Y) loop = false;
     LOOP_END(game_menu_buttons);
+    if (hidKeysDown() & KEY_Y) return vblink(true);
     switch (button) {
         case MAIN_MENU_LOAD_ROM: // Load ROM
             guiop = AKILL | VBRESET;
@@ -1046,10 +1050,31 @@ static bool vblink_transfer() {
     return vblink_progress == 100;
 }
 
-static void vblink() {
+static void vblink(bool backtomain) {
     bool loaded = false;
-    vblink_open();
+    char str[100];
+    C2D_Text text;
+    int open_err = vblink_open();
+    union {
+        struct in_addr ia;
+        u8 bytes[4];
+    } ip_addr, netmask, broadcast;
     LOOP_BEGIN(about_buttons, 0);
+        SOCU_GetIPInfo(&ip_addr.ia, &netmask.ia, &broadcast.ia);
+        C2D_TextBufClear(dynamic_textbuf);
+        if (open_err) {
+            snprintf(str, sizeof(str), "Couldn't start: error %d\nPlease ensure Wi-Fi is enabled and try again.", open_err);
+        } else if (vblink_progress == -2) {
+            snprintf(str, sizeof(str), "Socket closed: error %d\nPlease ensure Wi-Fi is enabled and try again.", vblink_error);
+        } else if (vblink_error) {
+            snprintf(str, sizeof(str), "Listening at %d.%d.%d.%d...\nTransfer failed: error %d", ip_addr.bytes[0], ip_addr.bytes[1], ip_addr.bytes[2], ip_addr.bytes[3], vblink_error);
+        } else {
+            snprintf(str, sizeof(str), "Listening at %d.%d.%d.%d...", ip_addr.bytes[0], ip_addr.bytes[1], ip_addr.bytes[2], ip_addr.bytes[3]);
+        }
+        C2D_TextParse(&text, dynamic_textbuf, str);
+        C2D_TextOptimize(&text);
+        C2D_DrawText(&text_vblink, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 1, 1, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
         if (vblink_progress == 0) loop = false;
     LOOP_END(about_buttons);
     if (vblink_progress == 0) {
@@ -1060,10 +1085,10 @@ static void vblink() {
         if (success) {
             // success
             return;
-        } else return vblink();
+        } else return vblink(backtomain);
     } else {
         vblink_close();
-        return dev_options(DEV_VBLINK);
+        return backtomain ? main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM) : dev_options(DEV_VBLINK);
     }
 }
 
@@ -1080,7 +1105,7 @@ static void dev_options(int initial_button) {
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
             return dev_options(DEV_PERF);
         case DEV_VBLINK:
-            return vblink();
+            return vblink(false);
         case DEV_N3DS:
             tVBOpt.N3DS_SPEEDUP = !tVBOpt.N3DS_SPEEDUP;
             osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
@@ -1531,6 +1556,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_vb_lpad, "Virtual Boy Left D-Pad");
     STATIC_TEXT(&text_vb_rpad, "Virtual Boy Right D-Pad");
     STATIC_TEXT(&text_mirror_abxy, "Mirror ABXY Buttons");
+    STATIC_TEXT(&text_vblink, "VBLink");
     STATIC_TEXT(&text_left, "Left");
     STATIC_TEXT(&text_right, "Right");
     STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");

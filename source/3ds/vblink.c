@@ -28,6 +28,7 @@ void vblink_init(void) {
 
 int vblink_open(void) {
     vblink_error = 0;
+    vblink_progress = -1;
     struct sockaddr_in serv_addr = {
         .sin_family = AF_INET,
         .sin_addr.s_addr = htonl(INADDR_ANY),
@@ -87,7 +88,7 @@ int recvall(int sock, void *addr, int size, int flags) {
     while (remaining > 0) {
         int ret = recv(sock, addr, remaining, flags);
         if (ret <= 0) {
-            if (errno == EWOULDBLOCK) continue;
+            if (ret < 0 && errno == EWOULDBLOCK) continue;
             return ret;
         }
         addr += ret;
@@ -106,7 +107,11 @@ static void vblink_thread(void*) {
                 break;
             } else if (errno != EWOULDBLOCK) {
                 vblink_error = errno;
+                close(listenfd);
+                listenfd = -1;
                 svcClearEvent(vblink_event);
+                thread = NULL;
+                vblink_progress = -2;
                 return;
             }
             svcSleepThread(100000000);
