@@ -168,20 +168,16 @@ static void vblink_thread(void*) {
 
         // file write setup
         char vblink_path[300];
-        snprintf(vblink_path, sizeof(vblink_path), "%s/vblink", tVBOpt.HOME_PATH);
+        snprintf(vblink_path, sizeof(vblink_path), "%s/vblink/", tVBOpt.HOME_PATH);
         struct stat st;
         if (stat(vblink_path, &st) == -1) {
             if (mkdir(vblink_path, 0777)) goto after_file_open;
         }
-        int path_len = strlen(tVBOpt.HOME_PATH) + strlen("/vblink/") + strlen(vblink_fname);
-        tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_len);
-        sprintf(tVBOpt.ROM_PATH, "%s/vblink/%s", tVBOpt.HOME_PATH, vblink_fname);
-        tVBOpt.RAM_PATH = realloc(tVBOpt.RAM_PATH, path_len + 1);
-        strcpy(tVBOpt.RAM_PATH, tVBOpt.ROM_PATH);
-        // we know there's a dot
-        strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
-
-        f = fopen(tVBOpt.ROM_PATH, "wb");
+        int path_len = strlen(vblink_path) + strlen(vblink_fname);
+        if (path_len + 1 < sizeof(tVBOpt.ROM_PATH)) {
+            strncat(vblink_path, vblink_fname, sizeof(vblink_path) - 1);
+            f = fopen(vblink_path, "wb");
+        }
 
         after_file_open:
 
@@ -236,6 +232,13 @@ static void vblink_thread(void*) {
         sendall(datafd, &ok, 4, 0);
 
         // final setup
+        if (f) {
+            strcpy(tVBOpt.ROM_PATH, vblink_path);
+            strcpy(tVBOpt.RAM_PATH, tVBOpt.ROM_PATH);
+            // we know there's a dot
+            strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
+        }
+
         V810_ROM1.highaddr = 0x7000000 + size - 1;
         is_sram = false;
         gen_table();

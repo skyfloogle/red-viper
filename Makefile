@@ -67,7 +67,7 @@ GIT_HASH := $(shell git log -1 --pretty=format:"%h")
 FULL_VERSION := "$(VERSION) - $(GIT_HASH)"
 
 # FIXME: Remove -fcommon once all multiple definitions are fixed
-CFLAGS	:=	-g -Wall -Werror -O2 -mword-relocations \
+CFLAGS	:=	-g -Wall -Wno-format-truncation -Werror -O2 -mword-relocations \
 			-Wno-unused-variable \
 			-ffunction-sections -fcommon \
 			-DVERSION=\"$(FULL_VERSION)\" \

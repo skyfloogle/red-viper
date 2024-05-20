@@ -47,7 +47,7 @@ void setDefaults(void) {
     tVBOpt.SLIDERMODE = SLIDER_3DS;
     tVBOpt.DEFAULT_EYE = 0;
     tVBOpt.PERF_INFO = false;
-    tVBOpt.ROM_PATH = NULL;
+    tVBOpt.ROM_PATH[0] = 0;
     tVBOpt.VSYNC = true;
     tVBOpt.N3DS_SPEEDUP = true;
     tVBOpt.ANAGLYPH = false;
@@ -100,7 +100,6 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("vbopt", "perfinfo")) {
         pconfig->PERF_INFO = atoi(value);
     } else if (MATCH("vbopt", "lastrom")) {
-        pconfig->ROM_PATH = realloc(pconfig->ROM_PATH, strlen(value) + 1);
         strcpy(pconfig->ROM_PATH, value);
     } else if (MATCH("vbopt", "abxy")) {
         pconfig->ABXY_MODE = atoi(value) % 6;
@@ -153,7 +152,7 @@ int saveFileOptions(void) {
     fprintf(f, "slidermode=%d\n", tVBOpt.SLIDERMODE);
     fprintf(f, "default_eye=%d\n", tVBOpt.DEFAULT_EYE);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
-    fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH ? tVBOpt.ROM_PATH : "");
+    fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH);
     fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
     fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
     fprintf(f, "dpad_mode=%d\n", tVBOpt.DPAD_MODE);

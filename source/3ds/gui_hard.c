@@ -375,16 +375,12 @@ int strptrcmp(const void *s1, const void *s2) {
 }
 
 static void rom_loader(void) {
-    static char *path = NULL;
-    static int path_cap = 128;
-    if (!path) {
-        if (tVBOpt.ROM_PATH) {
-            int path_len = strlen(tVBOpt.ROM_PATH);
-            while (path_cap <= path_len) path_cap *= 2;
-            path = malloc(path_cap);
+    static char path[300] = {0};
+    if (!path[0]) {
+        if (tVBOpt.ROM_PATH[0]) {
             strcpy(path, tVBOpt.ROM_PATH);
         } else {
-            path = calloc(path_cap, 1);
+            path[0] = 0;
         }
     }
 
@@ -458,7 +454,7 @@ static void rom_loader(void) {
     float scroll_speed = 0;
     int cursor = 0;
 
-    if (tVBOpt.ROM_PATH && strstr(tVBOpt.ROM_PATH, path) == tVBOpt.ROM_PATH) {
+    if (tVBOpt.ROM_PATH[0] && strstr(tVBOpt.ROM_PATH, path) == tVBOpt.ROM_PATH) {
         char *filename = strrchr(tVBOpt.ROM_PATH, '/');
         // null check but also skip the slash
         if (filename++) {
@@ -515,16 +511,14 @@ static void rom_loader(void) {
                 bool clicked_dir = clicked_entry < dirCount;
                 const char *new_entry = clicked_dir ? dirs[clicked_entry] : files[clicked_entry - dirCount];
                 int new_path_len = strlen(path) + strlen(new_entry) + clicked_dir;
-                if (new_path_len + 2 > path_cap) {
-                    while (new_path_len + 2 > path_cap)
-                        path_cap *= 2;
-                    path = realloc(path, path_cap);
-                }
-                strcat(path, new_entry);
-                if (clicked_entry < dirCount) {
-                    // clicked on directory, so add a slash
-                    path[new_path_len - 1] = '/';
-                    path[new_path_len] = 0;
+                // accomodate for null terminator and potentially 'vb' -> 'ram' lengthening
+                if (new_path_len + 1 < sizeof(path)) {
+                    strcat(path, new_entry);
+                    if (clicked_entry < dirCount) {
+                        // clicked on directory, so add a slash
+                        path[new_path_len - 1] = '/';
+                        path[new_path_len] = 0;
+                    }
                 }
                 loop = false;
             }
@@ -687,10 +681,8 @@ static void rom_loader(void) {
         video_flush(true);
         C3D_FrameEnd(0);
 
-        tVBOpt.ROM_PATH = realloc(tVBOpt.ROM_PATH, path_cap);
-        memcpy(tVBOpt.ROM_PATH, path, path_cap);
-        tVBOpt.RAM_PATH = realloc(tVBOpt.RAM_PATH, path_cap);
-        memcpy(tVBOpt.RAM_PATH, path, path_cap);
+        strcpy(tVBOpt.ROM_PATH, path);
+        strcpy(tVBOpt.RAM_PATH, path);
         // we know there's a dot
         strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
         saveFileOptions();
