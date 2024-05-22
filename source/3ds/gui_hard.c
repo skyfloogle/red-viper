@@ -2130,89 +2130,82 @@ void setPresetControls(bool buttons) {
 bool guiShouldSwitch(void) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    return !tVBOpt.CUSTOM_CONTROLS && touch_pos.px >= 320 - 64 && touch_pos.py < 32;
+    return touch_pos.px >= 320 - 64 && touch_pos.py < 32;
 }
 
 void drawTouchControls(int inputs) {
-    const int pause_square_height = 70;
-    if (tVBOpt.CUSTOM_CONTROLS) {
-        C2D_DrawRectSolid(320 / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
-            pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
-        C2D_DrawRectSolid(320 / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
-            pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+    int col_up = TINT_50;
+    int col_down = TINT_75;
+    int col_drag = TINT_90;
+    int col_line = C2D_Color32(32, 32, 32, 255);
+    if (buttons_on_screen) {
+        float mx = (float)(tVBOpt.TOUCH_AX + tVBOpt.TOUCH_BX) / 2;
+        float my = (float)(tVBOpt.TOUCH_AY + tVBOpt.TOUCH_BY) / 2;
+        if (tVBOpt.TOUCH_AY == tVBOpt.TOUCH_BY) {
+            // edge case so we don't div0
+            C2D_DrawLine(mx, 0, col_line, mx, 240, col_line, 1, 0);
+        } else {
+            float rico = -(tVBOpt.TOUCH_BX - tVBOpt.TOUCH_AX) / (float)(tVBOpt.TOUCH_BY - tVBOpt.TOUCH_AY);
+            int oy = -rico * mx + my;
+            int ly = oy + rico * tVBOpt.PAUSE_RIGHT;
+            int ry = oy + rico * 320;
+            C2D_DrawLine(tVBOpt.PAUSE_RIGHT, ly, col_line, 320, ry, col_line, 1, 0);
+        }
     } else {
-        int col_up = TINT_50;
-        int col_down = TINT_75;
-        int col_drag = TINT_90;
-        int col_line = C2D_Color32(32, 32, 32, 255);
-        if (buttons_on_screen) {
-            float mx = (float)(tVBOpt.TOUCH_AX + tVBOpt.TOUCH_BX) / 2;
-            float my = (float)(tVBOpt.TOUCH_AY + tVBOpt.TOUCH_BY) / 2;
-            if (tVBOpt.TOUCH_AY == tVBOpt.TOUCH_BY) {
-                // edge case so we don't div0
-                C2D_DrawLine(mx, 0, col_line, mx, 240, col_line, 1, 0);
-            } else {
-                float rico = -(tVBOpt.TOUCH_BX - tVBOpt.TOUCH_AX) / (float)(tVBOpt.TOUCH_BY - tVBOpt.TOUCH_AY);
-                int oy = -rico * mx + my;
-                int ly = oy + rico * tVBOpt.PAUSE_RIGHT;
-                int ry = oy + rico * 320;
-                C2D_DrawLine(tVBOpt.PAUSE_RIGHT, ly, col_line, 320, ry, col_line, 1, 0);
-            }
-        } else {
-            C2D_DrawLine(
-                tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + tVBOpt.PAUSE_RIGHT, col_line,
-                320, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + 320, col_line,
-                1, 0);
-            C2D_DrawLine(
-                tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - tVBOpt.PAUSE_RIGHT, col_line,
-                320, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - 320, col_line,
-                1, 0);
-        }
-
         C2D_DrawLine(
-            tVBOpt.PAUSE_RIGHT, 0, C2D_Color32(64, 64, 64, 255),
-            tVBOpt.PAUSE_RIGHT, 240, C2D_Color32(64, 64, 64, 255),
+            tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + tVBOpt.PAUSE_RIGHT, col_line,
+            320, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + 320, col_line,
             1, 0);
-
-        bool dragging = inputs != 0;
-        if (inputs == 0) inputs = guiGetInput(false);
-
-        C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
-            pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
-        if (replay_playing()) {
-            C2D_DrawTriangle(
-                tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
-                tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 + pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
-                tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6 + pause_square_height * 0.6, 240 / 2, C2D_Color32(64, 64, 64, 255), 0
-            );
-        } else {
-            C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
-                pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
-        }
-
-        if (buttons_on_screen) {
-            C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, inputs & VB_KEY_A ? (dragging ? col_drag : col_down) : col_up);
-            C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, inputs & VB_KEY_B ? (dragging ? col_drag : col_down) : col_up);
-            C2D_DrawText(&text_A, C2D_AlignCenter, tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY - 12, 0, 0.7, 0.7);
-            C2D_DrawText(&text_B, C2D_AlignCenter, tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY - 12, 0, 0.7, 0.7);
-        } else {
-            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, inputs & VB_KEY_A ? col_drag : col_up);
-            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, inputs & VB_KEY_A ? col_drag : col_up);
-            if (!dragging) {
-                if (inputs & VB_RPAD_L)
-                    C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
-                if (inputs & VB_RPAD_R)
-                    C2D_DrawRectSolid(tVBOpt.TOUCH_PADX + 16, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
-                if (inputs & VB_RPAD_U)
-                    C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 16*2, col_down);
-                if (inputs & VB_RPAD_D)
-                    C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY + 16, 0, 16*2, 16*2, col_down);
-            }
-        }
-
-        C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, TINT_50);
-        C2D_DrawText(&text_switch, C2D_AlignCenter, 320 - 32, 6, 0, 0.7, 0.7);
+        C2D_DrawLine(
+            tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - tVBOpt.PAUSE_RIGHT, col_line,
+            320, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - 320, col_line,
+            1, 0);
     }
+
+    C2D_DrawLine(
+        tVBOpt.PAUSE_RIGHT, 0, C2D_Color32(64, 64, 64, 255),
+        tVBOpt.PAUSE_RIGHT, 240, C2D_Color32(64, 64, 64, 255),
+        1, 0);
+
+    bool dragging = inputs != 0;
+    if (inputs == 0) inputs = guiGetInput(false);
+
+    int pause_square_height = 70;
+    C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
+        pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+    if (replay_playing()) {
+        C2D_DrawTriangle(
+            tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
+            tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 + pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
+            tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6 + pause_square_height * 0.6, 240 / 2, C2D_Color32(64, 64, 64, 255), 0
+        );
+    } else {
+        C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
+            pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+    }
+
+    if (buttons_on_screen) {
+        C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, inputs & VB_KEY_A ? (dragging ? col_drag : col_down) : col_up);
+        C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, inputs & VB_KEY_B ? (dragging ? col_drag : col_down) : col_up);
+        C2D_DrawText(&text_A, C2D_AlignCenter, tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY - 12, 0, 0.7, 0.7);
+        C2D_DrawText(&text_B, C2D_AlignCenter, tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY - 12, 0, 0.7, 0.7);
+    } else {
+        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, inputs & VB_KEY_A ? col_drag : col_up);
+        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, inputs & VB_KEY_A ? col_drag : col_up);
+        if (!dragging) {
+            if (inputs & VB_RPAD_L)
+                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
+            if (inputs & VB_RPAD_R)
+                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX + 16, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
+            if (inputs & VB_RPAD_U)
+                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 16*2, col_down);
+            if (inputs & VB_RPAD_D)
+                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY + 16, 0, 16*2, 16*2, col_down);
+        }
+    }
+
+    C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, TINT_50);
+    C2D_DrawText(&text_switch, C2D_AlignCenter, 320 - 32, 6, 0, 0.7, 0.7);
 }
 
 void guiUpdate(float total_time, float drc_time) {
@@ -2290,7 +2283,7 @@ void guiUpdate(float total_time, float drc_time) {
 bool guiShouldPause(void) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    return ((touch_pos.px < tVBOpt.PAUSE_RIGHT || tVBOpt.CUSTOM_CONTROLS) && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
+    return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
 }
 
 int guiGetInput(bool ingame) {
