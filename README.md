@@ -144,4 +144,5 @@ Reality Boy is in no way affiliated with either of these parties
 * Floogle - 3DS hardware renderer; many optimizations, bugfixes, and other improvements.
 * djedditt - Enhanced 3D depth slider support.
 * Morintari - splash screen artwork
+* nevumx - Custom control scheme
 * All GitHub contributors

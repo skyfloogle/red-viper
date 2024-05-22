@@ -31,8 +31,57 @@
 #define TINT_G ( (tVBOpt.TINT & 0x0000FF00) >> 8 )
 #define TINT_B ( (tVBOpt.TINT & 0x00FF0000) >> 16 )
 
+#define BLACK ( C2D_Color32(0, 0, 0, 255) )
+#define TINT_BRIGHTNESS(BRIGHTNESS) ( C2D_Color32(TINT_R * ( BRIGHTNESS ), TINT_G * ( BRIGHTNESS ), TINT_B * ( BRIGHTNESS ), 255) )
+#define TINT_100 TINT_BRIGHTNESS(1.0)
+#define TINT_90 TINT_BRIGHTNESS(0.9)
+#define TINT_75 TINT_BRIGHTNESS(0.75)
+#define TINT_50 TINT_BRIGHTNESS(0.5)
+#define TINT_COLOR TINT_100
+
+#define PERFORM_FOR_EACH_3DS_BUTTON(MACRO) \
+    MACRO(DUP) \
+    MACRO(DDOWN) \
+    MACRO(DLEFT) \
+    MACRO(DRIGHT) \
+    MACRO(CPAD_UP) \
+    MACRO(CPAD_DOWN) \
+    MACRO(CPAD_LEFT) \
+    MACRO(CPAD_RIGHT) \
+    MACRO(CSTICK_UP) \
+    MACRO(CSTICK_DOWN) \
+    MACRO(CSTICK_LEFT) \
+    MACRO(CSTICK_RIGHT) \
+    MACRO(A) \
+    MACRO(X) \
+    MACRO(B) \
+    MACRO(Y) \
+    MACRO(START) \
+    MACRO(SELECT) \
+    MACRO(L) \
+    MACRO(R) \
+    MACRO(ZL) \
+    MACRO(ZR)
+
+#define PERFORM_FOR_EACH_VB_BUTTON(MACRO) \
+    MACRO(KEY_L) \
+    MACRO(KEY_R) \
+    MACRO(KEY_SELECT) \
+    MACRO(KEY_START) \
+    MACRO(KEY_B) \
+    MACRO(KEY_A) \
+    MACRO(RPAD_R) \
+    MACRO(RPAD_L) \
+    MACRO(RPAD_D) \
+    MACRO(RPAD_U) \
+    MACRO(LPAD_R) \
+    MACRO(LPAD_L) \
+    MACRO(LPAD_D) \
+    MACRO(LPAD_U)
+
 static bool buttons_on_screen = false;
-void setTouchControls(bool button);
+void setPresetControls(bool button);
+void setCustomControls(void);
 bool guiShouldSwitch(void);
 void drawTouchControls(int inputs);
 
@@ -46,7 +95,13 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
                 text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
                 text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
-                text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink;
+                text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink, text_preset, text_custom,
+                text_error, text_3ds, text_vb, text_map, text_currently_mapped_to;
+
+#define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
+PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
+#define CUSTOM_VB_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_vb_button_##BUTTON;
+PERFORM_FOR_EACH_VB_BUTTON(CUSTOM_VB_BUTTON_TEXT)
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_SpriteSheet splash_sheet;
@@ -70,7 +125,7 @@ typedef struct Button_t Button;
 struct Button_t {
     char *str;
     float x, y, w, h;
-    bool show_toggle, toggle, show_option, hidden;
+    bool show_toggle, toggle, show_option, hidden, draw_selected_rect;
     int option;
     C2D_Text *toggle_text_on;
     C2D_Text *toggle_text_off;
@@ -157,20 +212,119 @@ static Button rom_loader_buttons[] = {
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
-static void draw_abxy(Button*);
-static void draw_shoulders(Button*);
 static void controls(int initial_button);
 static Button controls_buttons[] = {
-    #define CONTROLS_FACE 0
+    #define CONTROLS_CONTROL_SCHEME 0
+    {.str="Control Scheme", .x=60, .y=70, .w=200, .h=48, .show_toggle=true, .toggle_text_on=&text_custom, .toggle_text_off=&text_preset},
+    #define CONTROLS_CONFIGURE_SCHEME 1
+    {.str="Configure Scheme", .x=60, .y=124, .w=200, .h=48},
+    #define CONTROLS_BACK 2
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+static void draw_abxy(Button*);
+static void draw_shoulders(Button*);
+static void preset_controls(int initial_button);
+static Button preset_controls_buttons[] = {
+    #define PRESET_CONTROLS_FACE 0
     // y is set later
     {.x=160-64, .w=128, .h=80, .custom_draw=draw_abxy},
-    #define CONTROLS_SHOULDER 1
+    #define PRESET_CONTROLS_SHOULDER 1
     {.x=160-64, .y=0, .w=128, .h=40, .custom_draw=draw_shoulders},
-    #define CONTROLS_TOUCHSCREEN 2
+    #define PRESET_CONTROLS_TOUCHSCREEN 2
     {.str="Touchscreen settings", .x=60, .y=144, .w=200, .h=40},
-    #define CONTROLS_DPAD_MODE 3
+    #define PRESET_CONTROLS_DPAD_MODE 3
     {.str="3DS D-Pad Mode", .x=60, .y=196, .w=200, .h=44, .show_option=true, .option_texts=(C2D_Text*[]){&text_vb_lpad, &text_vb_rpad, &text_mirror_abxy}},
-    #define CONTROLS_BACK 4
+    #define PRESET_CONTROLS_BACK 4
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+#define DECLARE_DRAW_CUSTOM_3DS_BUTTON_FUNCTION(CUSTOM_3DS_BUTTON) static void draw_custom_3ds_##CUSTOM_3DS_BUTTON(Button*);
+PERFORM_FOR_EACH_3DS_BUTTON(DECLARE_DRAW_CUSTOM_3DS_BUTTON_FUNCTION)
+
+static void custom_3ds_mappings(int initial_button);
+static Button custom_3ds_mappings_buttons[] = {
+    #define CUSTOM_3DS_MAPPINGS_L 0
+    {.x=0, .y=0, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_L},
+    #define CUSTOM_3DS_MAPPINGS_ZL 1
+    {.x=108, .y=0, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_ZL},
+    #define CUSTOM_3DS_MAPPINGS_ZR 2
+    {.x=162, .y=0, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_ZR},
+    #define CUSTOM_3DS_MAPPINGS_R 3
+    {.x=270, .y=0, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_R},
+    #define CUSTOM_3DS_MAPPINGS_CPAD_UP 4
+    {.x=54, .y=30, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CPAD_UP},
+    #define CUSTOM_3DS_MAPPINGS_CPAD_DOWN 5
+    {.x=54, .y=76, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CPAD_DOWN},
+    #define CUSTOM_3DS_MAPPINGS_CPAD_LEFT 6
+    {.x=0, .y=53, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CPAD_LEFT},
+    #define CUSTOM_3DS_MAPPINGS_CPAD_RIGHT 7
+    {.x=108, .y=53, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CPAD_RIGHT},
+    #define CUSTOM_3DS_MAPPINGS_DUP 8
+    {.x=54, .y=122, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_DUP},
+    #define CUSTOM_3DS_MAPPINGS_DDOWN 9
+    {.x=54, .y=168, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_DDOWN},
+    #define CUSTOM_3DS_MAPPINGS_DLEFT 10
+    {.x=0, .y=145, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_DLEFT},
+    #define CUSTOM_3DS_MAPPINGS_DRIGHT 11
+    {.x=108, .y=145, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_DRIGHT},
+    #define CUSTOM_3DS_MAPPINGS_CSTICK_UP 12
+    {.x=216, .y=30, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CSTICK_UP},
+    #define CUSTOM_3DS_MAPPINGS_CSTICK_DOWN 13
+    {.x=216, .y=76, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CSTICK_DOWN},
+    #define CUSTOM_3DS_MAPPINGS_CSTICK_LEFT 14
+    {.x=162, .y=53, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CSTICK_LEFT},
+    #define CUSTOM_3DS_MAPPINGS_CSTICK_RIGHT 15
+    {.x=270, .y=53, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CSTICK_RIGHT},
+    #define CUSTOM_3DS_MAPPINGS_X 16
+    {.x=216, .y=122, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_X},
+    #define CUSTOM_3DS_MAPPINGS_B 17
+    {.x=216, .y=168, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_B},
+    #define CUSTOM_3DS_MAPPINGS_Y 18
+    {.x=162, .y=145, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_Y},
+    #define CUSTOM_3DS_MAPPINGS_A 19
+    {.x=270, .y=145, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_A},
+    #define CUSTOM_3DS_MAPPINGS_SELECT 20
+    {.x=108, .y=198, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_SELECT},
+    #define CUSTOM_3DS_MAPPINGS_START 21
+    {.x=162, .y=198, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_START},
+    #define CUSTOM_3DS_MAPPINGS_RESET 22
+    {.str="Reset", .x=268, .y=208, .w=52, .h=32},
+    #define CUSTOM_3DS_MAPPINGS_BACK 23
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+static void custom_vb_mappings(int initial_button);
+static Button custom_vb_mappings_buttons[] = {
+    #define CUSTOM_VB_MAPPINGS_KEY_L 0
+    {.str="\uE004", .x=0, .y=0, .w=64, .h=38, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_KEY_R 1
+    {.str="\uE005", .x=256, .y=0, .w=64, .h=38, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_LPAD_U 2
+    {.str="L\uE079", .x=34, .y=42, .w=60, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_LPAD_D 3
+    {.str="L\uE07A", .x=34, .y=122, .w=60, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_LPAD_L 4
+    {.str="L\uE07B", .x=2, .y=82, .w=60, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_LPAD_R 5
+    {.str="L\uE07C", .x=66, .y=82, .w=60, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_RPAD_U 6
+    {.str="R\uE079", .x=226, .y=42, .w=60, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_RPAD_D 7
+    {.str="R\uE07A", .x=226, .y=122, .w=60, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_RPAD_L 8
+    {.str="R\uE07B", .x=194, .y=82, .w=60, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_RPAD_R 9
+    {.str="R\uE07C", .x=258, .y=82, .w=60, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_KEY_SELECT 10
+    {.str="SELECT", .x=58, .y=162, .w=76, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_KEY_START 11
+    {.str="START", .x=82, .y=202, .w=76, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_KEY_B 12
+    {.str="\uE001", .x=162, .y=202, .w=76, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_KEY_A 13
+    {.str="\uE000", .x=186, .y=162, .w=76, .h=36, .draw_selected_rect=true},
+    #define CUSTOM_VB_MAPPINGS_BACK 14
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -287,6 +441,9 @@ static Button load_rom_buttons[] = {
     SETUP_BUTTONS(game_menu_buttons); \
     SETUP_BUTTONS(rom_loader_buttons); \
     SETUP_BUTTONS(controls_buttons); \
+    SETUP_BUTTONS(preset_controls_buttons); \
+    SETUP_BUTTONS(custom_3ds_mappings_buttons); \
+    SETUP_BUTTONS(custom_vb_mappings_buttons); \
     SETUP_BUTTONS(options_buttons); \
     SETUP_BUTTONS(video_settings_buttons); \
     SETUP_BUTTONS(colour_filter_buttons); \
@@ -635,25 +792,25 @@ static void rom_loader(void) {
             if (y + entry_height >= 0 && y < 240) {
                 C2D_TextParse(&text, dynamic_textbuf, i < dirCount ? dirs[i] : files[i - dirCount]);
                 C2D_TextOptimize(&text);
-                C2D_DrawRectSolid(56, y, 0, 264, entry_height, clicked_entry == i ? C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255) : C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
-                if (cursor == i) C2D_DrawRectSolid(56 + 4, y + entry_height - 8, 0, 264 - 8, 1, C2D_Color32(0, 0, 0, 255));
+                C2D_DrawRectSolid(56, y, 0, 264, entry_height, clicked_entry == i ? TINT_50 : TINT_100);
+                if (cursor == i) C2D_DrawRectSolid(56 + 4, y + entry_height - 8, 0, 264 - 8, 1, BLACK);
                 C2D_DrawText(&text, C2D_AlignLeft, 64, y + 8, 0, 0.5, 0.5);
             }
             y += entry_height;
         }
         // scrollbar
         if (scroll_top != scroll_bottom) {
-            C2D_DrawRectSolid(320-2, 32, 0, 2, 240-32, C2D_Color32(0, 0, 0, 255));
-            C2D_DrawRectSolid(320-2, 32 + (240-32-8) * (scroll_pos - scroll_top) / (scroll_bottom - scroll_top), 0, 2, 8, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+            C2D_DrawRectSolid(320-2, 32, 0, 2, 240-32, BLACK);
+            C2D_DrawRectSolid(320-2, 32 + (240-32-8) * (scroll_pos - scroll_top) / (scroll_bottom - scroll_top), 0, 2, 8, TINT_COLOR);
         }
         // path
         C2D_TextParse(&text, dynamic_textbuf, path);
         C2D_TextOptimize(&text);
-        C2D_DrawRectSolid(0, 0, 0, 320, 32, C2D_Color32(0, 0, 0, 255));
-        C2D_DrawText(&text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawRectSolid(0, 0, 0, 320, 32, BLACK);
+        C2D_DrawText(&text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, TINT_COLOR);
 
         // up button indicator
-        C2D_DrawText(&text_btn_X, C2D_AlignLeft | C2D_WithColor, 8, 32, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text_btn_X, C2D_AlignLeft | C2D_WithColor, 8, 32, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(rom_loader_buttons);
 
     buttonLock = false;
@@ -694,6 +851,131 @@ static void rom_loader(void) {
     }
 }
 
+static void controls(int initial_button) {
+    controls_buttons[CONTROLS_CONTROL_SCHEME].toggle = tVBOpt.CUSTOM_CONTROLS;
+    LOOP_BEGIN(controls_buttons, initial_button);
+    LOOP_END(controls_buttons);
+    switch (button) {
+        case CONTROLS_CONTROL_SCHEME:
+            tVBOpt.CUSTOM_CONTROLS = !tVBOpt.CUSTOM_CONTROLS;
+            return controls(CONTROLS_CONTROL_SCHEME);
+        case CONTROLS_CONFIGURE_SCHEME:
+            return tVBOpt.CUSTOM_CONTROLS ? custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_BACK) : preset_controls(0);
+        case CONTROLS_BACK:
+            tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
+            saveFileOptions();
+            return main_menu(MAIN_MENU_CONTROLS);
+    }
+}
+
+static C2D_Text * vb_button_code_to_vb_button_text(int vb_button_code) {
+    switch (vb_button_code) {
+        #define VB_BUTTON_CODE_TO_TEXT_CASE(VB_BUTTON) \
+        case VB_##VB_BUTTON: \
+            return &text_custom_vb_button_##VB_BUTTON;
+        PERFORM_FOR_EACH_VB_BUTTON(VB_BUTTON_CODE_TO_TEXT_CASE)
+        default:
+            return &text_error;
+    }
+}
+
+#define DRAW_CUSTOM_3DS_BUTTON_FUNCTION(CUSTOM_3DS_BUTTON) \
+static void draw_custom_3ds_##CUSTOM_3DS_BUTTON(Button *self) { \
+    C2D_DrawText(&text_custom_3ds_button_##CUSTOM_3DS_BUTTON, C2D_AlignLeft, self->x + 5, self->y + 3, 0, 0.6, 0.6); \
+    C2D_DrawRectSolid(self->x + 12, self->y + self->h / 2, 0, self->w - 24, 1, BLACK); \
+    C2D_DrawText(vb_button_code_to_vb_button_text(tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON), C2D_AlignRight, self->x + self->w - 5, self->y + self->h / 2, 0, 0.6, 0.6); \
+}
+PERFORM_FOR_EACH_3DS_BUTTON(DRAW_CUSTOM_3DS_BUTTON_FUNCTION)
+
+static int vb_button_code_to_vb_ui_button_index(int vb_button_code) {
+    switch (vb_button_code) {
+        #define VB_BUTTON_CODE_TO_INDEX_CASE(VB_BUTTON) \
+        case VB_##VB_BUTTON: \
+            return CUSTOM_VB_MAPPINGS_##VB_BUTTON;
+        PERFORM_FOR_EACH_VB_BUTTON(VB_BUTTON_CODE_TO_INDEX_CASE)
+        default:
+            return CUSTOM_VB_MAPPINGS_BACK;
+    }
+}
+
+static int current_custom_mapping_3ds_button;
+static C2D_Text *current_custom_mapping_3ds_button_text;
+static int *current_custom_mapping_vb_option;
+
+static void custom_3ds_mappings(int initial_button) {
+    bool new_3ds = false;
+    APT_CheckNew3DS(&new_3ds);
+    if (!new_3ds) {
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_ZL].hidden = true;
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_ZR].hidden = true;
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_UP].hidden = true;
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_DOWN].hidden = true;
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_LEFT].hidden = true;
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_RIGHT].hidden = true;
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_A].y = custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_RIGHT].y;
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_B].y = custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_DOWN].y;
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_X].y = custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_UP].y;
+        custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_Y].y = custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_LEFT].y;
+    }
+    LOOP_BEGIN(custom_3ds_mappings_buttons, initial_button);
+        const Button *CPAD_LEFT = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CPAD_LEFT];
+        const Button *CPAD_RIGHT = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CPAD_RIGHT];
+        const Button *DPAD_LEFT = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_DLEFT];
+        const Button *DPAD_RIGHT = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_DRIGHT];
+        const Button *Y_BUTTON = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_Y];
+        const Button *A_BUTTON = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_A];
+        C2D_DrawRectSolid(CPAD_LEFT->x + CPAD_LEFT->w, CPAD_LEFT->y, 0, CPAD_RIGHT->x - (CPAD_LEFT->x + CPAD_LEFT->w), CPAD_RIGHT->h, TINT_50);
+        C2D_DrawRectSolid(DPAD_LEFT->x + DPAD_LEFT->w, DPAD_LEFT->y, 0, DPAD_RIGHT->x - (DPAD_LEFT->x + DPAD_LEFT->w), DPAD_RIGHT->h, TINT_50);
+        C2D_DrawRectSolid(Y_BUTTON->x + Y_BUTTON->w, Y_BUTTON->y, 0, A_BUTTON->x - (Y_BUTTON->x + Y_BUTTON->w), A_BUTTON->h, TINT_50);
+        if (new_3ds) {
+            const Button *CSTICK_LEFT = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_LEFT];
+            const Button *CSTICK_RIGHT = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_RIGHT];
+            C2D_DrawRectSolid(CSTICK_LEFT->x + CSTICK_LEFT->w, CSTICK_LEFT->y, 0, CSTICK_RIGHT->x - (CSTICK_LEFT->x + CSTICK_LEFT->w), CSTICK_RIGHT->h, TINT_50);
+        }
+        C2D_DrawText(&text_3ds, C2D_AlignLeft | C2D_WithColor, 109, 99, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawRectSolid(120, 120, 0, 50 - 24, 1, TINT_COLOR);
+        C2D_DrawText(&text_vb, C2D_AlignRight | C2D_WithColor, 108 + 50 - 2, 99 + 21, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&text_map, C2D_AlignLeft | C2D_WithColor, 163, 99 + 21 - 11, 0, 0.7, 0.7, TINT_COLOR);
+    LOOP_END(custom_3ds_mappings_buttons);
+    switch (button) {
+        #define CUSTOM_3DS_CASE(CUSTOM_3DS_BUTTON) \
+        case CUSTOM_3DS_MAPPINGS_##CUSTOM_3DS_BUTTON: \
+            current_custom_mapping_3ds_button = CUSTOM_3DS_MAPPINGS_##CUSTOM_3DS_BUTTON; \
+            current_custom_mapping_3ds_button_text = &text_custom_3ds_button_##CUSTOM_3DS_BUTTON; \
+            current_custom_mapping_vb_option = &tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON; \
+            return custom_vb_mappings(vb_button_code_to_vb_ui_button_index(tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON));
+        PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_CASE)
+        case CUSTOM_3DS_MAPPINGS_BACK:
+            return controls(CONTROLS_CONFIGURE_SCHEME);
+        case CUSTOM_3DS_MAPPINGS_RESET:
+            setCustomMappingDefaults();
+            return custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_RESET);
+    }
+}
+
+static void custom_vb_mappings(int initial_button) {
+    LOOP_BEGIN(custom_vb_mappings_buttons, initial_button);
+        const Button *LPAD_UP = &custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_LPAD_U];
+        const Button *LPAD_DOWN = &custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_LPAD_D];
+        const Button *RPAD_UP = &custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_RPAD_U];
+        const Button *RPAD_DOWN = &custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_RPAD_D];
+        C2D_DrawRectSolid(LPAD_UP->x, LPAD_UP->y + LPAD_UP->h, 0, LPAD_DOWN->w, LPAD_DOWN->y - (LPAD_UP->y + LPAD_UP->h), TINT_50);
+        C2D_DrawRectSolid(RPAD_UP->x, RPAD_UP->y + RPAD_UP->h, 0, RPAD_DOWN->w, RPAD_DOWN->y - (RPAD_UP->y + RPAD_UP->h), TINT_50);
+        C2D_DrawText(current_custom_mapping_3ds_button_text, C2D_AlignCenter | C2D_WithColor, 160, 2, 0, 0.8, 0.8, TINT_COLOR);
+        C2D_DrawText(&text_currently_mapped_to, C2D_AlignCenter | C2D_WithColor, 160, 23, 0, 0.8, 0.8, TINT_COLOR);
+        C2D_DrawText(vb_button_code_to_vb_button_text(*current_custom_mapping_vb_option), C2D_AlignCenter | C2D_WithColor, 160, 72, 0, 0.8, 0.8, TINT_COLOR);
+    LOOP_END(custom_vb_mappings_buttons);
+    switch (button) {
+        #define CUSTOM_VB_CASE(CUSTOM_VB_BUTTON) \
+        case CUSTOM_VB_MAPPINGS_##CUSTOM_VB_BUTTON: \
+            *current_custom_mapping_vb_option = VB_##CUSTOM_VB_BUTTON; \
+            return custom_3ds_mappings(current_custom_mapping_3ds_button);
+        PERFORM_FOR_EACH_VB_BUTTON(CUSTOM_VB_CASE)
+        case CUSTOM_VB_MAPPINGS_BACK:
+            return custom_3ds_mappings(current_custom_mapping_3ds_button);
+    }
+}
+
 static void draw_abxy(Button *self) {
     const int FACEX = self->x + self->w / 2;
     const int FACEY = self->y + self->h / 2;
@@ -720,14 +1002,14 @@ static void draw_shoulders(Button *self) {
     C2D_DrawText(tVBOpt.ZLZR_MODE <= 1 ? &text_btn_R : tVBOpt.ZLZR_MODE <= 2 ? &text_btn_A : &text_btn_B, C2D_AlignCenter, SHOULDX + OFFSET*2 + 0.5, SHOULDY + 5, 0, 1, 1);
 }
 
-static void controls(int initial_button) {
+static void preset_controls(int initial_button) {
     bool shoulder_pressed = false;
     bool face_pressed = false;
     bool new_3ds = false;
     APT_CheckNew3DS(&new_3ds);
-    controls_buttons[CONTROLS_FACE].y = new_3ds ? 52 : 40;
-    controls_buttons[CONTROLS_SHOULDER].hidden = !new_3ds;
-    controls_buttons[CONTROLS_DPAD_MODE].option = tVBOpt.DPAD_MODE;
+    preset_controls_buttons[PRESET_CONTROLS_FACE].y = new_3ds ? 52 : 40;
+    preset_controls_buttons[PRESET_CONTROLS_SHOULDER].hidden = !new_3ds;
+    preset_controls_buttons[PRESET_CONTROLS_DPAD_MODE].option = tVBOpt.DPAD_MODE;
     const int SHOULDX = 160;
     const int SHOULDY = 0;
     const int SHOULDW = 128;
@@ -737,25 +1019,24 @@ static void controls(int initial_button) {
     const int FACEW = 128;
     const int FACEH = 80;
     const int OFFSET = 22;
-    bool changed = false;
-    LOOP_BEGIN(controls_buttons, initial_button);
-    LOOP_END(controls_buttons);
+    LOOP_BEGIN(preset_controls_buttons, initial_button);
+    LOOP_END(preset_controls_buttons);
     switch (button) {
-        case CONTROLS_FACE:
+        case PRESET_CONTROLS_FACE:
             tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 6;
-            return controls(CONTROLS_FACE);
-        case CONTROLS_SHOULDER:
+            return preset_controls(PRESET_CONTROLS_FACE);
+        case PRESET_CONTROLS_SHOULDER:
             tVBOpt.ZLZR_MODE = (tVBOpt.ZLZR_MODE + 1) % 4;
-            return controls(CONTROLS_SHOULDER);
-        case CONTROLS_TOUCHSCREEN:
+            return preset_controls(PRESET_CONTROLS_SHOULDER);
+        case PRESET_CONTROLS_TOUCHSCREEN:
             return touchscreen_settings();
-        case CONTROLS_DPAD_MODE:
+        case PRESET_CONTROLS_DPAD_MODE:
             tVBOpt.DPAD_MODE = (tVBOpt.DPAD_MODE + 1) % 3;
-            return controls(CONTROLS_DPAD_MODE);
-        case CONTROLS_BACK:
-            setTouchControls(buttons_on_screen);
+            return preset_controls(PRESET_CONTROLS_DPAD_MODE);
+        case PRESET_CONTROLS_BACK:
+            setPresetControls(buttons_on_screen);
             saveFileOptions();
-            return main_menu(MAIN_MENU_CONTROLS);
+            return controls(CONTROLS_CONFIGURE_SCHEME);
     }
 }
 
@@ -887,14 +1168,14 @@ static void touchscreen_settings() {
             dragging ? VB_KEY_START : 0);
         C2D_DrawRectSolid(
             tVBOpt.PAUSE_RIGHT - PAUSE_RAD, 240/2 - 8, 0,
-            PAUSE_RAD * 2, 8*2, dragging == 1 ? C2D_Color32(TINT_R*0.9, TINT_G*0.9, TINT_B*0.9, 255) : C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255)
+            PAUSE_RAD * 2, 8*2, dragging == 1 ? TINT_90 : TINT_50
         );
     LOOP_END(touchscreen_settings_buttons);
     buttonLock = false;
     switch (button) {
         case TOUCHSCREEN_BACK: // Back
             saveFileOptions();
-            return controls(CONTROLS_TOUCHSCREEN);
+            return preset_controls(PRESET_CONTROLS_TOUCHSCREEN);
         case TOUCHSCREEN_RESET: // Reset
             tVBOpt.PAUSE_RIGHT = 160;
             tVBOpt.TOUCH_AX = 250;
@@ -1169,7 +1450,7 @@ static void video_settings(int initial_button) {
 
 static void sound_error(void) {
     LOOP_BEGIN(sound_error_buttons, 0);
-        C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text_sound_error, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(sound_error_buttons);
     return;
 }
@@ -1178,7 +1459,7 @@ static bool areyousure(C2D_Text *message) {
     #undef DEFAULT_RETURN
     #define DEFAULT_RETURN false
     LOOP_BEGIN(areyousure_buttons, AREYOUSURE_NO);
-        C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(areyousure_buttons);
     #undef DEFAULT_RETURN
     #define DEFAULT_RETURN
@@ -1191,7 +1472,7 @@ static void savestate_error(char *message, int last_button, int selected_state) 
     C2D_TextParse(&text, dynamic_textbuf, message);
     C2D_TextOptimize(&text);
     LOOP_BEGIN(about_buttons, 0);
-        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(about_buttons);
     return savestate_menu(last_button, selected_state);
 }
@@ -1202,7 +1483,7 @@ static void savestate_confirm(char *message, int last_button, int selected_state
     C2D_TextParse(&text, dynamic_textbuf, message);
     C2D_TextOptimize(&text);
     LOOP_BEGIN(savestate_confirm_buttons, 0);
-        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(savestate_confirm_buttons);
     if (button) return savestate_menu(last_button, selected_state);
     else return;
@@ -1231,8 +1512,8 @@ static void savestate_menu(int initial_button, int selected_state) {
             C2D_TextOptimize(&selected_state_text);
             savestate_buttons[LOAD_SAVESTATE].hidden = savestate_buttons[DELETE_SAVESTATE].hidden = !emulation_hasstate(selected_state);
         }
-        C2D_DrawText(&text_savestate_menu, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
-        C2D_DrawText(&selected_state_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 240 / 3, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text_savestate_menu, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&selected_state_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 240 / 3, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(savestate_buttons);
 
     last_savestate = selected_state;
@@ -1266,16 +1547,16 @@ static void about(void) {
     C2D_PlainImageTint(&tint, C2D_Color32(255, 0, 0, 255), 1);
     LOOP_BEGIN(about_buttons, 0);
         C2D_DrawSpriteTinted(&logo_sprite, &tint);
-        C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(about_buttons);
     return options(OPTIONS_ABOUT);
 }
 
 static void load_error(int err, bool unloaded) {
     LOOP_BEGIN(about_buttons, 0);
-        C2D_DrawText(&text_loaderr, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text_loaderr, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
         if (unloaded) {
-            C2D_DrawText(&text_unloaded, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+            C2D_DrawText(&text_unloaded, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
         }
     LOOP_END(about_buttons);
     return rom_loader();
@@ -1301,10 +1582,10 @@ static void load_rom(void) {
             // error
             loop = false;
         } else {
-            C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.5, 0.5, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
-            C2D_DrawText(&text_loading, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.8, 0.8, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
-            C2D_DrawRectSolid(60, 140, 0, 200, 16, C2D_Color32(0.5 * TINT_R, 0.5 * TINT_G, 0.5 * TINT_B, 255));
-            C2D_DrawRectSolid(60, 140, 0, 2 * ret, 16, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+            C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 10, 0, 0.5, 0.5, TINT_COLOR);
+            C2D_DrawText(&text_loading, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.8, 0.8, TINT_COLOR);
+            C2D_DrawRectSolid(60, 140, 0, 200, 16, TINT_50);
+            C2D_DrawRectSolid(60, 140, 0, 2 * ret, 16, TINT_COLOR);
             if (ret == 100) {
                 // complete
                 loop = false;
@@ -1442,15 +1723,19 @@ static inline int handle_buttons(Button buttons[], int count) {
     // draw buttons
     for (int i = 0; i < count; i++) {
         if (buttons[i].hidden) continue;
-        u32 normal_colour = C2D_Color32(TINT_R, TINT_G, TINT_B, 255);
-        u32 pressed_colour = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
+        u32 normal_colour = TINT_COLOR;
+        u32 pressed_colour = TINT_50;
         C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h,
             pressed == i ? pressed_colour : normal_colour);
         if (selectedButton == &buttons[i]) {
-            u32 line_colour = C2D_Color32(0, 0, 0, 255);
-            float ls = 3.5;
-            float le = 5.5;
-            C2D_DrawRectSolid(buttons[i].x + 4, buttons[i].y + buttons[i].h - 4, 0, buttons[i].w - 8, 1, C2D_Color32(0, 0, 0, 255));
+            if (buttons[i].draw_selected_rect) {
+                C2D_DrawLine(buttons[i].x + 2, buttons[i].y + 2.5, BLACK, buttons[i].x + buttons[i].w - 2, buttons[i].y + 2.5, BLACK, 1, 0);
+                C2D_DrawLine(buttons[i].x + buttons[i].w - 2.5, buttons[i].y + 2, BLACK, buttons[i].x + buttons[i].w - 2.5, buttons[i].y + buttons[i].h - 2, BLACK, 1, 0);
+                C2D_DrawLine(buttons[i].x + buttons[i].w - 2, buttons[i].y + buttons[i].h - 2.5, BLACK, buttons[i].x + 2, buttons[i].y + buttons[i].h - 2.5, BLACK, 1, 0);
+                C2D_DrawLine(buttons[i].x + 2.5, buttons[i].y + buttons[i].h - 2, BLACK, buttons[i].x + 2.5, buttons[i].y + 2, BLACK, 1, 0);
+            } else {
+                C2D_DrawRectSolid(buttons[i].x + 4, buttons[i].y + buttons[i].h - 4, 0, buttons[i].w - 8, 1, BLACK);
+            }
         }
         if (buttons[i].custom_draw) {
             buttons[i].custom_draw(&buttons[i]);
@@ -1533,46 +1818,89 @@ void guiInit(void) {
     C2D_SpriteFromSheet(&splash_right, splash_sheet, splash_splash_right_idx);
     C2D_SpriteSetPos(&splash_right, 0, 256);
 
-    setTouchControls(buttons_on_screen);
+    tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
 
-    static_textbuf = C2D_TextBufNew(1024);
+    static_textbuf = C2D_TextBufNew(2048);
     dynamic_textbuf = C2D_TextBufNew(4096);
-    SETUP_ALL_BUTTONS;
-    STATIC_TEXT(&text_A, "A");
-    STATIC_TEXT(&text_B, "B");
-    STATIC_TEXT(&text_btn_A, "\uE000");
-    STATIC_TEXT(&text_btn_B, "\uE001");
-    STATIC_TEXT(&text_btn_X, "\uE002");
-    STATIC_TEXT(&text_btn_L, "\uE004");
-    STATIC_TEXT(&text_btn_R, "\uE005");
-    STATIC_TEXT(&text_switch, "Switch");
-    STATIC_TEXT(&text_saving, "Saving...");
-    STATIC_TEXT(&text_on, "On");
-    STATIC_TEXT(&text_off, "Off");
-    STATIC_TEXT(&text_toggle, "Toggle");
-    STATIC_TEXT(&text_hold, "Hold");
-    STATIC_TEXT(&text_3ds, "Nintendo 3DS");
-    STATIC_TEXT(&text_vbipd, "Virtual Boy IPD");
-    STATIC_TEXT(&text_vb_lpad, "Virtual Boy Left D-Pad");
-    STATIC_TEXT(&text_vb_rpad, "Virtual Boy Right D-Pad");
-    STATIC_TEXT(&text_mirror_abxy, "Mirror ABXY Buttons");
-    STATIC_TEXT(&text_vblink, "VBLink");
-    STATIC_TEXT(&text_left, "Left");
-    STATIC_TEXT(&text_right, "Right");
-    STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?");
-    STATIC_TEXT(&text_debug_filenames, "Please share debug_info.txt and\ndebug_replay.bin.gz in your bug\nreport.");
-    STATIC_TEXT(&text_anykeyexit, "Press any key to exit");
-    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nSplash screen by Morintari\nHeavily based on Reality Boy by David Tucker\nMore info at:\ngithub.com/skyfloogle/red-viper");
-    STATIC_TEXT(&text_loading, "Loading...");
-    STATIC_TEXT(&text_loaderr, "Failed to load ROM.");
-    STATIC_TEXT(&text_unloaded, "The current ROM has been unloaded.");
-    STATIC_TEXT(&text_yes, "Yes");
-    STATIC_TEXT(&text_no, "No");
-    STATIC_TEXT(&text_areyousure_reset, "Are you sure you want to reset?");
-    STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?");
-    STATIC_TEXT(&text_savestate_menu, "Savestates");
-    STATIC_TEXT(&text_save, "Save");
-    STATIC_TEXT(&text_load, "Load");
+    SETUP_ALL_BUTTONS
+    STATIC_TEXT(&text_A, "A")
+    STATIC_TEXT(&text_B, "B")
+    STATIC_TEXT(&text_btn_A, "\uE000")
+    STATIC_TEXT(&text_btn_B, "\uE001")
+    STATIC_TEXT(&text_btn_X, "\uE002")
+    STATIC_TEXT(&text_btn_L, "\uE004")
+    STATIC_TEXT(&text_btn_R, "\uE005")
+    STATIC_TEXT(&text_switch, "Switch")
+    STATIC_TEXT(&text_saving, "Saving...")
+    STATIC_TEXT(&text_on, "On")
+    STATIC_TEXT(&text_off, "Off")
+    STATIC_TEXT(&text_toggle, "Toggle")
+    STATIC_TEXT(&text_hold, "Hold")
+    STATIC_TEXT(&text_3ds, "Nintendo 3DS")
+    STATIC_TEXT(&text_vbipd, "Virtual Boy IPD")
+    STATIC_TEXT(&text_vb_lpad, "Virtual Boy Left D-Pad")
+    STATIC_TEXT(&text_vb_rpad, "Virtual Boy Right D-Pad")
+    STATIC_TEXT(&text_mirror_abxy, "Mirror ABXY Buttons")
+    STATIC_TEXT(&text_vblink, "VBLink")
+    STATIC_TEXT(&text_left, "Left")
+    STATIC_TEXT(&text_right, "Right")
+    STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?")
+    STATIC_TEXT(&text_debug_filenames, "Please share debug_info.txt and\ndebug_replay.bin.gz in your bug\nreport.")
+    STATIC_TEXT(&text_anykeyexit, "Press any key to exit")
+    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nSplash screen by Morintari\nCustom control scheme by nevumx\nHeavily based on Reality Boy by David Tucker\nMore info at: github.com/skyfloogle/red-viper")
+    STATIC_TEXT(&text_loading, "Loading...")
+    STATIC_TEXT(&text_loaderr, "Failed to load ROM.")
+    STATIC_TEXT(&text_unloaded, "The current ROM has been unloaded.")
+    STATIC_TEXT(&text_yes, "Yes")
+    STATIC_TEXT(&text_no, "No")
+    STATIC_TEXT(&text_areyousure_reset, "Are you sure you want to reset?")
+    STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?")
+    STATIC_TEXT(&text_savestate_menu, "Savestates")
+    STATIC_TEXT(&text_save, "Save")
+    STATIC_TEXT(&text_load, "Load")
+    STATIC_TEXT(&text_preset, "Preset")
+    STATIC_TEXT(&text_custom, "Custom")
+    STATIC_TEXT(&text_custom_3ds_button_DUP, "\uE079")
+    STATIC_TEXT(&text_custom_3ds_button_DDOWN, "\uE07A")
+    STATIC_TEXT(&text_custom_3ds_button_DLEFT, "\uE07B")
+    STATIC_TEXT(&text_custom_3ds_button_DRIGHT, "\uE07C")
+    STATIC_TEXT(&text_custom_3ds_button_CPAD_UP, "\uE077\uE01B")
+    STATIC_TEXT(&text_custom_3ds_button_CPAD_DOWN, "\uE077\uE01C")
+    STATIC_TEXT(&text_custom_3ds_button_CPAD_LEFT, "\uE077\uE01A")
+    STATIC_TEXT(&text_custom_3ds_button_CPAD_RIGHT, "\uE077\uE019")
+    STATIC_TEXT(&text_custom_3ds_button_CSTICK_UP, "\uE04A\uE01B")     
+    STATIC_TEXT(&text_custom_3ds_button_CSTICK_DOWN, "\uE04A\uE01C")     
+    STATIC_TEXT(&text_custom_3ds_button_CSTICK_LEFT, "\uE04A\uE01A")     
+    STATIC_TEXT(&text_custom_3ds_button_CSTICK_RIGHT, "\uE04A\uE019")     
+    STATIC_TEXT(&text_custom_3ds_button_A, "\uE000")
+    STATIC_TEXT(&text_custom_3ds_button_X, "\uE002")
+    STATIC_TEXT(&text_custom_3ds_button_B, "\uE001")
+    STATIC_TEXT(&text_custom_3ds_button_Y, "\uE003")
+    STATIC_TEXT(&text_custom_3ds_button_START, "STA")
+    STATIC_TEXT(&text_custom_3ds_button_SELECT, "SEL")
+    STATIC_TEXT(&text_custom_3ds_button_L, "\uE004")
+    STATIC_TEXT(&text_custom_3ds_button_R, "\uE005")
+    STATIC_TEXT(&text_custom_3ds_button_ZL, "\uE054")
+    STATIC_TEXT(&text_custom_3ds_button_ZR, "\uE055")
+    STATIC_TEXT(&text_custom_vb_button_KEY_L, "\uE004")
+    STATIC_TEXT(&text_custom_vb_button_KEY_R, "\uE005")
+    STATIC_TEXT(&text_custom_vb_button_KEY_SELECT, "SEL")
+    STATIC_TEXT(&text_custom_vb_button_KEY_START, "STA")
+    STATIC_TEXT(&text_custom_vb_button_KEY_B, "\uE001")
+    STATIC_TEXT(&text_custom_vb_button_KEY_A, "\uE000")
+    STATIC_TEXT(&text_custom_vb_button_RPAD_R, "R\uE07C")
+    STATIC_TEXT(&text_custom_vb_button_RPAD_L, "R\uE07B")
+    STATIC_TEXT(&text_custom_vb_button_RPAD_D, "R\uE07A")
+    STATIC_TEXT(&text_custom_vb_button_RPAD_U, "R\uE079")
+    STATIC_TEXT(&text_custom_vb_button_LPAD_R, "L\uE07C")
+    STATIC_TEXT(&text_custom_vb_button_LPAD_L, "L\uE07B")
+    STATIC_TEXT(&text_custom_vb_button_LPAD_D, "L\uE07A")
+    STATIC_TEXT(&text_custom_vb_button_LPAD_U, "L\uE079")
+    STATIC_TEXT(&text_error, "Error")
+    STATIC_TEXT(&text_3ds, "3DS")
+    STATIC_TEXT(&text_vb, "VB")
+    STATIC_TEXT(&text_map, "MAP")
+    STATIC_TEXT(&text_currently_mapped_to, "Currently\nmapped to:")
 }
 
 static bool shouldRedrawMenu = true;
@@ -1684,14 +2012,14 @@ static void save_debug_info(void) {
     C3D_FrameBegin(0);
     C2D_TargetClear(screen, 0);
     C2D_SceneBegin(screen);
-    C2D_DrawText(&text_saving, C2D_AlignCenter | C2D_WithColor, 320 / 2, 100, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    C2D_DrawText(&text_saving, C2D_AlignCenter | C2D_WithColor, 320 / 2, 100, 0, 0.7, 0.7, TINT_COLOR);
     C2D_Flush();
     C3D_FrameEnd(0);
 
     drc_dumpDebugInfo(0);
 
     LOOP_BEGIN(about_buttons, 0);
-        C2D_DrawText(&text_debug_filenames, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        C2D_DrawText(&text_debug_filenames, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(about_buttons);
     return options(OPTIONS_DEBUG);
 }
@@ -1711,7 +2039,7 @@ void showError(int code) {
     C3D_FrameBegin(0);
     C2D_TargetClear(screen, 0);
     C2D_SceneBegin(screen);
-    C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 40, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 40, 0, 0.7, 0.7, TINT_COLOR);
     C2D_Flush();
     C3D_FrameEnd(0);
 
@@ -1719,13 +2047,43 @@ void showError(int code) {
 
     C3D_FrameBegin(0);
     C3D_FrameDrawOn(screen);
-    C2D_DrawText(&text_debug_filenames, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
-    C2D_DrawText(&text_anykeyexit, C2D_AlignCenter | C2D_WithColor, 320 / 2, 180, 0, 0.7, 0.7, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+    C2D_DrawText(&text_debug_filenames, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.7, 0.7, TINT_COLOR);
+    C2D_DrawText(&text_anykeyexit, C2D_AlignCenter | C2D_WithColor, 320 / 2, 180, 0, 0.7, 0.7, TINT_COLOR);
     C2D_Flush();
     C3D_FrameEnd(0);
 }
 
-void setTouchControls(bool buttons) {
+void setCustomControls(void) {
+    vbkey[__builtin_ctz(KEY_DUP)] = tVBOpt.CUSTOM_MAPPING_DUP;
+    vbkey[__builtin_ctz(KEY_DDOWN)] = tVBOpt.CUSTOM_MAPPING_DDOWN;
+    vbkey[__builtin_ctz(KEY_DLEFT)] = tVBOpt.CUSTOM_MAPPING_DLEFT;
+    vbkey[__builtin_ctz(KEY_DRIGHT)] = tVBOpt.CUSTOM_MAPPING_DRIGHT;
+    vbkey[__builtin_ctz(KEY_CPAD_UP)] = tVBOpt.CUSTOM_MAPPING_CPAD_UP;
+    vbkey[__builtin_ctz(KEY_CPAD_DOWN)] = tVBOpt.CUSTOM_MAPPING_CPAD_DOWN;
+    vbkey[__builtin_ctz(KEY_CPAD_LEFT)] = tVBOpt.CUSTOM_MAPPING_CPAD_LEFT;
+    vbkey[__builtin_ctz(KEY_CPAD_RIGHT)] = tVBOpt.CUSTOM_MAPPING_CPAD_RIGHT;
+    vbkey[__builtin_ctz(KEY_A)] = tVBOpt.CUSTOM_MAPPING_A;
+    vbkey[__builtin_ctz(KEY_X)] = tVBOpt.CUSTOM_MAPPING_X;
+    vbkey[__builtin_ctz(KEY_B)] = tVBOpt.CUSTOM_MAPPING_B;
+    vbkey[__builtin_ctz(KEY_Y)] = tVBOpt.CUSTOM_MAPPING_Y;
+    vbkey[__builtin_ctz(KEY_START)] = tVBOpt.CUSTOM_MAPPING_START;
+    vbkey[__builtin_ctz(KEY_SELECT)] = tVBOpt.CUSTOM_MAPPING_SELECT;
+    vbkey[__builtin_ctz(KEY_L)] = tVBOpt.CUSTOM_MAPPING_L;
+    vbkey[__builtin_ctz(KEY_R)] = tVBOpt.CUSTOM_MAPPING_R;
+
+    bool new_3ds = false;
+    APT_CheckNew3DS(&new_3ds);
+    if (new_3ds) {
+        vbkey[__builtin_ctz(KEY_CSTICK_UP)] = tVBOpt.CUSTOM_MAPPING_CSTICK_UP;
+        vbkey[__builtin_ctz(KEY_CSTICK_DOWN)] = tVBOpt.CUSTOM_MAPPING_CSTICK_DOWN;
+        vbkey[__builtin_ctz(KEY_CSTICK_LEFT)] = tVBOpt.CUSTOM_MAPPING_CSTICK_LEFT;
+        vbkey[__builtin_ctz(KEY_CSTICK_RIGHT)] = tVBOpt.CUSTOM_MAPPING_CSTICK_RIGHT;
+        vbkey[__builtin_ctz(KEY_ZL)] = tVBOpt.CUSTOM_MAPPING_ZL;
+        vbkey[__builtin_ctz(KEY_ZR)] = tVBOpt.CUSTOM_MAPPING_ZR;
+    }
+}
+
+void setPresetControls(bool buttons) {
     shouldRedrawMenu = true;
     buttons_on_screen = buttons;
     if (buttons) {
@@ -1772,82 +2130,89 @@ void setTouchControls(bool buttons) {
 bool guiShouldSwitch(void) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    return touch_pos.px >= 320 - 64 && touch_pos.py < 32;
+    return !tVBOpt.CUSTOM_CONTROLS && touch_pos.px >= 320 - 64 && touch_pos.py < 32;
 }
 
 void drawTouchControls(int inputs) {
-    int col_up = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
-    int col_down = C2D_Color32(TINT_R*0.75, TINT_G*0.75, TINT_B*0.75, 255);
-    int col_drag = C2D_Color32(TINT_R*0.9, TINT_G*0.9, TINT_B*0.9, 255);
-    int col_line = C2D_Color32(32, 32, 32, 255);
-    if (buttons_on_screen) {
-        float mx = (float)(tVBOpt.TOUCH_AX + tVBOpt.TOUCH_BX) / 2;
-        float my = (float)(tVBOpt.TOUCH_AY + tVBOpt.TOUCH_BY) / 2;
-        if (tVBOpt.TOUCH_AY == tVBOpt.TOUCH_BY) {
-            // edge case so we don't div0
-            C2D_DrawLine(mx, 0, col_line, mx, 240, col_line, 1, 0);
-        } else {
-            float rico = -(tVBOpt.TOUCH_BX - tVBOpt.TOUCH_AX) / (float)(tVBOpt.TOUCH_BY - tVBOpt.TOUCH_AY);
-            int oy = -rico * mx + my;
-            int ly = oy + rico * tVBOpt.PAUSE_RIGHT;
-            int ry = oy + rico * 320;
-            C2D_DrawLine(tVBOpt.PAUSE_RIGHT, ly, col_line, 320, ry, col_line, 1, 0);
-        }
-    } else {
-        C2D_DrawLine(
-            tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + tVBOpt.PAUSE_RIGHT, col_line,
-            320, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + 320, col_line,
-            1, 0);
-        C2D_DrawLine(
-            tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - tVBOpt.PAUSE_RIGHT, col_line,
-            320, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - 320, col_line,
-            1, 0);
-    }
-
-    C2D_DrawLine(
-        tVBOpt.PAUSE_RIGHT, 0, C2D_Color32(64, 64, 64, 255),
-        tVBOpt.PAUSE_RIGHT, 240, C2D_Color32(64, 64, 64, 255),
-        1, 0);
-
-    bool dragging = inputs != 0;
-    if (inputs == 0) inputs = guiGetInput(false);
-
-    int pause_square_height = 70;
-    C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
-        pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
-    if (replay_playing()) {
-        C2D_DrawTriangle(
-            tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
-            tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 + pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
-            tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6 + pause_square_height * 0.6, 240 / 2, C2D_Color32(64, 64, 64, 255), 0
-        );
-    } else {
-        C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
+    const int pause_square_height = 70;
+    if (tVBOpt.CUSTOM_CONTROLS) {
+        C2D_DrawRectSolid(320 / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
             pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
-    }
-
-    if (buttons_on_screen) {
-        C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, inputs & VB_KEY_A ? (dragging ? col_drag : col_down) : col_up);
-        C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, inputs & VB_KEY_B ? (dragging ? col_drag : col_down) : col_up);
-        C2D_DrawText(&text_A, C2D_AlignCenter, tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY - 12, 0, 0.7, 0.7);
-        C2D_DrawText(&text_B, C2D_AlignCenter, tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY - 12, 0, 0.7, 0.7);
+        C2D_DrawRectSolid(320 / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
+            pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
     } else {
-        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, inputs & VB_KEY_A ? col_drag : col_up);
-        C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, inputs & VB_KEY_A ? col_drag : col_up);
-        if (!dragging) {
-            if (inputs & VB_RPAD_L)
-                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
-            if (inputs & VB_RPAD_R)
-                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX + 16, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
-            if (inputs & VB_RPAD_U)
-                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 16*2, col_down);
-            if (inputs & VB_RPAD_D)
-                C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY + 16, 0, 16*2, 16*2, col_down);
+        int col_up = TINT_50;
+        int col_down = TINT_75;
+        int col_drag = TINT_90;
+        int col_line = C2D_Color32(32, 32, 32, 255);
+        if (buttons_on_screen) {
+            float mx = (float)(tVBOpt.TOUCH_AX + tVBOpt.TOUCH_BX) / 2;
+            float my = (float)(tVBOpt.TOUCH_AY + tVBOpt.TOUCH_BY) / 2;
+            if (tVBOpt.TOUCH_AY == tVBOpt.TOUCH_BY) {
+                // edge case so we don't div0
+                C2D_DrawLine(mx, 0, col_line, mx, 240, col_line, 1, 0);
+            } else {
+                float rico = -(tVBOpt.TOUCH_BX - tVBOpt.TOUCH_AX) / (float)(tVBOpt.TOUCH_BY - tVBOpt.TOUCH_AY);
+                int oy = -rico * mx + my;
+                int ly = oy + rico * tVBOpt.PAUSE_RIGHT;
+                int ry = oy + rico * 320;
+                C2D_DrawLine(tVBOpt.PAUSE_RIGHT, ly, col_line, 320, ry, col_line, 1, 0);
+            }
+        } else {
+            C2D_DrawLine(
+                tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + tVBOpt.PAUSE_RIGHT, col_line,
+                320, tVBOpt.TOUCH_PADY - tVBOpt.TOUCH_PADX + 320, col_line,
+                1, 0);
+            C2D_DrawLine(
+                tVBOpt.PAUSE_RIGHT, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - tVBOpt.PAUSE_RIGHT, col_line,
+                320, tVBOpt.TOUCH_PADX + tVBOpt.TOUCH_PADY - 320, col_line,
+                1, 0);
         }
-    }
 
-    C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255));
-    C2D_DrawText(&text_switch, C2D_AlignCenter, 320 - 32, 6, 0, 0.7, 0.7);
+        C2D_DrawLine(
+            tVBOpt.PAUSE_RIGHT, 0, C2D_Color32(64, 64, 64, 255),
+            tVBOpt.PAUSE_RIGHT, 240, C2D_Color32(64, 64, 64, 255),
+            1, 0);
+
+        bool dragging = inputs != 0;
+        if (inputs == 0) inputs = guiGetInput(false);
+
+        C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2, 240 / 2 - pause_square_height / 2, 0,
+            pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+        if (replay_playing()) {
+            C2D_DrawTriangle(
+                tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
+                tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 + pause_square_height / 2, C2D_Color32(64, 64, 64, 255),
+                tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6 + pause_square_height * 0.6, 240 / 2, C2D_Color32(64, 64, 64, 255), 0
+            );
+        } else {
+            C2D_DrawRectSolid(tVBOpt.PAUSE_RIGHT / 2 - pause_square_height / 2 + pause_square_height * 0.6, 240 / 2 - pause_square_height / 2, 0,
+                pause_square_height * 0.4, pause_square_height, C2D_Color32(64, 64, 64, 255));
+        }
+
+        if (buttons_on_screen) {
+            C2D_DrawCircleSolid(tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY, 0, 24, inputs & VB_KEY_A ? (dragging ? col_drag : col_down) : col_up);
+            C2D_DrawCircleSolid(tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY, 0, 24, inputs & VB_KEY_B ? (dragging ? col_drag : col_down) : col_up);
+            C2D_DrawText(&text_A, C2D_AlignCenter, tVBOpt.TOUCH_AX, tVBOpt.TOUCH_AY - 12, 0, 0.7, 0.7);
+            C2D_DrawText(&text_B, C2D_AlignCenter, tVBOpt.TOUCH_BX, tVBOpt.TOUCH_BY - 12, 0, 0.7, 0.7);
+        } else {
+            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 48*2, inputs & VB_KEY_A ? col_drag : col_up);
+            C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 48*2, 16*2, inputs & VB_KEY_A ? col_drag : col_up);
+            if (!dragging) {
+                if (inputs & VB_RPAD_L)
+                    C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 48, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
+                if (inputs & VB_RPAD_R)
+                    C2D_DrawRectSolid(tVBOpt.TOUCH_PADX + 16, tVBOpt.TOUCH_PADY - 16, 0, 16*2, 16*2, col_down);
+                if (inputs & VB_RPAD_U)
+                    C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY - 48, 0, 16*2, 16*2, col_down);
+                if (inputs & VB_RPAD_D)
+                    C2D_DrawRectSolid(tVBOpt.TOUCH_PADX - 16, tVBOpt.TOUCH_PADY + 16, 0, 16*2, 16*2, col_down);
+            }
+        }
+
+        C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, TINT_50);
+        C2D_DrawText(&text_switch, C2D_AlignCenter, 320 - 32, 6, 0, 0.7, 0.7);
+    }
 }
 
 void guiUpdate(float total_time, float drc_time) {
@@ -1895,7 +2260,7 @@ void guiUpdate(float total_time, float drc_time) {
         C2D_DrawTriangle(t2l, tu, col_line, t2l, tb, col_line, t2r, tm, col_line, 0);
         if (!old_2ds) {
             // backlight icon
-            int col_top = C2D_Color32(TINT_R*0.5, TINT_G*0.5, TINT_B*0.5, 255);
+            int col_top = TINT_50;
             int col_off = C2D_Color32(32, 32, 32, 255);
             C2D_DrawLine(31.5, 0, col_line, 31.5, 31.5, col_line, 1, 0);
             C2D_DrawLine(0, 31.5, col_line, 31.5, 31.5, col_line, 1, 0);
@@ -1925,7 +2290,7 @@ void guiUpdate(float total_time, float drc_time) {
 bool guiShouldPause(void) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
+    return ((touch_pos.px < tVBOpt.PAUSE_RIGHT || tVBOpt.CUSTOM_CONTROLS) && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
 }
 
 int guiGetInput(bool ingame) {
@@ -1933,7 +2298,7 @@ int guiGetInput(bool ingame) {
     hidTouchRead(&touch_pos);
     if (backlightEnabled) {
         if ((hidKeysHeld() & KEY_TOUCH) && guiShouldSwitch()) {
-            if (ingame && (hidKeysDown() & KEY_TOUCH)) setTouchControls(!buttons_on_screen);
+            if (ingame && (hidKeysDown() & KEY_TOUCH)) setPresetControls(!buttons_on_screen);
             return 0;
         }
         if (ingame) {
@@ -1969,7 +2334,7 @@ int guiGetInput(bool ingame) {
                 return ydist <= 0 ? VB_RPAD_U : VB_RPAD_D;
             }
         }
-    } else if (hidKeysDown() & KEY_TOUCH && (touch_pos.px > 32 || touch_pos.py > 32)) {
+    } else if (hidKeysDown() & KEY_TOUCH) {
         backlightEnabled = toggleBacklight(true);
     }
     return 0;
