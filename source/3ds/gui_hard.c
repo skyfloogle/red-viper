@@ -221,10 +221,12 @@ static Button rom_loader_buttons[] = {
 static void controls(int initial_button);
 static Button controls_buttons[] = {
     #define CONTROLS_CONTROL_SCHEME 0
-    {.str="Control Scheme", .x=60, .y=70, .w=200, .h=48, .show_toggle=true, .toggle_text_on=&text_custom, .toggle_text_off=&text_preset},
+    {.str="Control Scheme", .x=60, .y=16, .w=200, .h=48, .show_toggle=true, .toggle_text_on=&text_custom, .toggle_text_off=&text_preset},
     #define CONTROLS_CONFIGURE_SCHEME 1
-    {.str="Configure Scheme", .x=60, .y=124, .w=200, .h=48},
-    #define CONTROLS_BACK 2
+    {.str="Configure Scheme", .x=60, .y=80, .w=200, .h=48},
+    #define CONTROLS_TOUCHSCREEN 2
+    {.str="Touchscreen settings", .x=60, .y=144, .w=200, .h=48},
+    #define CONTROLS_BACK 3
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -237,11 +239,9 @@ static Button preset_controls_buttons[] = {
     {.x=160-64, .w=128, .h=80, .custom_draw=draw_abxy},
     #define PRESET_CONTROLS_SHOULDER 1
     {.x=160-64, .y=0, .w=128, .h=40, .custom_draw=draw_shoulders},
-    #define PRESET_CONTROLS_TOUCHSCREEN 2
-    {.str="Touchscreen settings", .x=60, .y=144, .w=200, .h=40},
-    #define PRESET_CONTROLS_DPAD_MODE 3
-    {.str="3DS D-Pad Mode", .x=60, .y=196, .w=200, .h=44, .show_option=true, .option_texts=(C2D_Text*[]){&text_vb_lpad, &text_vb_rpad, &text_mirror_abxy}},
-    #define PRESET_CONTROLS_BACK 4
+    #define PRESET_CONTROLS_DPAD_MODE 2
+    {.str="3DS D-Pad Mode", .x=60, .y=144, .w=200, .h=40, .show_option=true, .option_texts=(C2D_Text*[]){&text_vb_lpad, &text_vb_rpad, &text_mirror_abxy}},
+    #define PRESET_CONTROLS_BACK 3
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -867,6 +867,8 @@ static void controls(int initial_button) {
             return controls(CONTROLS_CONTROL_SCHEME);
         case CONTROLS_CONFIGURE_SCHEME:
             return tVBOpt.CUSTOM_CONTROLS ? custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_BACK) : preset_controls(0);
+        case CONTROLS_TOUCHSCREEN:
+            return touchscreen_settings();
         case CONTROLS_BACK:
             tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
             saveFileOptions();
@@ -1033,8 +1035,6 @@ static void preset_controls(int initial_button) {
         case PRESET_CONTROLS_SHOULDER:
             tVBOpt.ZLZR_MODE = (tVBOpt.ZLZR_MODE + 1) % 4;
             return preset_controls(PRESET_CONTROLS_SHOULDER);
-        case PRESET_CONTROLS_TOUCHSCREEN:
-            return touchscreen_settings();
         case PRESET_CONTROLS_DPAD_MODE:
             tVBOpt.DPAD_MODE = (tVBOpt.DPAD_MODE + 1) % 3;
             return preset_controls(PRESET_CONTROLS_DPAD_MODE);
@@ -1180,7 +1180,7 @@ static void touchscreen_settings() {
     switch (button) {
         case TOUCHSCREEN_BACK: // Back
             saveFileOptions();
-            return preset_controls(PRESET_CONTROLS_TOUCHSCREEN);
+            return controls(CONTROLS_TOUCHSCREEN);
         case TOUCHSCREEN_RESET: // Reset
             tVBOpt.PAUSE_RIGHT = 160;
             tVBOpt.TOUCH_AX = 250;
