@@ -27,12 +27,17 @@
 #include "splash.h"
 #include "vblink.h"
 
-#define TINT_R ( (tVBOpt.TINT & 0x000000FF) )
-#define TINT_G ( (tVBOpt.TINT & 0x0000FF00) >> 8 )
-#define TINT_B ( (tVBOpt.TINT & 0x00FF0000) >> 16 )
+#define COLOR_R(COLOR) ( ((COLOR) & 0x000000FF) )
+#define COLOR_G(COLOR) ( ((COLOR) & 0x0000FF00) >> 8)
+#define COLOR_B(COLOR) ( ((COLOR) & 0x00FF0000) >> 16 )
+#define COLOR_BRIGHTNESS(COLOR, BRIGHTNESS) ( C2D_Color32(COLOR_R(COLOR) * ( BRIGHTNESS ), COLOR_G(COLOR) * ( BRIGHTNESS ), COLOR_B(COLOR) * ( BRIGHTNESS ), 255) )
+
+#define TINT_R ( COLOR_R(tVBOpt.TINT) )
+#define TINT_G ( COLOR_G(tVBOpt.TINT) )
+#define TINT_B ( COLOR_B(tVBOpt.TINT) )
 
 #define BLACK ( C2D_Color32(0, 0, 0, 255) )
-#define TINT_BRIGHTNESS(BRIGHTNESS) ( C2D_Color32(TINT_R * ( BRIGHTNESS ), TINT_G * ( BRIGHTNESS ), TINT_B * ( BRIGHTNESS ), 255) )
+#define TINT_BRIGHTNESS(BRIGHTNESS) ( COLOR_BRIGHTNESS(tVBOpt.TINT, BRIGHTNESS) )
 #define TINT_100 TINT_BRIGHTNESS(1.0)
 #define TINT_90 TINT_BRIGHTNESS(0.9)
 #define TINT_75 TINT_BRIGHTNESS(0.75)
@@ -127,6 +132,7 @@ struct Button_t {
     float x, y, w, h;
     bool show_toggle, toggle, show_option, hidden, draw_selected_rect;
     int option;
+    int colour;
     C2D_Text *toggle_text_on;
     C2D_Text *toggle_text_off;
     C2D_Text **option_texts;
@@ -253,13 +259,13 @@ static Button custom_3ds_mappings_buttons[] = {
     #define CUSTOM_3DS_MAPPINGS_R 3
     {.x=270, .y=0, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_R},
     #define CUSTOM_3DS_MAPPINGS_CPAD_UP 4
-    {.x=54, .y=30, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CPAD_UP},
+    {.x=54, .y=30, .w=50, .h=42, .draw_selected_rect=true, .colour=0x808080, .custom_draw=draw_custom_3ds_CPAD_UP},
     #define CUSTOM_3DS_MAPPINGS_CPAD_DOWN 5
-    {.x=54, .y=76, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CPAD_DOWN},
+    {.x=54, .y=76, .w=50, .h=42, .draw_selected_rect=true, .colour=0x808080, .custom_draw=draw_custom_3ds_CPAD_DOWN},
     #define CUSTOM_3DS_MAPPINGS_CPAD_LEFT 6
-    {.x=0, .y=53, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CPAD_LEFT},
+    {.x=0, .y=53, .w=50, .h=42, .draw_selected_rect=true, .colour=0x808080, .custom_draw=draw_custom_3ds_CPAD_LEFT},
     #define CUSTOM_3DS_MAPPINGS_CPAD_RIGHT 7
-    {.x=108, .y=53, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CPAD_RIGHT},
+    {.x=108, .y=53, .w=50, .h=42, .draw_selected_rect=true, .colour=0x808080, .custom_draw=draw_custom_3ds_CPAD_RIGHT},
     #define CUSTOM_3DS_MAPPINGS_DUP 8
     {.x=54, .y=122, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_DUP},
     #define CUSTOM_3DS_MAPPINGS_DDOWN 9
@@ -269,21 +275,21 @@ static Button custom_3ds_mappings_buttons[] = {
     #define CUSTOM_3DS_MAPPINGS_DRIGHT 11
     {.x=108, .y=145, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_DRIGHT},
     #define CUSTOM_3DS_MAPPINGS_CSTICK_UP 12
-    {.x=216, .y=30, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CSTICK_UP},
+    {.x=216, .y=30, .w=50, .h=42, .draw_selected_rect=true, .colour=0x808080, .custom_draw=draw_custom_3ds_CSTICK_UP},
     #define CUSTOM_3DS_MAPPINGS_CSTICK_DOWN 13
-    {.x=216, .y=76, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CSTICK_DOWN},
+    {.x=216, .y=76, .w=50, .h=42, .draw_selected_rect=true, .colour=0x808080, .custom_draw=draw_custom_3ds_CSTICK_DOWN},
     #define CUSTOM_3DS_MAPPINGS_CSTICK_LEFT 14
-    {.x=162, .y=53, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CSTICK_LEFT},
+    {.x=162, .y=53, .w=50, .h=42, .draw_selected_rect=true, .colour=0x808080, .custom_draw=draw_custom_3ds_CSTICK_LEFT},
     #define CUSTOM_3DS_MAPPINGS_CSTICK_RIGHT 15
-    {.x=270, .y=53, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_CSTICK_RIGHT},
+    {.x=270, .y=53, .w=50, .h=42, .draw_selected_rect=true, .colour=0x808080, .custom_draw=draw_custom_3ds_CSTICK_RIGHT},
     #define CUSTOM_3DS_MAPPINGS_X 16
-    {.x=216, .y=122, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_X},
+    {.x=216, .y=122, .w=50, .h=42, .draw_selected_rect=true, .colour=0xFF8000, .custom_draw=draw_custom_3ds_X},
     #define CUSTOM_3DS_MAPPINGS_B 17
-    {.x=216, .y=168, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_B},
+    {.x=216, .y=168, .w=50, .h=42, .draw_selected_rect=true, .colour=0x00FFFF, .custom_draw=draw_custom_3ds_B},
     #define CUSTOM_3DS_MAPPINGS_Y 18
-    {.x=162, .y=145, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_Y},
+    {.x=162, .y=145, .w=50, .h=42, .draw_selected_rect=true, .colour=0x00FF00, .custom_draw=draw_custom_3ds_Y},
     #define CUSTOM_3DS_MAPPINGS_A 19
-    {.x=270, .y=145, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_A},
+    {.x=270, .y=145, .w=50, .h=42, .draw_selected_rect=true, .colour=0x0000FF, .custom_draw=draw_custom_3ds_A},
     #define CUSTOM_3DS_MAPPINGS_SELECT 20
     {.x=108, .y=198, .w=50, .h=42, .draw_selected_rect=true, .custom_draw=draw_custom_3ds_SELECT},
     #define CUSTOM_3DS_MAPPINGS_START 21
@@ -924,13 +930,12 @@ static void custom_3ds_mappings(int initial_button) {
         const Button *DPAD_RIGHT = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_DRIGHT];
         const Button *Y_BUTTON = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_Y];
         const Button *A_BUTTON = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_A];
-        C2D_DrawRectSolid(CPAD_LEFT->x + CPAD_LEFT->w, CPAD_LEFT->y, 0, CPAD_RIGHT->x - (CPAD_LEFT->x + CPAD_LEFT->w), CPAD_RIGHT->h, TINT_50);
+        C2D_DrawRectSolid(CPAD_LEFT->x + CPAD_LEFT->w, CPAD_LEFT->y, 0, CPAD_RIGHT->x - (CPAD_LEFT->x + CPAD_LEFT->w), CPAD_RIGHT->h, 0xff404040);
         C2D_DrawRectSolid(DPAD_LEFT->x + DPAD_LEFT->w, DPAD_LEFT->y, 0, DPAD_RIGHT->x - (DPAD_LEFT->x + DPAD_LEFT->w), DPAD_RIGHT->h, TINT_50);
-        C2D_DrawRectSolid(Y_BUTTON->x + Y_BUTTON->w, Y_BUTTON->y, 0, A_BUTTON->x - (Y_BUTTON->x + Y_BUTTON->w), A_BUTTON->h, TINT_50);
         if (new_3ds) {
             const Button *CSTICK_LEFT = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_LEFT];
             const Button *CSTICK_RIGHT = &custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_CSTICK_RIGHT];
-            C2D_DrawRectSolid(CSTICK_LEFT->x + CSTICK_LEFT->w, CSTICK_LEFT->y, 0, CSTICK_RIGHT->x - (CSTICK_LEFT->x + CSTICK_LEFT->w), CSTICK_RIGHT->h, TINT_50);
+            C2D_DrawRectSolid(CSTICK_LEFT->x + CSTICK_LEFT->w, CSTICK_LEFT->y, 0, CSTICK_RIGHT->x - (CSTICK_LEFT->x + CSTICK_LEFT->w), CSTICK_RIGHT->h, 0xff404040);
         }
         C2D_DrawText(&text_3ds, C2D_AlignLeft | C2D_WithColor, 109, 99, 0, 0.7, 0.7, TINT_COLOR);
         C2D_DrawRectSolid(120, 120, 0, 50 - 24, 1, TINT_COLOR);
@@ -1723,8 +1728,10 @@ static inline int handle_buttons(Button buttons[], int count) {
     // draw buttons
     for (int i = 0; i < count; i++) {
         if (buttons[i].hidden) continue;
-        u32 normal_colour = TINT_COLOR;
-        u32 pressed_colour = TINT_50;
+        int base_colour = buttons[i].colour;
+        if (base_colour == 0) base_colour = tVBOpt.TINT;
+        u32 normal_colour = COLOR_BRIGHTNESS(base_colour, 1.0);
+        u32 pressed_colour = COLOR_BRIGHTNESS(base_colour, 0.5);
         C2D_DrawRectSolid(buttons[i].x, buttons[i].y, 0, buttons[i].w, buttons[i].h,
             pressed == i ? pressed_colour : normal_colour);
         if (selectedButton == &buttons[i]) {
