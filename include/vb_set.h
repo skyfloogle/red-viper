@@ -75,6 +75,29 @@ typedef struct VB_OPT {
     int   DPAD_MODE; // Left 3DS DPAD Behavior: 0: VB LPAD, 1: VB RPAD, 2: Mirror ABXY buttons
     char ROM_PATH[300];
     char RAM_PATH[300];
+    int   CUSTOM_CONTROLS; // 0 - preset control scheme, 1 - custom control scheme
+    int   CUSTOM_MAPPING_DUP; // These are all 3DS buttons, each set/mapped to a VB_* value from vb_dsp.h
+    int   CUSTOM_MAPPING_DDOWN;
+    int   CUSTOM_MAPPING_DLEFT;
+    int   CUSTOM_MAPPING_DRIGHT;
+    int   CUSTOM_MAPPING_CPAD_UP;
+    int   CUSTOM_MAPPING_CPAD_DOWN;
+    int   CUSTOM_MAPPING_CPAD_LEFT;
+    int   CUSTOM_MAPPING_CPAD_RIGHT;
+    int   CUSTOM_MAPPING_CSTICK_UP;
+    int   CUSTOM_MAPPING_CSTICK_DOWN;
+    int   CUSTOM_MAPPING_CSTICK_LEFT;
+    int   CUSTOM_MAPPING_CSTICK_RIGHT;
+    int   CUSTOM_MAPPING_A;
+    int   CUSTOM_MAPPING_X;
+    int   CUSTOM_MAPPING_B;
+    int   CUSTOM_MAPPING_Y;
+    int   CUSTOM_MAPPING_START;
+    int   CUSTOM_MAPPING_SELECT;
+    int   CUSTOM_MAPPING_L;
+    int   CUSTOM_MAPPING_R;
+    int   CUSTOM_MAPPING_ZL;
+    int   CUSTOM_MAPPING_ZR;
     char *ROM_NAME; // Path\Name of game to open
     char *PROG_NAME; // Path\Name of program
     char HOME_PATH[240];
@@ -85,6 +108,7 @@ typedef struct VB_OPT {
     bool  ANAGLYPH;
 } VB_OPT;
 
+void setCustomMappingDefaults(void);
 void setDefaults(void);
 int loadFileOptions(void);
 int saveFileOptions(void);
