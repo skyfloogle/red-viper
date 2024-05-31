@@ -19,7 +19,8 @@
 #define SLIDER_3DS  0
 #define SLIDER_VB   1
 
-#define CONFIG_FILENAME "rv_config.ini"
+#define CONFIG_FILENAME "sdmc:/config/red-viper/rv_config.ini"
+#define CONFIG_FILENAME_LEGACY "rv_config.ini"
 
 // vbkey positions
 enum VB_KCFG {

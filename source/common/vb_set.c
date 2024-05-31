@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #ifdef __3DS__
 #include <3ds.h>
@@ -221,10 +222,19 @@ static int handler(void* user, const char* section, const char* name,
 }
 
 int loadFileOptions(void) {
+    struct stat st;
+    if (stat(CONFIG_FILENAME, &st) == -1 && stat(CONFIG_FILENAME_LEGACY, &st) != -1) {
+        if (stat("sdmc:/config", &st) == -1) mkdir("sdmc:/config", 0777);
+        if (stat("sdmc:/config/red-viper", &st) == -1) mkdir("sdmc:/config/red-viper", 0777);
+        rename(CONFIG_FILENAME_LEGACY, CONFIG_FILENAME);
+    }
     return ini_parse(CONFIG_FILENAME, handler, &tVBOpt);
 }
 
 int saveFileOptions(void) {
+    struct stat st;
+    if (stat("sdmc:/config", &st) == -1) mkdir("sdmc:/config", 0777);
+    if (stat("sdmc:/config/red-viper", &st) == -1) mkdir("sdmc:/config/red-viper", 0777);
     FILE* f = fopen(CONFIG_FILENAME, "w");
     if (!f)
         return 1;
