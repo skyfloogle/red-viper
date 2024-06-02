@@ -187,7 +187,7 @@ static inline int handle_buttons(Button buttons[], int count);
 static void first_menu(int initial_button);
 static Button first_menu_buttons[] = {
     {.str="Load ROM", .x=16, .y=16, .w=288, .h=144},
-    {.str="Controls", .x=0, .y=176, .w=80, .h=64},
+    {.str="About", .x=0, .y=176, .w=80, .h=64},
     {.str="Options", .x=240, .y=176, .w=80, .h=64},
     {.str="Quit", .x=112, .y=192, .w=96, .h=48},
 };
@@ -196,8 +196,8 @@ static void game_menu(int initial_button);
 static Button game_menu_buttons[] = {
     #define MAIN_MENU_LOAD_ROM 0
     {.str="Load ROM", .x=232 - 16, .y=64, .w=80 + 16, .h=80},
-    #define MAIN_MENU_CONTROLS 1
-    {.str="Controls", .x=0, .y=176, .w=80, .h=64},
+    #define MAIN_MENU_ABOUT 1
+    {.str="About", .x=0, .y=176, .w=80, .h=64},
     #define MAIN_MENU_OPTIONS 2
     {.str="Options", .x=240, .y=176, .w=80, .h=64},
     #define MAIN_MENU_QUIT 3
@@ -346,14 +346,14 @@ static void options(int initial_button);
 static Button options_buttons[] = {
     #define OPTIONS_VIDEO 0
     {.str="Video settings", .x=16, .y=16, .w=288, .h=48},
-    #define OPTIONS_FF 1
-    {.str="Fast forward", .x=16, .y=80, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_toggle, .toggle_text_off=&text_hold},
+    #define OPTIONS_CONTROLS 1
+    {.str="Controls", .x=16, .y=80, .w=128, .h=48},
     #define OPTIONS_SOUND 2
     {.str="Sound", .x=176, .y=80, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
     #define OPTIONS_DEV 3
     {.str="Dev settings", .x=16, .y=144, .w=128, .h=48},
-    #define OPTIONS_ABOUT 4
-    {.str="About", .x=176, .y=144, .w=128, .h=48},
+    #define OPTIONS_FF 4
+    {.str="Fast forward", .x=176, .y=144, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_toggle, .toggle_text_off=&text_hold},
     #define OPTIONS_BACK 5
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
     #define OPTIONS_DEBUG 6
@@ -484,8 +484,8 @@ static void first_menu(int initial_button) {
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
             return rom_loader();
-        case MAIN_MENU_CONTROLS:
-            return controls(0);
+        case MAIN_MENU_ABOUT:
+            return about();
         case MAIN_MENU_OPTIONS:
             return options(0);
         case MAIN_MENU_QUIT: // Quit
@@ -505,8 +505,8 @@ static void game_menu(int initial_button) {
         case MAIN_MENU_LOAD_ROM: // Load ROM
             guiop = AKILL | VBRESET;
             return rom_loader();
-        case MAIN_MENU_CONTROLS: // Controls
-            return controls(0);
+        case MAIN_MENU_ABOUT: // Controls
+            return about();
         case MAIN_MENU_OPTIONS: // Options
             return options(0);
         case MAIN_MENU_QUIT: // Quit
@@ -872,7 +872,7 @@ static void controls(int initial_button) {
         case CONTROLS_BACK:
             tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
             saveFileOptions();
-            return main_menu(MAIN_MENU_CONTROLS);
+            return options(OPTIONS_CONTROLS);
     }
 }
 
@@ -1423,8 +1423,8 @@ static void options(int initial_button) {
             return options(OPTIONS_SOUND);
         case OPTIONS_DEV: // Developer settings
             return dev_options(0);
-        case OPTIONS_ABOUT: // About
-            return about();
+        case OPTIONS_CONTROLS: // About
+            return controls(0);
         case OPTIONS_BACK: // Back
             return main_menu(MAIN_MENU_OPTIONS);
         case OPTIONS_DEBUG: // Save debug info
@@ -1554,7 +1554,7 @@ static void about(void) {
         C2D_DrawSpriteTinted(&logo_sprite, &tint);
         C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(about_buttons);
-    return options(OPTIONS_ABOUT);
+    return main_menu(MAIN_MENU_ABOUT);
 }
 
 static void load_error(int err, bool unloaded) {
