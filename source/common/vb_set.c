@@ -138,58 +138,6 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->PERF_INFO = atoi(value);
     } else if (MATCH("vbopt", "lastrom")) {
         strcpy(pconfig->ROM_PATH, value);
-    } else if (MATCH("vbopt", "abxy")) {
-        pconfig->ABXY_MODE = atoi(value) % 6;
-    } else if (MATCH("vbopt", "zlzr")) {
-        pconfig->ZLZR_MODE = atoi(value) % 4;
-    } else if (MATCH("vbopt", "dpad_mode")) {
-        pconfig->DPAD_MODE = atoi(value) % 3;
-    } else if (MATCH("vbopt", "custom_controls")) {
-        pconfig->CUSTOM_CONTROLS = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_dup")) {
-        pconfig->CUSTOM_MAPPING_DUP = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_ddown")) {
-        pconfig->CUSTOM_MAPPING_DDOWN = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_dleft")) {
-        pconfig->CUSTOM_MAPPING_DLEFT = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_dright")) {
-        pconfig->CUSTOM_MAPPING_DRIGHT = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_cpad_up")) {
-        pconfig->CUSTOM_MAPPING_CPAD_UP = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_cpad_down")) {
-        pconfig->CUSTOM_MAPPING_CPAD_DOWN = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_cpad_left")) {
-        pconfig->CUSTOM_MAPPING_CPAD_LEFT = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_cpad_right")) {
-        pconfig->CUSTOM_MAPPING_CPAD_RIGHT = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_cstick_up")) {
-        pconfig->CUSTOM_MAPPING_CSTICK_UP = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_cstick_down")) {
-        pconfig->CUSTOM_MAPPING_CSTICK_DOWN = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_cstick_left")) {
-        pconfig->CUSTOM_MAPPING_CSTICK_LEFT = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_cstick_right")) {
-        pconfig->CUSTOM_MAPPING_CSTICK_RIGHT = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_a")) {
-        pconfig->CUSTOM_MAPPING_A = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_x")) {
-        pconfig->CUSTOM_MAPPING_X = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_b")) {
-        pconfig->CUSTOM_MAPPING_B = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_y")) {
-        pconfig->CUSTOM_MAPPING_Y = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_start")) {
-        pconfig->CUSTOM_MAPPING_START = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_select")) {
-        pconfig->CUSTOM_MAPPING_SELECT = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_l")) {
-        pconfig->CUSTOM_MAPPING_L = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_r")) {
-        pconfig->CUSTOM_MAPPING_R = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_zl")) {
-        pconfig->CUSTOM_MAPPING_ZL = atoi(value);
-    } else if (MATCH("vbopt", "custom_mapping_zr")) {
-        pconfig->CUSTOM_MAPPING_ZR = atoi(value);
     } else if (MATCH("vbopt", "n3ds_speedup")) {
         pconfig->N3DS_SPEEDUP = atoi(value);
     } else if (MATCH("vbopt", "homepath")) {
@@ -199,6 +147,58 @@ static int handler(void* user, const char* section, const char* name,
         char *last_slash = strrchr(pconfig->HOME_PATH, '/');
         if (last_slash != NULL && last_slash[1] == 0)
             *last_slash = 0;
+    } else if (MATCH("vbopt", "custom_controls")) {
+        pconfig->CUSTOM_CONTROLS = atoi(value);
+    } else if (MATCH("vbopt", "abxy") || MATCH("controls_preset", "abxy")) {
+        pconfig->ABXY_MODE = atoi(value) % 6;
+    } else if (MATCH("vbopt", "zlzr") || MATCH("controls_preset", "zlzr")) {
+        pconfig->ZLZR_MODE = atoi(value) % 4;
+    } else if (MATCH("vbopt", "dpad_mode") || MATCH("controls_preset", "dpad")) {
+        pconfig->DPAD_MODE = atoi(value) % 3;
+    } else if (MATCH("controls_custom", "dup")) {
+        pconfig->CUSTOM_MAPPING_DUP = atoi(value);
+    } else if (MATCH("controls_custom", "ddown")) {
+        pconfig->CUSTOM_MAPPING_DDOWN = atoi(value);
+    } else if (MATCH("controls_custom", "dleft")) {
+        pconfig->CUSTOM_MAPPING_DLEFT = atoi(value);
+    } else if (MATCH("controls_custom", "dright")) {
+        pconfig->CUSTOM_MAPPING_DRIGHT = atoi(value);
+    } else if (MATCH("controls_custom", "cpad_up")) {
+        pconfig->CUSTOM_MAPPING_CPAD_UP = atoi(value);
+    } else if (MATCH("controls_custom", "cpad_down")) {
+        pconfig->CUSTOM_MAPPING_CPAD_DOWN = atoi(value);
+    } else if (MATCH("controls_custom", "cpad_left")) {
+        pconfig->CUSTOM_MAPPING_CPAD_LEFT = atoi(value);
+    } else if (MATCH("controls_custom", "cpad_right")) {
+        pconfig->CUSTOM_MAPPING_CPAD_RIGHT = atoi(value);
+    } else if (MATCH("controls_custom", "cstick_up")) {
+        pconfig->CUSTOM_MAPPING_CSTICK_UP = atoi(value);
+    } else if (MATCH("controls_custom", "cstick_down")) {
+        pconfig->CUSTOM_MAPPING_CSTICK_DOWN = atoi(value);
+    } else if (MATCH("controls_custom", "cstick_left")) {
+        pconfig->CUSTOM_MAPPING_CSTICK_LEFT = atoi(value);
+    } else if (MATCH("controls_custom", "cstick_right")) {
+        pconfig->CUSTOM_MAPPING_CSTICK_RIGHT = atoi(value);
+    } else if (MATCH("controls_custom", "a")) {
+        pconfig->CUSTOM_MAPPING_A = atoi(value);
+    } else if (MATCH("controls_custom", "x")) {
+        pconfig->CUSTOM_MAPPING_X = atoi(value);
+    } else if (MATCH("controls_custom", "b")) {
+        pconfig->CUSTOM_MAPPING_B = atoi(value);
+    } else if (MATCH("controls_custom", "y")) {
+        pconfig->CUSTOM_MAPPING_Y = atoi(value);
+    } else if (MATCH("controls_custom", "start")) {
+        pconfig->CUSTOM_MAPPING_START = atoi(value);
+    } else if (MATCH("controls_custom", "select")) {
+        pconfig->CUSTOM_MAPPING_SELECT = atoi(value);
+    } else if (MATCH("controls_custom", "l")) {
+        pconfig->CUSTOM_MAPPING_L = atoi(value);
+    } else if (MATCH("controls_custom", "r")) {
+        pconfig->CUSTOM_MAPPING_R = atoi(value);
+    } else if (MATCH("controls_custom", "zl")) {
+        pconfig->CUSTOM_MAPPING_ZL = atoi(value);
+    } else if (MATCH("controls_custom", "zr")) {
+        pconfig->CUSTOM_MAPPING_ZR = atoi(value);
     } else if (MATCH("touch", "ax")) {
         tVBOpt.TOUCH_AX = atoi(value);
     } else if (MATCH("touch", "ay")) {
@@ -216,7 +216,7 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("touch", "ff_mode")) {
         tVBOpt.FF_TOGGLE = atoi(value);
     } else {
-        return 0;  // unknown section/name, error
+        return 1;  // unknown section/name, ignore
     }
     return 1;
 }
@@ -245,34 +245,36 @@ int saveFileOptions(void) {
     fprintf(f, "default_eye=%d\n", tVBOpt.DEFAULT_EYE);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
     fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH);
-    fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
-    fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
-    fprintf(f, "dpad_mode=%d\n", tVBOpt.DPAD_MODE);
-    fprintf(f, "custom_controls=%d\n", tVBOpt.CUSTOM_CONTROLS);
-    fprintf(f, "custom_mapping_dup=%d\n", tVBOpt.CUSTOM_MAPPING_DUP);
-    fprintf(f, "custom_mapping_ddown=%d\n", tVBOpt.CUSTOM_MAPPING_DDOWN);
-    fprintf(f, "custom_mapping_dleft=%d\n", tVBOpt.CUSTOM_MAPPING_DLEFT);
-    fprintf(f, "custom_mapping_dright=%d\n", tVBOpt.CUSTOM_MAPPING_DRIGHT);
-    fprintf(f, "custom_mapping_cpad_up=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_UP);
-    fprintf(f, "custom_mapping_cpad_down=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_DOWN);
-    fprintf(f, "custom_mapping_cpad_left=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_LEFT);
-    fprintf(f, "custom_mapping_cpad_right=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_RIGHT);
-    fprintf(f, "custom_mapping_cstick_up=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_UP);
-    fprintf(f, "custom_mapping_cstick_down=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_DOWN);
-    fprintf(f, "custom_mapping_cstick_left=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_LEFT);
-    fprintf(f, "custom_mapping_cstick_right=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_RIGHT);
-    fprintf(f, "custom_mapping_a=%d\n", tVBOpt.CUSTOM_MAPPING_A);
-    fprintf(f, "custom_mapping_x=%d\n", tVBOpt.CUSTOM_MAPPING_X);
-    fprintf(f, "custom_mapping_b=%d\n", tVBOpt.CUSTOM_MAPPING_B);
-    fprintf(f, "custom_mapping_y=%d\n", tVBOpt.CUSTOM_MAPPING_Y);
-    fprintf(f, "custom_mapping_start=%d\n", tVBOpt.CUSTOM_MAPPING_START);
-    fprintf(f, "custom_mapping_select=%d\n", tVBOpt.CUSTOM_MAPPING_SELECT);
-    fprintf(f, "custom_mapping_l=%d\n", tVBOpt.CUSTOM_MAPPING_L);
-    fprintf(f, "custom_mapping_r=%d\n", tVBOpt.CUSTOM_MAPPING_R);
-    fprintf(f, "custom_mapping_zl=%d\n", tVBOpt.CUSTOM_MAPPING_ZL);
-    fprintf(f, "custom_mapping_zr=%d\n", tVBOpt.CUSTOM_MAPPING_ZR);
     fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
     fprintf(f, "homepath=%s\n", tVBOpt.HOME_PATH);
+    fprintf(f, "custom_controls=%d\n", tVBOpt.CUSTOM_CONTROLS);
+    fprintf(f, "\n[controls_preset]\n");
+    fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
+    fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
+    fprintf(f, "dpad=%d\n", tVBOpt.DPAD_MODE);
+    fprintf(f, "\n[controls_custom]\n");
+    fprintf(f, "dup=%d\n", tVBOpt.CUSTOM_MAPPING_DUP);
+    fprintf(f, "ddown=%d\n", tVBOpt.CUSTOM_MAPPING_DDOWN);
+    fprintf(f, "dleft=%d\n", tVBOpt.CUSTOM_MAPPING_DLEFT);
+    fprintf(f, "dright=%d\n", tVBOpt.CUSTOM_MAPPING_DRIGHT);
+    fprintf(f, "cpad_up=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_UP);
+    fprintf(f, "cpad_down=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_DOWN);
+    fprintf(f, "cpad_left=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_LEFT);
+    fprintf(f, "cpad_right=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_RIGHT);
+    fprintf(f, "cstick_up=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_UP);
+    fprintf(f, "cstick_down=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_DOWN);
+    fprintf(f, "cstick_left=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_LEFT);
+    fprintf(f, "cstick_right=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_RIGHT);
+    fprintf(f, "a=%d\n", tVBOpt.CUSTOM_MAPPING_A);
+    fprintf(f, "x=%d\n", tVBOpt.CUSTOM_MAPPING_X);
+    fprintf(f, "b=%d\n", tVBOpt.CUSTOM_MAPPING_B);
+    fprintf(f, "y=%d\n", tVBOpt.CUSTOM_MAPPING_Y);
+    fprintf(f, "start=%d\n", tVBOpt.CUSTOM_MAPPING_START);
+    fprintf(f, "select=%d\n", tVBOpt.CUSTOM_MAPPING_SELECT);
+    fprintf(f, "l=%d\n", tVBOpt.CUSTOM_MAPPING_L);
+    fprintf(f, "r=%d\n", tVBOpt.CUSTOM_MAPPING_R);
+    fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MAPPING_ZL);
+    fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MAPPING_ZR);
     fprintf(f, "[touch]\n");
     fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
     fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);
