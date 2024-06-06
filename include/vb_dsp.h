@@ -71,7 +71,7 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////
 // Keybd Fn's. Had to put it somewhere!
 // Read the Controller
-HWORD V810_RControll(void);
+HWORD V810_RControll(bool reset);
 
 void video_init(void);
 void video_render(int alt_buf);

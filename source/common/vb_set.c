@@ -68,6 +68,8 @@ void setCustomMappingDefaults(void) {
     tVBOpt.CUSTOM_MAPPING_CSTICK_RIGHT = VB_RPAD_R;
     tVBOpt.CUSTOM_MAPPING_START        = VB_KEY_START;
     tVBOpt.CUSTOM_MAPPING_SELECT       = VB_KEY_SELECT;
+
+    memset(tVBOpt.CUSTOM_MOD, 0, sizeof(tVBOpt.CUSTOM_MOD));
 }
 
 void setDefaults(void) {
@@ -223,6 +225,50 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->CUSTOM_MAPPING_ZL = atoi(value);
     } else if (MATCH("controls_custom", "zr")) {
         pconfig->CUSTOM_MAPPING_ZR = atoi(value);
+    } else if (MATCH("controls_mod", "dup")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_DUP)] = atoi(value);
+    } else if (MATCH("controls_mod", "ddown")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_DDOWN)] = atoi(value);
+    } else if (MATCH("controls_mod", "dleft")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_DLEFT)] = atoi(value);
+    } else if (MATCH("controls_mod", "dright")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_DRIGHT)] = atoi(value);
+    } else if (MATCH("controls_mod", "cpad_up")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_CPAD_UP)] = atoi(value);
+    } else if (MATCH("controls_mod", "cpad_down")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_CPAD_DOWN)] = atoi(value);
+    } else if (MATCH("controls_mod", "cpad_left")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_CPAD_LEFT)] = atoi(value);
+    } else if (MATCH("controls_mod", "cpad_right")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_CPAD_RIGHT)] = atoi(value);
+    } else if (MATCH("controls_mod", "cstick_up")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_UP)] = atoi(value);
+    } else if (MATCH("controls_mod", "cstick_down")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_DOWN)] = atoi(value);
+    } else if (MATCH("controls_mod", "cstick_left")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_LEFT)] = atoi(value);
+    } else if (MATCH("controls_mod", "cstick_right")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_RIGHT)] = atoi(value);
+    } else if (MATCH("controls_mod", "a")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_A)] = atoi(value);
+    } else if (MATCH("controls_mod", "x")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_X)] = atoi(value);
+    } else if (MATCH("controls_mod", "b")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_B)] = atoi(value);
+    } else if (MATCH("controls_mod", "y")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_Y)] = atoi(value);
+    } else if (MATCH("controls_mod", "start")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_START)] = atoi(value);
+    } else if (MATCH("controls_mod", "select")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_SELECT)] = atoi(value);
+    } else if (MATCH("controls_mod", "l")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_L)] = atoi(value);
+    } else if (MATCH("controls_mod", "r")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_R)] = atoi(value);
+    } else if (MATCH("controls_mod", "zl")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_ZL)] = atoi(value);
+    } else if (MATCH("controls_mod", "zr")) {
+        pconfig->CUSTOM_MOD[__builtin_ctz(KEY_ZR)] = atoi(value);
     } else if (MATCH("touch", "ax")) {
         tVBOpt.TOUCH_AX = atoi(value);
     } else if (MATCH("touch", "ay")) {
@@ -315,7 +361,30 @@ int saveFileOptions(void) {
     fprintf(f, "r=%d\n", tVBOpt.CUSTOM_MAPPING_R);
     fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MAPPING_ZL);
     fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MAPPING_ZR);
-    fprintf(f, "[touch]\n");
+    fprintf(f, "\n[controls_mod]\n");
+    fprintf(f, "dup=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DUP)]);
+    fprintf(f, "ddown=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DDOWN)]);
+    fprintf(f, "dleft=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DLEFT)]);
+    fprintf(f, "dright=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DRIGHT)]);
+    fprintf(f, "cpad_up=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_UP)]);
+    fprintf(f, "cpad_down=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_DOWN)]);
+    fprintf(f, "cpad_left=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_LEFT)]);
+    fprintf(f, "cpad_right=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_RIGHT)]);
+    fprintf(f, "cstick_up=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_UP)]);
+    fprintf(f, "cstick_down=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_DOWN)]);
+    fprintf(f, "cstick_left=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_LEFT)]);
+    fprintf(f, "cstick_right=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_RIGHT)]);
+    fprintf(f, "a=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_A)]);
+    fprintf(f, "x=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_X)]);
+    fprintf(f, "b=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_B)]);
+    fprintf(f, "y=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_Y)]);
+    fprintf(f, "start=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_START)]);
+    fprintf(f, "select=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_SELECT)]);
+    fprintf(f, "l=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_L)]);
+    fprintf(f, "r=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_R)]);
+    fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_ZL)]);
+    fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_ZR)]);
+    fprintf(f, "\n[touch]\n");
     fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
     fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);
     fprintf(f, "bx=%d\n", tVBOpt.TOUCH_BX);
@@ -380,7 +449,30 @@ int saveGameOptions(void) {
     fprintf(f, "r=%d\n", tVBOpt.CUSTOM_MAPPING_R);
     fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MAPPING_ZL);
     fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MAPPING_ZR);
-    fprintf(f, "[touch]\n");
+    fprintf(f, "\n[controls_mod]\n");
+    fprintf(f, "dup=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DUP)]);
+    fprintf(f, "ddown=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DDOWN)]);
+    fprintf(f, "dleft=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DLEFT)]);
+    fprintf(f, "dright=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DRIGHT)]);
+    fprintf(f, "cpad_up=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_UP)]);
+    fprintf(f, "cpad_down=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_DOWN)]);
+    fprintf(f, "cpad_left=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_LEFT)]);
+    fprintf(f, "cpad_right=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_RIGHT)]);
+    fprintf(f, "cstick_up=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_UP)]);
+    fprintf(f, "cstick_down=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_DOWN)]);
+    fprintf(f, "cstick_left=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_LEFT)]);
+    fprintf(f, "cstick_right=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_RIGHT)]);
+    fprintf(f, "a=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_A)]);
+    fprintf(f, "x=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_X)]);
+    fprintf(f, "b=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_B)]);
+    fprintf(f, "y=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_Y)]);
+    fprintf(f, "start=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_START)]);
+    fprintf(f, "select=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_SELECT)]);
+    fprintf(f, "l=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_L)]);
+    fprintf(f, "r=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_R)]);
+    fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_ZL)]);
+    fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_ZR)]);
+    fprintf(f, "\n[touch]\n");
     fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
     fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);
     fprintf(f, "bx=%d\n", tVBOpt.TOUCH_BX);

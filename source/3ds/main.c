@@ -110,6 +110,7 @@ int main(void) {
                 goto exit;
             }
             if (guiop & VBRESET) {
+                V810_RControll(true);
                 v810_reset();
                 drc_reset();
                 clearCache();
@@ -157,7 +158,7 @@ int main(void) {
         if (!tVBOpt.FF_TOGGLE) tVBOpt.FASTFORWARD = false;
 
         // read inputs once per frame
-        HWORD inputs = V810_RControll();
+        HWORD inputs = V810_RControll(false);
         tHReg.SLB =(BYTE)(inputs&0xFF);
         tHReg.SHB =(BYTE)((inputs>>8)&0xFF);
 

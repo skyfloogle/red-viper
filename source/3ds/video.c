@@ -34,12 +34,14 @@ VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
 
 extern int arm_keys;
 // Read the Controller, Fix Me....
-HWORD V810_RControll(void) {
-
+HWORD V810_RControll(bool reset) {
 	if (replay_playing()) {
 		guiGetInput(true);
 		return replay_read();
 	}
+
+	static HWORD state = 0;
+	if (reset) state = 0;
 
     int ret_keys = 0;
     int key = 0;
@@ -61,7 +63,21 @@ HWORD V810_RControll(void) {
 #endif
     if (battery_low) ret_keys |= VB_BATERY_LOW;
 	for (int i = 0; i < 32; i++) {
-		if (key & BIT(i)) ret_keys |= vbkey[i];
+		int mod = tVBOpt.CUSTOM_MOD[i];
+		if (mod == 0) {
+			// normal
+			state &= ~BIT(i);
+			state |= (key & BIT(i));
+		} else if (mod == 1) {
+			// toggle
+			int down = hidKeysDown();
+			state ^= down & BIT(i);
+		} else if (mod == 2) {
+			// turbo
+			if (key & BIT(i)) state ^= BIT(i);
+			else state &= ~BIT(i);
+		}
+		if (state & BIT(i)) ret_keys |= vbkey[i];
 	}
 
 	if (key & KEY_TOUCH) ret_keys |= guiGetInput(true);

@@ -1,6 +1,8 @@
 --atlas -f rgb565 -z auto
 colour_wheel.png
 logo.png
+vb_icon.png
+toggle_text.png
+turbo_text.png
 3ds_text.png
 vb_text.png
-vb_icon.png

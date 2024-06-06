@@ -99,7 +99,7 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
                 text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
                 text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink, text_preset, text_custom,
-                text_error, text_3ds, text_vb, text_map, text_currently_mapped_to;
+                text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -108,7 +108,8 @@ PERFORM_FOR_EACH_VB_BUTTON(CUSTOM_VB_BUTTON_TEXT)
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_SpriteSheet splash_sheet;
-static C2D_Sprite colour_wheel_sprite, logo_sprite, text_3ds_sprite, text_vb_sprite, vb_icon_sprite;
+static C2D_Sprite colour_wheel_sprite, logo_sprite, vb_icon_sprite;
+static C2D_Sprite text_3ds_sprite, text_vb_sprite, text_toggle_sprite, text_turbo_sprite;
 static C2D_Sprite splash_left, splash_right;
 
 // helpers
@@ -330,6 +331,8 @@ static Button custom_vb_mappings_buttons[] = {
     {.str="\uE000", .x=186, .y=162, .w=76, .h=36, .draw_selected_rect=true},
     #define CUSTOM_VB_MAPPINGS_BACK 14
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
+    #define CUSTOM_VB_MAPPINGS_MOD 15
+    {.str="Mod", .x=260, .y=200, .w=60, .h=40, .show_option=true, .option_texts=(C2D_Text*[]){&text_normal, &text_toggle, &text_turbo}},
 };
 
 static void touchscreen_settings(void);
@@ -898,9 +901,22 @@ static C2D_Text * vb_button_code_to_vb_button_text(int vb_button_code) {
 
 #define DRAW_CUSTOM_3DS_BUTTON_FUNCTION(CUSTOM_3DS_BUTTON) \
 static void draw_custom_3ds_##CUSTOM_3DS_BUTTON(Button *self) { \
+    C2D_ImageTint tint; \
+    C2D_PlainImageTint(&tint, TINT_COLOR, 1); \
     C2D_DrawText(&text_custom_3ds_button_##CUSTOM_3DS_BUTTON, C2D_AlignLeft, self->x + 5, self->y + 3, 0, 0.6, 0.6); \
     C2D_DrawRectSolid(self->x + 12, self->y + self->h / 2, 0, self->w - 24, 1, BLACK); \
     C2D_DrawText(vb_button_code_to_vb_button_text(tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON), C2D_AlignRight, self->x + self->w - 5, self->y + self->h / 2, 0, 0.6, 0.6); \
+    C2D_Sprite *sprite = NULL; \
+    if (tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_##CUSTOM_3DS_BUTTON)] == 1) sprite = &text_toggle_sprite; \
+    if (tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_##CUSTOM_3DS_BUTTON)] == 2) sprite = &text_turbo_sprite; \
+    if (sprite) { \
+        C2D_Flush(); \
+        C3D_ColorLogicOp(GPU_LOGICOP_AND); \
+        C2D_SpriteSetPos(sprite, self->x + 4, self->y + self->h - 9); \
+        C2D_DrawSpriteTinted(sprite, &tint); \
+        C2D_Flush(); \
+        C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA); \
+    } \
 }
 PERFORM_FOR_EACH_3DS_BUTTON(DRAW_CUSTOM_3DS_BUTTON_FUNCTION)
 
@@ -918,6 +934,7 @@ static int vb_button_code_to_vb_ui_button_index(int vb_button_code) {
 static int current_custom_mapping_3ds_button;
 static C2D_Text *current_custom_mapping_3ds_button_text;
 static int *current_custom_mapping_vb_option;
+static int *current_custom_mapping_mod;
 
 static void custom_3ds_mappings(int initial_button) {
     bool new_3ds = false;
@@ -959,6 +976,7 @@ static void custom_3ds_mappings(int initial_button) {
             current_custom_mapping_3ds_button = CUSTOM_3DS_MAPPINGS_##CUSTOM_3DS_BUTTON; \
             current_custom_mapping_3ds_button_text = &text_custom_3ds_button_##CUSTOM_3DS_BUTTON; \
             current_custom_mapping_vb_option = &tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON; \
+            current_custom_mapping_mod = &tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_##CUSTOM_3DS_BUTTON)]; \
             return custom_vb_mappings(vb_button_code_to_vb_ui_button_index(tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON));
         PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_CASE)
         case CUSTOM_3DS_MAPPINGS_BACK:
@@ -972,8 +990,8 @@ static void custom_3ds_mappings(int initial_button) {
 
 static void custom_vb_mappings(int initial_button) {
     C2D_ImageTint tint;
-    C2D_SetTintMode(C2D_TintMult);
     C2D_PlainImageTint(&tint, TINT_COLOR, 1);
+    custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_MOD].option = *current_custom_mapping_mod;
     LOOP_BEGIN(custom_vb_mappings_buttons, initial_button);
         const Button *LPAD_UP = &custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_LPAD_U];
         const Button *LPAD_DOWN = &custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_LPAD_D];
@@ -997,6 +1015,10 @@ static void custom_vb_mappings(int initial_button) {
             tVBOpt.MODIFIED = true; \
             return custom_3ds_mappings(current_custom_mapping_3ds_button);
         PERFORM_FOR_EACH_VB_BUTTON(CUSTOM_VB_CASE)
+        case CUSTOM_VB_MAPPINGS_MOD:
+            *current_custom_mapping_mod = (*current_custom_mapping_mod + 1) % 3;
+            tVBOpt.MODIFIED = true;
+            return custom_vb_mappings(button);
         case CUSTOM_VB_MAPPINGS_BACK:
             return custom_3ds_mappings(current_custom_mapping_3ds_button);
     }
@@ -1650,7 +1672,6 @@ static void savestate_menu(int initial_button, int selected_state) {
 
 static void about(void) {
     C2D_SpriteSetPos(&logo_sprite, 320 / 2, 36);
-    C2D_SetTintMode(C2D_TintMult);
     C2D_ImageTint tint;
     C2D_PlainImageTint(&tint, C2D_Color32(255, 0, 0, 255), 1);
     LOOP_BEGIN(about_buttons, 0);
@@ -1918,6 +1939,8 @@ void guiInit(void) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     screen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
+    C2D_SetTintMode(C2D_TintMult);
+
     sprite_sheet = C2D_SpriteSheetLoadFromMem(sprites_t3x, sprites_t3x_size);
     C2D_SpriteFromSheet(&colour_wheel_sprite, sprite_sheet, sprites_colour_wheel_idx);
     C2D_SpriteSetCenter(&colour_wheel_sprite, 0.5, 0.5);
@@ -1930,6 +1953,8 @@ void guiInit(void) {
     C2D_SpriteSetPos(&text_vb_sprite, 178, 98);
     C2D_SpriteFromSheet(&vb_icon_sprite, sprite_sheet, sprites_vb_icon_idx);
     C2D_SpriteSetPos(&vb_icon_sprite, 137, 120);
+    C2D_SpriteFromSheet(&text_toggle_sprite, sprite_sheet, sprites_toggle_text_idx);
+    C2D_SpriteFromSheet(&text_turbo_sprite, sprite_sheet, sprites_turbo_text_idx);
 
     splash_sheet = C2D_SpriteSheetLoadFromMem(splash_t3x, splash_t3x_size);
     C2D_SpriteFromSheet(&splash_left, splash_sheet, splash_splash_left_idx);
@@ -2017,6 +2042,8 @@ void guiInit(void) {
     STATIC_TEXT(&text_vb, "VB")
     STATIC_TEXT(&text_map, "MAP")
     STATIC_TEXT(&text_currently_mapped_to, "Currently\nmapped to:")
+    STATIC_TEXT(&text_normal, "Normal")
+    STATIC_TEXT(&text_turbo, "Turbo")
 }
 
 static bool shouldRedrawMenu = true;
