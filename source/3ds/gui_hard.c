@@ -901,8 +901,6 @@ static C2D_Text * vb_button_code_to_vb_button_text(int vb_button_code) {
 
 #define DRAW_CUSTOM_3DS_BUTTON_FUNCTION(CUSTOM_3DS_BUTTON) \
 static void draw_custom_3ds_##CUSTOM_3DS_BUTTON(Button *self) { \
-    C2D_ImageTint tint; \
-    C2D_PlainImageTint(&tint, TINT_COLOR, 1); \
     C2D_DrawText(&text_custom_3ds_button_##CUSTOM_3DS_BUTTON, C2D_AlignLeft, self->x + 5, self->y + 3, 0, 0.6, 0.6); \
     C2D_DrawRectSolid(self->x + 12, self->y + self->h / 2, 0, self->w - 24, 1, BLACK); \
     C2D_DrawText(vb_button_code_to_vb_button_text(tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON), C2D_AlignRight, self->x + self->w - 5, self->y + self->h / 2, 0, 0.6, 0.6); \
@@ -913,7 +911,7 @@ static void draw_custom_3ds_##CUSTOM_3DS_BUTTON(Button *self) { \
         C2D_Flush(); \
         C3D_ColorLogicOp(GPU_LOGICOP_AND); \
         C2D_SpriteSetPos(sprite, self->x + 4, self->y + self->h - 9); \
-        C2D_DrawSpriteTinted(sprite, &tint); \
+        C2D_DrawSprite(sprite); \
         C2D_Flush(); \
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA); \
     } \
