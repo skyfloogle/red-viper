@@ -291,6 +291,29 @@ static int handler(void* user, const char* section, const char* name,
     return 1;
 }
 
+static char *getGameIniPath(void) {
+    struct stat st;
+    char *last_slash = strrchr(tVBOpt.ROM_PATH, '/');
+    if (last_slash == NULL) return NULL;
+    static char inipath[300];
+    // $HOME/configs
+    snprintf(inipath, sizeof(inipath), "%s/configs", tVBOpt.HOME_PATH);
+    if (stat(tVBOpt.HOME_PATH, &st) == -1) {
+        if (mkdir(tVBOpt.HOME_PATH, 0777)) return NULL;
+    }
+    if (stat(inipath, &st) == -1) {
+        if (mkdir(inipath, 0777)) return NULL;
+    }
+    // $HOME/configs/game.ini
+    strncat(inipath, last_slash, sizeof(inipath) - strlen(inipath) - 1);
+    char *end = strrchr(inipath, '.');
+    if (!end) end = inipath + strlen(inipath);
+    // vague bounds check
+    if (end - inipath >= 290) return NULL;
+    strcpy(end, ".ini");
+    return inipath;
+}
+
 int loadFileOptions(void) {
     struct stat st;
     if (stat(CONFIG_FILENAME, &st) == -1 && stat(CONFIG_FILENAME_LEGACY, &st) != -1) {
@@ -306,10 +329,7 @@ int loadFileOptions(void) {
 }
 
 int loadGameOptions(void) {
-    char inipath[300];
-    strcpy(inipath, tVBOpt.ROM_PATH);
-    strcpy(strrchr(inipath, '.'), ".ini");
-    int ret = ini_parse(inipath, handler, &tVBOpt);
+    int ret = ini_parse(getGameIniPath(), handler, &tVBOpt);
     if (!ret) tVBOpt.GAME_SETTINGS = true;
     else tVBOpt.GAME_SETTINGS = false;
     tVBOpt.MODIFIED = false;
@@ -401,17 +421,11 @@ int saveFileOptions(void) {
 }
 
 int deleteGameOptions(void) {
-    char inipath[300];
-    strcpy(inipath, tVBOpt.ROM_PATH);
-    strcpy(strrchr(inipath, '.'), ".ini");
-    return remove(inipath);
+    return remove(getGameIniPath());
 }
 
 int saveGameOptions(void) {
-    char inipath[300];
-    strcpy(inipath, tVBOpt.ROM_PATH);
-    strcpy(strrchr(inipath, '.'), ".ini");
-    FILE* f = fopen(inipath, "w");
+    FILE* f = fopen(getGameIniPath(), "w");
     if (!f)
         return 1;
 
