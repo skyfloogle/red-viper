@@ -107,12 +107,17 @@ typedef struct VB_OPT {
     bool  VSYNC;
     bool  N3DS_SPEEDUP;
     bool  ANAGLYPH;
+    bool  GAME_SETTINGS; // Are we using game-specific settings?
+    bool  MODIFIED; // Do we need to ask for save?
 } VB_OPT;
 
 void setCustomMappingDefaults(void);
 void setDefaults(void);
 int loadFileOptions(void);
 int saveFileOptions(void);
+int loadGameOptions(void);
+int saveGameOptions(void);
+int deleteGameOptions(void);
 
 extern VB_OPT tVBOpt;
 extern int vbkey[32];

@@ -10,6 +10,7 @@
 #include "vb_types.h"
 #include "vb_set.h"
 #include "vb_dsp.h"
+#include "vb_gui.h"
 
 VB_OPT  tVBOpt;
 int     vbkey[32] = {0};
@@ -53,6 +54,9 @@ void setCustomMappingDefaults(void) {
         tVBOpt.CUSTOM_MAPPING_R = tVBOpt.ZLZR_MODE <= 1 ? VB_KEY_R : tVBOpt.ZLZR_MODE == 2 ? VB_KEY_A : VB_KEY_B;
         tVBOpt.CUSTOM_MAPPING_ZL = tVBOpt.ZLZR_MODE == 0 ? VB_KEY_B : tVBOpt.ZLZR_MODE == 1 ? VB_KEY_A : VB_KEY_L;
         tVBOpt.CUSTOM_MAPPING_ZR = tVBOpt.ZLZR_MODE == 0 ? VB_KEY_A : tVBOpt.ZLZR_MODE == 1 ? VB_KEY_B : VB_KEY_R;
+    } else {
+        tVBOpt.CUSTOM_MAPPING_L = VB_KEY_L;
+        tVBOpt.CUSTOM_MAPPING_R = VB_KEY_R;
     }
     tVBOpt.CUSTOM_MAPPING_CPAD_UP      = VB_LPAD_U;
     tVBOpt.CUSTOM_MAPPING_CPAD_DOWN    = VB_LPAD_D;
@@ -62,16 +66,8 @@ void setCustomMappingDefaults(void) {
     tVBOpt.CUSTOM_MAPPING_CSTICK_DOWN  = VB_RPAD_D;
     tVBOpt.CUSTOM_MAPPING_CSTICK_LEFT  = VB_RPAD_L;
     tVBOpt.CUSTOM_MAPPING_CSTICK_RIGHT = VB_RPAD_R;
-    tVBOpt.CUSTOM_MAPPING_A            = VB_KEY_A;
-    tVBOpt.CUSTOM_MAPPING_X            = VB_KEY_A;
-    tVBOpt.CUSTOM_MAPPING_B            = VB_KEY_B;
-    tVBOpt.CUSTOM_MAPPING_Y            = VB_KEY_B;
     tVBOpt.CUSTOM_MAPPING_START        = VB_KEY_START;
     tVBOpt.CUSTOM_MAPPING_SELECT       = VB_KEY_SELECT;
-    tVBOpt.CUSTOM_MAPPING_L            = VB_KEY_L;
-    tVBOpt.CUSTOM_MAPPING_R            = VB_KEY_R;
-    tVBOpt.CUSTOM_MAPPING_ZL           = VB_KEY_B;
-    tVBOpt.CUSTOM_MAPPING_ZR           = VB_KEY_A;
 }
 
 void setDefaults(void) {
@@ -114,6 +110,8 @@ void setDefaults(void) {
     tVBOpt.VSYNC = true;
     tVBOpt.N3DS_SPEEDUP = true;
     tVBOpt.ANAGLYPH = false;
+    tVBOpt.GAME_SETTINGS = false;
+    tVBOpt.MODIFIED = false;
     strcpy(tVBOpt.HOME_PATH, "sdmc:/red-viper");
 
     // Default keys
@@ -153,7 +151,7 @@ static int handler(void* user, const char* section, const char* name,
                    const char* value) {
     VB_OPT* pconfig = (VB_OPT*)user;
 
-    #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
+    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
     if (MATCH("vbopt", "tint")) {
         pconfig->TINT = atoi(value);
     } else if (MATCH("vbopt", "slidermode")) {
@@ -254,7 +252,23 @@ int loadFileOptions(void) {
         if (stat("sdmc:/config/red-viper", &st) == -1) mkdir("sdmc:/config/red-viper", 0777);
         rename(CONFIG_FILENAME_LEGACY, CONFIG_FILENAME);
     }
-    return ini_parse(CONFIG_FILENAME, handler, &tVBOpt);
+    int ret = ini_parse(CONFIG_FILENAME, handler, &tVBOpt);
+    if (!ret) tVBOpt.GAME_SETTINGS = false;
+    tVBOpt.MODIFIED = false;
+    tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
+    return ret;
+}
+
+int loadGameOptions(void) {
+    char inipath[300];
+    strcpy(inipath, tVBOpt.ROM_PATH);
+    strcpy(strrchr(inipath, '.'), ".ini");
+    int ret = ini_parse(inipath, handler, &tVBOpt);
+    if (!ret) tVBOpt.GAME_SETTINGS = true;
+    else tVBOpt.GAME_SETTINGS = false;
+    tVBOpt.MODIFIED = false;
+    tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
+    return ret;
 }
 
 int saveFileOptions(void) {
@@ -312,5 +326,72 @@ int saveFileOptions(void) {
     fprintf(f, "ff_mode=%d\n", tVBOpt.FF_TOGGLE);
 
     fclose(f);
+    tVBOpt.GAME_SETTINGS = false;
+    tVBOpt.MODIFIED = false;
+    return 0;
+}
+
+int deleteGameOptions(void) {
+    char inipath[300];
+    strcpy(inipath, tVBOpt.ROM_PATH);
+    strcpy(strrchr(inipath, '.'), ".ini");
+    return remove(inipath);
+}
+
+int saveGameOptions(void) {
+    char inipath[300];
+    strcpy(inipath, tVBOpt.ROM_PATH);
+    strcpy(strrchr(inipath, '.'), ".ini");
+    FILE* f = fopen(inipath, "w");
+    if (!f)
+        return 1;
+
+    fprintf(f, "[vbopt]\n");
+    fprintf(f, "tint=%d\n", tVBOpt.TINT);
+    fprintf(f, "slidermode=%d\n", tVBOpt.SLIDERMODE);
+    fprintf(f, "default_eye=%d\n", tVBOpt.DEFAULT_EYE);
+    fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
+    fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
+    fprintf(f, "custom_controls=%d\n", tVBOpt.CUSTOM_CONTROLS);
+    fprintf(f, "\n[controls_preset]\n");
+    fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
+    fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
+    fprintf(f, "dpad=%d\n", tVBOpt.DPAD_MODE);
+    fprintf(f, "\n[controls_custom]\n");
+    fprintf(f, "dup=%d\n", tVBOpt.CUSTOM_MAPPING_DUP);
+    fprintf(f, "ddown=%d\n", tVBOpt.CUSTOM_MAPPING_DDOWN);
+    fprintf(f, "dleft=%d\n", tVBOpt.CUSTOM_MAPPING_DLEFT);
+    fprintf(f, "dright=%d\n", tVBOpt.CUSTOM_MAPPING_DRIGHT);
+    fprintf(f, "cpad_up=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_UP);
+    fprintf(f, "cpad_down=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_DOWN);
+    fprintf(f, "cpad_left=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_LEFT);
+    fprintf(f, "cpad_right=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_RIGHT);
+    fprintf(f, "cstick_up=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_UP);
+    fprintf(f, "cstick_down=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_DOWN);
+    fprintf(f, "cstick_left=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_LEFT);
+    fprintf(f, "cstick_right=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_RIGHT);
+    fprintf(f, "a=%d\n", tVBOpt.CUSTOM_MAPPING_A);
+    fprintf(f, "x=%d\n", tVBOpt.CUSTOM_MAPPING_X);
+    fprintf(f, "b=%d\n", tVBOpt.CUSTOM_MAPPING_B);
+    fprintf(f, "y=%d\n", tVBOpt.CUSTOM_MAPPING_Y);
+    fprintf(f, "start=%d\n", tVBOpt.CUSTOM_MAPPING_START);
+    fprintf(f, "select=%d\n", tVBOpt.CUSTOM_MAPPING_SELECT);
+    fprintf(f, "l=%d\n", tVBOpt.CUSTOM_MAPPING_L);
+    fprintf(f, "r=%d\n", tVBOpt.CUSTOM_MAPPING_R);
+    fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MAPPING_ZL);
+    fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MAPPING_ZR);
+    fprintf(f, "[touch]\n");
+    fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
+    fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);
+    fprintf(f, "bx=%d\n", tVBOpt.TOUCH_BX);
+    fprintf(f, "by=%d\n", tVBOpt.TOUCH_BY);
+    fprintf(f, "padx=%d\n", tVBOpt.TOUCH_PADX);
+    fprintf(f, "pady=%d\n", tVBOpt.TOUCH_PADY);
+    fprintf(f, "pausex=%d\n", tVBOpt.PAUSE_RIGHT);
+    fprintf(f, "ff_mode=%d\n", tVBOpt.FF_TOGGLE);
+
+    fclose(f);
+    tVBOpt.GAME_SETTINGS = true;
+    tVBOpt.MODIFIED = false;
     return 0;
 }

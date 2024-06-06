@@ -343,18 +343,26 @@ static Button touchscreen_settings_buttons[] = {
 static void options(int initial_button);
 static Button options_buttons[] = {
     #define OPTIONS_VIDEO 0
-    {.str="Video settings", .x=16, .y=16, .w=288, .h=48},
+    {.str="Video settings", .x=16, .y=16, .w=128, .h=48},
     #define OPTIONS_CONTROLS 1
-    {.str="Controls", .x=16, .y=80, .w=128, .h=48},
+    {.str="Controls", .x=176, .y=16, .w=128, .h=48},
     #define OPTIONS_SOUND 2
-    {.str="Sound", .x=176, .y=80, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
-    #define OPTIONS_DEV 3
-    {.str="Dev settings", .x=16, .y=144, .w=128, .h=48},
-    #define OPTIONS_FF 4
-    {.str="Fast forward", .x=176, .y=144, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_toggle, .toggle_text_off=&text_hold},
-    #define OPTIONS_BACK 5
+    {.str="Sound", .x=16, .y=80, .w=96-8, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define OPTIONS_FF 3
+    {.str="Fastforward", .x=112-2, .y=80, .w=96+4, .h=48, .show_toggle=true, .toggle_text_on=&text_toggle, .toggle_text_off=&text_hold},
+    #define OPTIONS_DEV 4
+    {.str="Dev\nsettings", .x=208+8, .y=80, .w=96-8, .h=48},
+    #define OPTIONS_SAVE_GLOBAL 5
+    {.str="Save\n(Global)", .x=16, .y=144, .w=96-8, .h=48},
+    #define OPTIONS_SAVE_GAME 6
+    {.str="Save\n(Game)", .x=112-2, .y=144, .w=96+4, .h=48},
+    #define OPTIONS_DISCARD 7
+    {.str="Discard", .x=208+8, .y=144, .w=96-8, .h=48},
+    #define OPTIONS_RESET_TO_GLOBAL 8
+    {.str="Restore\nGlobal", .y=144, .h=48},
+    #define OPTIONS_BACK  9
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
-    #define OPTIONS_DEBUG 6
+    #define OPTIONS_DEBUG 10
     {.str="Save debug info", .x=170, .y=208, .w=150, .h=32},
 };
 
@@ -846,6 +854,9 @@ static void rom_loader(void) {
         video_flush(true);
         C3D_FrameEnd(0);
 
+        // reload global settings in advance
+        if (tVBOpt.GAME_SETTINGS) loadFileOptions();
+
         strcpy(tVBOpt.ROM_PATH, path);
         strcpy(tVBOpt.RAM_PATH, path);
         // we know there's a dot
@@ -862,6 +873,7 @@ static void controls(int initial_button) {
     switch (button) {
         case CONTROLS_CONTROL_SCHEME:
             tVBOpt.CUSTOM_CONTROLS = !tVBOpt.CUSTOM_CONTROLS;
+            tVBOpt.MODIFIED = true;
             return controls(CONTROLS_CONTROL_SCHEME);
         case CONTROLS_CONFIGURE_SCHEME:
             return tVBOpt.CUSTOM_CONTROLS ? custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_BACK) : preset_controls(0);
@@ -869,7 +881,6 @@ static void controls(int initial_button) {
             return touchscreen_settings();
         case CONTROLS_BACK:
             tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
-            saveFileOptions();
             return options(OPTIONS_CONTROLS);
     }
 }
@@ -954,6 +965,7 @@ static void custom_3ds_mappings(int initial_button) {
             return controls(CONTROLS_CONFIGURE_SCHEME);
         case CUSTOM_3DS_MAPPINGS_RESET:
             setCustomMappingDefaults();
+            tVBOpt.MODIFIED = true;
             return custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_RESET);
     }
 }
@@ -974,6 +986,7 @@ static void custom_vb_mappings(int initial_button) {
         #define CUSTOM_VB_CASE(CUSTOM_VB_BUTTON) \
         case CUSTOM_VB_MAPPINGS_##CUSTOM_VB_BUTTON: \
             *current_custom_mapping_vb_option = VB_##CUSTOM_VB_BUTTON; \
+            tVBOpt.MODIFIED = true; \
             return custom_3ds_mappings(current_custom_mapping_3ds_button);
         PERFORM_FOR_EACH_VB_BUTTON(CUSTOM_VB_CASE)
         case CUSTOM_VB_MAPPINGS_BACK:
@@ -1029,16 +1042,18 @@ static void preset_controls(int initial_button) {
     switch (button) {
         case PRESET_CONTROLS_FACE:
             tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 6;
+            tVBOpt.MODIFIED = true;
             return preset_controls(PRESET_CONTROLS_FACE);
         case PRESET_CONTROLS_SHOULDER:
             tVBOpt.ZLZR_MODE = (tVBOpt.ZLZR_MODE + 1) % 4;
+            tVBOpt.MODIFIED = true;
             return preset_controls(PRESET_CONTROLS_SHOULDER);
         case PRESET_CONTROLS_DPAD_MODE:
             tVBOpt.DPAD_MODE = (tVBOpt.DPAD_MODE + 1) % 3;
+            tVBOpt.MODIFIED = true;
             return preset_controls(PRESET_CONTROLS_DPAD_MODE);
         case PRESET_CONTROLS_BACK:
             setPresetControls(buttons_on_screen);
-            saveFileOptions();
             return controls(CONTROLS_CONFIGURE_SCHEME);
     }
 }
@@ -1060,6 +1075,7 @@ static void touchscreen_settings() {
                 buttons_on_screen = !buttons_on_screen;
             } else if (abs(tVBOpt.PAUSE_RIGHT - touch_pos.px) < PAUSE_RAD) {
                 // pause slider
+                tVBOpt.MODIFIED = true;
                 dragging = 1;
                 xoff = tVBOpt.PAUSE_RIGHT - touch_pos.px;
             } else if (buttons_on_screen) {
@@ -1069,11 +1085,13 @@ static void touchscreen_settings() {
                 int bdy = tVBOpt.TOUCH_BY - touch_pos.py;
                 if (adx*adx + ady*ady < BUTTON_RAD*BUTTON_RAD) {
                     // a button
+                    tVBOpt.MODIFIED = true;
                     dragging = 2;
                     xoff = adx;
                     yoff = ady;
                 } else if (bdx*bdx + bdy*bdy < BUTTON_RAD*BUTTON_RAD) {
                     // b button
+                    tVBOpt.MODIFIED = true;
                     dragging = 3;
                     xoff = bdx;
                     yoff = bdy;
@@ -1083,6 +1101,7 @@ static void touchscreen_settings() {
                 int dy = tVBOpt.TOUCH_PADY - touch_pos.py;
                 if (dx*dx + dy*dy < PAD_RAD*PAD_RAD) {
                     // dpad
+                    tVBOpt.MODIFIED = true;
                     dragging = 2;
                     xoff = dx;
                     yoff = dy;
@@ -1177,9 +1196,9 @@ static void touchscreen_settings() {
     buttonLock = false;
     switch (button) {
         case TOUCHSCREEN_BACK: // Back
-            saveFileOptions();
             return controls(CONTROLS_TOUCHSCREEN);
         case TOUCHSCREEN_RESET: // Reset
+            tVBOpt.MODIFIED = true;
             tVBOpt.PAUSE_RIGHT = 160;
             tVBOpt.TOUCH_AX = 250;
             tVBOpt.TOUCH_AY = 64;
@@ -1209,6 +1228,7 @@ static void colour_filter(void) {
         if (hidKeysUp() & KEY_TOUCH)
             dragging = false;
         if (dragging) {
+            tVBOpt.MODIFIED = true;
             if (sat > 1) {
                 touch_dx /= sat;
                 touch_dy /= sat;
@@ -1285,13 +1305,14 @@ static void colour_filter(void) {
     LOOP_END(colour_filter_buttons);
     switch (button) {
         case COLOUR_BACK: // Back
-            saveFileOptions();
             return video_settings(VIDEO_COLOUR);
         case COLOUR_RED: // Red
             tVBOpt.TINT = 0xff0000ff;
+            tVBOpt.MODIFIED = true;
             return colour_filter();
         case COLOUR_GRAY: // Gray
             tVBOpt.TINT = 0xffffffff;
+            tVBOpt.MODIFIED = true;
             return colour_filter();
     }
 }
@@ -1314,6 +1335,7 @@ static bool vblink_transfer() {
             svcSignalEvent(vblink_event);
             guiop = AKILL | VBRESET;
             game_running = true;
+            loadGameOptions();
             last_savestate = 0;
             loop = false;
         } else if (vblink_progress < 0 || vblink_error) {
@@ -1326,6 +1348,7 @@ static bool vblink_transfer() {
     #define DEFAULT_RETURN
     if (vblink_progress != 100) {
         game_running = false;
+        if (tVBOpt.GAME_SETTINGS) loadFileOptions();
         // redraw logo since we unloaded
         C3D_FrameBegin(0);
         draw_logo();
@@ -1387,15 +1410,16 @@ static void dev_options(int initial_button) {
     switch (button) {
         case DEV_PERF:
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
+            tVBOpt.MODIFIED = true;
             return dev_options(DEV_PERF);
         case DEV_VBLINK:
             return vblink(false);
         case DEV_N3DS:
             tVBOpt.N3DS_SPEEDUP = !tVBOpt.N3DS_SPEEDUP;
+            tVBOpt.MODIFIED = true;
             osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
             return dev_options(DEV_N3DS);
         case DEV_BACK:
-            saveFileOptions();
             return options(OPTIONS_DEV);
     }
 }
@@ -1405,6 +1429,66 @@ static void options(int initial_button) {
     options_buttons[OPTIONS_FF].toggle = tVBOpt.FF_TOGGLE;
     options_buttons[OPTIONS_SOUND].toggle = tVBOpt.SOUND;
     options_buttons[OPTIONS_DEBUG].hidden = !game_running;
+    options_buttons[OPTIONS_BACK].hidden = tVBOpt.MODIFIED;
+    if (game_running) {
+        if (tVBOpt.GAME_SETTINGS) {
+            if (tVBOpt.MODIFIED) {
+                options_buttons[OPTIONS_SAVE_GLOBAL].hidden = false;
+                options_buttons[OPTIONS_SAVE_GLOBAL].x = 16;
+                options_buttons[OPTIONS_SAVE_GLOBAL].w = 96-8;
+                options_buttons[OPTIONS_SAVE_GAME].hidden = false;
+                options_buttons[OPTIONS_SAVE_GAME].x = 112-2;
+                options_buttons[OPTIONS_SAVE_GAME].w = 96+4;
+                options_buttons[OPTIONS_DISCARD].hidden = false;
+                options_buttons[OPTIONS_DISCARD].x = 208+8;
+                options_buttons[OPTIONS_DISCARD].w = 96+4;
+                options_buttons[OPTIONS_RESET_TO_GLOBAL].hidden = true;
+            } else {
+                options_buttons[OPTIONS_SAVE_GLOBAL].hidden = false;
+                options_buttons[OPTIONS_SAVE_GLOBAL].x = 16;
+                options_buttons[OPTIONS_SAVE_GLOBAL].w = 128;
+                options_buttons[OPTIONS_RESET_TO_GLOBAL].hidden = false;
+                options_buttons[OPTIONS_RESET_TO_GLOBAL].x = 176;
+                options_buttons[OPTIONS_RESET_TO_GLOBAL].w = 128;
+                options_buttons[OPTIONS_SAVE_GAME].hidden = true;
+                options_buttons[OPTIONS_DISCARD].hidden = true;
+            }
+        } else {
+            if (tVBOpt.MODIFIED) {
+                options_buttons[OPTIONS_SAVE_GLOBAL].hidden = false;
+                options_buttons[OPTIONS_SAVE_GLOBAL].x = 16;
+                options_buttons[OPTIONS_SAVE_GLOBAL].w = 96-8;
+                options_buttons[OPTIONS_SAVE_GAME].hidden = false;
+                options_buttons[OPTIONS_SAVE_GAME].x = 112-2;
+                options_buttons[OPTIONS_SAVE_GAME].w = 96+4;
+                options_buttons[OPTIONS_DISCARD].hidden = false;
+                options_buttons[OPTIONS_DISCARD].x = 208+8;
+                options_buttons[OPTIONS_DISCARD].w = 96+4;
+                options_buttons[OPTIONS_RESET_TO_GLOBAL].hidden = true;
+            } else {
+                options_buttons[OPTIONS_SAVE_GLOBAL].hidden = true;
+                options_buttons[OPTIONS_SAVE_GAME].hidden = true;
+                options_buttons[OPTIONS_DISCARD].hidden = true;
+                options_buttons[OPTIONS_RESET_TO_GLOBAL].hidden = true;
+            }
+        }
+    } else {
+        if (tVBOpt.MODIFIED) {
+            options_buttons[OPTIONS_SAVE_GLOBAL].hidden = false;
+            options_buttons[OPTIONS_SAVE_GLOBAL].x = 16;
+            options_buttons[OPTIONS_SAVE_GLOBAL].w = 128;
+            options_buttons[OPTIONS_DISCARD].hidden = false;
+            options_buttons[OPTIONS_DISCARD].x = 176;
+            options_buttons[OPTIONS_DISCARD].w = 128;
+            options_buttons[OPTIONS_SAVE_GAME].hidden = true;
+            options_buttons[OPTIONS_RESET_TO_GLOBAL].hidden = true;
+        } else {
+            options_buttons[OPTIONS_SAVE_GLOBAL].hidden = true;
+            options_buttons[OPTIONS_SAVE_GAME].hidden = true;
+            options_buttons[OPTIONS_DISCARD].hidden = true;
+            options_buttons[OPTIONS_RESET_TO_GLOBAL].hidden = true;
+        }
+    }
     LOOP_BEGIN(options_buttons, initial_button);
     LOOP_END(options_buttons);
     switch (button) {
@@ -1412,12 +1496,10 @@ static void options(int initial_button) {
             return video_settings(0);
         case OPTIONS_FF: // Fast forward
             tVBOpt.FF_TOGGLE = !tVBOpt.FF_TOGGLE;
-            saveFileOptions();
+            tVBOpt.MODIFIED = true;
             return options(OPTIONS_FF);
         case OPTIONS_SOUND: // Sound
             tVBOpt.SOUND = !tVBOpt.SOUND;
-            //if (tVBOpt.SOUND) sound_enable();
-            //else sound_disable();
             return options(OPTIONS_SOUND);
         case OPTIONS_DEV: // Developer settings
             return dev_options(0);
@@ -1427,6 +1509,21 @@ static void options(int initial_button) {
             return main_menu(MAIN_MENU_OPTIONS);
         case OPTIONS_DEBUG: // Save debug info
             return save_debug_info();
+        case OPTIONS_SAVE_GLOBAL:
+            if (tVBOpt.GAME_SETTINGS) deleteGameOptions();
+            saveFileOptions();
+            return options(OPTIONS_BACK);
+        case OPTIONS_RESET_TO_GLOBAL:
+            if (tVBOpt.GAME_SETTINGS) deleteGameOptions();
+            loadFileOptions();
+            return options(OPTIONS_BACK);
+        case OPTIONS_SAVE_GAME:
+            saveGameOptions();
+            return options(OPTIONS_BACK);
+        case OPTIONS_DISCARD:
+            loadFileOptions();
+            if (game_running) loadGameOptions();
+            return options(OPTIONS_BACK);
     }
 }
 
@@ -1440,11 +1537,11 @@ static void video_settings(int initial_button) {
             return colour_filter();
         case VIDEO_SLIDER: // Slider mode
             tVBOpt.SLIDERMODE = !tVBOpt.SLIDERMODE;
-            saveFileOptions();
+            tVBOpt.MODIFIED = true;
             return video_settings(VIDEO_SLIDER);
         case VIDEO_DEFAULT_EYE: // Default eye
             tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
-            saveFileOptions();
+            tVBOpt.MODIFIED = true;
             return video_settings(VIDEO_DEFAULT_EYE);
         case VIDEO_BACK: // Back
             return options(OPTIONS_VIDEO);
@@ -1595,9 +1692,11 @@ static void load_rom(void) {
             }
         }
     LOOP_END(load_rom_buttons);
+    if (tVBOpt.GAME_SETTINGS) loadFileOptions();
     if (ret == 100) {
         // complete
         game_running = true;
+        loadGameOptions();
         last_savestate = 0;
         return;
     } else {
@@ -1822,8 +1921,6 @@ void guiInit(void) {
     C2D_SpriteFromSheet(&splash_left, splash_sheet, splash_splash_left_idx);
     C2D_SpriteFromSheet(&splash_right, splash_sheet, splash_splash_right_idx);
     C2D_SpriteSetPos(&splash_right, 0, 256);
-
-    tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
 
     static_textbuf = C2D_TextBufNew(2048);
     dynamic_textbuf = C2D_TextBufNew(4096);
