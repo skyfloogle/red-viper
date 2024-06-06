@@ -84,9 +84,7 @@
     MACRO(LPAD_D) \
     MACRO(LPAD_U)
 
-static bool buttons_on_screen = false;
-void setPresetControls(bool button);
-void setCustomControls(void);
+bool buttons_on_screen = false;
 bool guiShouldSwitch(void);
 void drawTouchControls(int inputs);
 

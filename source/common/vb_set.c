@@ -17,16 +17,42 @@ int     vbkey[32] = {0};
 void setCustomMappingDefaults(void) {
     bool new_3ds = false;
     APT_CheckNew3DS(&new_3ds);
-    if (new_3ds) { // Since the new 3ds has a c-stick, both the Circle pad and DPad can map to the VB's L-DPad by default.
-        tVBOpt.CUSTOM_MAPPING_DUP      = VB_LPAD_U;
-        tVBOpt.CUSTOM_MAPPING_DDOWN    = VB_LPAD_D;
-        tVBOpt.CUSTOM_MAPPING_DLEFT    = VB_LPAD_L;
-        tVBOpt.CUSTOM_MAPPING_DRIGHT   = VB_LPAD_R;
-    } else { // Since the old 3ds doesn't have a c-stick, it should have a hardware mapping to the VB's R-DPad by default.
-        tVBOpt.CUSTOM_MAPPING_DUP      = VB_RPAD_U;
-        tVBOpt.CUSTOM_MAPPING_DDOWN    = VB_RPAD_D;
-        tVBOpt.CUSTOM_MAPPING_DLEFT    = VB_RPAD_L;
-        tVBOpt.CUSTOM_MAPPING_DRIGHT   = VB_RPAD_R;
+    if (buttons_on_screen) {
+        tVBOpt.CUSTOM_MAPPING_A = VB_RPAD_R;
+        tVBOpt.CUSTOM_MAPPING_X = VB_RPAD_U;
+        tVBOpt.CUSTOM_MAPPING_B = VB_RPAD_D;
+        tVBOpt.CUSTOM_MAPPING_Y = VB_RPAD_L;
+    } else {
+        tVBOpt.CUSTOM_MAPPING_A = tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 4 ? VB_KEY_A : VB_KEY_B;
+        tVBOpt.CUSTOM_MAPPING_Y = tVBOpt.ABXY_MODE < 2 || tVBOpt.ABXY_MODE == 5 ? VB_KEY_B : VB_KEY_A;
+        tVBOpt.CUSTOM_MAPPING_B = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 4 ? VB_KEY_B : VB_KEY_A;
+        tVBOpt.CUSTOM_MAPPING_X = tVBOpt.ABXY_MODE == 0 || tVBOpt.ABXY_MODE == 3 || tVBOpt.ABXY_MODE == 5 ? VB_KEY_A : VB_KEY_B;
+    }
+    switch (tVBOpt.DPAD_MODE) {
+        default: // VB LPAD
+            tVBOpt.CUSTOM_MAPPING_DUP = VB_LPAD_U;
+            tVBOpt.CUSTOM_MAPPING_DDOWN = VB_LPAD_D;
+            tVBOpt.CUSTOM_MAPPING_DLEFT = VB_LPAD_L;
+            tVBOpt.CUSTOM_MAPPING_DRIGHT = VB_LPAD_R;
+            break;
+        case 1: // VB RPAD
+            tVBOpt.CUSTOM_MAPPING_DUP = VB_RPAD_U;
+            tVBOpt.CUSTOM_MAPPING_DDOWN = VB_RPAD_D;
+            tVBOpt.CUSTOM_MAPPING_DLEFT = VB_RPAD_L;
+            tVBOpt.CUSTOM_MAPPING_DRIGHT = VB_RPAD_R;
+            break;
+        case 2: // Mirror ABXY buttons
+            tVBOpt.CUSTOM_MAPPING_DUP = tVBOpt.CUSTOM_MAPPING_X;
+            tVBOpt.CUSTOM_MAPPING_DDOWN = tVBOpt.CUSTOM_MAPPING_B;
+            tVBOpt.CUSTOM_MAPPING_DLEFT = tVBOpt.CUSTOM_MAPPING_Y;
+            tVBOpt.CUSTOM_MAPPING_DRIGHT = tVBOpt.CUSTOM_MAPPING_X;
+            break;
+    }
+    if (new_3ds) {
+        tVBOpt.CUSTOM_MAPPING_L = tVBOpt.ZLZR_MODE <= 1 ? VB_KEY_L : tVBOpt.ZLZR_MODE == 2 ? VB_KEY_B : VB_KEY_A;
+        tVBOpt.CUSTOM_MAPPING_R = tVBOpt.ZLZR_MODE <= 1 ? VB_KEY_R : tVBOpt.ZLZR_MODE == 2 ? VB_KEY_A : VB_KEY_B;
+        tVBOpt.CUSTOM_MAPPING_ZL = tVBOpt.ZLZR_MODE == 0 ? VB_KEY_B : tVBOpt.ZLZR_MODE == 1 ? VB_KEY_A : VB_KEY_L;
+        tVBOpt.CUSTOM_MAPPING_ZR = tVBOpt.ZLZR_MODE == 0 ? VB_KEY_A : tVBOpt.ZLZR_MODE == 1 ? VB_KEY_B : VB_KEY_R;
     }
     tVBOpt.CUSTOM_MAPPING_CPAD_UP      = VB_LPAD_U;
     tVBOpt.CUSTOM_MAPPING_CPAD_DOWN    = VB_LPAD_D;

@@ -62,6 +62,9 @@ bool guiShouldPause(void);
 void toggleVsync(bool enable);
 void toggleAnaglyph(bool enable, bool also_update_vsync);
 int guiGetInput(bool ingame);
+void setPresetControls(bool button);
+void setCustomControls(void);
+extern bool buttons_on_screen;
 
 #ifdef __3DS__
 extern Thread save_thread;
