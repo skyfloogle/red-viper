@@ -180,7 +180,7 @@ static void vblink_thread(void*) {
         }
         int path_len = strlen(vblink_path) + strlen(vblink_fname);
         if (path_len + 1 < sizeof(tVBOpt.ROM_PATH)) {
-            strncat(vblink_path, vblink_fname, sizeof(vblink_path) - 1);
+            strncat(vblink_path, vblink_fname, sizeof(vblink_path) - strlen(vblink_path) - 1);
             f = fopen(vblink_path, "wb");
         }
 
