@@ -108,7 +108,7 @@ PERFORM_FOR_EACH_VB_BUTTON(CUSTOM_VB_BUTTON_TEXT)
 
 static C2D_SpriteSheet sprite_sheet;
 static C2D_SpriteSheet splash_sheet;
-static C2D_Sprite colour_wheel_sprite, logo_sprite;
+static C2D_Sprite colour_wheel_sprite, logo_sprite, text_3ds_sprite, text_vb_sprite, vb_icon_sprite;
 static C2D_Sprite splash_left, splash_right;
 
 // helpers
@@ -971,6 +971,9 @@ static void custom_3ds_mappings(int initial_button) {
 }
 
 static void custom_vb_mappings(int initial_button) {
+    C2D_ImageTint tint;
+    C2D_SetTintMode(C2D_TintMult);
+    C2D_PlainImageTint(&tint, TINT_COLOR, 1);
     LOOP_BEGIN(custom_vb_mappings_buttons, initial_button);
         const Button *LPAD_UP = &custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_LPAD_U];
         const Button *LPAD_DOWN = &custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_LPAD_D];
@@ -978,6 +981,11 @@ static void custom_vb_mappings(int initial_button) {
         const Button *RPAD_DOWN = &custom_vb_mappings_buttons[CUSTOM_VB_MAPPINGS_RPAD_D];
         C2D_DrawRectSolid(LPAD_UP->x, LPAD_UP->y + LPAD_UP->h, 0, LPAD_DOWN->w, LPAD_DOWN->y - (LPAD_UP->y + LPAD_UP->h), TINT_50);
         C2D_DrawRectSolid(RPAD_UP->x, RPAD_UP->y + RPAD_UP->h, 0, RPAD_DOWN->w, RPAD_DOWN->y - (RPAD_UP->y + RPAD_UP->h), TINT_50);
+        C2D_DrawSpriteTinted(&text_3ds_sprite, &tint);
+        C2D_DrawSpriteTinted(&text_vb_sprite, &tint);
+        C2D_DrawSpriteTinted(&vb_icon_sprite, &tint);
+        C2D_DrawLine(128, 25, TINT_COLOR, 180, 25, TINT_COLOR, 1, 0);
+        C2D_DrawLine(142, 95, TINT_COLOR, 186, 95, TINT_COLOR, 1, 0);
         C2D_DrawText(current_custom_mapping_3ds_button_text, C2D_AlignCenter | C2D_WithColor, 160, 2, 0, 0.8, 0.8, TINT_COLOR);
         C2D_DrawText(&text_currently_mapped_to, C2D_AlignCenter | C2D_WithColor, 160, 23, 0, 0.8, 0.8, TINT_COLOR);
         C2D_DrawText(vb_button_code_to_vb_button_text(*current_custom_mapping_vb_option), C2D_AlignCenter | C2D_WithColor, 160, 72, 0, 0.8, 0.8, TINT_COLOR);
@@ -1916,6 +1924,12 @@ void guiInit(void) {
     C2D_SpriteSetPos(&colour_wheel_sprite, 176, 112);
     C2D_SpriteFromSheet(&logo_sprite, sprite_sheet, sprites_logo_idx);
     C2D_SpriteSetCenter(&logo_sprite, 0.5, 0.5);
+    C2D_SpriteFromSheet(&text_3ds_sprite, sprite_sheet, sprites_3ds_text_idx);
+    C2D_SpriteSetPos(&text_3ds_sprite, 128, 18);
+    C2D_SpriteFromSheet(&text_vb_sprite, sprite_sheet, sprites_vb_text_idx);
+    C2D_SpriteSetPos(&text_vb_sprite, 178, 98);
+    C2D_SpriteFromSheet(&vb_icon_sprite, sprite_sheet, sprites_vb_icon_idx);
+    C2D_SpriteSetPos(&vb_icon_sprite, 137, 120);
 
     splash_sheet = C2D_SpriteSheetLoadFromMem(splash_t3x, splash_t3x_size);
     C2D_SpriteFromSheet(&splash_left, splash_sheet, splash_splash_left_idx);
