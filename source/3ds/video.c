@@ -40,7 +40,7 @@ HWORD V810_RControll(bool reset) {
 		return replay_read();
 	}
 
-	static HWORD state = 0;
+	static u32 state = 0;
 	if (reset) state = 0;
 
     int ret_keys = 0;
