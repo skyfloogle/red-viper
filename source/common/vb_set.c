@@ -99,6 +99,8 @@ void setDefaults(void) {
     tVBOpt.TOUCH_BY = 160;
     tVBOpt.TOUCH_PADX = 240;
     tVBOpt.TOUCH_PADY = 128;
+    tVBOpt.TOUCH_BUTTONS = 0;
+    tVBOpt.TOUCH_SWITCH = true;
     tVBOpt.ABXY_MODE = 0;
     tVBOpt.ZLZR_MODE = 0;
     tVBOpt.DPAD_MODE = 0;
@@ -285,6 +287,10 @@ static int handler(void* user, const char* section, const char* name,
         tVBOpt.PAUSE_RIGHT = atoi(value);
     } else if (MATCH("touch", "ff_mode")) {
         tVBOpt.FF_TOGGLE = atoi(value);
+    } else if (MATCH("touch", "buttons")) {
+        tVBOpt.TOUCH_BUTTONS = atoi(value);
+    } else if (MATCH("touch", "switch")) {
+        tVBOpt.TOUCH_SWITCH = atoi(value);
     } else {
         return 1;  // unknown section/name, ignore
     }
@@ -324,6 +330,7 @@ int loadFileOptions(void) {
     int ret = ini_parse(CONFIG_FILENAME, handler, &tVBOpt);
     if (!ret) tVBOpt.GAME_SETTINGS = false;
     tVBOpt.MODIFIED = false;
+    buttons_on_screen = tVBOpt.TOUCH_BUTTONS;
     tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
     return ret;
 }
@@ -333,6 +340,7 @@ int loadGameOptions(void) {
     if (!ret) tVBOpt.GAME_SETTINGS = true;
     else tVBOpt.GAME_SETTINGS = false;
     tVBOpt.MODIFIED = false;
+    buttons_on_screen = tVBOpt.TOUCH_BUTTONS;
     tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
     return ret;
 }
@@ -408,6 +416,8 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "pady=%d\n", tVBOpt.TOUCH_PADY);
     fprintf(f, "pausex=%d\n", tVBOpt.PAUSE_RIGHT);
     fprintf(f, "ff_mode=%d\n", tVBOpt.FF_TOGGLE);
+    fprintf(f, "buttons=%d\n", tVBOpt.TOUCH_BUTTONS);
+    fprintf(f, "switch=%d\n", tVBOpt.TOUCH_SWITCH);
 }
 
 int saveFileOptions(void) {

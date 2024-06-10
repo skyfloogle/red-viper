@@ -99,7 +99,8 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
                 text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
                 text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink, text_preset, text_custom,
-                text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo;
+                text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo,
+                text_current_default;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -340,7 +341,11 @@ static Button touchscreen_settings_buttons[] = {
     #define TOUCHSCREEN_BACK 0
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
     #define TOUCHSCREEN_RESET 1
-    {.str="Reset", .x=0, .y=0, .w=48, .h=32},
+    {.str="Reset", .x=0, .y=0, .w=48, .h=24},
+    #define TOUCHSCREEN_SWITCH 2
+    {.str="Toggle Switch", .x=0, .y=28, .w=128, .h=24},
+    #define TOUCHSCREEN_DEFAULT 3
+    {.str="Make default", .x=0, .y=56, .w=110, .h=24},
 };
 
 static void options(int initial_button);
@@ -1087,6 +1092,7 @@ static void preset_controls(int initial_button) {
 }
 
 static void touchscreen_settings() {
+    touchscreen_settings_buttons[TOUCHSCREEN_DEFAULT].hidden = buttons_on_screen == tVBOpt.TOUCH_BUTTONS;
     // 1: pause, 2: dpad/a, 3: b
     int dragging = 0;
     int xoff = 0, yoff = 0;
@@ -1101,6 +1107,7 @@ static void touchscreen_settings() {
         if (hidKeysDown() & KEY_TOUCH) {
             if (guiShouldSwitch()) {
                 buttons_on_screen = !buttons_on_screen;
+                touchscreen_settings_buttons[TOUCHSCREEN_DEFAULT].hidden = buttons_on_screen == tVBOpt.TOUCH_BUTTONS;
             } else if (abs(tVBOpt.PAUSE_RIGHT - touch_pos.px) < PAUSE_RAD) {
                 // pause slider
                 tVBOpt.MODIFIED = true;
@@ -1220,6 +1227,9 @@ static void touchscreen_settings() {
             tVBOpt.PAUSE_RIGHT - PAUSE_RAD, 240/2 - 8, 0,
             PAUSE_RAD * 2, 8*2, dragging == 1 ? TINT_90 : TINT_50
         );
+        if (touchscreen_settings_buttons[TOUCHSCREEN_DEFAULT].hidden) {
+            C2D_DrawText(&text_current_default, C2D_WithColor, 4, 60, 0, 0.5, 0.5, TINT_COLOR);
+        }
     LOOP_END(touchscreen_settings_buttons);
     buttonLock = false;
     switch (button) {
@@ -1234,6 +1244,14 @@ static void touchscreen_settings() {
             tVBOpt.TOUCH_BY = 160;
             tVBOpt.TOUCH_PADX = 240;
             tVBOpt.TOUCH_PADY = 128;
+            return touchscreen_settings();
+        case TOUCHSCREEN_SWITCH:
+            tVBOpt.MODIFIED = true;
+            tVBOpt.TOUCH_SWITCH = !tVBOpt.TOUCH_SWITCH;
+            return touchscreen_settings();
+        case TOUCHSCREEN_DEFAULT:
+            tVBOpt.MODIFIED = true;
+            tVBOpt.TOUCH_BUTTONS = buttons_on_screen;
             return touchscreen_settings();
     }
 }
@@ -2042,6 +2060,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_currently_mapped_to, "Currently\nmapped to:")
     STATIC_TEXT(&text_normal, "Normal")
     STATIC_TEXT(&text_turbo, "Turbo")
+    STATIC_TEXT(&text_current_default, "Current mode is default")
 }
 
 static bool shouldRedrawMenu = true;
@@ -2271,7 +2290,7 @@ void setPresetControls(bool buttons) {
 bool guiShouldSwitch(void) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    return touch_pos.px >= 320 - 64 && touch_pos.py < 32;
+    return tVBOpt.TOUCH_SWITCH && touch_pos.px >= 320 - 64 && touch_pos.py < 32;
 }
 
 void drawTouchControls(int inputs) {
@@ -2345,8 +2364,10 @@ void drawTouchControls(int inputs) {
         }
     }
 
-    C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, TINT_50);
-    C2D_DrawText(&text_switch, C2D_AlignCenter, 320 - 32, 6, 0, 0.7, 0.7);
+    if (tVBOpt.TOUCH_SWITCH) {
+        C2D_DrawRectSolid(320 - 64, 0, 0, 64, 32, TINT_50);
+        C2D_DrawText(&text_switch, C2D_AlignCenter, 320 - 32, 6, 0, 0.7, 0.7);
+    }
 }
 
 void guiUpdate(float total_time, float drc_time) {
