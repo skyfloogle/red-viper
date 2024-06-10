@@ -337,22 +337,17 @@ int loadGameOptions(void) {
     return ret;
 }
 
-int saveFileOptions(void) {
-    struct stat st;
-    if (stat("sdmc:/config", &st) == -1) mkdir("sdmc:/config", 0777);
-    if (stat("sdmc:/config/red-viper", &st) == -1) mkdir("sdmc:/config/red-viper", 0777);
-    FILE* f = fopen(CONFIG_FILENAME, "w");
-    if (!f)
-        return 1;
-
+void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "[vbopt]\n");
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
     fprintf(f, "slidermode=%d\n", tVBOpt.SLIDERMODE);
     fprintf(f, "default_eye=%d\n", tVBOpt.DEFAULT_EYE);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
-    fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH);
     fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
-    fprintf(f, "homepath=%s\n", tVBOpt.HOME_PATH);
+    if (global) {
+        fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH);
+        fprintf(f, "homepath=%s\n", tVBOpt.HOME_PATH);
+    }
     fprintf(f, "custom_controls=%d\n", tVBOpt.CUSTOM_CONTROLS);
     fprintf(f, "\n[controls_preset]\n");
     fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
@@ -413,6 +408,17 @@ int saveFileOptions(void) {
     fprintf(f, "pady=%d\n", tVBOpt.TOUCH_PADY);
     fprintf(f, "pausex=%d\n", tVBOpt.PAUSE_RIGHT);
     fprintf(f, "ff_mode=%d\n", tVBOpt.FF_TOGGLE);
+}
+
+int saveFileOptions(void) {
+    struct stat st;
+    if (stat("sdmc:/config", &st) == -1) mkdir("sdmc:/config", 0777);
+    if (stat("sdmc:/config/red-viper", &st) == -1) mkdir("sdmc:/config/red-viper", 0777);
+    FILE* f = fopen(CONFIG_FILENAME, "w");
+    if (!f)
+        return 1;
+
+    writeOptionsFile(f, true);
 
     fclose(f);
     tVBOpt.GAME_SETTINGS = false;
@@ -429,72 +435,7 @@ int saveGameOptions(void) {
     if (!f)
         return 1;
 
-    fprintf(f, "[vbopt]\n");
-    fprintf(f, "tint=%d\n", tVBOpt.TINT);
-    fprintf(f, "slidermode=%d\n", tVBOpt.SLIDERMODE);
-    fprintf(f, "default_eye=%d\n", tVBOpt.DEFAULT_EYE);
-    fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
-    fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
-    fprintf(f, "custom_controls=%d\n", tVBOpt.CUSTOM_CONTROLS);
-    fprintf(f, "\n[controls_preset]\n");
-    fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
-    fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
-    fprintf(f, "dpad=%d\n", tVBOpt.DPAD_MODE);
-    fprintf(f, "\n[controls_custom]\n");
-    fprintf(f, "dup=%d\n", tVBOpt.CUSTOM_MAPPING_DUP);
-    fprintf(f, "ddown=%d\n", tVBOpt.CUSTOM_MAPPING_DDOWN);
-    fprintf(f, "dleft=%d\n", tVBOpt.CUSTOM_MAPPING_DLEFT);
-    fprintf(f, "dright=%d\n", tVBOpt.CUSTOM_MAPPING_DRIGHT);
-    fprintf(f, "cpad_up=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_UP);
-    fprintf(f, "cpad_down=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_DOWN);
-    fprintf(f, "cpad_left=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_LEFT);
-    fprintf(f, "cpad_right=%d\n", tVBOpt.CUSTOM_MAPPING_CPAD_RIGHT);
-    fprintf(f, "cstick_up=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_UP);
-    fprintf(f, "cstick_down=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_DOWN);
-    fprintf(f, "cstick_left=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_LEFT);
-    fprintf(f, "cstick_right=%d\n", tVBOpt.CUSTOM_MAPPING_CSTICK_RIGHT);
-    fprintf(f, "a=%d\n", tVBOpt.CUSTOM_MAPPING_A);
-    fprintf(f, "x=%d\n", tVBOpt.CUSTOM_MAPPING_X);
-    fprintf(f, "b=%d\n", tVBOpt.CUSTOM_MAPPING_B);
-    fprintf(f, "y=%d\n", tVBOpt.CUSTOM_MAPPING_Y);
-    fprintf(f, "start=%d\n", tVBOpt.CUSTOM_MAPPING_START);
-    fprintf(f, "select=%d\n", tVBOpt.CUSTOM_MAPPING_SELECT);
-    fprintf(f, "l=%d\n", tVBOpt.CUSTOM_MAPPING_L);
-    fprintf(f, "r=%d\n", tVBOpt.CUSTOM_MAPPING_R);
-    fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MAPPING_ZL);
-    fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MAPPING_ZR);
-    fprintf(f, "\n[controls_mod]\n");
-    fprintf(f, "dup=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DUP)]);
-    fprintf(f, "ddown=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DDOWN)]);
-    fprintf(f, "dleft=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DLEFT)]);
-    fprintf(f, "dright=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DRIGHT)]);
-    fprintf(f, "cpad_up=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_UP)]);
-    fprintf(f, "cpad_down=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_DOWN)]);
-    fprintf(f, "cpad_left=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_LEFT)]);
-    fprintf(f, "cpad_right=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CPAD_RIGHT)]);
-    fprintf(f, "cstick_up=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_UP)]);
-    fprintf(f, "cstick_down=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_DOWN)]);
-    fprintf(f, "cstick_left=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_LEFT)]);
-    fprintf(f, "cstick_right=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_CSTICK_RIGHT)]);
-    fprintf(f, "a=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_A)]);
-    fprintf(f, "x=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_X)]);
-    fprintf(f, "b=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_B)]);
-    fprintf(f, "y=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_Y)]);
-    fprintf(f, "start=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_START)]);
-    fprintf(f, "select=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_SELECT)]);
-    fprintf(f, "l=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_L)]);
-    fprintf(f, "r=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_R)]);
-    fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_ZL)]);
-    fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_ZR)]);
-    fprintf(f, "\n[touch]\n");
-    fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
-    fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);
-    fprintf(f, "bx=%d\n", tVBOpt.TOUCH_BX);
-    fprintf(f, "by=%d\n", tVBOpt.TOUCH_BY);
-    fprintf(f, "padx=%d\n", tVBOpt.TOUCH_PADX);
-    fprintf(f, "pady=%d\n", tVBOpt.TOUCH_PADY);
-    fprintf(f, "pausex=%d\n", tVBOpt.PAUSE_RIGHT);
-    fprintf(f, "ff_mode=%d\n", tVBOpt.FF_TOGGLE);
+    writeOptionsFile(f, false);
 
     fclose(f);
     tVBOpt.GAME_SETTINGS = true;
