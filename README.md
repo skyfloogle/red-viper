@@ -10,9 +10,8 @@ hardware-accelerated renderer to achieve high performance on the 3DS's limited h
 * 3D support
 * Game saves and savestates are supported
 * 3DS display runs at 50Hz, like the Virtual Boy
-* Map either the A/B buttons or the right D-Pad to the face buttons, with the other being on the touch screen
-* New 3DS C-Stick is also supported
-* Configurable face button mapping
+* Fully customizable button mapping, including New 3DS inputs
+* Virtual right D-Pad or A/B buttons on the touch screen
 * Configurable color filter
 
 Future additions:
