@@ -341,7 +341,7 @@ static Button touchscreen_settings_buttons[] = {
     #define TOUCHSCREEN_BACK 0
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
     #define TOUCHSCREEN_RESET 1
-    {.str="Reset", .x=0, .y=0, .w=48, .h=24},
+    {.str="Reset", .x=0, .y=0, .w=52, .h=24},
     #define TOUCHSCREEN_SWITCH 2
     {.str="Toggle Switch", .x=0, .y=28, .w=128, .h=24},
     #define TOUCHSCREEN_DEFAULT 3
