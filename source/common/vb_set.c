@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #ifdef __3DS__
 #include <3ds.h>
@@ -336,7 +337,9 @@ int loadFileOptions(void) {
 }
 
 int loadGameOptions(void) {
-    int ret = ini_parse(getGameIniPath(), handler, &tVBOpt);
+    char *ini_path = getGameIniPath();
+    int ret = ENOENT;
+    if (ini_path) ret = ini_parse(ini_path, handler, &tVBOpt);
     if (!ret) tVBOpt.GAME_SETTINGS = true;
     else tVBOpt.GAME_SETTINGS = false;
     tVBOpt.MODIFIED = false;
@@ -437,11 +440,15 @@ int saveFileOptions(void) {
 }
 
 int deleteGameOptions(void) {
-    return remove(getGameIniPath());
+    char *ini_path = getGameIniPath();
+    if (ini_path) return remove(getGameIniPath());
+    else return ENOENT;
 }
 
 int saveGameOptions(void) {
-    FILE* f = fopen(getGameIniPath(), "w");
+    char *ini_path = getGameIniPath();
+    if (!ini_path) return 1;
+    FILE* f = fopen(ini_path, "w");
     if (!f)
         return 1;
 
