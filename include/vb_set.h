@@ -101,7 +101,7 @@ typedef struct VB_OPT {
     int   CUSTOM_MAPPING_R;
     int   CUSTOM_MAPPING_ZL;
     int   CUSTOM_MAPPING_ZR;
-    int   CUSTOM_MOD[32]; // These are mods for each 3DS key, i.e. toggle, turbo, etc
+    int   CUSTOM_MOD[32]; // 0: default, 1: toggle, 2: turbo
     char *ROM_NAME; // Path\Name of game to open
     char *PROG_NAME; // Path\Name of program
     char HOME_PATH[240];
@@ -112,6 +112,7 @@ typedef struct VB_OPT {
     bool  ANAGLYPH;
     bool  GAME_SETTINGS; // Are we using game-specific settings?
     bool  MODIFIED; // Do we need to ask for save?
+    bool  INPUTS; // Input display
 } VB_OPT;
 
 void setCustomMappingDefaults(void);

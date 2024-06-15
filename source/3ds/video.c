@@ -33,6 +33,7 @@ VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
 // Keybd Fn's. Had to put it somewhere!
 
 extern int arm_keys;
+u32 input_state = 0;
 // Read the Controller, Fix Me....
 HWORD V810_RControll(bool reset) {
 	if (replay_playing()) {
@@ -40,8 +41,7 @@ HWORD V810_RControll(bool reset) {
 		return replay_read();
 	}
 
-	static u32 state = 0;
-	if (reset) state = 0;
+	if (reset) input_state = 0;
 
     int ret_keys = 0;
     int key = 0;
@@ -66,18 +66,18 @@ HWORD V810_RControll(bool reset) {
 		int mod = tVBOpt.CUSTOM_MOD[i];
 		if (mod == 0) {
 			// normal
-			state &= ~BIT(i);
-			state |= (key & BIT(i));
+			input_state &= ~BIT(i);
+			input_state |= (key & BIT(i));
 		} else if (mod == 1) {
 			// toggle
 			int down = hidKeysDown();
-			state ^= down & BIT(i);
+			input_state ^= down & BIT(i);
 		} else if (mod == 2) {
 			// turbo
-			if (key & BIT(i)) state ^= BIT(i);
-			else state &= ~BIT(i);
+			if (key & BIT(i)) input_state ^= BIT(i);
+			else input_state &= ~BIT(i);
 		}
-		if (state & BIT(i)) ret_keys |= vbkey[i];
+		if (input_state & BIT(i)) ret_keys |= vbkey[i];
 	}
 
 	if (key & KEY_TOUCH) ret_keys |= guiGetInput(true);

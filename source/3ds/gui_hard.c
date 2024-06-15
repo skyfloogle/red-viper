@@ -226,7 +226,9 @@ static Button controls_buttons[] = {
     {.str="Configure Scheme", .x=60, .y=80, .w=200, .h=48},
     #define CONTROLS_TOUCHSCREEN 2
     {.str="Touchscreen settings", .x=60, .y=144, .w=200, .h=48},
-    #define CONTROLS_BACK 3
+    #define CONTROLS_DISPLAY 3
+    {.str="Input display", .x=200, .y=200, .w=120, .h=40, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define CONTROLS_BACK 4
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -876,6 +878,7 @@ static void rom_loader(void) {
 
 static void controls(int initial_button) {
     controls_buttons[CONTROLS_CONTROL_SCHEME].toggle = tVBOpt.CUSTOM_CONTROLS;
+    controls_buttons[CONTROLS_DISPLAY].toggle = tVBOpt.INPUTS;
     LOOP_BEGIN(controls_buttons, initial_button);
     LOOP_END(controls_buttons);
     switch (button) {
@@ -887,6 +890,10 @@ static void controls(int initial_button) {
             return tVBOpt.CUSTOM_CONTROLS ? custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_BACK) : preset_controls(0);
         case CONTROLS_TOUCHSCREEN:
             return touchscreen_settings();
+        case CONTROLS_DISPLAY:
+            tVBOpt.INPUTS = !tVBOpt.INPUTS;
+            tVBOpt.MODIFIED = true;
+            return controls(CONTROLS_DISPLAY);
         case CONTROLS_BACK:
             tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
             return options(OPTIONS_CONTROLS);
@@ -2370,6 +2377,8 @@ void drawTouchControls(int inputs) {
     }
 }
 
+extern int input_state;
+
 void guiUpdate(float total_time, float drc_time) {
     if (!backlightEnabled) return;
 
@@ -2387,7 +2396,7 @@ void guiUpdate(float total_time, float drc_time) {
     if (replay_playing() != last_replay) shouldRedrawMenu = true;
     last_replay = replay_playing();
 
-    if (!shouldRedrawMenu && !tVBOpt.PERF_INFO)
+    if (!shouldRedrawMenu && !tVBOpt.PERF_INFO && !tVBOpt.INPUTS)
         return;
 
     C2D_Prepare();
@@ -2436,6 +2445,58 @@ void guiUpdate(float total_time, float drc_time) {
     draw_status_bar(total_time, drc_time);
 
     if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);
+
+    if (tVBOpt.INPUTS) {
+        int guiInputs = guiGetInput(false);
+        u8 mods[16] = {3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3};
+        if (guiInputs & VB_RPAD_U) mods[__builtin_ctz(VB_RPAD_U)] = 4;
+        if (guiInputs & VB_RPAD_D) mods[__builtin_ctz(VB_RPAD_D)] = 4;
+        if (guiInputs & VB_RPAD_L) mods[__builtin_ctz(VB_RPAD_L)] = 4;
+        if (guiInputs & VB_RPAD_R) mods[__builtin_ctz(VB_RPAD_R)] = 4;
+        if (guiInputs & VB_KEY_A) mods[__builtin_ctz(VB_KEY_A)] = 4;
+        if (guiInputs & VB_KEY_B) mods[__builtin_ctz(VB_KEY_B)] = 4;
+        for (int i = 0; i < 32; i++) {
+            if ((input_state & (1 << i)) || (tVBOpt.CUSTOM_MOD[i] == 2 && (hidKeysHeld() & (1 << i)))) {
+                int oldmod = mods[__builtin_ctz(vbkey[i])];
+                if (tVBOpt.CUSTOM_MOD[i] != 0 || oldmod == 0 || oldmod == 3)
+                    if (oldmod != 1) mods[__builtin_ctz(vbkey[i])] = tVBOpt.CUSTOM_MOD[i];
+            }
+        }
+        // normal, toggle, turbo, up
+        static u32 cols[] = {0xff808080, 0xff808000, 0xff000080, 0xff000000};
+        // dpads
+        C2D_DrawRectSolid(320/2-32, 8, 0, 64, 24, C2D_Color32(0, 0, 0, 255));
+        C2D_DrawRectSolid(320/2-20-6, 16, 0, 12, 4, C2D_Color32(64, 64, 64, 255));
+        C2D_DrawRectSolid(320/2+20-6, 16, 0, 12, 4, C2D_Color32(64, 64, 64, 255));
+        C2D_DrawRectSolid(320/2-20-2, 12, 0, 4, 12, C2D_Color32(64, 64, 64, 255));
+        C2D_DrawRectSolid(320/2+20-2, 12, 0, 4, 12, C2D_Color32(64, 64, 64, 255));
+        for (int i = 0; i < 16; i++) {
+            if ((1<<i) == VB_RPAD_U) C2D_DrawRectSolid(320/2+20-1, 13, 0, 2, 3, cols[mods[i]]);
+            if ((1<<i) == VB_LPAD_U) C2D_DrawRectSolid(320/2-20-1, 13, 0, 2, 3, cols[mods[i]]);
+            if ((1<<i) == VB_LPAD_D) C2D_DrawRectSolid(320/2-20-1, 20, 0, 2, 3, cols[mods[i]]);
+            if ((1<<i) == VB_RPAD_D) C2D_DrawRectSolid(320/2+20-1, 20, 0, 2, 3, cols[mods[i]]);
+            if ((1<<i) == VB_LPAD_L) C2D_DrawRectSolid(320/2-20-5, 17, 0, 3, 2, cols[mods[i]]);
+            if ((1<<i) == VB_RPAD_L) C2D_DrawRectSolid(320/2+20-5, 17, 0, 3, 2, cols[mods[i]]);
+            if ((1<<i) == VB_LPAD_R) C2D_DrawRectSolid(320/2-20+2, 17, 0, 3, 2, cols[mods[i]]);
+            if ((1<<i) == VB_RPAD_R) C2D_DrawRectSolid(320/2+20+2, 17, 0, 3, 2, cols[mods[i]]);
+        }
+        // buttons
+        C3D_ColorLogicOp(GPU_LOGICOP_COPY);
+        C2D_DrawCircleSolid(320/2-12, 24, 0, 3, C2D_Color32(64, 64, 64, 255));
+        C2D_DrawCircleSolid(320/2+12, 24, 0, 3, C2D_Color32(64, 64, 64, 255));
+        C2D_DrawCircleSolid(320/2-6,  28, 0, 3, C2D_Color32(64, 64, 64, 255));
+        C2D_DrawCircleSolid(320/2+6,  28, 0, 3, C2D_Color32(64, 64, 64, 255));
+        C2D_DrawCircleSolid(320/2-8,  12, 0, 3, C2D_Color32(64, 64, 64, 255));
+        C2D_DrawCircleSolid(320/2+8,  12, 0, 3, C2D_Color32(64, 64, 64, 255));
+        for (int i = 0; i < 16; i++) {
+            if ((1<<i) == VB_KEY_A)      C2D_DrawCircleSolid(320/2+12, 24, 0, 2, cols[mods[i]]);
+            if ((1<<i) == VB_KEY_SELECT) C2D_DrawCircleSolid(320/2-12, 24, 0, 2, cols[mods[i]]);
+            if ((1<<i) == VB_KEY_B)      C2D_DrawCircleSolid(320/2+6,  28, 0, 2, cols[mods[i]]);
+            if ((1<<i) == VB_KEY_START)  C2D_DrawCircleSolid(320/2-6,  28, 0, 2, cols[mods[i]]);
+            if ((1<<i) == VB_KEY_L)      C2D_DrawCircleSolid(320/2-8,  12, 0, 2, cols[mods[i]]);
+            if ((1<<i) == VB_KEY_R)      C2D_DrawCircleSolid(320/2+8,  12, 0, 2, cols[mods[i]]);
+        }
+    }
 
     C2D_Flush();
 

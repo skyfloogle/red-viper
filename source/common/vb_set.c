@@ -117,6 +117,7 @@ void setDefaults(void) {
     tVBOpt.ANAGLYPH = false;
     tVBOpt.GAME_SETTINGS = false;
     tVBOpt.MODIFIED = false;
+    tVBOpt.INPUTS = false;
     strcpy(tVBOpt.HOME_PATH, "sdmc:/red-viper");
 
     // Default keys
@@ -292,6 +293,8 @@ static int handler(void* user, const char* section, const char* name,
         tVBOpt.TOUCH_BUTTONS = atoi(value);
     } else if (MATCH("touch", "switch")) {
         tVBOpt.TOUCH_SWITCH = atoi(value);
+    } else if (MATCH("touch", "inputs")) {
+        tVBOpt.INPUTS = atoi(value);
     } else {
         return 1;  // unknown section/name, ignore
     }
@@ -421,6 +424,7 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "ff_mode=%d\n", tVBOpt.FF_TOGGLE);
     fprintf(f, "buttons=%d\n", tVBOpt.TOUCH_BUTTONS);
     fprintf(f, "switch=%d\n", tVBOpt.TOUCH_SWITCH);
+    fprintf(f, "inputs=%d\n", tVBOpt.INPUTS);
 }
 
 int saveFileOptions(void) {
