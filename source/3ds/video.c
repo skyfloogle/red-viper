@@ -340,10 +340,12 @@ void video_flush(bool default_for_both) {
 
 	env = C3D_GetTexEnv(3);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, tVBOpt.ANAGLYPH ? 0xff0000ff : tVBOpt.TINT);
-	C3D_TexEnvSrc(env, C3D_RGB, GPU_PREVIOUS, GPU_CONSTANT, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-	C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
+	if (!tVBOpt.ANAGLYPH) {
+		C3D_TexEnvColor(env, tVBOpt.TINT);
+		C3D_TexEnvSrc(env, C3D_RGB, GPU_PREVIOUS, GPU_CONSTANT, 0);
+		C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
+		C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
+	}
 	env = C3D_GetTexEnv(4);
 	if (minRepeat != maxRepeat) {
 		C3D_TexEnvInit(env);
@@ -358,12 +360,11 @@ void video_flush(bool default_for_both) {
 	
 	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
 	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
-	
+
 	for (int dst_eye = 0; dst_eye < (default_for_both ? 2 : eye_count); dst_eye++) {
 		int src_eye = default_for_both ? orig_eye : !tVBOpt.ANAGLYPH && CONFIG_3D_SLIDERSTATE == 0 ? tVBOpt.DEFAULT_EYE : dst_eye;
-		if (tVBOpt.ANAGLYPH && src_eye) {
-			C3D_TexEnvColor(C3D_GetTexEnv(3), 0xffffff00);
-			C3D_AlphaBlend(GPU_BLEND_ADD, 0, GPU_ONE, GPU_ONE, 0, 0);
+		if (tVBOpt.ANAGLYPH) {
+			C3D_DepthTest(false, GPU_ALWAYS, (src_eye ? GPU_WRITE_GREEN | GPU_WRITE_BLUE : GPU_WRITE_RED) | GPU_WRITE_ALPHA);
 		}
 		float depthOffset = getDepthOffset(default_for_both, dst_eye, tVBOpt.SLIDERMODE);
 		C3D_RenderTarget *target = finalScreen[dst_eye && !tVBOpt.ANAGLYPH];
@@ -380,7 +381,7 @@ void video_flush(bool default_for_both) {
 	}
 	
 	if (tVBOpt.ANAGLYPH) {
-		C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+		C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
 	}
 
 	if (minRepeat != maxRepeat) {
