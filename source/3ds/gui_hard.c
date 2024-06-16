@@ -379,12 +379,14 @@ static Button options_buttons[] = {
 static void video_settings(int initial_button);
 static Button video_settings_buttons[] = {
     #define VIDEO_COLOUR 0
-    {.str="Color mode", .x=16, .y=16, .w=288, .h=48},
+    {.str="Color mode", .x=16, .y=32, .w=128, .h=64},
     #define VIDEO_SLIDER 1
-    {.str="Slider mode", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_vbipd, .toggle_text_off=&text_3ds},
+    {.str="Slider mode", .x=176, .y=32, .w=128, .h=64, .show_toggle=true, .toggle_text_on=&text_vbipd, .toggle_text_off=&text_3ds},
     #define VIDEO_DEFAULT_EYE 2
-    {.str="Default eye", .x=16, .y=144, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_right, .toggle_text_off=&text_left},
-    #define VIDEO_BACK 3
+    {.str="Default eye", .x=16, .y=128, .w=128, .h=64, .show_toggle=true, .toggle_text_on=&text_right, .toggle_text_off=&text_left},
+    #define VIDEO_ANTIFLICKER 3
+    {.str="Antiflicker", .x=176, .y=128, .w=128, .h=64, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define VIDEO_BACK 4
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -1583,6 +1585,7 @@ static void options(int initial_button) {
 static void video_settings(int initial_button) {
     video_settings_buttons[VIDEO_SLIDER].toggle = tVBOpt.SLIDERMODE;
     video_settings_buttons[VIDEO_DEFAULT_EYE].toggle = tVBOpt.DEFAULT_EYE;
+    video_settings_buttons[VIDEO_ANTIFLICKER].toggle = tVBOpt.ANTIFLICKER;
     LOOP_BEGIN(video_settings_buttons, initial_button);
     LOOP_END(video_settings_buttons);
     switch (button) {
@@ -1591,11 +1594,15 @@ static void video_settings(int initial_button) {
         case VIDEO_SLIDER: // Slider mode
             tVBOpt.SLIDERMODE = !tVBOpt.SLIDERMODE;
             tVBOpt.MODIFIED = true;
-            return video_settings(VIDEO_SLIDER);
+            return video_settings(button);
         case VIDEO_DEFAULT_EYE: // Default eye
             tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
             tVBOpt.MODIFIED = true;
-            return video_settings(VIDEO_DEFAULT_EYE);
+            return video_settings(button);
+        case VIDEO_ANTIFLICKER:
+            tVBOpt.ANTIFLICKER = !tVBOpt.ANTIFLICKER;
+            tVBOpt.MODIFIED = true;
+            return video_settings(button);
         case VIDEO_BACK: // Back
             return options(OPTIONS_VIDEO);
     }
