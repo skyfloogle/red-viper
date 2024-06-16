@@ -2463,9 +2463,9 @@ void guiUpdate(float total_time, float drc_time) {
             }
         }
         // normal, toggle, turbo, up
-        static u32 cols[] = {0xff808080, 0xff808000, 0xff000080, 0xff000000};
+        static u32 cols[] = {0xff808080, 0xff804000, 0xff000080, 0xff000000};
         // dpads
-        C2D_DrawRectSolid(320/2-32, 8, 0, 64, 24, C2D_Color32(0, 0, 0, 255));
+        C2D_DrawRectSolid(320/2-27, 8, 0, 54, 24, C2D_Color32(0, 0, 0, 255));
         C2D_DrawRectSolid(320/2-20-6, 16, 0, 12, 4, C2D_Color32(64, 64, 64, 255));
         C2D_DrawRectSolid(320/2+20-6, 16, 0, 12, 4, C2D_Color32(64, 64, 64, 255));
         C2D_DrawRectSolid(320/2-20-2, 12, 0, 4, 12, C2D_Color32(64, 64, 64, 255));
