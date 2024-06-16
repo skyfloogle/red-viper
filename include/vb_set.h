@@ -113,6 +113,7 @@ typedef struct VB_OPT {
     bool  GAME_SETTINGS; // Are we using game-specific settings?
     bool  MODIFIED; // Do we need to ask for save?
     bool  INPUTS; // Input display
+    bool  ANTIFLICKER;
 } VB_OPT;
 
 void setCustomMappingDefaults(void);

@@ -118,6 +118,7 @@ void setDefaults(void) {
     tVBOpt.GAME_SETTINGS = false;
     tVBOpt.MODIFIED = false;
     tVBOpt.INPUTS = false;
+    tVBOpt.ANTIFLICKER = false;
     strcpy(tVBOpt.HOME_PATH, "sdmc:/red-viper");
 
     // Default keys
