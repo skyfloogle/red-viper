@@ -74,7 +74,7 @@ typedef struct {
 HWORD V810_RControll(bool reset);
 
 void video_init(void);
-void video_render(int alt_buf);
+void video_render(int alt_buf, bool on_time);
 void video_flush(bool left_for_both);
 void video_quit(void);
 

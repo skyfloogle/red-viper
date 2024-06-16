@@ -318,7 +318,7 @@ int emulation_lstate(int state) {
 
     clearCache();
     C3D_FrameBegin(0);
-    video_render((tVIPREG.tFrameBuffer) % 2);
+    video_render((tVIPREG.tFrameBuffer) % 2, false);
     C3D_FrameEnd(0);
 
     guiop = AKILL;

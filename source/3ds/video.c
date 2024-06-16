@@ -225,8 +225,8 @@ void video_init(void) {
 
 static int g_alt_buf = 0;
 
-void video_render(int alt_buf) {
-	if (tVBOpt.ANTIFLICKER) video_flush(false);
+void video_render(int alt_buf, bool on_time) {
+	if (tVBOpt.ANTIFLICKER && on_time) video_flush(false);
 	g_alt_buf = alt_buf;
 	if (tDSPCACHE.ColumnTableInvalid)
 		processColumnTable();
@@ -276,7 +276,7 @@ void video_render(int alt_buf) {
 	}
 
 	C3D_BlendingColor(0x80808080);
-	if (tVBOpt.ANTIFLICKER) C3D_AlphaBlend(GPU_BLEND_ADD, 0, GPU_CONSTANT_ALPHA, GPU_ONE_MINUS_CONSTANT_ALPHA, 0, 0);
+	if (tVBOpt.ANTIFLICKER && on_time) C3D_AlphaBlend(GPU_BLEND_ADD, 0, GPU_CONSTANT_ALPHA, GPU_ONE_MINUS_CONSTANT_ALPHA, 0, 0);
 	video_flush(false);
 	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 }

@@ -35,6 +35,7 @@ int main(void) {
     int qwe;
     int frame = 0;
     int err = 0;
+    bool on_time = false;
     PrintConsole main_console;
 #if DEBUGLEVEL == 0
     PrintConsole debug_console;
@@ -135,9 +136,15 @@ int main(void) {
                 guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
 
                 if (tVIPREG.DPCTRL & 0x0002) {
-                    video_render(alt_buf);
+                    video_render(alt_buf, on_time);
+                    on_time = true;
+                } else if (on_time) {
+                    if (tVBOpt.ANTIFLICKER) video_flush(false);
+                    on_time = false;
                 }
                 C3D_FrameEnd(0);
+            } else {
+                on_time = false;
             }
             if (tVIPREG.XPCTRL & 0x0002) {
                 if (tDSPCACHE.DDSPDataState[alt_buf] != GPU_CLEAR) {
@@ -149,9 +156,12 @@ int main(void) {
         } else {
             // no game graphics, draw menu if possible
             if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
+                // refresh top screen for antiflicker
+                if (tVBOpt.ANTIFLICKER && on_time) video_flush(false);
                 guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
                 C3D_FrameEnd(0);
             }
+            on_time = false;
         }
 
         // if hold, turn off fast forward, as it'll be turned back on while reading input
