@@ -310,22 +310,17 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 			C3D_TexEnvInit(C3D_GetTexEnv(i));
 		}
 	} else {
-		if (count == 2) C3D_TexEnvBufUpdate(C3D_RGB | C3D_Alpha, GPU_TEV_BUFFER_WRITE_CONFIG(false, true, false, false));
 		for (int i = 0; i < count; i++) {
 			C3D_TexBind(i, textures[i]);
-			C3D_TexEnv *env = C3D_GetTexEnv(i * 2);
+			C3D_TexEnv *env = C3D_GetTexEnv(i);
 			C3D_TexEnvInit(env);
-			C3D_TexEnvColor(env, i == 0 ? 0x7f7fff : 0x7fff7f);
-			C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE2, GPU_CONSTANT, 0);
-			C3D_TexEnvFunc(env, C3D_Both, GPU_DOT3_RGBA);
-			env = C3D_GetTexEnv(i * 2 + 1);
-			C3D_TexEnvInit(env);
-			C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE0 + i, GPU_PREVIOUS_BUFFER);
+			C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0 + i, GPU_TEXTURE2, GPU_PREVIOUS);
+			C3D_TexEnvOpRgb(env, 0, i == 0 ? GPU_TEVOP_RGB_SRC_R : GPU_TEVOP_RGB_SRC_G, 0);
+			C3D_TexEnvOpAlpha(env, 0, i == 0 ? GPU_TEVOP_A_SRC_R : GPU_TEVOP_A_SRC_G, 0);
 			C3D_TexEnvFunc(env, C3D_Both, i == 0 ? GPU_MODULATE : GPU_MULTIPLY_ADD);
 		}
 		if (count == 1) {
-			C3D_TexEnvInit(C3D_GetTexEnv(2));
-			C3D_TexEnvInit(C3D_GetTexEnv(3));
+			C3D_TexEnvInit(C3D_GetTexEnv(1));
 		}
 	}
 
@@ -340,7 +335,6 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 	C3D_BufInfo *bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
 	BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 3, 0x210);
-	C3D_AlphaTest(true, GPU_GREATER, 2); // 0 is fine on hardware, but just to make citra happy
 
 	for (int eye = 0; eye < 2; eye++) {
 		if (vbufs[eye] != NULL) {
@@ -351,7 +345,6 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 		}
 	}
 
-	C3D_AlphaTest(true, GPU_GREATER, 0);
 	bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
 	BufInfo_Add(bufInfo, vbuf, sizeof(vertex), 2, 0x10);

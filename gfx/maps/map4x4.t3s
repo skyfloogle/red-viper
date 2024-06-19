@@ -1,2 +1,2 @@
--f rgb8 -z auto
+-f rgba4 -z auto
 map4x4.png
