@@ -47,7 +47,7 @@ void setCustomMappingDefaults(void) {
             tVBOpt.CUSTOM_MAPPING_DUP = tVBOpt.CUSTOM_MAPPING_X;
             tVBOpt.CUSTOM_MAPPING_DDOWN = tVBOpt.CUSTOM_MAPPING_B;
             tVBOpt.CUSTOM_MAPPING_DLEFT = tVBOpt.CUSTOM_MAPPING_Y;
-            tVBOpt.CUSTOM_MAPPING_DRIGHT = tVBOpt.CUSTOM_MAPPING_X;
+            tVBOpt.CUSTOM_MAPPING_DRIGHT = tVBOpt.CUSTOM_MAPPING_A;
             break;
     }
     if (new_3ds) {
