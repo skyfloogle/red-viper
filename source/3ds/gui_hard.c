@@ -2288,7 +2288,7 @@ void setPresetControls(bool buttons) {
             vbkey[__builtin_ctz(KEY_DUP)] = vbkey[__builtin_ctz(KEY_X)];
             vbkey[__builtin_ctz(KEY_DDOWN)] = vbkey[__builtin_ctz(KEY_B)];
             vbkey[__builtin_ctz(KEY_DLEFT)] = vbkey[__builtin_ctz(KEY_Y)];
-            vbkey[__builtin_ctz(KEY_DRIGHT)] = vbkey[__builtin_ctz(KEY_X)];
+            vbkey[__builtin_ctz(KEY_DRIGHT)] = vbkey[__builtin_ctz(KEY_A)];
             break;
     }
     bool new_3ds = false;
