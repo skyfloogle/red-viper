@@ -49,7 +49,12 @@ typedef s32 Result;
 #define GFX_RIGHT 1
 #endif
 
+// I don't know why this doesn't work on Linux builds
+#ifdef __3DS__
 #define dprintf(level, ...) \
     do { if (level <= DEBUGLEVEL) fprintf(stderr, __VA_ARGS__); } while (0)
+#else
+#define dprintf(level, ...)
+#endif
 
 #endif // Header Include

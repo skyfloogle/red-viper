@@ -29,6 +29,7 @@
 #endif
 
 struct stat st = {0};
+int guiop;
 
 u32 waitForInput(void) {
 #ifdef __3DS__
@@ -119,6 +120,8 @@ char * get_savestate_path(int state, bool write) {
     free(sspath);
     return NULL;
 }
+
+#ifdef __3DS__
 
 bool emulation_hasstate(int state) {
     char *sspath = get_savestate_path(state, false);
@@ -328,3 +331,4 @@ int emulation_lstate(int state) {
     fclose(state_file);
     return 1;
 }
+#endif

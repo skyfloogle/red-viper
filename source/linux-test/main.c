@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     v810_init();
     replay_init();
 
-    tVBOpt.ROM_PATH = argv[1];
+    strncpy(tVBOpt.ROM_PATH, argv[1], sizeof(tVBOpt.ROM_PATH));
 
     v810_load_init();
     while (true) {

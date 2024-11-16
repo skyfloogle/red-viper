@@ -16,9 +16,17 @@
 VB_OPT  tVBOpt;
 int     vbkey[32] = {0};
 
+#ifndef __3DS__
+bool buttons_on_screen;
+void setCustomControls() {}
+void setPresetControls(bool) {}
+#endif
+
 void setCustomMappingDefaults(void) {
     bool new_3ds = false;
+    #ifdef __3DS__
     APT_CheckNew3DS(&new_3ds);
+    #endif
     if (buttons_on_screen) {
         tVBOpt.CUSTOM_MAPPING_A = VB_RPAD_R;
         tVBOpt.CUSTOM_MAPPING_X = VB_RPAD_U;
@@ -230,6 +238,7 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->CUSTOM_MAPPING_ZL = atoi(value);
     } else if (MATCH("controls_custom", "zr")) {
         pconfig->CUSTOM_MAPPING_ZR = atoi(value);
+    #ifdef __3DS__
     } else if (MATCH("controls_mod", "dup")) {
         pconfig->CUSTOM_MOD[__builtin_ctz(KEY_DUP)] = atoi(value);
     } else if (MATCH("controls_mod", "ddown")) {
@@ -274,6 +283,7 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->CUSTOM_MOD[__builtin_ctz(KEY_ZL)] = atoi(value);
     } else if (MATCH("controls_mod", "zr")) {
         pconfig->CUSTOM_MOD[__builtin_ctz(KEY_ZR)] = atoi(value);
+    #endif
     } else if (MATCH("touch", "ax")) {
         tVBOpt.TOUCH_AX = atoi(value);
     } else if (MATCH("touch", "ay")) {
@@ -392,6 +402,7 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MAPPING_ZL);
     fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MAPPING_ZR);
     fprintf(f, "\n[controls_mod]\n");
+    #ifdef __3DS__
     fprintf(f, "dup=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DUP)]);
     fprintf(f, "ddown=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DDOWN)]);
     fprintf(f, "dleft=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_DLEFT)]);
@@ -414,6 +425,7 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "r=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_R)]);
     fprintf(f, "zl=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_ZL)]);
     fprintf(f, "zr=%d\n", tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_ZR)]);
+    #endif
     fprintf(f, "\n[touch]\n");
     fprintf(f, "ax=%d\n", tVBOpt.TOUCH_AX);
     fprintf(f, "ay=%d\n", tVBOpt.TOUCH_AY);

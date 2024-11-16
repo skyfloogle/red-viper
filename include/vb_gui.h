@@ -11,7 +11,7 @@
 
 #define LENGTH(array) (sizeof(array)/sizeof(array[0]))
 
-int guiop;
+extern int guiop;
 
 u32 waitForInput(void);
 void save_sram(void);
