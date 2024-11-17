@@ -1930,31 +1930,37 @@ static void draw_status_bar(float total_time, float drc_time) {
     sprintf(buf, "A:%5.2fms", total_time);
     C2D_TextParse(&text, dynamic_textbuf, buf);
     C2D_TextOptimize(&text);
-    C2D_DrawText(&text, C2D_AlignLeft, 310-60*5, 240 - 12, 0, 0.35, 0.35);
+    C2D_DrawText(&text, C2D_AlignLeft, 325-53*6, 240 - 12, 0, 0.35, 0.35);
 
     // DRC
     sprintf(buf, "D:%5.2fms", drc_time);
     C2D_TextParse(&text, dynamic_textbuf, buf);
     C2D_TextOptimize(&text);
-    C2D_DrawText(&text, C2D_AlignLeft, 310-60*4, 240 - 12, 0, 0.35, 0.35);
+    C2D_DrawText(&text, C2D_AlignLeft, 325-53*5, 240 - 12, 0, 0.35, 0.35);
 
     // C3D
     sprintf(buf, "C:%5.2fms", C3D_GetProcessingTime());
     C2D_TextParse(&text, dynamic_textbuf, buf);
     C2D_TextOptimize(&text);
-    C2D_DrawText(&text, C2D_AlignLeft, 310-60*3, 240 - 12, 0, 0.35, 0.35);
+    C2D_DrawText(&text, C2D_AlignLeft, 325-53*4, 240 - 12, 0, 0.35, 0.35);
 
     // PICA
     sprintf(buf, "P:%5.2fms", C3D_GetDrawingTime());
     C2D_TextParse(&text, dynamic_textbuf, buf);
     C2D_TextOptimize(&text);
-    C2D_DrawText(&text, C2D_AlignLeft, 310-60*2, 240 - 12, 0, 0.35, 0.35);
+    C2D_DrawText(&text, C2D_AlignLeft, 325-53*3, 240 - 12, 0, 0.35, 0.35);
 
     // Memory
     sprintf(buf, "M:%5.2f%%", (cache_pos-cache_start)*4*100./CACHE_SIZE);
     C2D_TextParse(&text, dynamic_textbuf, buf);
     C2D_TextOptimize(&text);
-    C2D_DrawText(&text, C2D_AlignLeft, 310-60, 240 - 12, 0, 0.35, 0.35);
+    C2D_DrawText(&text, C2D_AlignLeft, 325-53*2, 240 - 12, 0, 0.35, 0.35);
+
+    // VIP
+    sprintf(buf, "V:%d", videoProcessingTime());
+    C2D_TextParse(&text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&text);
+    C2D_DrawText(&text, C2D_AlignLeft, 330-54-7, 240 - 12, 0, 0.35, 0.35);
 }
 
 bool old_2ds = 0;

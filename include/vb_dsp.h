@@ -73,6 +73,48 @@ typedef struct {
 // Read the Controller
 HWORD V810_RControll(bool reset);
 
+typedef struct {
+    u16 head;
+    s16 gx, gp, gy, mx, mp, my;
+    u16 w, h, param, over;
+    u16 _pad[5];
+} WORLD;
+
+// DPSTTS / DPCTRL
+#define DPRST   0x0001
+#define DISP    0x0002
+#define L0BSY   0x0004
+#define R0BSY   0x0008
+#define L1BSY   0x0010
+#define R1BSY   0x0020
+#define SCANRDY 0x0040
+#define FCLK    0x0080
+#define RE      0x0100
+#define SYNCE   0x0200
+#define LOCK    0x0400
+
+// XPSTTS / XPCTRL
+#define XPRST    0x0001
+#define XPEN     0x0002
+#define F0BSY    0x0004
+#define F1BSY    0x0008
+#define OVERTIME 0x0010
+#define SBOUT    0x8000
+
+// VIP interrupts
+#define SCANERR     0x0001
+#define LFBEND      0x0002
+#define RFBEND      0x0004
+#define GAMESTART   0x0008
+#define FRAMESTART  0x0010
+#define SBHIT       0x2000
+#define XPEND       0x4000
+#define TIMEERR     0x8000
+
+#define XPBSY (F0BSY | F1BSY)
+
+int videoProcessingTime(void);
+
 void video_init(void);
 void video_render(int alt_buf, bool on_time);
 void video_flush(bool left_for_both);
