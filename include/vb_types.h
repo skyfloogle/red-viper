@@ -49,6 +49,9 @@ typedef s32 Result;
 #define GFX_RIGHT 1
 #endif
 
+#define likely(x)   __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+
 // I don't know why this doesn't work on Linux builds
 #ifdef __3DS__
 #define dprintf(level, ...) \

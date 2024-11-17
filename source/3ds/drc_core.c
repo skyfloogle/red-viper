@@ -1763,7 +1763,7 @@ int drc_run(void) {
         serviceDisplayInt(clocks, v810_state->PC);
         do {
             tVBOpt.MAXCYCLES = serviceInt(clocks, v810_state->PC);
-        } while (tVBOpt.MAXCYCLES <= 0);
+        } while (unlikely(tVBOpt.MAXCYCLES <= 0));
 
         v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;
@@ -1773,10 +1773,10 @@ int drc_run(void) {
         entrypoint = drc_getEntry(v810_state->PC, &cur_block);
         if (tVBOpt.DYNAREC && (entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc)) {
             int result = drc_translateBlock();
-            if (result == DRC_ERR_CACHE_FULL || result == DRC_ERR_NO_BLOCKS) {
+            if (unlikely(result == DRC_ERR_CACHE_FULL || result == DRC_ERR_NO_BLOCKS)) {
                 drc_clearCache();
                 continue;
-            } else if (result) {
+            } else if (unlikely(result)) {
                 return result;
             }
 
@@ -1788,7 +1788,7 @@ int drc_run(void) {
             FlushInvalidateCache(cur_block->phys_offset, cur_block->size * 4);
         }
         dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
-        if ((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE)) {
+        if (unlikely((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE))) {
             dprintf(0, "Bad entry %p\n", drc_getEntry(entry_PC, NULL));
             return DRC_ERR_BAD_ENTRY;
         }
@@ -1800,13 +1800,13 @@ int drc_run(void) {
         clocks = v810_state->cycles;
 
         dprintf(4, "[DRC]: end - 0x%lx\n", v810_state->PC);
-        if (v810_state->PC < V810_ROM1.lowaddr || v810_state->PC > V810_ROM1.highaddr) {
+        if (unlikely(v810_state->PC < V810_ROM1.lowaddr || v810_state->PC > V810_ROM1.highaddr)) {
             //dprintf(0, "Last entry: 0x%lx\n", entry_PC);
             //return DRC_ERR_BAD_PC;
             break;
         }
 
-        if (v810_state->ret) {
+        if (unlikely(v810_state->ret)) {
             break;
         }
     }

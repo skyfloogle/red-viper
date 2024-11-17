@@ -19,6 +19,7 @@
 #include "drc_core.h"
 #include "interpreter.h"
 #include "vb_sound.h"
+#include "vb_dsp.h"
 
 #include "replay.h"
 
@@ -395,102 +396,114 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
     
     v810_state->PC = PC;
 
-    //Handle DPSTTS, XPSTTS, and Frame interrupts
-    if (tVIPREG.rowcount < 0x1C) {
-        if (tVIPREG.newframe) {
-            // new frame
-            tVIPREG.newframe = false;
-            gamestart = 0;
-            if (tVIPREG.DPCTRL & 0x02) {
-                tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
-            }
-            if (++tVIPREG.tFrame > tVIPREG.FRMCYC) {
-                tVIPREG.tFrame = 0;
-                gamestart = 8;
-                if (tVIPREG.XPCTRL & 0x02) {
+    if (unlikely(tVIPREG.newframe)) {
+        // new frame
+        tVIPREG.newframe = false;
+        tVIPREG.displaying = (tVIPREG.DPCTRL & SYNCE) != 0;
+        tVIPREG.DPSTTS = (tVIPREG.DPCTRL & (DISP|RE|SYNCE)) | SCANRDY | FCLK;
+
+        int interrupts = FRAMESTART;
+
+        // subtract frame drawing time outside the FRMCYC check
+        if (tVIPREG.drawing) {
+            tVIPREG.frametime -= 400000;
+        }
+
+        if (++tVIPREG.tFrame > tVIPREG.FRMCYC) {
+            tVIPREG.tFrame = 0;
+            interrupts |= GAMESTART;
+            if (tVIPREG.XPCTRL & XPEN) {
+                if (tVIPREG.drawing) {
+                    tVIPREG.XPSTTS |= OVERTIME;
+                    interrupts |= TIMEERR;
+                } else {
                     tVIPREG.drawing = true;
+                    tVIPREG.frametime = videoProcessingTime();
                     tVIPREG.tFrameBuffer++;
                     if ((tVIPREG.tFrameBuffer < 1) || (tVIPREG.tFrameBuffer > 2)) tVIPREG.tFrameBuffer = 1;
-                    tVIPREG.XPSTTS = (0x0002|(tVIPREG.tFrameBuffer<<2));
+                    tVIPREG.XPSTTS = XPEN | (tVIPREG.tFrameBuffer<<2) | SBOUT;
                 }
             }
-            if (tVIPREG.INTENB&(0x0010|gamestart)) {
-                v810_int(4, PC);
-            }
-            tVIPREG.INTPND |= (0x0010|gamestart);
-            pending_int = 1;
-        } else if ((tfb > 0x0500) && (!(tVIPREG.XPSTTS&0x8000))) {
-            tVIPREG.XPSTTS |= 0x8000;
-            pending_int = 1;
-        } else if (tfb > 0x0A00) {
-            if (tVIPREG.drawing) tVIPREG.XPSTTS = ((tVIPREG.XPSTTS&0xEC)|(tVIPREG.rowcount<<8)|(tVIPREG.XPCTRL & 0x02));
-            tVIPREG.rowcount++;
-            tVIPREG.lastfb+=0x0A00;
-        } else if ((tVIPREG.rowcount == 0x12) && (tfb > 0x670)) {
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL & 0x0302) | (tVIPREG.tFrameBuffer & 1 ? 0xD0 : 0xC4));
-            pending_int = 1;
         }
-    } else {
-        if ((tVIPREG.rowcount == 0x1C) && (tfb > 0x10000)) {            //0x100000
-            if (tVIPREG.drawing) {
-                tVIPREG.drawing = false;
 
-                tVIPREG.XPSTTS = (0x1B00 | (tVIPREG.XPCTRL & 0x02));
-                pending_int = 1;
+        tVIPREG.INTPND |= interrupts;
+        pending_int = 1;
+    }
 
-                if (tVIPREG.INTENB & 0x4000) {
-                    v810_int(4, PC);                    //XPEND
-                }
-
-                tVIPREG.INTPND |= 0x4000;               //(tVIPREG.INTENB&0x4000);
+    // DPSTTS management
+    {
+        int dpstts_old = tVIPREG.DPSTTS;
+        int dpstts_new = dpstts_old;
+        if (tfb >= 100000) {
+            // FCLK low (high was handled already)
+            dpstts_new &= ~FCLK;
+        }
+        if (likely(tVIPREG.displaying)) {
+            if (tfb < 60000) {
+            } else if (tfb < 160000) {
+                // LxBSY high
+                dpstts_new |= tVIPREG.tFrameBuffer & 1 ? L1BSY : L0BSY;
+            } else if (tfb < 260000) {
+                // LxBSY low
+                dpstts_new &= ~DPBSY;
+            } else if (tfb < 360000) {
+                // RxBSY high
+                dpstts_new |= tVIPREG.tFrameBuffer & 1 ? R1BSY : R0BSY;
+            } else {
+                // RxBSY low
+                dpstts_new &= ~DPBSY;
             }
-            tVIPREG.rowcount++;
-        } else if ((tVIPREG.rowcount == 0x1D) && (tfb > 0x18000)) {     //0xE690
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0xC0);
-            if (tVIPREG.INTENB&0x0002) {
-                v810_int(4, PC);                    //LFBEND
-                pending_int = 1;
+        }
+        if (unlikely(dpstts_new != dpstts_old)) {
+            tVIPREG.DPSTTS = dpstts_new;
+            pending_int = 1;
+            if (dpstts_old & DPBSY) {
+                // old status had DPBSY, which necessarily means new one doesn't
+                tVIPREG.INTPND |= (dpstts_old & (L0BSY | L1BSY)) ? LFBEND : RFBEND;
             }
-            tVIPREG.INTPND |= 0x0002;               //(tVIPREG.INTENB&0x0002);
-            pending_int = 1;
-            tVIPREG.rowcount++;
-        } else if ((tVIPREG.rowcount == 0x1E) && (tfb > 0x20000)) {     //0x15E70
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0x40);
-            if (tVIPREG.INTENB&0x0004) {
-                v810_int(4, PC);                    //RFBEND
-            }
-            tVIPREG.INTPND |= 0x0004;               //(tVIPREG.INTENB&0x0004);
-            pending_int = 1;
-            tVIPREG.rowcount++;
-        } else if ((tVIPREG.rowcount == 0x1F) && (tfb > 0x28000)) {     //0x1FAD8
-            //tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrameBuffer&1)?0x48:0x60));
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|((tVIPREG.tFrameBuffer&1)?0x60:0x48)); //if editing FB0, shouldn't be drawing FB0
-            if (tVIPREG.INTENB&0x2000) {
-                v810_int(4, PC);                    //SBHIT
-            }
-            tVIPREG.INTPND |= 0x2000;
-            pending_int = 1;
-            tVIPREG.rowcount++;
-        } else if ((tVIPREG.rowcount == 0x20) && (tfb > 0x38000)) {     //0x33FD8
-            tVIPREG.DPSTTS = ((tVIPREG.DPCTRL&0x0302)|0x40);
-            tVIPREG.rowcount++;
-        } else if ((tVIPREG.rowcount == 0x21) && (tfb > 0x50280)) {
-            // frame end
-            tVIPREG.rowcount=0;
-            v810_state->ret = 1;
-            tVIPREG.lastfb+=0x50280;
-            tVIPREG.newframe = true;
-            pending_int = 1;
-
-            sound_update(cycles);
         }
     }
 
-    if (!pending_int) {
-        if (tVIPREG.INTENB & tVIPREG.INTPND) {
-            v810_int(4, PC);
+    // XPSTTS management
+    if (likely(tVIPREG.drawing)) {
+        int rowcount = tfb * 28 / tVIPREG.frametime;
+        if (unlikely(rowcount > tVIPREG.rowcount)) {
             pending_int = 1;
+            if (rowcount < 28) {
+                // new row mid-frame
+                tVIPREG.rowcount = rowcount;
+                tVIPREG.XPSTTS = (tVIPREG.XPSTTS & 0xff) | (rowcount << 8) | SBOUT;
+                // SBCMP comparison
+                if (rowcount == ((tVIPREG.XPCTRL >> 8) & 0x1f)) {
+                    tVIPREG.INTPND |= SBHIT;
+                }
+            } else {
+                // finished drawing
+                tVIPREG.drawing = false;
+                tVIPREG.XPSTTS = 0x1b00 | (tVIPREG.XPCTRL & XPEN);
+                tVIPREG.INTPND |= XPEND;
+            }
+        } else if (unlikely(rowcount < 28 && rowcount * tVIPREG.frametime / 28 >= 1120)) {
+            // it's been roughly 56 microseconds, so clear SBOUT
+            if (tVIPREG.XPSTTS | SBOUT) pending_int = 1;
+            tVIPREG.XPSTTS &= ~SBOUT;
         }
+    }
+
+    if (unlikely(tfb >= 400000)) {
+        // frame end
+        tVIPREG.rowcount = 0;
+        v810_state->ret = 1;
+        tVIPREG.lastfb += 400000;
+        tVIPREG.newframe = true;
+        pending_int = 1;
+
+        sound_update(cycles);
+    }
+
+    if (unlikely(tVIPREG.INTENB & tVIPREG.INTPND)) {
+        v810_int(4, PC);
+        pending_int = 1;
     }
 
     return pending_int;
@@ -561,7 +574,7 @@ int v810_run(void) {
     while (true) {
         int ret = 0;
         #if DRC_AVAILABLE
-        if ((v810_state->PC & 0x07000000) == 0x07000000) {
+        if (likely((v810_state->PC & 0x07000000) == 0x07000000)) {
             ret = drc_run();
         } else
         #endif

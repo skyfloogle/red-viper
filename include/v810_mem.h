@@ -24,10 +24,12 @@ typedef struct{
     HWORD GPLT[4];
     HWORD JPLT[4];
     HWORD BKCOL;
+    int frametime;
     // timing
     WORD lastfb;
     BYTE rowcount;
     bool drawing;
+    bool displaying;
     bool newframe;
 } V810_VIPREGDAT;
 

@@ -93,6 +93,8 @@ typedef struct {
 #define SYNCE   0x0200
 #define LOCK    0x0400
 
+#define DPBSY (L0BSY | R0BSY | L1BSY | R1BSY)
+
 // XPSTTS / XPCTRL
 #define XPRST    0x0001
 #define XPEN     0x0002
