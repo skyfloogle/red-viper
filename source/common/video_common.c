@@ -139,7 +139,7 @@ int videoProcessingTime(void) {
 			time += 757;
 			if (object_group_id < 0) {
 				object_group_id = 3;
-				time += 28956;
+				time += 28896;
 			}
 			int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
 			int i = tVIPREG.SPT[object_group_id] & 1023;
