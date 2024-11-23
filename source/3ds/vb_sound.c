@@ -216,6 +216,7 @@ void sound_update(uint32_t cycles) {
 
 // technically always u8 but gotta pass u16 because otherwise optimizations break everything
 void sound_write(int addr, uint16_t data) {
+    if (addr & 3) return;
     sound_update(v810_state->cycles);
     SNDMEM(addr) = data;
     int ch = (addr >> 6) & 7;
