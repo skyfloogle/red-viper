@@ -725,7 +725,7 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #endif
 
 #define ADDCYCLES() { \
-    ADD_I(10, 10, cycles & 0xFF, 0); \
+    if (cycles != 0) { ADD_I(10, 10, cycles & 0xFF, 0); } \
     cycles = 0; \
 }
 
