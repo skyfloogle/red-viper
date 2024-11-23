@@ -1095,16 +1095,22 @@ static int drc_translateBlock(void) {
                 reg2_modified = true;
                 break;
             case V810_OP_SHR_I: // shr imm5, reg2
-                LOAD_REG2();
-                // lsr reg2, reg2, #imm5
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_LSR, arm_reg2);
-                reg2_modified = true;
+                // arm doesn't do 0-bit immediate right shifts
+                if (inst_cache[i].imm != 0) {
+                    LOAD_REG2();
+                    // lsr reg2, reg2, #imm5
+                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_LSR, arm_reg2);
+                    reg2_modified = true;
+                }
                 break;
             case V810_OP_SAR_I: // sar imm5, reg2
-                LOAD_REG2();
-                // asr reg2, reg2, #imm5
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_ASR, arm_reg2);
-                reg2_modified = true;
+                // arm doesn't do 0-bit immediate right shifts
+                if (inst_cache[i].imm != 0) {
+                    LOAD_REG2();
+                    // asr reg2, reg2, #imm5
+                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_ASR, arm_reg2);
+                    reg2_modified = true;
+                }
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
                 LOAD_REG1();
