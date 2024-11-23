@@ -23,14 +23,14 @@ extern bool ins_sch0bsu (WORD src, WORD dst, WORD len, WORD offs);
 extern bool ins_sch0bsd (WORD src, WORD dst, WORD len, WORD offs);
 extern bool ins_sch1bsu (WORD src, WORD dst, WORD len, WORD offs);
 extern bool ins_sch1bsd (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_orbsu   (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_andbsu  (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_xorbsu  (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_ornbsu  (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_andnbsu (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_xornbsu (WORD src, WORD dst, WORD len, WORD offs);
-extern void ins_notbsu  (WORD src, WORD dst, WORD len, WORD offs);
+extern int  ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs);
+extern int  ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs);
+extern int  ins_xorbsu  (WORD src, WORD dst, WORD len, SWORD offs);
+extern int  ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs);
+extern int  ins_ornbsu  (WORD src, WORD dst, WORD len, SWORD offs);
+extern int  ins_andnbsu (WORD src, WORD dst, WORD len, SWORD offs);
+extern int  ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs);
+extern int  ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs);
 
 //FPU SubOpcodes
 extern float ins_cmpf_s  (float reg1, float reg2);

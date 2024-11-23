@@ -408,15 +408,75 @@ bool ins_sch1bsd (WORD src, WORD skipped, WORD len, WORD offs) {
     \
 }
 
-void ins_orbsu   (WORD src, WORD dst, WORD len, WORD offs) {
+int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf | (s)
     #define FILTER(s,f) s & f
     #define OPTIMIZE
-    if (len == 0) return;
+    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+    WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    int cycle_cap = -(offs >> 10);
+    int cycles;
+    int len_remain = 0;
+    if (src == dst && srcoff > dstoff && srcoff + len < 32) {
+        // type 7
+        cycles = 43;
+    } else {
+        int one, two, slope, yint;
+        if (srcoff == dstoff) {
+            if (((srcoff + len) & 31) == 0) {
+                // type 1
+                one = 38;
+                two = 53;
+                slope = 12;
+                yint = 30;
+            } else {
+                // type 2
+                one = 38;
+                two = 54;
+                slope = 12;
+                yint = 31;
+            }
+        } else {
+            if (((srcoff + len) & ~31) == ((dstoff + len) & ~31)) {
+                if (dstoff == 0) {
+                    // type 3
+                    one = 43;
+                    two = 60;
+                    slope = 12;
+                    yint = 35;
+                } else {
+                    // type 5
+                    one = 38;
+                    two = 55;
+                    slope = 43;
+                    yint = 55;
+                }
+            } else {
+                // type 4
+                one = 49;
+                one = 61;
+                slope = 6;
+                yint = 36;
+            }
+        }
+        int words = (srcoff + len) >> 5;
+        if (words == 1) cycles = one;
+        else if (words == 2) cycles = two;
+        else {
+            cycles = slope * words + yint;
+            // if (cycles > cycle_cap) {
+            //     // we'll need stop partway for an interrupt check
+            //     words = 1 + (cycle_cap - yint) / slope;
+            //     cycles = slope * words + yint;
+            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
+            //     len -= len_remain;
+            // }
+        }
+    }
 
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
@@ -530,20 +590,82 @@ void ins_orbsu   (WORD src, WORD dst, WORD len, WORD offs) {
     #undef OPTIMIZE
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len;
+    v810_state->P_REG[28] = len_remain;
     v810_state->P_REG[27] = srcoff;
     v810_state->P_REG[26] = dstoff;
+
+    return cycles;
 }
 
-void ins_andbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf & (s)
     #define FILTER(s,f) s | ~(f)
     #define OPTIMIZE
-    if (len == 0) return;
+    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+    WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    int cycle_cap = -(offs >> 10);
+    int cycles;
+    int len_remain = 0;
+    if (src == dst && srcoff > dstoff && srcoff + len < 32) {
+        // type 7
+        cycles = 43;
+    } else {
+        int one, two, slope, yint;
+        if (srcoff == dstoff) {
+            if (((srcoff + len) & 31) == 0) {
+                // type 1
+                one = 38;
+                two = 53;
+                slope = 12;
+                yint = 30;
+            } else {
+                // type 2
+                one = 38;
+                two = 54;
+                slope = 12;
+                yint = 31;
+            }
+        } else {
+            if (((srcoff + len) & ~31) == ((dstoff + len) & ~31)) {
+                if (dstoff == 0) {
+                    // type 3
+                    one = 43;
+                    two = 60;
+                    slope = 12;
+                    yint = 35;
+                } else {
+                    // type 5
+                    one = 38;
+                    two = 55;
+                    slope = 43;
+                    yint = 55;
+                }
+            } else {
+                // type 4
+                one = 49;
+                one = 61;
+                slope = 6;
+                yint = 36;
+            }
+        }
+        int words = (srcoff + len) >> 5;
+        if (words == 1) cycles = one;
+        else if (words == 2) cycles = two;
+        else {
+            cycles = slope * words + yint;
+            // if (cycles > cycle_cap) {
+            //     // we'll need stop partway for an interrupt check
+            //     words = 1 + (cycle_cap - yint) / slope;
+            //     cycles = slope * words + yint;
+            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
+            //     len -= len_remain;
+            // }
+        }
+    }
 
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
@@ -657,20 +779,82 @@ void ins_andbsu  (WORD src, WORD dst, WORD len, WORD offs) {
     #undef OPTIMIZE
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len;
+    v810_state->P_REG[28] = len_remain;
     v810_state->P_REG[27] = srcoff;
     v810_state->P_REG[26] = dstoff;
+
+    return cycles;
 }
 
-void ins_xorbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+int ins_xorbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf ^ (s)
     #define FILTER(s,f) s & f
     #define OPTIMIZE OPT_XORBSU
-    if (len == 0) return;
+    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+    WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    int cycle_cap = -(offs >> 10);
+    int cycles;
+    int len_remain = 0;
+    if (src == dst && srcoff > dstoff && srcoff + len < 32) {
+        // type 7
+        cycles = 43;
+    } else {
+        int one, two, slope, yint;
+        if (srcoff == dstoff) {
+            if (((srcoff + len) & 31) == 0) {
+                // type 1
+                one = 38;
+                two = 53;
+                slope = 12;
+                yint = 30;
+            } else {
+                // type 2
+                one = 38;
+                two = 54;
+                slope = 12;
+                yint = 31;
+            }
+        } else {
+            if (((srcoff + len) & ~31) == ((dstoff + len) & ~31)) {
+                if (dstoff == 0) {
+                    // type 3
+                    one = 43;
+                    two = 60;
+                    slope = 12;
+                    yint = 35;
+                } else {
+                    // type 5
+                    one = 38;
+                    two = 55;
+                    slope = 43;
+                    yint = 55;
+                }
+            } else {
+                // type 4
+                one = 49;
+                one = 61;
+                slope = 6;
+                yint = 36;
+            }
+        }
+        int words = (srcoff + len) >> 5;
+        if (words == 1) cycles = one;
+        else if (words == 2) cycles = two;
+        else {
+            cycles = slope * words + yint;
+            // if (cycles > cycle_cap) {
+            //     // we'll need stop partway for an interrupt check
+            //     words = 1 + (cycle_cap - yint) / slope;
+            //     cycles = slope * words + yint;
+            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
+            //     len -= len_remain;
+            // }
+        }
+    }
 
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
@@ -784,21 +968,83 @@ void ins_xorbsu  (WORD src, WORD dst, WORD len, WORD offs) {
     #undef OPTIMIZE
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len;
+    v810_state->P_REG[28] = len_remain;
     v810_state->P_REG[27] = srcoff;
     v810_state->P_REG[26] = dstoff;
+
+    return cycles;
 }
 
-void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf | (s)
     #define FILTER(s,f) s & f
     #define OPTIMIZE
     #define CLEARDST
-    if (len == 0) return;
+    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+    WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    int cycle_cap = -(offs >> 10);
+    int cycles;
+    int len_remain = 0;
+    if (src == dst && srcoff > dstoff && srcoff + len < 32) {
+        // type 7
+        cycles = 43;
+    } else {
+        int one, two, slope, yint;
+        if (srcoff == dstoff) {
+            if (((srcoff + len) & 31) == 0) {
+                // type 1
+                one = 38;
+                two = 53;
+                slope = 12;
+                yint = 30;
+            } else {
+                // type 2
+                one = 38;
+                two = 54;
+                slope = 12;
+                yint = 31;
+            }
+        } else {
+            if (((srcoff + len) & ~31) == ((dstoff + len) & ~31)) {
+                if (dstoff == 0) {
+                    // type 3
+                    one = 43;
+                    two = 60;
+                    slope = 12;
+                    yint = 35;
+                } else {
+                    // type 5
+                    one = 38;
+                    two = 55;
+                    slope = 43;
+                    yint = 55;
+                }
+            } else {
+                // type 4
+                one = 49;
+                one = 61;
+                slope = 6;
+                yint = 36;
+            }
+        }
+        int words = (srcoff + len) >> 5;
+        if (words == 1) cycles = one;
+        else if (words == 2) cycles = two;
+        else {
+            cycles = slope * words + yint;
+            // if (cycles > cycle_cap) {
+            //     // we'll need stop partway for an interrupt check
+            //     words = 1 + (cycle_cap - yint) / slope;
+            //     cycles = slope * words + yint;
+            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
+            //     len -= len_remain;
+            // }
+        }
+    }
 
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
@@ -912,20 +1158,82 @@ void ins_movbsu  (WORD src, WORD dst, WORD len, WORD offs) {
     #undef OPTIMIZE
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len;
+    v810_state->P_REG[28] = len_remain;
     v810_state->P_REG[27] = srcoff;
     v810_state->P_REG[26] = dstoff;
+
+    return cycles;
 }
 
-void ins_ornbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+int ins_ornbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf | (s)
     #define FILTER(s,f) ~(s) & f
     #define OPTIMIZE
-    if (len == 0) return;
+    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+    WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    int cycle_cap = -(offs >> 10);
+    int cycles;
+    int len_remain = 0;
+    if (src == dst && srcoff > dstoff && srcoff + len < 32) {
+        // type 7
+        cycles = 43;
+    } else {
+        int one, two, slope, yint;
+        if (srcoff == dstoff) {
+            if (((srcoff + len) & 31) == 0) {
+                // type 1
+                one = 38;
+                two = 53;
+                slope = 12;
+                yint = 30;
+            } else {
+                // type 2
+                one = 38;
+                two = 54;
+                slope = 12;
+                yint = 31;
+            }
+        } else {
+            if (((srcoff + len) & ~31) == ((dstoff + len) & ~31)) {
+                if (dstoff == 0) {
+                    // type 3
+                    one = 43;
+                    two = 60;
+                    slope = 12;
+                    yint = 35;
+                } else {
+                    // type 5
+                    one = 38;
+                    two = 55;
+                    slope = 43;
+                    yint = 55;
+                }
+            } else {
+                // type 4
+                one = 49;
+                one = 61;
+                slope = 6;
+                yint = 36;
+            }
+        }
+        int words = (srcoff + len) >> 5;
+        if (words == 1) cycles = one;
+        else if (words == 2) cycles = two;
+        else {
+            cycles = slope * words + yint;
+            // if (cycles > cycle_cap) {
+            //     // we'll need stop partway for an interrupt check
+            //     words = 1 + (cycle_cap - yint) / slope;
+            //     cycles = slope * words + yint;
+            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
+            //     len -= len_remain;
+            // }
+        }
+    }
 
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
@@ -1039,20 +1347,82 @@ void ins_ornbsu  (WORD src, WORD dst, WORD len, WORD offs) {
     #undef OPTIMIZE
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len;
+    v810_state->P_REG[28] = len_remain;
     v810_state->P_REG[27] = srcoff;
     v810_state->P_REG[26] = dstoff;
+
+    return cycles;
 }
 
-void ins_andnbsu (WORD src, WORD dst, WORD len, WORD offs) {
+int ins_andnbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf & (s)
     #define FILTER(s,f) ~(s) | ~(f)
     #define OPTIMIZE
-    if (len == 0) return;
+    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+    WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    int cycle_cap = -(offs >> 10);
+    int cycles;
+    int len_remain = 0;
+    if (src == dst && srcoff > dstoff && srcoff + len < 32) {
+        // type 7
+        cycles = 43;
+    } else {
+        int one, two, slope, yint;
+        if (srcoff == dstoff) {
+            if (((srcoff + len) & 31) == 0) {
+                // type 1
+                one = 38;
+                two = 53;
+                slope = 12;
+                yint = 30;
+            } else {
+                // type 2
+                one = 38;
+                two = 54;
+                slope = 12;
+                yint = 31;
+            }
+        } else {
+            if (((srcoff + len) & ~31) == ((dstoff + len) & ~31)) {
+                if (dstoff == 0) {
+                    // type 3
+                    one = 43;
+                    two = 60;
+                    slope = 12;
+                    yint = 35;
+                } else {
+                    // type 5
+                    one = 38;
+                    two = 55;
+                    slope = 43;
+                    yint = 55;
+                }
+            } else {
+                // type 4
+                one = 49;
+                one = 61;
+                slope = 6;
+                yint = 36;
+            }
+        }
+        int words = (srcoff + len) >> 5;
+        if (words == 1) cycles = one;
+        else if (words == 2) cycles = two;
+        else {
+            cycles = slope * words + yint;
+            // if (cycles > cycle_cap) {
+            //     // we'll need stop partway for an interrupt check
+            //     words = 1 + (cycle_cap - yint) / slope;
+            //     cycles = slope * words + yint;
+            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
+            //     len -= len_remain;
+            // }
+        }
+    }
 
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
@@ -1166,20 +1536,82 @@ void ins_andnbsu (WORD src, WORD dst, WORD len, WORD offs) {
     #undef OPTIMIZE
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len;
+    v810_state->P_REG[28] = len_remain;
     v810_state->P_REG[27] = srcoff;
     v810_state->P_REG[26] = dstoff;
+
+    return cycles;
 }
 
-void ins_xornbsu (WORD src, WORD dst, WORD len, WORD offs) {
+int ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf ^ (s)
     #define FILTER(s,f) ~(s) & f
     #define OPTIMIZE
-    if (len == 0) return;
+    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+    WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    int cycle_cap = -(offs >> 10);
+    int cycles;
+    int len_remain = 0;
+    if (src == dst && srcoff > dstoff && srcoff + len < 32) {
+        // type 7
+        cycles = 43;
+    } else {
+        int one, two, slope, yint;
+        if (srcoff == dstoff) {
+            if (((srcoff + len) & 31) == 0) {
+                // type 1
+                one = 38;
+                two = 53;
+                slope = 12;
+                yint = 30;
+            } else {
+                // type 2
+                one = 38;
+                two = 54;
+                slope = 12;
+                yint = 31;
+            }
+        } else {
+            if (((srcoff + len) & ~31) == ((dstoff + len) & ~31)) {
+                if (dstoff == 0) {
+                    // type 3
+                    one = 43;
+                    two = 60;
+                    slope = 12;
+                    yint = 35;
+                } else {
+                    // type 5
+                    one = 38;
+                    two = 55;
+                    slope = 43;
+                    yint = 55;
+                }
+            } else {
+                // type 4
+                one = 49;
+                one = 61;
+                slope = 6;
+                yint = 36;
+            }
+        }
+        int words = (srcoff + len) >> 5;
+        if (words == 1) cycles = one;
+        else if (words == 2) cycles = two;
+        else {
+            cycles = slope * words + yint;
+            // if (cycles > cycle_cap) {
+            //     // we'll need stop partway for an interrupt check
+            //     words = 1 + (cycle_cap - yint) / slope;
+            //     cycles = slope * words + yint;
+            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
+            //     len -= len_remain;
+            // }
+        }
+    }
 
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
@@ -1293,21 +1725,83 @@ void ins_xornbsu (WORD src, WORD dst, WORD len, WORD offs) {
     #undef OPTIMIZE
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len;
+    v810_state->P_REG[28] = len_remain;
     v810_state->P_REG[27] = srcoff;
     v810_state->P_REG[26] = dstoff;
+
+    return cycles;
 }
 
-void ins_notbsu  (WORD src, WORD dst, WORD len, WORD offs) {
+int ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf | (s)
     #define FILTER(s,f) ~(s) & f
     #define OPTIMIZE
     #define CLEARDST
-    if (len == 0) return;
+    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
-    WORD dstoff = offs >> 16;
+    WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    int cycle_cap = -(offs >> 10);
+    int cycles;
+    int len_remain = 0;
+    if (src == dst && srcoff > dstoff && srcoff + len < 32) {
+        // type 7
+        cycles = 43;
+    } else {
+        int one, two, slope, yint;
+        if (srcoff == dstoff) {
+            if (((srcoff + len) & 31) == 0) {
+                // type 1
+                one = 38;
+                two = 53;
+                slope = 12;
+                yint = 30;
+            } else {
+                // type 2
+                one = 38;
+                two = 54;
+                slope = 12;
+                yint = 31;
+            }
+        } else {
+            if (((srcoff + len) & ~31) == ((dstoff + len) & ~31)) {
+                if (dstoff == 0) {
+                    // type 3
+                    one = 43;
+                    two = 60;
+                    slope = 12;
+                    yint = 35;
+                } else {
+                    // type 5
+                    one = 38;
+                    two = 55;
+                    slope = 43;
+                    yint = 55;
+                }
+            } else {
+                // type 4
+                one = 49;
+                one = 61;
+                slope = 6;
+                yint = 36;
+            }
+        }
+        int words = (srcoff + len) >> 5;
+        if (words == 1) cycles = one;
+        else if (words == 2) cycles = two;
+        else {
+            cycles = slope * words + yint;
+            // if (cycles > cycle_cap) {
+            //     // we'll need stop partway for an interrupt check
+            //     words = 1 + (cycle_cap - yint) / slope;
+            //     cycles = slope * words + yint;
+            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
+            //     len -= len_remain;
+            // }
+        }
+    }
 
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
@@ -1421,9 +1915,11 @@ void ins_notbsu  (WORD src, WORD dst, WORD len, WORD offs) {
     #undef OPTIMIZE
     v810_state->P_REG[30] = src;
     v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len;
+    v810_state->P_REG[28] = len_remain;
     v810_state->P_REG[27] = srcoff;
     v810_state->P_REG[26] = dstoff;
+
+    return cycles;
 }
 
 //FPU SubOpcodes  
