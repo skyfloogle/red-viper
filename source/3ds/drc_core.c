@@ -432,6 +432,7 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
         inst_cache[i].save_flags = false;
         inst_cache[i].busywait = false;
         inst_cache[i].is_branch_target = false;
+        inst_cache[i].branch_offset = 0;
 
         inst_cache[i].opcode = highB >> 2;
         if ((highB & 0xE0) == 0x80)              // Special opcode format for
@@ -1465,7 +1466,10 @@ static int drc_translateBlock(void) {
                     // v810 r27 -> arm r3 lo
                     if (!phys_regs[27]) LDR_IO(0, 11, 27 * 4);
                     AND(0, phys_regs[27], 2);
-                    ORR_IS(3, 0, 3, ARM_SHIFT_LSL, 16);
+                    ORR_IS(3, 0, 3, ARM_SHIFT_LSL, 5);
+
+                    // cycle count: arm r10 -> arm r3 hi
+                    ORR_IS(3, 3, 10, ARM_SHIFT_LSL, 10);
                 } else {
                     // search, we only have a source
                     // v810 r27 -> arm r3 lo
@@ -1501,13 +1505,28 @@ static int drc_translateBlock(void) {
                 ADD_I(5, 5, (DRC_RELOC_BSTR+inst_cache[i].imm)*4, 0);
                 BLX(ARM_COND_AL, 5);
                 POP(1<<5);
+
                 // reload registers
                 for (int j = inst_cache[i].imm >= 4 ? 26 : 27; j <= 30; j++)
                     if (phys_regs[j])
                         LDR_IO(phys_regs[j], 11, j * 4);
-                // zero flag
                 if (inst_cache[i].imm < 4) {
+                    // zero flag for search
                     ORRS(0, 0, 0);
+                } else {
+                    // add cycles and check interrupt
+                    ADD(10, 10, 0);
+                    HANDLEINT(inst_cache[i].PC);
+                    int len_reg = phys_regs[28];
+                    if (!len_reg) {
+                        LDR_IO(0, 11, 28);
+                    }
+                    MRS(1);
+                    TST_I(len_reg, 0, 0);
+                    B(ARM_COND_EQ, 1);
+                    MRS(1);
+                    B(ARM_COND_AL, 0); // branches to start of instruction
+                    MRS(1);
                 }
                 break;
             case V810_OP_FPP:
@@ -1641,7 +1660,8 @@ static int drc_translateBlock(void) {
                 HALT(0x07002446);
             } else if (cycles >= 200) {
                 HANDLEINT(inst_cache[i + 1].PC);
-            } else if (cycles != 0 && inst_cache[i + 1].is_branch_target) {
+            } else if (cycles != 0 && (inst_cache[i + 1].is_branch_target || inst_cache[i + 1].opcode == V810_OP_BSTR)) {
+                // branch target or bitstring instruction coming up
                 ADDCYCLES();
             } else if (inst_cache[i + 1].PC > (0xfffffe00 & V810_ROM1.highaddr) && !(inst_cache[i + 1].PC & 0xf)) {
                 // potential interrupt handler coming up
