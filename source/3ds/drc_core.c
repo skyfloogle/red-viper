@@ -730,6 +730,10 @@ static int drc_translateBlock(void) {
         inst_ptr_start = inst_ptr;
         cycles += opcycle[inst_cache[i].opcode];
 
+        // save PC, for debugging purposes
+        // LDW_I(0, inst_cache[i].PC);
+        // STR_IO(0, 11, 33 * 4);
+
         reg1_modified = false;
         reg2_modified = false;
         unmapped_registers = false;
