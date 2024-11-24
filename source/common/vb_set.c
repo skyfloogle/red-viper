@@ -173,6 +173,8 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->SLIDERMODE = atoi(value);
     } else if (MATCH("vbopt", "default_eye")) {
         pconfig->DEFAULT_EYE = atoi(value);
+    } else if (MATCH("vbopt", "antiflicker")) {
+        pconfig->ANTIFLICKER = atoi(value);
     } else if (MATCH("vbopt", "perfinfo")) {
         pconfig->PERF_INFO = atoi(value);
     } else if (MATCH("vbopt", "lastrom")) {
@@ -367,6 +369,7 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
     fprintf(f, "slidermode=%d\n", tVBOpt.SLIDERMODE);
     fprintf(f, "default_eye=%d\n", tVBOpt.DEFAULT_EYE);
+    fprintf(f, "antiflicker=%d\n", tVBOpt.ANTIFLICKER);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
     fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
     if (global) {
