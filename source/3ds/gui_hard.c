@@ -619,6 +619,7 @@ int strptrcmp(const void *s1, const void *s2) {
 
 static void rom_loader(void) {
     static char path[300] = {0};
+    static char old_dir[300] = {0};
     if (!path[0]) {
         if (tVBOpt.ROM_PATH[0]) {
             strcpy(path, tVBOpt.ROM_PATH);
@@ -626,6 +627,7 @@ static void rom_loader(void) {
             path[0] = 0;
         }
     }
+    if (!old_dir[0] && tVBOpt.ROM_PATH[0]) strcpy(old_dir, tVBOpt.ROM_PATH);
 
     // in case we broke it somehow
     if (strlen(path) < 6) {
@@ -697,10 +699,18 @@ static void rom_loader(void) {
     float scroll_speed = 0;
     int cursor = 0;
 
-    if (tVBOpt.ROM_PATH[0] && strstr(tVBOpt.ROM_PATH, path) == tVBOpt.ROM_PATH) {
-        char *filename = strrchr(tVBOpt.ROM_PATH, '/');
+    if (old_dir[0] && strstr(old_dir, path) == old_dir) {
+        char *filename = strrchr(old_dir, '/');
         // null check but also skip the slash
         if (filename++) {
+            for (int i = 0; i < dirCount; i++) {
+                if (strcmp(dirs[i], filename) == 0) {
+                    int button_y = i * entry_height;
+                    scroll_pos = C2D_Clamp(button_y - (240 / 2), scroll_top, scroll_bottom);
+                    cursor = i;
+                    break;
+                }
+            }
             for (int i = 0; i < fileCount; i++) {
                 if (strcmp(files[i], filename) == 0) {
                     i += dirCount;
@@ -902,9 +912,16 @@ static void rom_loader(void) {
     free(dirs);
     free(files);
 
+    old_dir[0] = 0;
+
     if (clicked_entry < 0) {
         switch (button) {
             case ROM_LOADER_UP: // Up
+                strcpy(old_dir, path);
+                // cut trailing slash from old dir
+                char *last_slash = strrchr(old_dir, '/');
+                if (last_slash && !last_slash[1]) last_slash[0] = 0;
+
                 int len = strlen(path);
                 // don't get shorter than sdmc:/
                 if (len > 6) {
