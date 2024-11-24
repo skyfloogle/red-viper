@@ -143,7 +143,7 @@ int v810_load_init(void) {
             ext = strrchr(filename, '.');
             if (ext != NULL && strcasecmp(ext, ".vb") == 0) {
                 // check filesize
-                bool rom_size_valid = info.uncompressed_size <= MAX_ROM_SIZE;
+                bool rom_size_valid = info.uncompressed_size >= 0x10 && info.uncompressed_size <= MAX_ROM_SIZE;
                 // require po2
                 rom_size_valid = rom_size_valid && !(info.uncompressed_size & (info.uncompressed_size - 1));
                 if (rom_size_valid) {
@@ -167,7 +167,7 @@ int v810_load_init(void) {
         struct stat mystat;
         fstat(fileno(load_file), &mystat);
         rom_size = mystat.st_size;
-        bool rom_size_valid = rom_size <= MAX_ROM_SIZE;
+        bool rom_size_valid = rom_size >= 0x10 && rom_size <= MAX_ROM_SIZE;
         // require po2
         rom_size_valid = rom_size_valid && !(rom_size & (rom_size - 1));
         if (!rom_size_valid) {
