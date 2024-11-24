@@ -753,7 +753,7 @@ void vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F82E:    //FRMCYC
         //~ dtprintf(8,ferr,"\nWrite  HWORD VIP FRMCYC [%08x]:%04x ",addr,data);
-        tVIPREG.FRMCYC = data;
+        tVIPREG.FRMCYC = data & 0xf;
         break;
     case 0x0005F830:    //CTA
         //~ dtprintf(8,ferr,"\nWrite  HWORD VIP CTA [%08x]:%04x ",addr,data);
@@ -847,7 +847,7 @@ void vipcreg_whword(WORD addr, HWORD data) {
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP BKCOL [%08x]:%04x ",addr,data);
         tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
         tDSPCACHE.ObjPALMod = 1;
-        tVIPREG.BKCOL = data;
+        tVIPREG.BKCOL = data & 3;
         break;
     default:
         //~ dtprintf(0,ferr,"\nWrite  HWORD VIP error [%08x]:%04x ",addr,data);
