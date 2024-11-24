@@ -114,6 +114,7 @@ typedef struct VB_OPT {
     bool  MODIFIED; // Do we need to ask for save?
     bool  INPUTS; // Input display
     bool  ANTIFLICKER;
+    bool  VIP_OVERCLOCK;
 } VB_OPT;
 
 void setCustomMappingDefaults(void);

@@ -418,7 +418,12 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
                     interrupts |= TIMEERR;
                 } else {
                     tVIPREG.drawing = true;
-                    tVIPREG.frametime = videoProcessingTime();
+                    if (!tVBOpt.VIP_OVERCLOCK) {
+                        tVIPREG.frametime = videoProcessingTime();
+                    } else {
+                        // pre-0.9.7 behaviour
+                        tVIPREG.frametime = 137216;
+                    }
                     tVIPREG.tFrameBuffer++;
                     if ((tVIPREG.tFrameBuffer < 1) || (tVIPREG.tFrameBuffer > 2)) tVIPREG.tFrameBuffer = 1;
                     tVIPREG.XPSTTS = XPEN | (tVIPREG.tFrameBuffer<<2) | SBOUT;

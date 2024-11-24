@@ -127,6 +127,7 @@ void setDefaults(void) {
     tVBOpt.MODIFIED = false;
     tVBOpt.INPUTS = false;
     tVBOpt.ANTIFLICKER = false;
+    tVBOpt.VIP_OVERCLOCK = false;
     strcpy(tVBOpt.HOME_PATH, "sdmc:/red-viper");
 
     // Default keys
@@ -181,6 +182,8 @@ static int handler(void* user, const char* section, const char* name,
         strcpy(pconfig->ROM_PATH, value);
     } else if (MATCH("vbopt", "n3ds_speedup")) {
         pconfig->N3DS_SPEEDUP = atoi(value);
+    } else if (MATCH("vbopt", "vip_overclock")) {
+        pconfig->VIP_OVERCLOCK = atoi(value);
     } else if (MATCH("vbopt", "homepath")) {
         strncpy(pconfig->HOME_PATH, value, sizeof(pconfig->HOME_PATH));
         pconfig->HOME_PATH[sizeof(pconfig->HOME_PATH)-1] = 0;
@@ -372,6 +375,7 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "antiflicker=%d\n", tVBOpt.ANTIFLICKER);
     fprintf(f, "perfinfo=%d\n", tVBOpt.PERF_INFO);
     fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
+    fprintf(f, "vip_overclock=%d\n", tVBOpt.VIP_OVERCLOCK);
     if (global) {
         fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH);
         fprintf(f, "homepath=%s\n", tVBOpt.HOME_PATH);

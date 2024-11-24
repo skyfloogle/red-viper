@@ -360,8 +360,8 @@ static Button options_buttons[] = {
     {.str="Sound", .x=16, .y=80, .w=96-8, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
     #define OPTIONS_FF 3
     {.str="Fastforward", .x=112-2, .y=80, .w=96+4, .h=48, .show_toggle=true, .toggle_text_on=&text_toggle, .toggle_text_off=&text_hold},
-    #define OPTIONS_DEV 4
-    {.str="Dev\nsettings", .x=208+8, .y=80, .w=96-8, .h=48},
+    #define OPTIONS_PERF 4
+    {.str="Perf.\nsettings", .x=208+8, .y=80, .w=96-8, .h=48},
     #define OPTIONS_SAVE_GLOBAL 5
     {.str="Save\n(Global)", .x=16, .y=144, .w=96-8, .h=48},
     #define OPTIONS_SAVE_GAME 6
@@ -400,18 +400,18 @@ static Button colour_filter_buttons[] = {
     {.str="Gray", .x=16, .y=128, .w=48, .h=32},
 };
 
-static void vblink(bool backtomain);
+static void vblink(void);
 static Button vblink_buttons[] = {};
 
 static void dev_options(int initial_button);
 static Button dev_options_buttons[] = {
-    #define DEV_PERF 0
-    {.str="Perf. info", .x=16, .y=16, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
-    #define DEV_VBLINK 1
-    {.str="VBLink", .x=16, .y=80, .w=288, .h=48},
-    #define DEV_N3DS 2
+    #define PERF_BAR 0
+    {.str="Status bar", .x=16, .y=16, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define PERF_VIP 1
+    {.str="Overclock VIP", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define PERF_N3DS 2
     {.str="N3DS speedup", .x=16, .y=80+64, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
-    #define DEV_BACK 3
+    #define PERF_BACK 3
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -497,7 +497,7 @@ static void first_menu(int initial_button) {
         draw_logo();
         if (hidKeysDown() & KEY_Y) loop = false;
     LOOP_END(first_menu_buttons);
-    if (hidKeysDown() & KEY_Y) return vblink(true);
+    if (hidKeysDown() & KEY_Y) return vblink();
     guiop = 0;
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
@@ -518,7 +518,7 @@ static void game_menu(int initial_button) {
     LOOP_BEGIN(game_menu_buttons, initial_button);
         if (hidKeysDown() & KEY_Y) loop = false;
     LOOP_END(game_menu_buttons);
-    if (hidKeysDown() & KEY_Y) return vblink(true);
+    if (hidKeysDown() & KEY_Y) return vblink();
     switch (button) {
         case MAIN_MENU_LOAD_ROM: // Load ROM
             guiop = AKILL | VBRESET;
@@ -1412,7 +1412,7 @@ static bool vblink_transfer() {
     return vblink_progress == 100;
 }
 
-static void vblink(bool backtomain) {
+static void vblink(void) {
     bool loaded = false;
     char str[100];
     C2D_Text text;
@@ -1447,35 +1447,38 @@ static void vblink(bool backtomain) {
         if (success) {
             // success
             return;
-        } else return vblink(backtomain);
+        } else return vblink();
     } else {
         vblink_close();
-        return backtomain ? main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM) : dev_options(DEV_VBLINK);
+        return main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
     }
 }
 
 static void dev_options(int initial_button) {
     bool new_3ds = false;
     APT_CheckNew3DS(&new_3ds);
-    dev_options_buttons[DEV_N3DS].hidden = !new_3ds;
-    dev_options_buttons[DEV_PERF].toggle = tVBOpt.PERF_INFO;
-    dev_options_buttons[DEV_N3DS].toggle = tVBOpt.N3DS_SPEEDUP;
+    dev_options_buttons[PERF_N3DS].hidden = !new_3ds;
+    dev_options_buttons[PERF_BAR].toggle = tVBOpt.PERF_INFO;
+    dev_options_buttons[PERF_VIP].toggle = tVBOpt.VIP_OVERCLOCK;
+    dev_options_buttons[PERF_N3DS].toggle = tVBOpt.N3DS_SPEEDUP;
     LOOP_BEGIN(dev_options_buttons, initial_button);
     LOOP_END(dev_options_buttons);
     switch (button) {
-        case DEV_PERF:
+        case PERF_BAR:
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
             tVBOpt.MODIFIED = true;
-            return dev_options(DEV_PERF);
-        case DEV_VBLINK:
-            return vblink(false);
-        case DEV_N3DS:
+            return dev_options(PERF_BAR);
+        case PERF_VIP:
+            tVBOpt.VIP_OVERCLOCK = !tVBOpt.VIP_OVERCLOCK;
+            tVBOpt.MODIFIED = true;
+            return dev_options(PERF_VIP);
+        case PERF_N3DS:
             tVBOpt.N3DS_SPEEDUP = !tVBOpt.N3DS_SPEEDUP;
             tVBOpt.MODIFIED = true;
             osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
-            return dev_options(DEV_N3DS);
-        case DEV_BACK:
-            return options(OPTIONS_DEV);
+            return dev_options(PERF_N3DS);
+        case PERF_BACK:
+            return options(OPTIONS_PERF);
     }
 }
 
@@ -1556,7 +1559,7 @@ static void options(int initial_button) {
         case OPTIONS_SOUND: // Sound
             tVBOpt.SOUND = !tVBOpt.SOUND;
             return options(OPTIONS_SOUND);
-        case OPTIONS_DEV: // Developer settings
+        case OPTIONS_PERF: // Developer settings
             return dev_options(0);
         case OPTIONS_CONTROLS: // About
             return controls(0);
