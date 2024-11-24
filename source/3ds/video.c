@@ -281,7 +281,14 @@ void video_render(int alt_buf, bool on_time) {
 	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 }
 
+extern bool any_2ds;
+
 float getDepthOffset(bool default_for_both, int eye, bool full_parallax) {
+	if (tVBOpt.ANAGLYPH && any_2ds) {
+		int depth = tVBOpt.ANAGLYPH_DEPTH;
+		return (eye == 0) ? depth : -depth;
+	}
+
     if (default_for_both || CONFIG_3D_SLIDERSTATE == 0) {
         return 0.0f;
     }
@@ -364,7 +371,7 @@ void video_flush(bool default_for_both) {
 	for (int dst_eye = 0; dst_eye < (default_for_both ? 2 : eye_count); dst_eye++) {
 		int src_eye = default_for_both ? orig_eye : !tVBOpt.ANAGLYPH && CONFIG_3D_SLIDERSTATE == 0 ? tVBOpt.DEFAULT_EYE : dst_eye;
 		if (tVBOpt.ANAGLYPH) {
-			C3D_DepthTest(false, GPU_ALWAYS, (src_eye ? GPU_WRITE_GREEN | GPU_WRITE_BLUE : GPU_WRITE_RED) | GPU_WRITE_ALPHA);
+			C3D_DepthTest(false, GPU_ALWAYS, (src_eye ? tVBOpt.ANAGLYPH_RIGHT : tVBOpt.ANAGLYPH_LEFT) | GPU_WRITE_ALPHA);
 		}
 		float depthOffset = getDepthOffset(default_for_both, dst_eye, tVBOpt.SLIDERMODE);
 		C3D_RenderTarget *target = finalScreen[dst_eye && !tVBOpt.ANAGLYPH];

@@ -122,7 +122,10 @@ void setDefaults(void) {
     tVBOpt.ROM_PATH[0] = 0;
     tVBOpt.VSYNC = true;
     tVBOpt.N3DS_SPEEDUP = true;
-    tVBOpt.ANAGLYPH = false;
+    toggleAnaglyph(false, false);
+    tVBOpt.ANAGLYPH_LEFT = 0b001;
+    tVBOpt.ANAGLYPH_RIGHT = 0b110;
+    tVBOpt.ANAGLYPH_DEPTH = 0;
     tVBOpt.GAME_SETTINGS = false;
     tVBOpt.MODIFIED = false;
     tVBOpt.INPUTS = false;
@@ -199,6 +202,14 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->ZLZR_MODE = atoi(value) % 4;
     } else if (MATCH("vbopt", "dpad_mode") || MATCH("controls_preset", "dpad")) {
         pconfig->DPAD_MODE = atoi(value) % 3;
+    } else if (MATCH("anaglyph", "enabled")) {
+        toggleAnaglyph(atoi(value), false);
+    } else if (MATCH("anaglyph", "left")) {
+        tVBOpt.ANAGLYPH_LEFT = atoi(value);
+    } else if (MATCH("anaglyph", "right")) {
+        tVBOpt.ANAGLYPH_RIGHT = atoi(value);
+    } else if (MATCH("anaglyph", "depth")) {
+        tVBOpt.ANAGLYPH_DEPTH = atoi(value);
     } else if (MATCH("controls_custom", "dup")) {
         pconfig->CUSTOM_MAPPING_DUP = atoi(value);
     } else if (MATCH("controls_custom", "ddown")) {
@@ -385,6 +396,11 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);
     fprintf(f, "zlzr=%d\n", tVBOpt.ZLZR_MODE);
     fprintf(f, "dpad=%d\n", tVBOpt.DPAD_MODE);
+    fprintf(f, "\n[anaglyph]\n");
+    fprintf(f, "enabled=%d\n", tVBOpt.ANAGLYPH);
+    fprintf(f, "left=%d\n", tVBOpt.ANAGLYPH_LEFT);
+    fprintf(f, "right=%d\n", tVBOpt.ANAGLYPH_RIGHT);
+    fprintf(f, "depth=%d\n", tVBOpt.ANAGLYPH_DEPTH);
     fprintf(f, "\n[controls_custom]\n");
     fprintf(f, "dup=%d\n", tVBOpt.CUSTOM_MAPPING_DUP);
     fprintf(f, "ddown=%d\n", tVBOpt.CUSTOM_MAPPING_DDOWN);

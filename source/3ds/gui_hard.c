@@ -88,19 +88,22 @@ bool buttons_on_screen = false;
 bool guiShouldSwitch(void);
 void drawTouchControls(int inputs);
 
+bool old_2ds = false;
+bool any_2ds = false;
+
 static C3D_RenderTarget *screen;
 
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
 static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R,
-                text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_3ds,
+                text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_nintendo_3ds,
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
                 text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
                 text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
                 text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink, text_preset, text_custom,
                 text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo,
-                text_current_default;
+                text_current_default, text_anaglyph, text_depth;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -378,16 +381,69 @@ static Button options_buttons[] = {
 
 static void video_settings(int initial_button);
 static Button video_settings_buttons[] = {
-    #define VIDEO_COLOUR 0
-    {.str="Color mode", .x=16, .y=32, .w=128, .h=64},
-    #define VIDEO_SLIDER 1
-    {.str="Slider mode", .x=176, .y=32, .w=128, .h=64, .show_toggle=true, .toggle_text_on=&text_vbipd, .toggle_text_off=&text_3ds},
-    #define VIDEO_DEFAULT_EYE 2
-    {.str="Default eye", .x=16, .y=128, .w=128, .h=64, .show_toggle=true, .toggle_text_on=&text_right, .toggle_text_off=&text_left},
-    #define VIDEO_ANTIFLICKER 3
-    {.str="Antiflicker", .x=176, .y=128, .w=128, .h=64, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define VIDEO_MODE 0
+    {.str="3D mode", .x=16, .y=16, .w=128, .h=48, .show_toggle=true, .toggle_text_on=&text_anaglyph, .toggle_text_off=&text_nintendo_3ds},
+    #define VIDEO_SETTINGS 1
+    {.str="Settings", .x=176, .y=16, .w=128, .h=48},
+    #define VIDEO_ANTIFLICKER 2
+    {.str="Antiflicker", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define VIDEO_SLIDER 3
+    {.str = "Slider mode", .x=16, .y=80+64, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_vbipd, .toggle_text_off=&text_nintendo_3ds},
     #define VIDEO_BACK 4
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+static void barrier_settings(int initial_button);
+static Button barrier_settings_buttons[] = {
+    #define BARRIER_COLOUR 0
+    {.str="Color mode", .x=16, .y=16, .w=288, .h=48},
+    #define BARRIER_DEFAULT_EYE 1
+    {.str="Default eye", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_right, .toggle_text_off=&text_left},
+    #define BARRIER_BACK 2
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+static void anaglyph_settings(int initial_button);
+static Button anaglyph_settings_buttons[] = {
+    #define ANAGLYPH_LEFT_OFF 0
+    {.x=50, .y=16+24*0, .w=80, .h=20, .colour=0x404040},
+    #define ANAGLYPH_LEFT_RED 1
+    {.x=50, .y=16+24*1, .w=80, .h=20, .colour=0x0000FF},
+    #define ANAGLYPH_LEFT_GREEN 2
+    {.x=50, .y=16+24*2, .w=80, .h=20, .colour=0x00FF00},
+    #define ANAGLYPH_LEFT_YELLOW 3
+    {.x=50, .y=16+24*3, .w=80, .h=20, .colour=0x00FFFF},
+    #define ANAGLYPH_LEFT_BLUE 4
+    {.x=50, .y=16+24*4, .w=80, .h=20, .colour=0xFF0000},
+    #define ANAGLYPH_LEFT_MAGENTA 5
+    {.x=50, .y=16+24*5, .w=80, .h=20, .colour=0xFF00FF},
+    #define ANAGLYPH_LEFT_CYAN 6
+    {.x=50, .y=16+24*6, .w=80, .h=20, .colour=0xFFFF00},
+    #define ANAGLYPH_LEFT_WHITE 7
+    {.x=50, .y=16+24*7, .w=80, .h=20, .colour=0xFFFFFF},
+    
+    #define ANAGLYPH_RIGHT_OFF 8
+    {.x=176, .y=16+24*0, .w=80, .h=20, .colour=0x404040},
+    #define ANAGLYPH_RIGHT_RED 9
+    {.x=176, .y=16+24*1, .w=80, .h=20, .colour=0x0000FF},
+    #define ANAGLYPH_RIGHT_GREEN 10
+    {.x=176, .y=16+24*2, .w=80, .h=20, .colour=0x00FF00},
+    #define ANAGLYPH_RIGHT_YELLOW 11
+    {.x=176, .y=16+24*3, .w=80, .h=20, .colour=0x00FFFF},
+    #define ANAGLYPH_RIGHT_BLUE 12
+    {.x=176, .y=16+24*4, .w=80, .h=20, .colour=0xFF0000},
+    #define ANAGLYPH_RIGHT_MAGENTA 13
+    {.x=176, .y=16+24*5, .w=80, .h=20, .colour=0xFF00FF},
+    #define ANAGLYPH_RIGHT_CYAN 14
+    {.x=176, .y=16+24*6, .w=80, .h=20, .colour=0xFFFF00},
+    #define ANAGLYPH_RIGHT_WHITE 15
+    {.x=176, .y=16+24*7, .w=80, .h=20, .colour=0xFFFFFF},
+
+    #define ANAGLYPH_BACK 16
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+
+    #define ANAGLYPH_DEPTH_PLACEHOLDER 17
+    {.x=240, .y=16, .w=1, .h=1, .hidden=true},
 };
 
 static void colour_filter(void);
@@ -470,6 +526,8 @@ static Button load_rom_buttons[] = {
     SETUP_BUTTONS(custom_vb_mappings_buttons); \
     SETUP_BUTTONS(options_buttons); \
     SETUP_BUTTONS(video_settings_buttons); \
+    SETUP_BUTTONS(barrier_settings_buttons); \
+    SETUP_BUTTONS(anaglyph_settings_buttons); \
     SETUP_BUTTONS(colour_filter_buttons); \
     SETUP_BUTTONS(dev_options_buttons); \
     SETUP_BUTTONS(sound_error_buttons); \
@@ -1360,7 +1418,7 @@ static void colour_filter(void) {
     LOOP_END(colour_filter_buttons);
     switch (button) {
         case COLOUR_BACK: // Back
-            return video_settings(VIDEO_COLOUR);
+            return barrier_settings(BARRIER_COLOUR);
         case COLOUR_RED: // Red
             tVBOpt.TINT = 0xff0000ff;
             tVBOpt.MODIFIED = true;
@@ -1586,28 +1644,124 @@ static void options(int initial_button) {
 }
 
 static void video_settings(int initial_button) {
+    video_settings_buttons[VIDEO_SLIDER].hidden = any_2ds;
+
+    video_settings_buttons[VIDEO_MODE].toggle = tVBOpt.ANAGLYPH;
     video_settings_buttons[VIDEO_SLIDER].toggle = tVBOpt.SLIDERMODE;
-    video_settings_buttons[VIDEO_DEFAULT_EYE].toggle = tVBOpt.DEFAULT_EYE;
     video_settings_buttons[VIDEO_ANTIFLICKER].toggle = tVBOpt.ANTIFLICKER;
     LOOP_BEGIN(video_settings_buttons, initial_button);
     LOOP_END(video_settings_buttons);
     switch (button) {
-        case VIDEO_COLOUR: // Colour filter
-            return colour_filter();
-        case VIDEO_SLIDER: // Slider mode
-            tVBOpt.SLIDERMODE = !tVBOpt.SLIDERMODE;
+        case VIDEO_MODE:
+            toggleAnaglyph(!tVBOpt.ANAGLYPH, false);
             tVBOpt.MODIFIED = true;
             return video_settings(button);
-        case VIDEO_DEFAULT_EYE: // Default eye
-            tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
+        case VIDEO_SETTINGS:
+            return tVBOpt.ANAGLYPH ? anaglyph_settings(0) : barrier_settings(0);
+        case VIDEO_SLIDER:
+            tVBOpt.SLIDERMODE = !tVBOpt.SLIDERMODE;
             tVBOpt.MODIFIED = true;
             return video_settings(button);
         case VIDEO_ANTIFLICKER:
             tVBOpt.ANTIFLICKER = !tVBOpt.ANTIFLICKER;
             tVBOpt.MODIFIED = true;
             return video_settings(button);
-        case VIDEO_BACK: // Back
+        case VIDEO_BACK:
             return options(OPTIONS_VIDEO);
+    }
+}
+
+static void barrier_settings(int initial_button) {
+    barrier_settings_buttons[BARRIER_DEFAULT_EYE].toggle = tVBOpt.DEFAULT_EYE;
+    LOOP_BEGIN(barrier_settings_buttons, initial_button);
+    LOOP_END(barrier_settings_buttons);
+    switch (button) {
+        case BARRIER_COLOUR: // Colour filter
+            return colour_filter();
+            return barrier_settings(button);
+        case BARRIER_DEFAULT_EYE: // Default eye
+            tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
+            tVBOpt.MODIFIED = true;
+            return barrier_settings(button);
+        case BARRIER_BACK: // Back
+            return video_settings(VIDEO_SETTINGS);
+    }
+}
+
+static void anaglyph_settings(int initial_button) {
+    for (int i = 0; i < 8; i++) {
+        anaglyph_settings_buttons[i].hidden = (tVBOpt.ANAGLYPH_RIGHT & i) != 0;
+        anaglyph_settings_buttons[i+8].hidden = (tVBOpt.ANAGLYPH_LEFT & i) != 0;
+        anaglyph_settings_buttons[i].x = 50;
+        anaglyph_settings_buttons[i].w = !any_2ds ? 80 : 64;
+        anaglyph_settings_buttons[i+8].x = !any_2ds ? 176 : 128;
+        anaglyph_settings_buttons[i+8].w = !any_2ds ? 80 : 64;
+    }
+
+    bool touch_grab = -1;
+    LOOP_BEGIN(anaglyph_settings_buttons, initial_button);
+        C2D_DrawText(&text_left, C2D_WithColor, 12, 12, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&text_right, C2D_WithColor, !any_2ds ? 260 : 196, 12, 0, 0.7, 0.7, TINT_COLOR);
+        if (any_2ds) {
+            // handle depth slider
+            int button_id = selectedButton - anaglyph_settings_buttons;
+            int kDown = hidKeysDown();
+            int xaxis = ((kDown & KEY_RIGHT) != 0) - ((kDown & KEY_LEFT) != 0);
+            int yaxis = ((kDown & KEY_DOWN) != 0) - ((kDown & KEY_UP) != 0);
+            if (!buttonLock) {
+                if ((button_id >= 8 && button_id < 16) && xaxis > 0) {
+                    buttonLock = true;
+                    selectedButton = NULL;
+                }
+            } else {
+                if (xaxis < 0) {
+                    buttonLock = false;
+                    // note: this will be moved again later, so this is the pre-move position
+                    selectedButton = &anaglyph_settings_buttons[ANAGLYPH_DEPTH_PLACEHOLDER];
+                } else if (yaxis != 0) {
+                    tVBOpt.ANAGLYPH_DEPTH -= yaxis;
+                }
+            }
+
+            touchPosition touch_pos;
+            hidTouchRead(&touch_pos);
+
+            if (!touch_grab && kDown & KEY_TOUCH &&
+                touch_pos.px >= 256 && touch_pos.px < 256 + 48
+                && touch_pos.py >= 34 + (8 + tVBOpt.ANAGLYPH_DEPTH) * 11 && touch_pos.py < 34 + 14 + (8 + tVBOpt.ANAGLYPH_DEPTH) * 11
+            ) {
+                touch_grab = true;
+                buttonLock = true;
+                selectedButton = NULL;
+            }
+            if (hidKeysHeld() & KEY_TOUCH && touch_grab) {
+                tVBOpt.ANAGLYPH_DEPTH = 8 - (touch_pos.py - 37) / 11;
+            } else {
+                touch_grab = false;
+            }
+
+            if (tVBOpt.ANAGLYPH_DEPTH < -8) tVBOpt.ANAGLYPH_DEPTH = -8;
+            if (tVBOpt.ANAGLYPH_DEPTH > 8) tVBOpt.ANAGLYPH_DEPTH = 8;
+
+            // draw depth slider
+            C2D_DrawText(&text_depth, C2D_AlignCenter | C2D_WithColor, 280, 12, 0, 0.7, 0.7, TINT_COLOR);
+            C2D_DrawRectSolid(279, 40, 0, 2, 16*11, 0xff404040);
+            for (int y = 40; y <= 40 + 16*11; y += 11) {
+                C2D_DrawRectSolid(272, y, 0, 16, 2, 0xff404040);
+            }
+            C2D_DrawRectSolid(256, 34 + (8 - tVBOpt.ANAGLYPH_DEPTH) * 11, 0, 48, 14, touch_grab ? TINT_50 : TINT_COLOR);
+            if (buttonLock) C2D_DrawRectSolid(260, 42 + (8 - tVBOpt.ANAGLYPH_DEPTH) * 11, 0, 40, 1, BLACK);
+        }
+    LOOP_END(anaglyph_settings_buttons);
+    if (button < 8) {
+        tVBOpt.ANAGLYPH_LEFT = button;
+        return anaglyph_settings(button);
+    } else if (button < 16) {
+        tVBOpt.ANAGLYPH_RIGHT = button;
+        return anaglyph_settings(button);
+    } else switch (button) {
+        case ANAGLYPH_BACK:
+            return video_settings(VIDEO_SETTINGS);
     }
 }
 
@@ -1966,14 +2120,13 @@ static void draw_status_bar(float total_time, float drc_time) {
     C2D_DrawText(&text, C2D_AlignLeft, 330-54-7, 240 - 12, 0, 0.35, 0.35);
 }
 
-bool old_2ds = 0;
-
 void guiInit(void) {
     u8 model = 0;
     cfguInit();
     CFGU_GetSystemModel(&model);
     cfguExit();
     old_2ds = (model == CFG_MODEL_2DS);
+    any_2ds = old_2ds || model == CFG_MODEL_N2DSXL;
 
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     screen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
@@ -2016,7 +2169,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_off, "Off")
     STATIC_TEXT(&text_toggle, "Toggle")
     STATIC_TEXT(&text_hold, "Hold")
-    STATIC_TEXT(&text_3ds, "Nintendo 3DS")
+    STATIC_TEXT(&text_nintendo_3ds, "Nintendo 3DS")
     STATIC_TEXT(&text_vbipd, "Virtual Boy IPD")
     STATIC_TEXT(&text_vb_lpad, "Virtual Boy Left D-Pad")
     STATIC_TEXT(&text_vb_rpad, "Virtual Boy Right D-Pad")
@@ -2084,6 +2237,8 @@ void guiInit(void) {
     STATIC_TEXT(&text_normal, "Normal")
     STATIC_TEXT(&text_turbo, "Turbo")
     STATIC_TEXT(&text_current_default, "Current mode is default")
+    STATIC_TEXT(&text_anaglyph, "Anaglyph")
+    STATIC_TEXT(&text_depth, "Depth")
 }
 
 static bool shouldRedrawMenu = true;

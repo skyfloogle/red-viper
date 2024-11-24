@@ -110,6 +110,9 @@ typedef struct VB_OPT {
     bool  VSYNC;
     bool  N3DS_SPEEDUP;
     bool  ANAGLYPH;
+    int   ANAGLYPH_LEFT;
+    int   ANAGLYPH_RIGHT;
+    int   ANAGLYPH_DEPTH;
     bool  GAME_SETTINGS; // Are we using game-specific settings?
     bool  MODIFIED; // Do we need to ask for save?
     bool  INPUTS; // Input display
