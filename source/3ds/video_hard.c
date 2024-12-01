@@ -464,6 +464,8 @@ void video_hard_render(void) {
 			int16_t h = windows[wnd * 16 + 8] + 1;
 			int16_t over_tile = windows[wnd * 16 + 10] & 0x7ff;
 
+			u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+
 			if (h == 0) continue;
 
 			if ((windows[wnd * 16] & 0x3000) == 0) {
@@ -479,7 +481,6 @@ void video_hard_render(void) {
 				if (right_gx + w <= 0 || left_gx >= 384) continue;
 				if (gy + h <= 0 || gy >= 224) continue;
 
-				u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
 				int tsx = left_mx >> 3;
 				int ty = my >> 3;
 				int mapsx = tsx >> 6;
@@ -490,7 +491,7 @@ void video_hard_render(void) {
 					mapsx &= scx - 1;
 					mapy &= scy - 1;
 				}
-				bool over_visible = !over || tileVisible[over_tile];
+				bool over_visible = !over || tileVisible[tilemap[over_tile] & 0x07ff];
 
 				for (int y = gy - (my & 7); y < gy + h; y += 8) {
 					if (y >= 224) break;
@@ -737,7 +738,7 @@ void video_hard_render(void) {
 					C3D_TexSetWrap(&tileMapCache[cache_id].tex,
 						use_masks || (!over && scx == 1) ? GPU_REPEAT : GPU_CLAMP_TO_BORDER,
 						use_masks || (!over && scy == 1) ? GPU_REPEAT : GPU_CLAMP_TO_BORDER);
-					if (over && tileVisible[over_tile]) {
+					if (over && tileVisible[tilemap[over_tile] & 0x07ff]) {
 						static bool warned = false;
 						if (!warned) {
 							warned = true;
