@@ -322,6 +322,7 @@ int emulation_lstate(int state) {
     clearCache();
     C3D_FrameBegin(0);
     video_render((tVIPREG.tFrameBuffer) % 2, false);
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     C3D_FrameEnd(0);
 
     guiop = AKILL;
