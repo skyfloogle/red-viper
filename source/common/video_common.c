@@ -33,7 +33,7 @@ int videoProcessingTime(void) {
 					// normal world
 					time += 880;
 					int wstart = mx - abs(mp);
-					int wend = mx + abs(mp) + wrld + 1;
+					int wend = mx + abs(mp) + w + 1;
 					int wtiles = (((wend + 7) & ~7) - (wstart & ~7)) >> 3;
 					int offset = (gy - my) & 7;
 					for (int y = 0; y < 224; y += 8) {
