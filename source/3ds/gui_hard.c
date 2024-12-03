@@ -1745,7 +1745,7 @@ static void anaglyph_settings(int initial_button) {
 
             if (!touch_grab && kDown & KEY_TOUCH &&
                 touch_pos.px >= 256 && touch_pos.px < 256 + 48
-                && touch_pos.py >= 34 + (8 + tVBOpt.ANAGLYPH_DEPTH) * 11 && touch_pos.py < 34 + 14 + (8 + tVBOpt.ANAGLYPH_DEPTH) * 11
+                && touch_pos.py >= 34 - 8 + (8 - tVBOpt.ANAGLYPH_DEPTH) * 11 && touch_pos.py < 34 + 8 + 14 + (8 - tVBOpt.ANAGLYPH_DEPTH) * 11
             ) {
                 touch_grab = true;
                 buttonLock = true;
