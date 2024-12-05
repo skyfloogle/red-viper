@@ -17,7 +17,6 @@
 .out outpos1 dummy
 .out outtc0 dummy
 .out outpos2 dummy
-.out outcol dummy
 
 .entry vmain
 .proc vmain
@@ -33,9 +32,9 @@
     add r1.xy, orients[a0.x].zw, r0.xy
     mov outpos2, r1
     ; outtex: 0..size -> 0..1
-    mul outtc0, const2, v1
-    ; load palette from palette id
-    mova a0.x, v1.z
-    mov outcol, palettes[a0.x]
+    mul r1, const2, v1
+    ; copy over palette id
+    mov r1.z, v1.z
+    mov outtc0, r1
     end
 .end

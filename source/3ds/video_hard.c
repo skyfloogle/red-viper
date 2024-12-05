@@ -14,6 +14,7 @@
 #include "affine_shbin.h"
 
 #include <tex3ds.h>
+#include "palette_mask_t3x.h"
 #include "map1x1_t3x.h"
 #include "map1x2_t3x.h"
 #include "map1x4_t3x.h"
@@ -51,12 +52,13 @@ typedef struct {
 static AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
 
 static C3D_Tex affine_masks[4][4];
+static C3D_Tex palette_mask;
 
 static DVLB_s *char_dvlb;
 static shaderProgram_s sChar;
 static s8 uLoc_posscale;
-static s8 uLoc_palettes;
-static C3D_FVec palettes[8];
+static s8 uLoc_pal1tex, uLoc_pal2tex, uLoc_pal3col;
+static C3D_FVec pal1tex[8] = {0}, pal2tex[8] = {0}, pal3col[8] = {0};
 static s8 uLoc_offset;
 static C3D_FVec char_offset;
 static s8 uLoc_bgmap_offsets;
@@ -85,11 +87,13 @@ void video_hard_init(void) {
 	char_dvlb = DVLB_ParseFile((u32 *)char_shbin, char_shbin_size);
 	shaderProgramInit(&sChar);
 	shaderProgramSetVsh(&sChar, &char_dvlb->DVLE[0]);
-	shaderProgramSetGsh(&sChar, &char_dvlb->DVLE[1], 4);
+	shaderProgramSetGsh(&sChar, &char_dvlb->DVLE[1], 0);
 
 	uLoc_posscale = shaderInstanceGetUniformLocation(sChar.vertexShader, "posscale");
-	uLoc_palettes = shaderInstanceGetUniformLocation(sChar.vertexShader, "palettes");
 	uLoc_offset = shaderInstanceGetUniformLocation(sChar.vertexShader, "offset");
+	uLoc_pal1tex = shaderInstanceGetUniformLocation(sChar.geometryShader, "pal1tex");
+	uLoc_pal2tex = shaderInstanceGetUniformLocation(sChar.geometryShader, "pal2tex");
+	uLoc_pal3col = shaderInstanceGetUniformLocation(sChar.geometryShader, "pal3col");
 
 	sAffine_dvlb = DVLB_ParseFile((u32 *)affine_shbin, affine_shbin_size);
 	shaderProgramInit(&sAffine);
@@ -144,6 +148,8 @@ void video_hard_init(void) {
 	#undef LOAD_MASK
 	affine_masks[3][3] = affine_masks[2][3] = affine_masks[1][3] = affine_masks[0][3];
 
+	Tex3DS_TextureFree(Tex3DS_TextureImport(palette_mask_t3x, palette_mask_t3x_size, &palette_mask, NULL, false));
+
 	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
 
 	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
@@ -157,17 +163,22 @@ void video_hard_init(void) {
 static void setRegularTexEnv(void) {
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, 0x7f7f7f);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_TEXTURE1, 0);
+	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_R, 0, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
 
 	env = C3D_GetTexEnv(1);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PRIMARY_COLOR, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
-	C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_TEXTURE2, GPU_PREVIOUS);
+	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_G, 0, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_MULTIPLY_ADD);
 
-	C3D_TexEnvInit(C3D_GetTexEnv(2));
+	env = C3D_GetTexEnv(2);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PREVIOUS);
+	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_B, 0, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_MULTIPLY_ADD);
+
 	C3D_TexEnvInit(C3D_GetTexEnv(3));
 }
 
@@ -179,8 +190,13 @@ static void setRegularDrawing(void) {
 
 	setRegularTexEnv();
 
+	C3D_TexBind(1, &palette_mask);
+	C3D_TexBind(2, &palette_mask);
+
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
-	memcpy(C3D_FVUnifWritePtr(GPU_VERTEX_SHADER, uLoc_palettes, 8), palettes, sizeof(palettes));
+	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc_pal1tex, 8), pal1tex, sizeof(pal1tex));
+	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc_pal2tex, 8), pal2tex, sizeof(pal2tex));
+	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc_pal3col, 8), pal3col, sizeof(pal3col));
 }
 
 // returns vertex count
@@ -319,8 +335,8 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 			C3D_TexEnvOpAlpha(env, 0, i == 0 ? GPU_TEVOP_A_SRC_R : GPU_TEVOP_A_SRC_G, 0);
 			C3D_TexEnvFunc(env, C3D_Both, i == 0 ? GPU_MODULATE : GPU_MULTIPLY_ADD);
 		}
-		if (count == 1) {
-			C3D_TexEnvInit(C3D_GetTexEnv(1));
+		for (int i = count; i < 4; i++) {
+			C3D_TexEnvInit(C3D_GetTexEnv(i));
 		}
 	}
 
@@ -372,21 +388,19 @@ void video_hard_render(void) {
 	}
 
 	// clear
-	u8 clearcol = brightness[tVIPREG.BKCOL];
 	C3D_BindProgram(&sFinal);
 	C3D_AlphaTest(false, GPU_GREATER, 0);
 
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, 0xff7f7fff);
+	// black, red, green, blue
+	const static u32 colors[4] = {0, 0xff0000ff, 0xff00ff00, 0xffff0000};
+	C3D_TexEnvColor(env, colors[tVIPREG.BKCOL]);
 	C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
 	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 
-	env = C3D_GetTexEnv(1);
-	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, clearcol + 0x7f7f7f);
-	C3D_TexEnvSrc(env, C3D_RGB, GPU_PREVIOUS, GPU_CONSTANT, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
+	C3D_TexEnvInit(C3D_GetTexEnv(1));
+	C3D_TexEnvInit(C3D_GetTexEnv(2));
 
 	C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
 	// left
@@ -407,14 +421,15 @@ void video_hard_render(void) {
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	for (int i = 0; i < 4; i++) {
+		const C3D_FVec cols[4] = {{}, {.x = 1}, {.y = 1}, {.z = 1}};
 		HWORD pal = tVIPREG.GPLT[i];
-		palettes[i].x = (brightness[(pal >> 6) & 3] + 0x7f) / 255.0;
-		palettes[i].y = (brightness[(pal >> 4) & 3] + 0x7f) / 255.0; 
-		palettes[i].z = (brightness[(pal >> 2) & 3] + 0x7f) / 255.0;
+		pal1tex[i].x = (((pal >> 1) & 0b110) + 1) / 8.0;
+		pal2tex[i].x = (((pal >> 3) & 0b110) + 1) / 8.0;
+		memcpy(&pal3col[i], &cols[(pal >> 6) & 3], sizeof(C3D_FVec));
 		pal = tVIPREG.JPLT[i];
-		palettes[i + 4].x = (brightness[(pal >> 6) & 3] + 0x7f) / 255.0;
-		palettes[i + 4].y = (brightness[(pal >> 4) & 3] + 0x7f) / 255.0;
-		palettes[i + 4].z = (brightness[(pal >> 2) & 3] + 0x7f) / 255.0;
+		pal1tex[i + 4].x = (((pal >> 1) & 0b110) + 1) / 8.0;
+		pal2tex[i + 4].x = (((pal >> 3) & 0b110) + 1) / 8.0;
+		memcpy(&pal3col[i + 4], &cols[(pal >> 6) & 3], sizeof(C3D_FVec));
 	}
 
 	vcur = vbuf;
@@ -683,7 +698,6 @@ void video_hard_render(void) {
 				if (huge_bg) map_count = 8;
 				bool use_masks = huge_bg || (!over && map_count != 1);
 				if (use_masks) {
-					C3D_TexBind(2, &affine_masks[scx_pow][scy_pow]);
 					C3D_TexSetWrap(&affine_masks[scx_pow][scy_pow], over ? GPU_CLAMP_TO_BORDER : GPU_REPEAT, over ? GPU_CLAMP_TO_BORDER : GPU_REPEAT);
 					bgmap_offsets[1].x = 0;
 					bgmap_offsets[1].y = 0;
@@ -747,6 +761,10 @@ void video_hard_render(void) {
 							else
 								dprintf(0, "WARN:Can't do overplane in Affine yet\n");
 						}
+					}
+
+					if (use_masks) {
+						C3D_TexBind(2, &affine_masks[scx_pow][scy_pow]);
 					}
 
 					sub_u &= full_w - 1;
@@ -878,7 +896,8 @@ void update_texture_cache_hard(void) {
 			uint32_t slice1 = tile[i + 1];
 			uint32_t slice2 = tile[i];
 	
-			const static uint16_t colors[4] = {0, 0x00ff, 0x0f0f, 0xf00f};
+			// black, red, green, blue
+			const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
 
 			#define SQUARE(x, i) { \
 				uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
