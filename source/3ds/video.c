@@ -166,8 +166,15 @@ void processColumnTable(void) {
 		for (int t = 0; t < 2; t++) {
 			uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture[t], 0, NULL);
 			for (int i = 0; i < 96; i++) {
-				tex[((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)
-					] = 255 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
+				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
+					+ 2] = clamp127(tVIPREG.BRTA * maxRepeat)
+					 * 2 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
+				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
+					+ 1] = clamp127(tVIPREG.BRTB * maxRepeat)
+					 * 2 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
+				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
+					+ 0] = clamp127((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat)
+					 * 2 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
 			}
 		}
 	}
@@ -195,7 +202,7 @@ void video_init(void) {
 	C3D_TexInitParams params;
 	params.width = 128;
 	params.height = 8;
-	params.format = GPU_L8;
+	params.format = GPU_RGB8;
 	params.type = GPU_TEX_2D;
 	params.onVram = false;
 	params.maxLevel = 0;
@@ -227,19 +234,8 @@ static int g_alt_buf = 0;
 
 void video_render(int alt_buf, bool on_time) {
 	if (tVBOpt.ANTIFLICKER && on_time) video_flush(false);
+	
 	g_alt_buf = alt_buf;
-	if (tDSPCACHE.ColumnTableInvalid)
-		processColumnTable();
-
-	#ifdef COLTABLESCALE
-	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
-	#else
-	int col_scale = maxRepeat;
-	#endif
-	brightness[0] = 0;
-	brightness[1] = clamp127(tVIPREG.BRTA * col_scale);
-	brightness[2] = clamp127(tVIPREG.BRTB * col_scale);
-	brightness[3] = clamp127((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale);
 
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
@@ -307,6 +303,19 @@ void video_flush(bool default_for_both) {
 	if (!default_for_both) orig_eye = tVBOpt.DEFAULT_EYE;
 	if (eye_count == 2) default_for_both = false;
 
+	if (tDSPCACHE.ColumnTableInvalid)
+		processColumnTable();
+
+	#ifdef COLTABLESCALE
+	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
+	#else
+	int col_scale = maxRepeat;
+	#endif
+	brightness[0] = 0;
+	brightness[1] = clamp127(tVIPREG.BRTA * col_scale);
+	brightness[2] = clamp127(tVIPREG.BRTB * col_scale);
+	brightness[3] = clamp127((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale);
+
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
@@ -329,35 +338,39 @@ void video_flush(bool default_for_both) {
 
 	env = C3D_GetTexEnv(1);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_CONSTANT, 0);
-	C3D_TexEnvColor(env, 0x7f7f7f);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
-
-	env = C3D_GetTexEnv(2);
-	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_CONSTANT, 0);
-	// brightness 1, 2, 3 into r, g, b
-	C3D_TexEnvColor(env, ((brightness[1]) | (brightness[2] << 8) | (brightness[3] << 16)) + 0xff7f7f7f);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_DOT3_RGB);
-
-	env = C3D_GetTexEnv(3);
-	C3D_TexEnvInit(env);
-	if (!tVBOpt.ANAGLYPH) {
-		C3D_TexEnvColor(env, tVBOpt.TINT);
-		C3D_TexEnvSrc(env, C3D_RGB, GPU_PREVIOUS, GPU_CONSTANT, 0);
-		C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-		C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
-	}
-	env = C3D_GetTexEnv(4);
 	if (minRepeat != maxRepeat) {
-		C3D_TexEnvInit(env);
 		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE2, 0);
 		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
 		#ifdef COLTABLESCALE
 		C3D_TexEnvScale(env, C3D_RGB, maxRepeat <= 2 ? maxRepeat - 1 : GPU_TEVSCALE_4);
 		#endif
 	} else {
-		C3D_TexEnvInit(env);
+		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_CONSTANT, 0);
+		// brightness 1, 2, 3 into r, g, b (doubled)
+		C3D_TexEnvColor(env, (brightness[1] << 1) | (brightness[2] << 9) | (brightness[3] << 17));
+	}
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
+	C3D_TexEnvBufUpdate(C3D_RGB, 1 << 1);
+
+	env = C3D_GetTexEnv(2);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PREVIOUS, 0);
+	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_R, GPU_TEVOP_RGB_SRC_G, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
+
+	env = C3D_GetTexEnv(3);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER, 0);
+	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_B, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
+
+	env = C3D_GetTexEnv(4);
+	C3D_TexEnvInit(env);
+	if (!tVBOpt.ANAGLYPH) {
+		C3D_TexEnvColor(env, tVBOpt.TINT);
+		C3D_TexEnvSrc(env, C3D_RGB, GPU_PREVIOUS, GPU_CONSTANT, 0);
+		C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
+		C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
 	}
 	
 	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
@@ -386,9 +399,6 @@ void video_flush(bool default_for_both) {
 		C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
 	}
 
-	if (minRepeat != maxRepeat) {
-		C3D_TexEnvInit(C3D_GetTexEnv(1));
-	}
 	for (int i = 0; i <= 4; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
 }
 

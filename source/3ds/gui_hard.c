@@ -541,10 +541,12 @@ static Button load_rom_buttons[] = {
 static int last_savestate = 0;
 
 static void draw_logo(void) {
-    brightness[0] = 0;
-    brightness[1] = 44;
-    brightness[2] = 69;
-    brightness[3] = 128;
+    tVIPREG.BRTA = 44;
+    tVIPREG.BRTB = 69;
+    tVIPREG.BRTC = 15;
+	memset(V810_DISPLAY_RAM.pmemory + 0x3dc00, 0, 0x400);
+    tDSPCACHE.ColumnTableInvalid = true;
+    
     C2D_SceneBegin(screenTarget);
     C2D_ViewScale(1, -1);
     C2D_ViewTranslate(0, -512);
