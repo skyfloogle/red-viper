@@ -147,8 +147,6 @@ extern int eye_count;
 extern bool tileVisible[2048];
 extern int blankTile;
 
-extern uint8_t brightness[4];
-
 #ifdef __3DS__
 extern shaderProgram_s sFinal;
 

@@ -23,9 +23,11 @@
 #define MAX_DEPTH         16
 #define CENTER_OFFSET     (MAX_DEPTH / 2)
 
-static inline u8 clamp127(u16 a) {
-	return a < 127 ? a : 127;
+static inline u8 clamp255(int x) {
+	return x < 255 ? x : 255;
 }
+
+#define BRIGHTNESS_FACTOR 1.75
 
 // some stuff copied from vb_dsp.c
 
@@ -111,16 +113,6 @@ void clearCache(void) {
 
 C3D_RenderTarget *finalScreen[2];
 
-// We have two ways of dealing with the colours:
-// 1. multiply base colours by max repeat, and scale down in postprocessing
-//  -> lighter darks, less saturated lights
-// 2. same but delay up to a factor of 4 until postprocessing using texenv scale
-//  -> more saturated lights, barely (if at all) visible darks
-// Method 2 would be more accurate if we had gamma correction,
-// but I don't know how to do that.
-// So for now, we'll use method 1, as it looks better IMO.
-// To use method 2, uncomment the following line:
-//#define COLTABLESCALE
 uint8_t maxRepeat = 0, minRepeat = 0;
 C3D_Tex columnTableTexture[2];
 
@@ -131,8 +123,6 @@ shaderProgram_s sFinal;
 
 DVLB_s *sSoft_dvlb;
 shaderProgram_s sSoft;
-
-u8 brightness[4];
 
 bool tileVisible[2048];
 int blankTile;
@@ -148,33 +138,19 @@ void processColumnTable(void) {
 			if (r > newMaxRepeat) newMaxRepeat = r;
 		}
 	}
-	// if maxRepeat would be 3 or 5+, make sure it's divisible by 4
-	#ifdef COLTABLESCALE
-	if (newMaxRepeat == 2 || newMaxRepeat > 3) {
-		minRepeat += 4 - (newMaxRepeat & 3);
-		newMaxRepeat += 4 - (newMaxRepeat & 3);
-	} else
-	#endif
-	{
-		newMinRepeat++;
-		newMaxRepeat++;
-	}
-	minRepeat = newMinRepeat;
-	maxRepeat = newMaxRepeat;
+	minRepeat = newMinRepeat + 1;
+	maxRepeat = newMaxRepeat + 1;
 	if (minRepeat != maxRepeat) {
 		// populate the bottom row of the textures
 		for (int t = 0; t < 2; t++) {
 			uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture[t], 0, NULL);
 			for (int i = 0; i < 96; i++) {
 				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
-					+ 2] = clamp127(tVIPREG.BRTA * maxRepeat)
-					 * 2 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
+					+ 2] = clamp255(tVIPREG.BRTA * (1 + table[t * 512 + (255 - i) * 2]) * BRIGHTNESS_FACTOR);
 				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
-					+ 1] = clamp127(tVIPREG.BRTB * maxRepeat)
-					 * 2 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
+					+ 1] = clamp255(tVIPREG.BRTB * (1 + table[t * 512 + (255 - i) * 2]) * BRIGHTNESS_FACTOR);
 				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
-					+ 0] = clamp127((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat)
-					 * 2 * (1 + table[t * 512 + (255 - i) * 2]) / maxRepeat;
+					+ 0] = clamp255((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]) * BRIGHTNESS_FACTOR);
 			}
 		}
 	}
@@ -306,16 +282,6 @@ void video_flush(bool default_for_both) {
 	if (tDSPCACHE.ColumnTableInvalid)
 		processColumnTable();
 
-	#ifdef COLTABLESCALE
-	int col_scale = maxRepeat >= 4 ? maxRepeat / 4 : 1;
-	#else
-	int col_scale = maxRepeat;
-	#endif
-	brightness[0] = 0;
-	brightness[1] = clamp127(tVIPREG.BRTA * col_scale);
-	brightness[2] = clamp127(tVIPREG.BRTB * col_scale);
-	brightness[3] = clamp127((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * col_scale);
-
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
@@ -340,14 +306,14 @@ void video_flush(bool default_for_both) {
 	C3D_TexEnvInit(env);
 	if (minRepeat != maxRepeat) {
 		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE2, 0);
-		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
-		#ifdef COLTABLESCALE
-		C3D_TexEnvScale(env, C3D_RGB, maxRepeat <= 2 ? maxRepeat - 1 : GPU_TEVSCALE_4);
-		#endif
 	} else {
 		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_CONSTANT, 0);
-		// brightness 1, 2, 3 into r, g, b (doubled)
-		C3D_TexEnvColor(env, (brightness[1] << 1) | (brightness[2] << 9) | (brightness[3] << 17));
+		// brightness 1, 2, 3 into r, g, b
+		C3D_TexEnvColor(env,
+			(clamp255(tVIPREG.BRTA * maxRepeat * BRIGHTNESS_FACTOR)) |
+			(clamp255(tVIPREG.BRTB * maxRepeat * BRIGHTNESS_FACTOR) << 8) |
+			(clamp255((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat * BRIGHTNESS_FACTOR) << 16)
+		);
 	}
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
 	C3D_TexEnvBufUpdate(C3D_RGB, 1 << 1);

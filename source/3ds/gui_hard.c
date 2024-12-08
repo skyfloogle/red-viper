@@ -541,9 +541,9 @@ static Button load_rom_buttons[] = {
 static int last_savestate = 0;
 
 static void draw_logo(void) {
-    tVIPREG.BRTA = 44;
-    tVIPREG.BRTB = 69;
-    tVIPREG.BRTC = 15;
+    tVIPREG.BRTA = 49;
+    tVIPREG.BRTB = 73;
+    tVIPREG.BRTC = 145 - tVIPREG.BRTA - tVIPREG.BRTB;
 	memset(V810_DISPLAY_RAM.pmemory + 0x3dc00, 0, 0x400);
     tDSPCACHE.ColumnTableInvalid = true;
     
