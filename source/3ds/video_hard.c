@@ -381,10 +381,6 @@ void video_hard_render(void) {
 		tileMapCache[i].lumax = tileMapCache[i].umax;
 		tileMapCache[i].lvmin = tileMapCache[i].vmin;
 		tileMapCache[i].lvmax = tileMapCache[i].vmax;
-		if (tDSPCACHE.BrtPALMod) {
-			// force invalidate
-			tileMapCache[i].bg = -1;
-		}
 	}
 
 	// clear
