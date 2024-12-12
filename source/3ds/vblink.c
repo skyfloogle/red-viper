@@ -10,6 +10,7 @@
 #include "vb_set.h"
 #include "vblink.h"
 #include "rom_db.h"
+#include "patches.h"
 
 volatile int vblink_progress = -1;
 volatile int vblink_error = 0;
@@ -248,6 +249,8 @@ static void vblink_thread(void*) {
         is_sram = false;
         gen_table();
         tVBOpt.CRC32 = get_crc(size);
+        memcpy(tVBOpt.GAME_ID, (char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
+        apply_patches();
         v810_reset();
 
         vblink_progress = 100;

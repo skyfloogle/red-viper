@@ -106,6 +106,7 @@ typedef struct VB_OPT {
     char *PROG_NAME; // Path\Name of program
     char HOME_PATH[240];
     unsigned long CRC32; // CRC32 of ROM
+    char  GAME_ID[6];
     bool  PERF_INFO;
     bool  VSYNC;
     bool  N3DS_SPEEDUP;

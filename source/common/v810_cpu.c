@@ -20,6 +20,7 @@
 #include "interpreter.h"
 #include "vb_sound.h"
 #include "vb_dsp.h"
+#include "patches.h"
 
 #include "replay.h"
 
@@ -254,21 +255,10 @@ int v810_load_step(void) {
         // CRC32 Calculations
         gen_table();
         tVBOpt.CRC32 = get_crc(rom_size);
+        memcpy(tVBOpt.GAME_ID, (char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
 
-        // Game patches
-        if (tVBOpt.CRC32 == 0xA44DE03C) {
-            // Jack Bros. relies on draw timings to line up in a certain way
-            // during level transitions. With the current implementation,
-            // this lines up incorrectly, resulting in the next transition
-            // being displayed for 1 frame at the end of a transition.
-            // I believe this is caused by large VRAM copies occuring over one
-            // allocated frame, which may take multiple actual frames.
-            // To simulate this, we increase the delay by 2 frame.
-            V810_ROM1.pmemory[0x13714] = 0x23;
-        } else if (tVBOpt.CRC32 == 0xCAB61E8B) {
-            // Same, but for the Japanese version.
-            V810_ROM1.pmemory[0x136e2] = 0x23;
-        }
+        // Apply game patches
+        apply_patches();
 
         v810_reset();
 

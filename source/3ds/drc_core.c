@@ -378,19 +378,10 @@ static void drc_findLastConditionalInst(int pos) {
                 // affects flags but is used in busywait
                 save_flags = false;
                 break;
-            case V810_OP_ADD_I:
-                // teleroboxer increments an otherwise unused memory value while busywaiting,
-                // which makes it not a busywait
-                // therefore we need to catch it manually
-                if (tVBOpt.CRC32 == 0x36103000 && inst_cache[i].PC == 0x702e9dc)
-                    break;
-                // similar for wario land
-                if (tVBOpt.CRC32 == 0x133E9372 && inst_cache[i].PC == 0x71c2cda)
-                    break;
             case V810_OP_JAL:
                 // nester's funky bowling calls a function to do its busywait read
                 // and it does this several times
-                if (tVBOpt.CRC32 == 0xDF4D56B4 && (
+                if (memcmp(tVBOpt.GAME_ID, "01VNFE", 6) == 0 && (
                     inst_cache[i].PC + inst_cache[i].branch_offset == 0x07005326 ||
                     inst_cache[i].PC + inst_cache[i].branch_offset == 0x07001f2c
                 )) break;
@@ -476,11 +467,6 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
             case AM_III: // Branch instructions
                 inst_cache[i].imm = (unsigned)(((highB & 0x1) << 8) + (lowB & 0xFE));
                 inst_cache[i].branch_offset = sign_9(inst_cache[i].imm);
-
-                // innsmouth no yakata speedhack
-                if (cur_PC == 0x7019040 && (tVBOpt.CRC32 == 0x83CB6A00 || tVBOpt.CRC32 == 0xEFD0AC36 || tVBOpt.CRC32 == 0x04CCBE94)) {
-                    inst_cache[i].branch_offset = -0x10;
-                }
 
                 inst_cache[i].reg1 = 0xFF;
                 inst_cache[i].reg2 = 0xFF;
@@ -667,7 +653,7 @@ static int drc_translateBlock(void) {
     dprintf(3, "[DRC]: V810 block size - %d\n", num_v810_inst);
 
     // Waterworld-excluive pass: find busywaits
-    if (tVBOpt.CRC32 == 0x82A95E51)
+    if (memcmp(tVBOpt.GAME_ID, "67VWEE", 6) == 0)
         drc_findWaterworldBusywait(num_v810_inst);
 
     // Second pass: map the most used V810 registers to ARM registers
@@ -834,7 +820,9 @@ static int drc_translateBlock(void) {
                 // vertical force doesn't have a tight spinloop like most games, so we can't detect it
                 // it just continuously loops through entities, doing nothing more when each one done
                 // so let's just artificially skip a bunch of time so that the game isn't slow
-                if ((tVBOpt.CRC32 == 0x4C32BA5E || tVBOpt.CRC32 == 0x9E9B8B92) && inst_cache[i].PC == 0x07000c08) {
+                if ((memcmp(tVBOpt.GAME_ID, "01VH3E", 6) == 0 || memcmp(tVBOpt.GAME_ID, "18VH3J", 6) == 0)
+                    && inst_cache[i].PC == 0x07000c08
+                ) {
                     MOV_I(0, 1, 25);
                     ADD(10, 10, 0);
                     HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
@@ -1573,7 +1561,7 @@ static int drc_translateBlock(void) {
         }
 
         if (i + 1 < num_v810_inst) {
-            if ((tVBOpt.CRC32 == 0x8989FE0A || tVBOpt.CRC32 == 0x1B1E5CB7) && inst_cache[i + 1].PC == 0x07002446) {
+            if (memcmp(tVBOpt.GAME_ID, "AHVJVJ", 6) == 0 && inst_cache[i + 1].PC == 0x07002446) {
                 // virtual lab hack
                 // interrupts don't save registers, and clearing levels relies on
                 // registers getting dirty
