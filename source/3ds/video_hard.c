@@ -34,10 +34,8 @@ C3D_RenderTarget *screenTarget;
 
 static C3D_Tex tileTexture;
 
-// O3DS, 32-bit: 4 available
-// O3DS, 16-bit: 7 available
 // Virtual Bowling needs at least 4 for good performance
-#define AFFINE_CACHE_SIZE 4
+#define AFFINE_CACHE_SIZE 8
 typedef struct {
 	C3D_Tex tex;
 	C3D_RenderTarget *target;
@@ -122,7 +120,7 @@ void video_hard_init(void) {
 
 	params.width = 512;
 	params.height = 512;
-	params.format = GPU_RGBA8;
+	params.format = GPU_RGBA4;
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		C3D_TexInitWithParams(&tileMapCache[i].tex, NULL, params);
 		tileMapCache[i].target = C3D_RenderTargetCreateFromTex(&tileMapCache[i].tex, GPU_TEX_2D, 0, -1);
