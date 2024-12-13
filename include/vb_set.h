@@ -119,6 +119,7 @@ typedef struct VB_OPT {
     bool  INPUTS; // Input display
     bool  ANTIFLICKER;
     bool  VIP_OVERCLOCK;
+    bool  VIP_OVER_SOFT;
 } VB_OPT;
 
 void setCustomMappingDefaults(void);

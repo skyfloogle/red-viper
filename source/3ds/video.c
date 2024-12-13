@@ -300,16 +300,38 @@ void video_flush(bool default_for_both) {
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
 	C3D_TexEnv *env;
-	env = C3D_GetTexEnv(0);
+	// If drawing VIP on top of softbuf, create a mask of the VIP graphics by adding all 3 channels.
+	if ((tDSPCACHE.DDSPDataState[g_alt_buf] != GPU_CLEAR && tVBOpt.VIP_OVER_SOFT)) {
+		env = C3D_GetTexEnv(0);
+		C3D_TexEnvInit(env);
+		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_TEXTURE0, 0);
+		C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_G, 0);
+		C3D_TexEnvFunc(env, C3D_Alpha, GPU_ADD);
+		env = C3D_GetTexEnv(1);
+		C3D_TexEnvInit(env);
+		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE0, 0);
+		C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_B, 0);
+		C3D_TexEnvFunc(env, C3D_Alpha, GPU_ADD);
+	} else {
+		C3D_TexEnvInit(C3D_GetTexEnv(0));
+		C3D_TexEnvInit(C3D_GetTexEnv(1));
+	}
+
+	// Draw the softbuf onto the VIP, or vice versa.
+	env = C3D_GetTexEnv(2);
 	C3D_TexEnvInit(env);
 	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_TEXTURE1, GPU_TEXTURE1);
 	if (tDSPCACHE.DDSPDataState[g_alt_buf] != GPU_CLEAR) {
+		if (tVBOpt.VIP_OVER_SOFT) {
+			C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE1, GPU_PREVIOUS, GPU_TEXTURE0);
+		}
 		C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_RGB_SRC_COLOR);
 		C3D_TexEnvFunc(env, C3D_RGB, GPU_MULTIPLY_ADD);
 		C3D_TexEnvFunc(env, C3D_Alpha, GPU_ADD);
 	}
 
-	env = C3D_GetTexEnv(1);
+	// Apply brightness values to the three channels, possibly using the column table.
+	env = C3D_GetTexEnv(3);
 	C3D_TexEnvInit(env);
 	if (minRepeat != maxRepeat) {
 		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE2, 0);
@@ -323,28 +345,22 @@ void video_flush(bool default_for_both) {
 		);
 	}
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-	C3D_TexEnvBufUpdate(C3D_RGB, 1 << 1);
+	C3D_TexEnvBufUpdate(C3D_RGB, 1 << 3);
 
-	env = C3D_GetTexEnv(2);
+	// Merge the first two brightness values.
+	env = C3D_GetTexEnv(4);
 	C3D_TexEnvInit(env);
 	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PREVIOUS, 0);
 	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_R, GPU_TEVOP_RGB_SRC_G, 0);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
 
-	env = C3D_GetTexEnv(3);
+	// Merge in the third brightness value, then tint (if not anaglyph).
+	env = C3D_GetTexEnv(5);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER, 0);
-	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_B, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
-
-	env = C3D_GetTexEnv(4);
-	C3D_TexEnvInit(env);
-	if (!tVBOpt.ANAGLYPH) {
-		C3D_TexEnvColor(env, tVBOpt.TINT);
-		C3D_TexEnvSrc(env, C3D_RGB, GPU_PREVIOUS, GPU_CONSTANT, 0);
-		C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-		C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
-	}
+	C3D_TexEnvColor(env, tVBOpt.TINT);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER, GPU_CONSTANT);
+	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_B, GPU_TEVOP_RGB_SRC_COLOR);
+	C3D_TexEnvFunc(env, C3D_RGB, tVBOpt.ANAGLYPH ? GPU_ADD : GPU_ADD_MULTIPLY);
 	
 	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
 	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
@@ -372,7 +388,7 @@ void video_flush(bool default_for_both) {
 		C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
 	}
 
-	for (int i = 0; i <= 4; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
+	for (int i = 0; i <= 5; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
 }
 
 void video_quit(void) {
