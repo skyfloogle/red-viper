@@ -304,17 +304,22 @@ void video_flush(bool default_for_both) {
 	if ((tDSPCACHE.DDSPDataState[g_alt_buf] != GPU_CLEAR && tVBOpt.VIP_OVER_SOFT)) {
 		env = C3D_GetTexEnv(0);
 		C3D_TexEnvInit(env);
-		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_TEXTURE0, 0);
+		C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, 0);
 		C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_G, 0);
 		C3D_TexEnvFunc(env, C3D_Alpha, GPU_ADD);
 		env = C3D_GetTexEnv(1);
 		C3D_TexEnvInit(env);
-		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE0, 0);
+		C3D_TexEnvSrc(env, C3D_Alpha, GPU_PREVIOUS, GPU_TEXTURE0, 0);
 		C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_B, 0);
 		C3D_TexEnvFunc(env, C3D_Alpha, GPU_ADD);
 	} else {
 		C3D_TexEnvInit(C3D_GetTexEnv(0));
-		C3D_TexEnvInit(C3D_GetTexEnv(1));
+		env = C3D_GetTexEnv(1);
+		C3D_TexEnvInit(env);
+		if (tDSPCACHE.DDSPDataState[g_alt_buf] != GPU_CLEAR) {
+			// Appears to be necessary, I wish I could tell you why.
+			C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE1, 0, 0);
+		}
 	}
 
 	// Draw the softbuf onto the VIP, or vice versa.
