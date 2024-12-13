@@ -28,6 +28,7 @@ static inline u8 clamp255(int x) {
 }
 
 #define BRIGHTNESS_FACTOR 1.75
+#define GAMMA 0.9
 
 // some stuff copied from vb_dsp.c
 
@@ -116,6 +117,8 @@ C3D_RenderTarget *finalScreen[2];
 uint8_t maxRepeat = 0, minRepeat = 0;
 C3D_Tex columnTableTexture[2];
 
+u8 brightness_lut[256];
+
 int eye_count = 2;
 
 DVLB_s *sFinal_dvlb;
@@ -146,11 +149,11 @@ void processColumnTable(void) {
 			uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture[t], 0, NULL);
 			for (int i = 0; i < 96; i++) {
 				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
-					+ 2] = clamp255(tVIPREG.BRTA * (1 + table[t * 512 + (255 - i) * 2]) * BRIGHTNESS_FACTOR);
+					+ 2] = brightness_lut[clamp255(tVIPREG.BRTA * (1 + table[t * 512 + (255 - i) * 2]))];
 				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
-					+ 1] = clamp255(tVIPREG.BRTB * (1 + table[t * 512 + (255 - i) * 2]) * BRIGHTNESS_FACTOR);
+					+ 1] = brightness_lut[clamp255(tVIPREG.BRTB * (1 + table[t * 512 + (255 - i) * 2]))];
 				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
-					+ 0] = clamp255((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]) * BRIGHTNESS_FACTOR);
+					+ 0] = brightness_lut[clamp255((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]))];
 			}
 		}
 	}
@@ -162,6 +165,10 @@ void video_init(void) {
         GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
         GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
+
+	for (int i = 0; i < 256; i++) {
+		brightness_lut[i] = clamp255(pow(((float)i) * BRIGHTNESS_FACTOR / 255, GAMMA) * 255);
+	}
 
     gfxSet3D(true);
 
@@ -310,9 +317,9 @@ void video_flush(bool default_for_both) {
 		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_CONSTANT, 0);
 		// brightness 1, 2, 3 into r, g, b
 		C3D_TexEnvColor(env,
-			(clamp255(tVIPREG.BRTA * maxRepeat * BRIGHTNESS_FACTOR)) |
-			(clamp255(tVIPREG.BRTB * maxRepeat * BRIGHTNESS_FACTOR) << 8) |
-			(clamp255((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat * BRIGHTNESS_FACTOR) << 16)
+			(brightness_lut[clamp255(tVIPREG.BRTA * maxRepeat)]) |
+			(brightness_lut[clamp255(tVIPREG.BRTB * maxRepeat)] << 8) |
+			(brightness_lut[clamp255((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat)] << 16)
 		);
 	}
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
