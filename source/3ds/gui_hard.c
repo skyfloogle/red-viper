@@ -943,6 +943,7 @@ static void rom_loader(void) {
     } else {
         // clear screen buffer
         C2D_TargetClear(screenTarget, 0);
+        tDSPCACHE.DDSPDataState[0] = tDSPCACHE.DDSPDataState[1] = GPU_CLEAR;
         C3D_FrameBegin(0);
         video_flush(true);
         C3D_FrameEnd(0);
