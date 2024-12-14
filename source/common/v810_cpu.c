@@ -532,6 +532,11 @@ bool v810_int(WORD iNum, WORD PC) {
     if((v810_state->S_REG[PSW] & PSW_ID)) return false; // Interupt disabled
     if(iNum < ((v810_state->S_REG[PSW] & PSW_IA)>>16)) return false; // Interupt to low on the chain
 
+    // if an interrupt happened, skip a HALT instruction if we're on one
+    if ((mem_rhword(PC) >> 10) == V810_OP_HALT) {
+        PC += 2;
+    }
+
     //Ready to Generate the Interupts
     v810_state->S_REG[EIPC]  = PC;
     v810_state->S_REG[EIPSW] = v810_state->S_REG[PSW];

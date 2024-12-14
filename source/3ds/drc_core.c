@@ -1380,7 +1380,7 @@ static int drc_translateBlock(void) {
                 reg2_modified = true;
                 break;
             case V810_OP_HALT: // halt
-                HALT(inst_cache[i].PC + 2);
+                HALT(inst_cache[i].PC);
                 break;
             case V810_OP_BSTR:
                 MOV_I(2, 31, 0);
