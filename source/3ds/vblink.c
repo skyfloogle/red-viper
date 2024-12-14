@@ -55,7 +55,6 @@ int vblink_open(void) {
 
     svcClearEvent(vblink_event);
 
-    APT_SetAppCpuTimeLimit(30);
     thread = threadCreate(vblink_thread, NULL, 4000, 0x20, 1, true);
     return 0;
 }

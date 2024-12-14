@@ -2305,7 +2305,7 @@ void toggleVsync(bool enable) {
     } else {
         vtotal_top = old_2ds || tVBOpt.ANAGLYPH ? 413 : 827;
         vtotal_bottom = 413;
-        startPeriodic(frame_pacer_thread, 20000000);
+        startPeriodic(frame_pacer_thread, 20000000, false);
     }
     // update VTotal only when necessary
     static bool old_enable = false;

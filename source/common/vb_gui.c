@@ -78,7 +78,6 @@ void save_sram(void) {
     memcpy(sram_copy, V810_GAME_RAM.pmemory, V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr);
 #ifdef __3DS__
     // Saving on the same thread is slow, but saving in another thread happens instantly
-    APT_SetAppCpuTimeLimit(30);
     save_thread = threadCreate(save_sram_thread, sram_copy, 4000, 0x18, 1, true);
     if (!save_thread) {
         puts("oh no");

@@ -12,6 +12,7 @@
 #include "vb_set.h"
 #include "vb_gui.h"
 #include "replay.h"
+#include "periodic.h"
 
 #include "final_shbin.h"
 #include "soft_shbin.h"
@@ -35,6 +36,17 @@ static inline u8 clamp255(int x) {
 VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
 // Keybd Fn's. Had to put it somewhere!
 
+static volatile bool battery_low = false;
+void battery_thread(void) {
+	// on citra checking the battery floods the logs
+	if (!is_citra) {
+		u8 charging, battery_level;
+		PTMU_GetBatteryChargeState(&charging);
+		PTMU_GetBatteryLevel(&battery_level);
+		battery_low = !charging && battery_level <= 2;
+	}
+}
+
 extern int arm_keys;
 u32 input_state = 0;
 // Read the Controller, Fix Me....
@@ -48,17 +60,9 @@ HWORD V810_RControll(bool reset) {
 
     int ret_keys = 0;
     int key = 0;
-	bool battery_low = false;
 
 #ifdef __3DS__
     key = hidKeysHeld();
-	// on citra checking the battery floods the logs
-	if (!is_citra) {
-		u8 charging, battery_level;
-		PTMU_GetBatteryChargeState(&charging);
-		PTMU_GetBatteryLevel(&battery_level);
-		battery_low = !charging && battery_level <= 2;
-	}
 
 #else
     ret_keys = arm_keys;
@@ -211,6 +215,9 @@ void video_init(void) {
 	C3D_RenderTargetClear(finalScreen[0], C3D_CLEAR_COLOR, 0, 0);
 	C3D_FrameEnd(0);
 	gspWaitForVBlank();
+
+	// not technically video but we gotta do it somewhere
+	startPeriodic(battery_thread, 20000000, true);
 }
 
 static int g_alt_buf = 0;

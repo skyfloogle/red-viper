@@ -48,7 +48,7 @@ static void periodic_vsync(void *periodArgs_v) {
     }
 }
 
-bool startPeriodic(threadfunc_t func, int periodNanos) {
+bool startPeriodic(threadfunc_t func, int periodNanos, bool altcpu) {
     PeriodArgs periodArgs;
     periodArgs.func = func;
     periodArgs.periodNanos = periodNanos;
@@ -58,7 +58,7 @@ bool startPeriodic(threadfunc_t func, int periodNanos) {
             periodArgs.id = i;
             threadfuncs[i] = func;
             threadrunning[i] = true;
-            threads[i] = threadCreate(periodic, &periodArgs, 4000, 0x18, 0, true);
+            threads[i] = threadCreate(periodic, &periodArgs, 4000, 0x18, altcpu, true);
             if (!threads[i]) {
                 threadrunning[i] = false;
                 return false;

@@ -49,6 +49,8 @@ int main(void) {
     archiveMountSdmc();
     ptmuInit();
 
+    APT_SetAppCpuTimeLimit(30);
+
     setDefaults();
     if (loadFileOptions() < 0)
         saveFileOptions();
