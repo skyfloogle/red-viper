@@ -36,6 +36,7 @@ int main(void) {
     int frame = 0;
     int err = 0;
     bool on_time = false;
+    bool just_lagged = false;
     PrintConsole main_console;
 #if DEBUGLEVEL == 0
     PrintConsole debug_console;
@@ -138,7 +139,8 @@ int main(void) {
             if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
                 guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
 
-                if (tVIPREG.DPCTRL & 0x0002) {
+                // if we just had a lagframe on which drawing happened, don't draw
+                if ((tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {
                     video_render(alt_buf, on_time);
                     on_time = true;
                 } else if (on_time) {
@@ -146,8 +148,6 @@ int main(void) {
                     on_time = false;
                 }
                 C3D_FrameEnd(0);
-            } else {
-                on_time = false;
             }
             if (tVIPREG.XPCTRL & 0x0002) {
                 if (tDSPCACHE.DDSPDataState[alt_buf] != GPU_CLEAR) {
@@ -195,7 +195,8 @@ int main(void) {
         osTickCounterUpdate(&frameTickCounter);
 
         if (!tVBOpt.FASTFORWARD) {
-            if (lag_frames <= 0) {
+            just_lagged = lag_frames > 0;
+            if (!just_lagged) {
                 svcWaitSynchronization(frame_event, 20000000);
                 lag_frames = 1;
             }
