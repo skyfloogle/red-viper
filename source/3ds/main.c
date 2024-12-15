@@ -129,6 +129,9 @@ int main(void) {
             lag_frames = 0;
         }
 
+        // for unknown reasons, frameskip makes the graphical glitches in waterworld worse
+        if (memcmp(tVBOpt.GAME_ID, "67VWEE", 6) == 0) just_lagged = false;
+
         // Display a frame, only after the right number of 'skips'
         // Also don't display if drawing is still ongoing
         if(tVIPREG.tFrame == tVIPREG.FRMCYC && !tVIPREG.drawing) {
