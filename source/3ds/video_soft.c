@@ -89,8 +89,18 @@ void video_soft_render(int alt_buf) {
     int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
     for (int eye = start_eye; eye < start_eye + eye_count; eye++) {
         for (int tx = 0; tx < 384 / 8; tx++) {
-            for (int ty = 0; ty < 224 / 8; ty++) {
-                uint32_t *out_tile = &out_fb[8 * 8 / 4 * 2 * (1 + eye * 256 / 8 + 512 / 8 * (512 / 8 - 1 - tx) + ty)];
+            uint32_t *column_ptr = &out_fb[8 * 8 / 4 * 2 * (eye * 256 / 8 + 512 / 8 * (512 / 8 - 1 - tx))];
+            SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][tx];
+            int ymin = column->min, ymax = column->max;
+            if (ymin > ymax) {
+                memset(column_ptr, 0, 8 * 8 * 2 * (224 / 8));
+                continue;
+            }
+            memset(column_ptr, 0, 8 * 8 * 2 * ymin);
+            if (++ymax > 224 / 8) ymax = 224 / 8;
+
+            for (int ty = ymin; ty < ymax; ty++) {
+                uint32_t *out_tile = &column_ptr[8 * 8 / 4 * 2 * (1 + ty)];
                 uint16_t *in_fb_ptr = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * alt_buf + tx * (256 / 4 * 8) + ty * 2);
 
                 for (int i = 0; i <= 2; i += 2) {
@@ -126,6 +136,7 @@ void video_soft_render(int alt_buf) {
                     #undef SQUARE
                 }
             }
+            memset(column_ptr + 8 * 8 / 4 * 2 * ymax, 0, 8 * 8 * 2 * (224 / 8 - ymax));
         }
     }
 }

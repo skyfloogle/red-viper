@@ -944,6 +944,12 @@ static void rom_loader(void) {
         // clear screen buffer
         C2D_TargetClear(screenTarget, 0);
         tDSPCACHE.DDSPDataState[0] = tDSPCACHE.DDSPDataState[1] = GPU_CLEAR;
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 64; j++) {
+                tDSPCACHE.SoftBufWrote[i][j].min = 0xff;
+                tDSPCACHE.SoftBufWrote[i][j].max = 0;
+            }
+        }
         C3D_FrameBegin(0);
         video_flush(true);
         C3D_FrameEnd(0);

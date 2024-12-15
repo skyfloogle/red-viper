@@ -107,8 +107,13 @@ void clearCache(void) {
     tDSPCACHE.ObjCacheInvalid = 1;          // Object Cache Is invalid
     for(i = 0; i < 14; i++)
         tDSPCACHE.BGCacheInvalid[i] = 1;    // Object Cache Is invalid
-    for (i = 0; i < 2; i++)
+    for (i = 0; i < 2; i++) {
 		tDSPCACHE.DDSPDataState[i] = CPU_WROTE; // Direct Screen Draw changed
+		for (int j = 0; j < 64; j++) {
+			tDSPCACHE.SoftBufWrote[i][j].min = 0;
+			tDSPCACHE.SoftBufWrote[i][j].max = 31;
+		}
+	}
 	tDSPCACHE.CharCacheInvalid = true;
 	tDSPCACHE.CharCacheForceInvalid = true;
 	for (i = 0; i < 2048; i++)
@@ -227,6 +232,11 @@ void video_render(int alt_buf, bool on_time) {
 	
 	g_alt_buf = alt_buf;
 
+	if (tVBOpt.RENDERMODE > 0) {
+		// postproc (can be done early)
+		video_soft_render(alt_buf);
+	}
+
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
@@ -254,11 +264,6 @@ void video_render(int alt_buf, bool on_time) {
 	// we need to have this cache during rendering
 	if (tVIPREG.XPCTRL & 0x0002) {
 		memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
-	}
-
-	if (tVBOpt.RENDERMODE > 0) {
-		// postproc
-		video_soft_render(alt_buf);
 	}
 
 	C3D_BlendingColor(0x80808080);

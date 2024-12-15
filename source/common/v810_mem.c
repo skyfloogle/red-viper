@@ -200,6 +200,10 @@ void mem_wbyte(WORD addr, BYTE data) {
                     tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
+                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
+                    int y = (addr>>1) & 31;
+                    if (y < column->min) column->min = y;
+                    if (y > column->max) column->max = y;
                 }
             } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
                 tDSPCACHE.ColumnTableInvalid=1;
@@ -273,6 +277,10 @@ void mem_whword(WORD addr, HWORD data) {
                     tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
+                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
+                    int y = (addr>>1) & 31;
+                    if (y < column->min) column->min = y;
+                    if (y > column->max) column->max = y;
                 }
             } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
                 tDSPCACHE.ColumnTableInvalid=1;
@@ -346,6 +354,11 @@ void mem_wword(WORD addr, WORD data) {
                     tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
                 } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
+                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
+                    int y = (addr>>1) & 31;
+                    if (y < column->min) column->min = y;
+                    y++; // 32-bit write covers two tiles, so add 1 for the max calc
+                    if (y > column->max) column->max = y;
                 }
             } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
                 tDSPCACHE.ColumnTableInvalid=1;

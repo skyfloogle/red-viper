@@ -48,6 +48,10 @@ typedef enum {
     GPU_CLEAR,
 } DDSPSTATE;
 
+typedef struct {
+    u8 min, max;
+} SOFTBOUND;
+
 // Struct to encapsulate all the Cache Stuff... I know its not necesary
 // But it helps me contain the ever spreading cache
 typedef struct {
@@ -65,6 +69,7 @@ typedef struct {
     bool    CharCacheForceInvalid;
 	bool	CharacterCache[2048];	//Character chace
     DDSPSTATE DDSPDataState[2];     // Direct DisplayDraws True
+    SOFTBOUND SoftBufWrote[2][64];
     bool    ColumnTableInvalid;     // Column Table is invalid
 } VB_DSPCACHE;
 
