@@ -625,6 +625,12 @@ static int drc_translateBlock(void) {
     bool reg2_modified;
     // The value of inst_ptr at the start of a V810 instruction
     arm_inst* inst_ptr_start;
+    
+    // Games with specific hacks; additional explanation follows where each check is used.
+    bool is_waterworld = memcmp(tVBOpt.GAME_ID, "67VWEE", 6) == 0;
+    bool is_virtual_lab = memcmp(tVBOpt.GAME_ID, "AHVJVJ", 6) == 0;
+    bool is_jack_bros = memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0;
+    bool chcw_load_seen = (v810_state->S_REG[CHCW] & 2) != 0;
 
     exec_block *block = NULL;
 
@@ -653,7 +659,7 @@ static int drc_translateBlock(void) {
     dprintf(3, "[DRC]: V810 block size - %d\n", num_v810_inst);
 
     // Waterworld-excluive pass: find busywaits
-    if (memcmp(tVBOpt.GAME_ID, "67VWEE", 6) == 0)
+    if (is_waterworld)
         drc_findWaterworldBusywait(num_v810_inst);
 
     // Second pass: map the most used V810 registers to ARM registers
@@ -846,6 +852,19 @@ static int drc_translateBlock(void) {
                     BUSYWAIT(arm_cond, inst_cache[i].PC + inst_cache[i].branch_offset);
                 } else {
                     if (inst_cache[i].branch_offset <= 0) {
+                        // The Jack Bros. intro chime is the only part of any game where
+                        // the instruction cache is turned off and performance is meaningful:
+                        // the delay in the chime consists of "add; bne" loops.
+                        // According to PizzaRollsRoyce's Slow VB:
+                        // https://www.platonicreactor.com/projects/slow-vb/
+                        // Regardless of alignment, an "add; bne" loop with cache disabled
+                        // will take 24 cycles per iteration.
+                        // We've already added 4, so 20 remain.
+                        // The result seems to roughly line up in audio recordings,
+                        // though it's not exact.
+                        if (is_jack_bros && !chcw_load_seen) {
+                            cycles += 20;
+                        }
                         HANDLEINT(inst_cache[i].PC);
                     } else {
                         ADDCYCLES();
@@ -1296,6 +1315,7 @@ static int drc_translateBlock(void) {
                 // Stores reg2 in v810_state->S_REG[regID]
                 LOAD_REG2();
                 STR_IO(arm_reg2, 11, (35 + inst_cache[i].imm) * 4);
+                if (inst_cache[i].imm == CHCW) chcw_load_seen = true;
                 if (inst_cache[i].imm == PSW || inst_cache[i].imm == EIPSW) {
                     // load status register
                     if (inst_cache[i].imm == PSW)
@@ -1561,7 +1581,7 @@ static int drc_translateBlock(void) {
         }
 
         if (i + 1 < num_v810_inst) {
-            if (memcmp(tVBOpt.GAME_ID, "AHVJVJ", 6) == 0 && inst_cache[i + 1].PC == 0x07002446) {
+            if (is_virtual_lab && inst_cache[i + 1].PC == 0x07002446) {
                 // virtual lab hack
                 // interrupts don't save registers, and clearing levels relies on
                 // registers getting dirty
