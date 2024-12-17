@@ -862,6 +862,8 @@ static int drc_translateBlock(void) {
                         // We've already added 4, so 20 remain.
                         // The result seems to roughly line up in audio recordings,
                         // though it's not exact.
+                        // Adding 20 cycles to every branch before the cache is turned on
+                        // will not affect any runtime code other than the spinloop.
                         if (is_jack_bros && !chcw_load_seen) {
                             cycles += 20;
                         }
