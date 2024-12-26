@@ -1163,6 +1163,9 @@ static int drc_translateBlock(void) {
                 ADD_I(1, 1, DRC_RELOC_RBYTE*4, 0);
                 BLX(ARM_COND_AL, 1);
 
+                // Add cycles returned in r1.
+                ADD(10, 10, 1);
+
                 if (inst_cache[i].opcode == V810_OP_IN_B) {
                     // lsl r0, r0, #24
                     new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 24, ARM_SHIFT_LSL, 0);
@@ -1194,6 +1197,9 @@ static int drc_translateBlock(void) {
                 ADD_I(1, 1, DRC_RELOC_RHWORD*4, 0);
                 BLX(ARM_COND_AL, 1);
 
+                // Add cycles returned in r1.
+                ADD(10, 10, 1);
+
                 if (inst_cache[i].opcode == V810_OP_IN_H) {
                     // lsl r0, r0, #16
                     new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_LSL, 0);
@@ -1224,6 +1230,9 @@ static int drc_translateBlock(void) {
                 LDR_IO(1, 11, 69 * 4);
                 ADD_I(1, 1, DRC_RELOC_RWORD*4, 0);
                 BLX(ARM_COND_AL, 1);
+
+                // Add cycles returned in r1.
+                ADD(10, 10, 1);
 
                 SAVE_REG2(0);
 
@@ -1327,7 +1336,7 @@ static int drc_translateBlock(void) {
                     // with two consecutive stores, the second takes 4 cycles instead of 1
                     cycles += 3;
                 }
-                
+
                 // If the return value has 0x80 set, check for interrupts.
                 MOV(1, 0);
                 MRS(0);

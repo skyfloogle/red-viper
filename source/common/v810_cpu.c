@@ -533,7 +533,7 @@ bool v810_int(WORD iNum, WORD PC) {
     if(iNum < ((v810_state->S_REG[PSW] & PSW_IA)>>16)) return false; // Interupt to low on the chain
 
     // if an interrupt happened, skip a HALT instruction if we're on one
-    if ((mem_rhword(PC) >> 10) == V810_OP_HALT) {
+    if (((HWORD)mem_rhword(PC) >> 10) == V810_OP_HALT) {
         PC += 2;
     }
 
