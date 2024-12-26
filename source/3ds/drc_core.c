@@ -1276,6 +1276,7 @@ static int drc_translateBlock(void) {
                 ADD(10, 10, 1);
                 LDW_I(1, inst_cache[i + 1].PC);
                 ADD_I(10, 10, cycles & 0xFF, 0);
+                cycles = 0;
                 LDR_IO(2, 11, 68*4);
                 BLX(ARM_COND_NE, 2);
                 MSR(0);
@@ -1311,6 +1312,7 @@ static int drc_translateBlock(void) {
                 ADD(10, 10, 1);
                 LDW_I(1, inst_cache[i + 1].PC);
                 ADD_I(10, 10, cycles & 0xFF, 0);
+                cycles = 0;
                 LDR_IO(2, 11, 68*4);
                 BLX(ARM_COND_NE, 2);
                 MSR(0);
@@ -1346,6 +1348,7 @@ static int drc_translateBlock(void) {
                 ADD(10, 10, 1);
                 LDW_I(1, inst_cache[i + 1].PC);
                 ADD_I(10, 10, cycles & 0xFF, 0);
+                cycles = 0;
                 LDR_IO(2, 11, 68*4);
                 BLX(ARM_COND_NE, 2);
                 MSR(0);
