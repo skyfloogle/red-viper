@@ -51,6 +51,8 @@ typedef struct {
     BYTE CCSR;      //Com Cnt Stat Reg,     0x02000004
     BYTE CCR;       //Com Controll Reg,     0x02000000
     HWORD hwRead;   //Hardware input read timer
+    uint8_t timerSkipState;
+    int8_t timerSkipTimer;
 } V810_HREGDAT;
 
 //Export some data structs...

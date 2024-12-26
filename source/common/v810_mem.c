@@ -514,6 +514,22 @@ void hcreg_wbyte(WORD addr, BYTE data) {
         ) zstat = 0; // Clear the ZStat Flag...
 
         tHReg.TCR = (((data|0xE4)&0xFD)|zstat);
+
+        if (tHReg.tCount == tHReg.tTHW + 1) {
+            // Due to a hardware bug, when the timer is turned off then back on,
+            // it may reload early. The frequency with which it does this depends on
+            // the reload value. This seems to only happen on the 20 microsecond timer.
+            // The precise mechanism for this is unclear, as there seems to be a blip
+            // every 400-ish round-trips. However, this is close enough.
+            if ((data & 0x08) == 0 && tHReg.timerSkipState == 0) {
+                tHReg.timerSkipState = 1;
+            } else if ((data & 0x18) == 0x18 && tHReg.timerSkipState == 1) {
+                const u8 SKIPS[] = {0, 4, 2, 3, 1};
+                if (tHReg.timerSkipTimer > 0 || tHReg.tTHW % 5 == 0) tHReg.tCount--;
+                if (tHReg.timerSkipTimer <= 0) tHReg.timerSkipTimer = SKIPS[tHReg.tTHW % 5];
+                tHReg.timerSkipTimer--;
+            }
+        }
         break;
     case 0x02000024:    //WCR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG WCR [%08x]:%02x ",addr,data);
