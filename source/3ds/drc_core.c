@@ -1257,6 +1257,19 @@ static int drc_translateBlock(void) {
                     // with two consecutive stores, the second takes 2 cycles instead of 1
                     cycles += 1;
                 }
+
+                // If the return value has 0x80 set, check for interrupts.
+                MOV(1, 0);
+                MRS(0);
+                TST_I(1, 0x80, 0);
+                // The rest of the return value is an additional cycle count.
+                BIC_I(1, 0x80, 0);
+                ADD(10, 10, 1);
+                LDW_I(1, inst_cache[i + 1].PC);
+                ADD_I(10, 10, cycles & 0xFF, 0);
+                LDR_IO(2, 11, 68*4);
+                BLX(ARM_COND_NE, 2);
+                MSR(0);
                 break;
             case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_H: // out.h reg2, disp16 [reg1]
@@ -1279,6 +1292,19 @@ static int drc_translateBlock(void) {
                     // with two consecutive stores, the second takes 2 cycles instead of 1
                     cycles += 1;
                 }
+
+                // If the return value has 0x80 set, check for interrupts.
+                MOV(1, 0);
+                MRS(0);
+                TST_I(1, 0x80, 0);
+                // The rest of the return value is an additional cycle count.
+                BIC_I(1, 0x80, 0);
+                ADD(10, 10, 1);
+                LDW_I(1, inst_cache[i + 1].PC);
+                ADD_I(10, 10, cycles & 0xFF, 0);
+                LDR_IO(2, 11, 68*4);
+                BLX(ARM_COND_NE, 2);
+                MSR(0);
                 break;
             case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_W: // out.h reg2, disp16 [reg1]
@@ -1301,6 +1327,19 @@ static int drc_translateBlock(void) {
                     // with two consecutive stores, the second takes 4 cycles instead of 1
                     cycles += 3;
                 }
+                
+                // If the return value has 0x80 set, check for interrupts.
+                MOV(1, 0);
+                MRS(0);
+                TST_I(1, 0x80, 0);
+                // The rest of the return value is an additional cycle count.
+                BIC_I(1, 0x80, 0);
+                ADD(10, 10, 1);
+                LDW_I(1, inst_cache[i + 1].PC);
+                ADD_I(10, 10, cycles & 0xFF, 0);
+                LDR_IO(2, 11, 68*4);
+                BLX(ARM_COND_NE, 2);
+                MSR(0);
 
                 // if we load the same thing immediately after saving it, skip the loading
                 if (i + 1 < num_v810_inst &&

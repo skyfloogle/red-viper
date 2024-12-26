@@ -51,8 +51,6 @@ typedef struct {
     BYTE CCSR;      //Com Cnt Stat Reg,     0x02000004
     BYTE CCR;       //Com Controll Reg,     0x02000000
     HWORD hwRead;   //Hardware input read timer
-    uint8_t timerSkipState;
-    int8_t timerSkipTimer;
 } V810_HREGDAT;
 
 //Export some data structs...
@@ -74,9 +72,9 @@ SHWORD mem_rhword(WORD addr);
 WORD   mem_rword(WORD addr);
 
 // Memory write functions
-void mem_wbyte(WORD addr, BYTE data);
-void mem_whword(WORD addr, HWORD data);
-void mem_wword(WORD addr, WORD data);
+WORD mem_wbyte(WORD addr, BYTE data);
+WORD mem_whword(WORD addr, HWORD data);
+WORD mem_wword(WORD addr, WORD data);
 
 // Hardware control register read functions
 BYTE  hcreg_rbyte(WORD addr);
@@ -84,9 +82,9 @@ HWORD hcreg_rhword(WORD addr);
 WORD  hcreg_rword(WORD addr);
 
 // Hardware control register write functions
-void hcreg_wbyte(WORD addr, BYTE data);
-void hcreg_whword(WORD addr, HWORD data);
-void hcreg_wword(WORD addr, WORD data);
+WORD hcreg_wbyte(WORD addr, BYTE data);
+WORD hcreg_whword(WORD addr, HWORD data);
+WORD hcreg_wword(WORD addr, WORD data);
 
 // Port read functions
 BYTE  port_rbyte(WORD addr);
@@ -104,8 +102,8 @@ HWORD vipcreg_rhword(WORD addr);
 WORD  vipcreg_rword(WORD addr);
 
 // Register I/O write functions
-void vipcreg_wbyte(WORD addr, BYTE data);
-void vipcreg_whword(WORD addr, HWORD data);
-void vipcreg_wword(WORD addr, WORD data);
+WORD vipcreg_wbyte(WORD addr, BYTE data);
+WORD vipcreg_whword(WORD addr, HWORD data);
+WORD vipcreg_wword(WORD addr, WORD data);
 
 #endif

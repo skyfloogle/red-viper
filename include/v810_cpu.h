@@ -78,11 +78,11 @@ typedef struct {
     WORD lowaddr;  // Start of ram
     WORD highaddr; // end of ram
     BYTE  (*rfuncb)(WORD);  // Pointer to the Register Read func
-    void  (*wfuncb)(WORD, BYTE);    // Pointer to the Register Write func
+    WORD  (*wfuncb)(WORD, BYTE);    // Pointer to the Register Write func
     HWORD (*rfunch)(WORD);  // Pointer to the Register Read func
-    void  (*wfunch)(WORD, HWORD);   // Pointer to the Register Write func
+    WORD  (*wfunch)(WORD, HWORD);   // Pointer to the Register Write func
     WORD  (*rfuncw)(WORD);  // Pointer to the Register Read func
-    void  (*wfuncw)(WORD, WORD);    // Pointer to the Register Write func
+    WORD  (*wfuncw)(WORD, WORD);    // Pointer to the Register Write func
 } V810_REGFETCH;
 
 typedef struct {

@@ -176,7 +176,7 @@ WORD mem_rword(WORD addr) {
 
 /////////////////////////////////////////////////////////////////////////////
 //Memory Write Func
-void mem_wbyte(WORD addr, BYTE data) {
+WORD mem_wbyte(WORD addr, BYTE data) {
     int i =0;
     addr = addr & 0x07FFFFFF; // map to 24 bit address
 
@@ -245,16 +245,17 @@ void mem_wbyte(WORD addr, BYTE data) {
         break;
     case 0x2000000:
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
-            (*V810_HCREG.wfuncb)(addr,data);
+            return (*V810_HCREG.wfuncb)(addr,data);
         }
         break;
     default:
         //~ dtprintf(0,ferr,"\nWrite BYTE  [%08x]:%02x",addr,data);
         break;
     }
+    return 0;
 }
 
-void mem_whword(WORD addr, HWORD data) {
+WORD mem_whword(WORD addr, HWORD data) {
     int i = 0;
     addr = addr & 0x07FFFFFE; // map to 24 bit address, mask first bit
 
@@ -322,16 +323,17 @@ void mem_whword(WORD addr, HWORD data) {
         break;
     case 0x2000000:
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
-            (*V810_HCREG.wfunch)(addr,data);
+            return (*V810_HCREG.wfunch)(addr,data);
         }
         break;
     default:
         //~ dtprintf(0,ferr,"\nWrite HWORD [%08x]:%04x",addr,data);
         break;
     }
+    return 0;
 }
 
-void mem_wword(WORD addr, WORD data) {
+WORD mem_wword(WORD addr, WORD data) {
     int i = 0;
     addr = addr & 0x07FFFFFC; // map to 24 bit address, mask first 2 bytes to zero
 
@@ -400,13 +402,14 @@ void mem_wword(WORD addr, WORD data) {
         break;
     case 0x2000000:
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
-            (*V810_HCREG.wfuncw)(addr,data);
+            return (*V810_HCREG.wfuncw)(addr,data);
         }
         break;
     default:
         //~ dtprintf(0,ferr,"\nWrite WORD  [%08x]:%08x",addr,data);
         break;
     }
+    return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -466,7 +469,7 @@ BYTE hcreg_rbyte(WORD addr) {
     }
 }
 
-void hcreg_wbyte(WORD addr, BYTE data) {
+WORD hcreg_wbyte(WORD addr, BYTE data) {
     addr = (addr & 0x0200003C);
     switch(addr) {
     case 0x02000000:    //CCR
@@ -513,21 +516,23 @@ void hcreg_wbyte(WORD addr, BYTE data) {
             ((data & 0x04) && !((tHReg.TCR & 1) && !(data & 1))) // can't clear zstat while disabling timer
         ) zstat = 0; // Clear the ZStat Flag...
 
+        int old_res = tHReg.TCR & 0x10;
+
         tHReg.TCR = (((data|0xE4)&0xFD)|zstat);
 
-        if (tHReg.tCount == tHReg.tTHW + 1) {
-            // Due to a hardware bug, when the timer is turned off then back on,
-            // it may reload early. The frequency with which it does this depends on
-            // the reload value. This seems to only happen on the 20 microsecond timer.
-            // The precise mechanism for this is unclear, as there seems to be a blip
-            // every 400-ish round-trips. However, this is close enough.
-            if ((data & 0x08) == 0 && tHReg.timerSkipState == 0) {
-                tHReg.timerSkipState = 1;
-            } else if ((data & 0x18) == 0x18 && tHReg.timerSkipState == 1) {
-                const u8 SKIPS[] = {0, 4, 2, 3, 1};
-                if (tHReg.timerSkipTimer > 0 || tHReg.tTHW % 5 == 0) tHReg.tCount--;
-                if (tHReg.timerSkipTimer <= 0) tHReg.timerSkipTimer = SKIPS[tHReg.tTHW % 5];
-                tHReg.timerSkipTimer--;
+        if (!old_res && (data & 0x10)) {
+            // When switching from 100us to 20us mode in any 20us tick other than the one
+            // where the 100us timer ticks, the timer is immediately decremented.
+            if (tHReg.ticks != 0) {
+                tHReg.tCount--;
+                tHReg.TLB = (tHReg.tCount&0xFF);
+                tHReg.THB = ((tHReg.tCount>>8)&0xFF);
+                if (tHReg.tCount == 0) {
+                    tHReg.tCount += tHReg.tTHW + 1; //reset counter
+                    tHReg.TCR |= 0x02;
+                }
+                // If the timer interrupt is enabled, the next interrupt may trigger sooner than we thought.
+                return (data & 0x80) ? 0x80 : 0;
             }
         }
         break;
@@ -553,23 +558,24 @@ void hcreg_wbyte(WORD addr, BYTE data) {
         //~ dtprintf(0,ferr,"\nWrite  BYTE HREG error [%08x]:%04x ",addr,data);
         break;
     }
+    return 0;
 }
 
 HWORD hcreg_rhword(WORD addr) {
     //~ dtprintf(0,ferr,"\nRead  HWORD HReg [%08x]:%04x !!!!!!",addr,(HWORD)hcreg_rbyte(addr));
     return (HWORD)hcreg_rbyte(addr);
 }
-void hcreg_whword(WORD addr, HWORD data) {
+WORD hcreg_whword(WORD addr, HWORD data) {
     //~ dtprintf(0,ferr,"\nWrite  HWORD HReg [%08x]:%04x !!!!!!",addr,data);
-    hcreg_wbyte(addr,(BYTE)data); //All read/write is byte...
+    return hcreg_wbyte(addr,(BYTE)data); //All read/write is byte...
 }
 WORD hcreg_rword(WORD addr) {
     //~ dtprintf(0,ferr,"\nRead  WORD HReg [%08x]:%08x !!!!!!",addr,(WORD)hcreg_rbyte(addr));
     return (WORD)hcreg_rbyte(addr);
 }
-void hcreg_wword(WORD addr, WORD data) {
+WORD hcreg_wword(WORD addr, WORD data) {
     //~ dtprintf(0,ferr,"\nWrite  WORD HReg [%08x]:%08x !!!!!!",addr,data);
-    hcreg_wbyte(addr,(BYTE)data); //All read/write is byte...
+    return hcreg_wbyte(addr,(BYTE)data); //All read/write is byte...
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -589,8 +595,9 @@ BYTE vipcreg_rbyte(WORD addr) {
     return 0xFF;
 }
 
-void vipcreg_wbyte(WORD addr, BYTE data) {
+WORD vipcreg_wbyte(WORD addr, BYTE data) {
     //~ dtprintf(0,ferr,"\nWrite  BYTE VIP [%08x]:%02x **************",addr,data);
+    return 0;
 }
 
 HWORD vipcreg_rhword(WORD addr) {
@@ -716,10 +723,10 @@ HWORD vipcreg_rhword(WORD addr) {
         return 0xFFFF;
         break;
     }
-    return(0); //Stops a silly compiler error
+    return 0;
 }
 
-void vipcreg_whword(WORD addr, HWORD data) {
+WORD vipcreg_whword(WORD addr, HWORD data) {
     int i;
     addr=(addr&0x0005007E); //Bring it into line
     addr=(addr|0x0005F800); //make shure all the right bits are on
@@ -879,6 +886,7 @@ void vipcreg_whword(WORD addr, HWORD data) {
         //~ dtprintf(0,ferr,"\nWrite  HWORD VIP error [%08x]:%04x ",addr,data);
         break;
     }
+    return 0;
 }
 
 WORD vipcreg_rword(WORD addr) {
@@ -886,8 +894,9 @@ WORD vipcreg_rword(WORD addr) {
     return vipcreg_rhword(addr); //More???
 }
 
-void vipcreg_wword(WORD addr, WORD data) {
+WORD vipcreg_wword(WORD addr, WORD data) {
     //~ dtprintf(0,ferr,"\nWrite  WORD VIP [%08x]:%08x **************",addr,data);
     vipcreg_whword(addr,(HWORD)data);
     vipcreg_whword(addr+2,(HWORD)(data>>16));
+    return 0;
 }

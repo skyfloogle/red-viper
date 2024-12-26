@@ -388,7 +388,6 @@ int serviceInt(unsigned int cycles, WORD PC) {
                 tHReg.tCount += tHReg.tTHW + 1; //reset counter
                 tHReg.TCR |= 0x02; //Zero Status
             }
-            tHReg.timerSkipState = 0;
             tHReg.TLB = (tHReg.tCount&0xFF);
             tHReg.THB = ((tHReg.tCount>>8)&0xFF);
         }
