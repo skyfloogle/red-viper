@@ -244,8 +244,7 @@ void video_render(int alt_buf, bool on_time) {
 
 	eye_count = tVBOpt.ANAGLYPH || CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
 
-	if ((tVIPREG.XPCTRL & 0x0002) || tDSPCACHE.CharCacheForceInvalid) {
-		tDSPCACHE.CharCacheForceInvalid = false;
+	if (tVIPREG.XPCTRL & XPEN) {
 		if (tDSPCACHE.CharCacheInvalid) {
 			tDSPCACHE.CharCacheInvalid = false;
 			if (tVBOpt.RENDERMODE < 2)
@@ -253,16 +252,14 @@ void video_render(int alt_buf, bool on_time) {
 			else
 				update_texture_cache_soft();
 		}
-	}
 
-	if (tVBOpt.RENDERMODE < 2) {
-		video_hard_render();
-	} else {
-		C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, 0, 0);
-	}
+		if (tVBOpt.RENDERMODE < 2) {
+			video_hard_render();
+		} else {
+			C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, 0, 0);
+		}
 
-	// we need to have this cache during rendering
-	if (tVIPREG.XPCTRL & 0x0002) {
+		// we need to have this cache during rendering
 		memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
 	}
 
