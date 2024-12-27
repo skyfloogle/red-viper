@@ -568,7 +568,6 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
                 tHReg.TLB = (tHReg.tCount&0xFF);
                 tHReg.THB = ((tHReg.tCount>>8)&0xFF);
                 if (tHReg.tCount == 0) {
-                    tHReg.tCount += tHReg.tTHW + 1; //reset counter
                     tHReg.TCR |= 0x02;
                 }
                 // If the timer interrupt is enabled, the next interrupt may trigger sooner than we thought.
