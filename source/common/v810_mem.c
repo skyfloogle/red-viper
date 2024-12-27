@@ -225,7 +225,7 @@ WORD mem_wbyte(WORD addr, BYTE data) {
                     tDSPCACHE.ObjDataCacheInvalid=1;
                     tDSPCACHE.CharCacheInvalid=1;
                     tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
-                } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
+                } else if (data != 0) { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
                     SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
                     int y = (addr>>1) & 31;
@@ -307,7 +307,7 @@ WORD mem_whword(WORD addr, HWORD data) {
                     tDSPCACHE.ObjDataCacheInvalid=1;
                     tDSPCACHE.CharCacheInvalid=1;
                     tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
-                } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
+                } else if (data != 0) { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
                     SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
                     int y = (addr>>1) & 31;
@@ -390,7 +390,7 @@ WORD mem_wword(WORD addr, WORD data) {
                     tDSPCACHE.ObjDataCacheInvalid=1;
                     tDSPCACHE.CharCacheInvalid=1;
                     tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
-                } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
+                } else if (data != 0) { //Direct Mem Writes, darn thoes fragmented memorys!!!
                     tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
                     SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
                     int y = (addr>>1) & 31;
