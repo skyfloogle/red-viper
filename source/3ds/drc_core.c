@@ -1270,7 +1270,12 @@ static int drc_translateBlock(void) {
 
                 // If the return value has 0x80 set, check for interrupts.
                 MOV(1, 0);
-                MRS(0);
+                if (inst_cache[i].save_flags) {
+                    POP(1 << 0);
+                    inst_cache[i].save_flags = false;
+                } else {
+                    MRS(0);
+                }
                 TST_I(1, 0x80, 0);
                 // The rest of the return value is an additional cycle count.
                 BIC_I(1, 0x80, 0);
@@ -1280,6 +1285,9 @@ static int drc_translateBlock(void) {
                 cycles = 0;
                 LDR_IO(2, 11, 68*4);
                 BLX(ARM_COND_NE, 2);
+                CMP_I(10, 0, 0);
+                LDR_IO(2, 11, 68*4);
+                BLX(ARM_COND_PL, 2);
                 MSR(0);
                 break;
             case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
@@ -1306,7 +1314,12 @@ static int drc_translateBlock(void) {
 
                 // If the return value has 0x80 set, check for interrupts.
                 MOV(1, 0);
-                MRS(0);
+                if (inst_cache[i].save_flags) {
+                    POP(1 << 0);
+                    inst_cache[i].save_flags = false;
+                } else {
+                    MRS(0);
+                }
                 TST_I(1, 0x80, 0);
                 // The rest of the return value is an additional cycle count.
                 BIC_I(1, 0x80, 0);
@@ -1316,6 +1329,9 @@ static int drc_translateBlock(void) {
                 cycles = 0;
                 LDR_IO(2, 11, 68*4);
                 BLX(ARM_COND_NE, 2);
+                CMP_I(10, 0, 0);
+                LDR_IO(2, 11, 68*4);
+                BLX(ARM_COND_PL, 2);
                 MSR(0);
                 break;
             case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
@@ -1342,7 +1358,12 @@ static int drc_translateBlock(void) {
 
                 // If the return value has 0x80 set, check for interrupts.
                 MOV(1, 0);
-                MRS(0);
+                if (inst_cache[i].save_flags) {
+                    POP(1 << 0);
+                    inst_cache[i].save_flags = false;
+                } else {
+                    MRS(0);
+                }
                 TST_I(1, 0x80, 0);
                 // The rest of the return value is an additional cycle count.
                 BIC_I(1, 0x80, 0);
@@ -1352,6 +1373,9 @@ static int drc_translateBlock(void) {
                 cycles = 0;
                 LDR_IO(2, 11, 68*4);
                 BLX(ARM_COND_NE, 2);
+                CMP_I(10, 0, 0);
+                LDR_IO(2, 11, 68*4);
+                BLX(ARM_COND_PL, 2);
                 MSR(0);
 
                 // if we load the same thing immediately after saving it, skip the loading
@@ -1882,6 +1906,10 @@ int drc_run(void) {
         if (unlikely((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE))) {
             dprintf(0, "Bad entry %p\n", drc_getEntry(entry_PC, NULL));
             return DRC_ERR_BAD_ENTRY;
+        }
+
+        if (v810_state->PC == 0x070000da) {
+            dprintf(0, "hello %lx\n", v810_state->PC);
         }
 
         v810_state->cycles = clocks;
