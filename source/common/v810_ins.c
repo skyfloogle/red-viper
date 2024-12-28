@@ -13,6 +13,33 @@
 #include "v810_ins.h"
 #include "vb_dsp.h"
 
+static int get_read_cycles(WORD addr) {
+    if (((addr >> 24) & 7) == 0) {
+        // VIP
+        if (((addr >> 12) & 0x07e) == 0x05e) {
+            // registers
+            return 2*2;
+        } else {
+            return 5*2;
+        }
+    } else if (((addr >> 24) & 7) == 7) {
+        // ROM
+        return (2 - (tHReg.WCR & 1)) * 2;
+    } else {
+        return 1;
+    }
+}
+
+static int get_readwrite_cycles(WORD addr) {
+    if (((addr >> 24) & 7) == 0) {
+        // VIP
+        return 2*2 + get_read_cycles(addr);
+    } else {
+        // corresponding read will always be 1, assuming we aren't trying to write to 1
+        return 1*2 + 1*2;
+    }
+}
+
 //The Instructions
 void ins_err(int arg1, int arg2) { //Mode1/2
     //dtprintf(6,ferr,"\nInvalid code! err");
@@ -421,9 +448,11 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
     int cycle_cap = -(offs >> 10);
     int cycles;
     int len_remain = 0;
+    int one_read = get_read_cycles(src);
+    int one_readwrite = get_readwrite_cycles(dst);
     if (src == dst && srcoff > dstoff && srcoff + len < 32) {
         // type 7
-        cycles = 43;
+        cycles = 43 + one_read + one_readwrite;
     } else {
         int one, two, slope, yint;
         if (srcoff == dstoff) {
@@ -458,16 +487,16 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
             } else {
                 // type 4
                 one = 49;
-                one = 61;
+                two = 61;
                 slope = 6;
                 yint = 36;
             }
         }
         int words = (srcoff + len) >> 5;
-        if (words == 1) cycles = one;
-        else if (words == 2) cycles = two;
+        if (words == 1) cycles = one + one_read + one_readwrite;
+        else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = slope * words + yint;
+            cycles = (slope + one_read + one_readwrite) * words + yint;
             // if (cycles > cycle_cap) {
             //     // we'll need stop partway for an interrupt check
             //     words = 1 + (cycle_cap - yint) / slope;
@@ -610,9 +639,11 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     int cycle_cap = -(offs >> 10);
     int cycles;
     int len_remain = 0;
+    int one_read = get_read_cycles(src);
+    int one_readwrite = get_readwrite_cycles(dst);
     if (src == dst && srcoff > dstoff && srcoff + len < 32) {
         // type 7
-        cycles = 43;
+        cycles = 43 + one_read + one_readwrite;
     } else {
         int one, two, slope, yint;
         if (srcoff == dstoff) {
@@ -647,16 +678,16 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
             } else {
                 // type 4
                 one = 49;
-                one = 61;
+                two = 61;
                 slope = 6;
                 yint = 36;
             }
         }
         int words = (srcoff + len) >> 5;
-        if (words == 1) cycles = one;
-        else if (words == 2) cycles = two;
+        if (words == 1) cycles = one + one_read + one_readwrite;
+        else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = slope * words + yint;
+            cycles = (slope + one_read + one_readwrite) * words + yint;
             // if (cycles > cycle_cap) {
             //     // we'll need stop partway for an interrupt check
             //     words = 1 + (cycle_cap - yint) / slope;
@@ -799,9 +830,11 @@ int ins_xorbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     int cycle_cap = -(offs >> 10);
     int cycles;
     int len_remain = 0;
+    int one_read = get_read_cycles(src);
+    int one_readwrite = get_readwrite_cycles(dst);
     if (src == dst && srcoff > dstoff && srcoff + len < 32) {
         // type 7
-        cycles = 43;
+        cycles = 43 + one_read + one_readwrite;
     } else {
         int one, two, slope, yint;
         if (srcoff == dstoff) {
@@ -836,16 +869,16 @@ int ins_xorbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
             } else {
                 // type 4
                 one = 49;
-                one = 61;
+                two = 61;
                 slope = 6;
                 yint = 36;
             }
         }
         int words = (srcoff + len) >> 5;
-        if (words == 1) cycles = one;
-        else if (words == 2) cycles = two;
+        if (words == 1) cycles = one + one_read + one_readwrite;
+        else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = slope * words + yint;
+            cycles = (slope + one_read + one_readwrite) * words + yint;
             // if (cycles > cycle_cap) {
             //     // we'll need stop partway for an interrupt check
             //     words = 1 + (cycle_cap - yint) / slope;
@@ -989,9 +1022,11 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     int cycle_cap = -(offs >> 10);
     int cycles;
     int len_remain = 0;
+    int one_read = get_read_cycles(src);
+    int one_readwrite = get_readwrite_cycles(dst);
     if (src == dst && srcoff > dstoff && srcoff + len < 32) {
         // type 7
-        cycles = 43;
+        cycles = 43 + one_read + one_readwrite;
     } else {
         int one, two, slope, yint;
         if (srcoff == dstoff) {
@@ -1026,16 +1061,16 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
             } else {
                 // type 4
                 one = 49;
-                one = 61;
+                two = 61;
                 slope = 6;
                 yint = 36;
             }
         }
         int words = (srcoff + len) >> 5;
-        if (words == 1) cycles = one;
-        else if (words == 2) cycles = two;
+        if (words == 1) cycles = one + one_read + one_readwrite;
+        else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = slope * words + yint;
+            cycles = (slope + one_read + one_readwrite) * words + yint;
             // if (cycles > cycle_cap) {
             //     // we'll need stop partway for an interrupt check
             //     words = 1 + (cycle_cap - yint) / slope;
@@ -1178,9 +1213,11 @@ int ins_ornbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     int cycle_cap = -(offs >> 10);
     int cycles;
     int len_remain = 0;
+    int one_read = get_read_cycles(src);
+    int one_readwrite = get_readwrite_cycles(dst);
     if (src == dst && srcoff > dstoff && srcoff + len < 32) {
         // type 7
-        cycles = 43;
+        cycles = 43 + one_read + one_readwrite;
     } else {
         int one, two, slope, yint;
         if (srcoff == dstoff) {
@@ -1215,16 +1252,16 @@ int ins_ornbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
             } else {
                 // type 4
                 one = 49;
-                one = 61;
+                two = 61;
                 slope = 6;
                 yint = 36;
             }
         }
         int words = (srcoff + len) >> 5;
-        if (words == 1) cycles = one;
-        else if (words == 2) cycles = two;
+        if (words == 1) cycles = one + one_read + one_readwrite;
+        else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = slope * words + yint;
+            cycles = (slope + one_read + one_readwrite) * words + yint;
             // if (cycles > cycle_cap) {
             //     // we'll need stop partway for an interrupt check
             //     words = 1 + (cycle_cap - yint) / slope;
@@ -1367,9 +1404,11 @@ int ins_andnbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     int cycle_cap = -(offs >> 10);
     int cycles;
     int len_remain = 0;
+    int one_read = get_read_cycles(src);
+    int one_readwrite = get_readwrite_cycles(dst);
     if (src == dst && srcoff > dstoff && srcoff + len < 32) {
         // type 7
-        cycles = 43;
+        cycles = 43 + one_read + one_readwrite;
     } else {
         int one, two, slope, yint;
         if (srcoff == dstoff) {
@@ -1404,16 +1443,16 @@ int ins_andnbsu (WORD src, WORD dst, WORD len, SWORD offs) {
             } else {
                 // type 4
                 one = 49;
-                one = 61;
+                two = 61;
                 slope = 6;
                 yint = 36;
             }
         }
         int words = (srcoff + len) >> 5;
-        if (words == 1) cycles = one;
-        else if (words == 2) cycles = two;
+        if (words == 1) cycles = one + one_read + one_readwrite;
+        else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = slope * words + yint;
+            cycles = (slope + one_read + one_readwrite) * words + yint;
             // if (cycles > cycle_cap) {
             //     // we'll need stop partway for an interrupt check
             //     words = 1 + (cycle_cap - yint) / slope;
@@ -1556,9 +1595,11 @@ int ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     int cycle_cap = -(offs >> 10);
     int cycles;
     int len_remain = 0;
+    int one_read = get_read_cycles(src);
+    int one_readwrite = get_readwrite_cycles(dst);
     if (src == dst && srcoff > dstoff && srcoff + len < 32) {
         // type 7
-        cycles = 43;
+        cycles = 43 + one_read + one_readwrite;
     } else {
         int one, two, slope, yint;
         if (srcoff == dstoff) {
@@ -1593,16 +1634,16 @@ int ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs) {
             } else {
                 // type 4
                 one = 49;
-                one = 61;
+                two = 61;
                 slope = 6;
                 yint = 36;
             }
         }
         int words = (srcoff + len) >> 5;
-        if (words == 1) cycles = one;
-        else if (words == 2) cycles = two;
+        if (words == 1) cycles = one + one_read + one_readwrite;
+        else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = slope * words + yint;
+            cycles = (slope + one_read + one_readwrite) * words + yint;
             // if (cycles > cycle_cap) {
             //     // we'll need stop partway for an interrupt check
             //     words = 1 + (cycle_cap - yint) / slope;
@@ -1746,9 +1787,11 @@ int ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     int cycle_cap = -(offs >> 10);
     int cycles;
     int len_remain = 0;
+    int one_read = get_read_cycles(src);
+    int one_readwrite = get_readwrite_cycles(dst);
     if (src == dst && srcoff > dstoff && srcoff + len < 32) {
         // type 7
-        cycles = 43;
+        cycles = 43 + one_read + one_readwrite;
     } else {
         int one, two, slope, yint;
         if (srcoff == dstoff) {
@@ -1783,16 +1826,16 @@ int ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
             } else {
                 // type 4
                 one = 49;
-                one = 61;
+                two = 61;
                 slope = 6;
                 yint = 36;
             }
         }
         int words = (srcoff + len) >> 5;
-        if (words == 1) cycles = one;
-        else if (words == 2) cycles = two;
+        if (words == 1) cycles = one + one_read + one_readwrite;
+        else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = slope * words + yint;
+            cycles = (slope + one_read + one_readwrite) * words + yint;
             // if (cycles > cycle_cap) {
             //     // we'll need stop partway for an interrupt check
             //     words = 1 + (cycle_cap - yint) / slope;
