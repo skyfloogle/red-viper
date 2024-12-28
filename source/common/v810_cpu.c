@@ -381,10 +381,10 @@ int serviceInt(unsigned int cycles, WORD PC) {
         tHReg.ticks = (tHReg.ticks + new_ticks) % 5;
         if (tHReg.TCR & 0x01) { // Timer Enabled
             tHReg.tCount -= steps;
-            // Sometimes (Nester's Funky Bowling) there's more steps than the
-            // timer has ticks. This shouldn't happen, but in the meantime
-            // make sure not to crash it.
-            if (tHReg.tCount <= 0 && tHReg.tCount + steps > 0) tHReg.TCR |= 0x02;
+            if (tHReg.tCount <= 0 && tHReg.tCount + steps > 0) {
+                tHReg.TCR |= 0x02;
+                if ((tHReg.TCR & 0x09) == 0x09) tHReg.tInt = true;
+            }
             while (tHReg.tCount < 0) {
                 tHReg.tCount += tHReg.tTHW + 1; //reset counter
             }
@@ -392,7 +392,7 @@ int serviceInt(unsigned int cycles, WORD PC) {
             tHReg.THB = ((tHReg.tCount>>8)&0xFF);
         }
     }
-    if ((tHReg.TCR & 0x01) && (tHReg.TCR & 0x02) && (tHReg.TCR & 0x08)) {
+    if (tHReg.tInt) {
         // zero & interrupt enabled
         return v810_int(1, PC) ? 0 : next_input;
     }

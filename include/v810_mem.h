@@ -44,6 +44,7 @@ typedef struct {
     WORD lasttime;
     WORD lastinput;
     SWORD tCount;  //Timer Counter register, not publicly visible
+    bool tInt;
     BYTE SHB;       //Serial Higher Byte,   0x02000014  //Read Only
     BYTE SLB;       //Serial Lower Byte,    0x02000010  //Read Only
     BYTE CDRR;      //Com Recv Data Reg,    0x0200000C  //Read Only

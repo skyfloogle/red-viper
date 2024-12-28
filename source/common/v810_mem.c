@@ -552,9 +552,9 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
         if ((tHReg.TCR & 1) && ((data & 0x05) == 0x04)) break; //Cannot disable timer and clear ZStat at the same time!
 
         BYTE zstat = tHReg.TCR & 0x02;
-        if (!(data & 0x08) || // not accurate, but galactic pinball doesn't boot without this rn
-            ((data & 0x04) && !((tHReg.TCR & 1) && !(data & 1))) // can't clear zstat while disabling timer
+        if (((data & 0x04) && !((tHReg.TCR & 1) && !(data & 1))) // can't clear zstat while disabling timer
         ) zstat = 0; // Clear the ZStat Flag...
+        if (!zstat || !(data & 0x08)) tHReg.tInt = false;
 
         int old_res = tHReg.TCR & 0x10;
 
@@ -569,6 +569,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
                 tHReg.THB = ((tHReg.tCount>>8)&0xFF);
                 if (tHReg.tCount == 0) {
                     tHReg.TCR |= 0x02;
+                    if ((data & 0x09) == 0x09) tHReg.tInt = true;
                 } else if (tHReg.tCount < 0) {
                     tHReg.tCount += tHReg.tTHW + 1; // reset counter
                 }
