@@ -384,7 +384,7 @@ int serviceInt(unsigned int cycles, WORD PC) {
             // Sometimes (Nester's Funky Bowling) there's more steps than the
             // timer has ticks. This shouldn't happen, but in the meantime
             // make sure not to crash it.
-            if (tHReg.tCount <= 0 && steps != 0) tHReg.TCR |= 0x02;
+            if (tHReg.tCount <= 0 && tHReg.tCount + steps > 0) tHReg.TCR |= 0x02;
             while (tHReg.tCount < 0) {
                 tHReg.tCount += tHReg.tTHW + 1; //reset counter
             }
