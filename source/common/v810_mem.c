@@ -572,8 +572,6 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
                 } else if (tHReg.tCount < 0) {
                     tHReg.tCount += tHReg.tTHW + 1; // reset counter
                 }
-                // If the timer interrupt is enabled, the next interrupt may trigger sooner than we thought.
-                return (data & 0x80) ? 0x81 : 1;
             }
         }
         break;
