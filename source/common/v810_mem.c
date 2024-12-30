@@ -32,14 +32,14 @@ uint64_t mem_rbyte(WORD addr) {
         break;
     case 0:
         if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
-            wait = 5LL << 32;
+            wait = 4LL << 32;
             return (WORD)((SBYTE *)(V810_DISPLAY_RAM.off + addr))[0] | wait;
         } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
-            wait = 2LL << 32;
+            wait = 1LL << 32;
             return (WORD)(*V810_VIPCREG.rfuncb)(addr) | wait;
             // Mirror the Chr ram table to 078000-07FFFF
         } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
-            wait = 5LL << 32;
+            wait = 4LL << 32;
             if(addr < 0x0007A000) //CHR 0-511
                 return (WORD)((SBYTE *)(V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0] | wait;
             else if(addr < 0x0007C000) //CHR 512-1023
@@ -51,22 +51,22 @@ uint64_t mem_rbyte(WORD addr) {
         }
         break;
     case 0x1000000:
-        wait = 1LL << 32;
+        wait = 0LL << 32;
         return (WORD)((SBYTE *)(V810_SOUND_RAM.off + (addr & V810_SOUND_RAM.highaddr)))[0] | wait;
         break;
     case 0x5000000:
-        wait = 1LL << 32;
+        wait = 0LL << 32;
         //~ dtprintf(0,ferr,"\nRead  BYTE  [%08x]:%02x  //VBRam",addr,((BYTE *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
         return (WORD)((SBYTE *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] | wait;
         break;
     case 0x6000000:
         is_sram = 1;
-        wait = 1LL << 32;
+        wait = 0LL << 32;
         //~ dtprintf(0,ferr,"\nRead  BYTE  PC:%08x [%08x]:%02x  //GameRam",PC,addr,((BYTE *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0]);
         return (WORD)((SBYTE *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] | wait;
         break;
     case 0x2000000:
-        wait = 1LL << 32;
+        wait = 0LL << 32;
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
             return (WORD)(*V810_HCREG.rfuncb)(addr) | wait;
         }
@@ -93,14 +93,14 @@ uint64_t mem_rhword(WORD addr) {
         break;
     case 0:
         if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
-            wait = 5LL << 32;
+            wait = 4LL << 32;
             return (WORD)((SHWORD *)(V810_DISPLAY_RAM.off + addr))[0] | wait;
         } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
-            wait = 2LL << 32;
+            wait = 1LL << 32;
             return (WORD)(*V810_VIPCREG.rfunch)(addr) | wait;
             // Mirror the Chr ram table to 078000-07FFFF
         } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
-            wait = 5LL << 32;
+            wait = 4LL << 32;
             if(addr < 0x0007A000) //CHR 0-511
                 return (WORD)((SHWORD *)(V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0] | wait;
             else if(addr < 0x0007C000) //CHR 512-1023
@@ -112,22 +112,22 @@ uint64_t mem_rhword(WORD addr) {
         }
         break;
     case 0x1000000:
-        wait = 1LL << 32;
+        wait = 0LL << 32;
         return (WORD)((SHWORD *)(V810_SOUND_RAM.off + (addr & V810_SOUND_RAM.highaddr)))[0] | wait;
         break;
     case 0x5000000:
-        wait = 1LL << 32;
+        wait = 0LL << 32;
         //~ dtprintf(0,ferr,"\nRead  HWORD [%08x]:%04x  //VBRam",addr,((HWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
         return (WORD)((SHWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] | wait;
         break;
     case 0x6000000:
         is_sram = 1;
-        wait = 1LL << 32;
+        wait = 0LL << 32;
         //~ dtprintf(0,ferr,"\nRead  HWORD PC:%08x [%08x]:%04x  //GameRam",PC,addr,((HWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0]);
         return (WORD)((SHWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] | wait;
         break;
     case 0x2000000:
-        wait = 1LL << 32;
+        wait = 0LL << 32;
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
             return (WORD)(*V810_HCREG.rfunch)(addr) | wait;
         }
@@ -154,14 +154,14 @@ uint64_t mem_rword(WORD addr) {
         break;
     case 0:
         if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
-            wait = 5LL << 33;
+            wait = 4LL << 33;
             return ((WORD *)(V810_DISPLAY_RAM.off + addr))[0] | wait;
         } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
-            wait = 2LL << 33;
+            wait = 1LL << 33;
             return (*V810_VIPCREG.rfuncw)(addr) | wait;
             // Mirror the Chr ram table to 078000-07FFFF
         } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
-            wait = 5LL << 33;
+            wait = 4LL << 33;
             if(addr < 0x0007A000) //CHR 0-511
                 return ((WORD *)(V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0] | wait;
             else if(addr < 0x0007C000) //CHR 512-1023
@@ -173,22 +173,22 @@ uint64_t mem_rword(WORD addr) {
         }
         break;
     case 0x1000000:
-        wait = 1LL << 33;
+        wait = 0LL << 33;
         return ((WORD *)(V810_SOUND_RAM.off + (addr & V810_SOUND_RAM.highaddr)))[0] | wait;
         break;
     case 0x5000000:
-        wait = 1LL << 33;
+        wait = 0LL << 33;
         //~ dtprintf(0,ferr,"\nRead  WORD  [%08x]:%08x  //VBRam",addr,((WORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
         return ((WORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] | wait;
         break;
     case 0x6000000:
         is_sram = 1;
-        wait = 1LL << 33;
+        wait = 0LL << 33;
         //~ dtprintf(0,ferr,"\nRead  WORD  PC:%08x [%08x]:%08x  //GameRam",PC,addr,((WORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0]);
         return ((WORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] | wait;
         break;
     case 0x2000000:
-        wait = 1LL << 33;
+        wait = 0LL << 33;
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
             return (*V810_HCREG.rfuncw)(addr) | wait;
         }
@@ -257,22 +257,19 @@ WORD mem_wbyte(WORD addr, BYTE data) {
             tDSPCACHE.CharCacheInvalid=1;
             tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
         }
-        return 2;
+        return 1;
         break;
     case 0x1000000:
         sound_write(addr & V810_SOUND_RAM.highaddr, data & 0xff);
-        return 1;
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nWrite BYTE  [%08x]:%02x  //VBRam",addr,data);
         ((BYTE *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] = data;
-        return 1;
         break;
     case 0x6000000:
         is_sram = 1;
         //~ dtprintf(0,ferr,"\nWrite BYTE  PC:%08x [%08x]:%02x  //GameRam",PC,addr,data);
         ((BYTE *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] = data;
-        return 1;
         break;
     case 0x2000000:
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
@@ -339,22 +336,19 @@ WORD mem_whword(WORD addr, HWORD data) {
             tDSPCACHE.CharCacheInvalid=1;
             tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
         }
-        return 2;
+        return 1;
         break;
     case 0x1000000:
         sound_write(addr & V810_SOUND_RAM.highaddr, data & 0xff);
-        return 1;
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nWrite HWORD [%08x]:%04x  //VBRam",addr,data);
         ((HWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] = data;
-        return 1;
         break;
     case 0x6000000:
         is_sram = 1;
         //~ dtprintf(0,ferr,"\nWrite HWORD PC:%08x [%08x]:%04x  //GameRam",PC,addr,data);
         ((HWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] = data;
-        return 1;
         break;
     case 0x2000000:
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
@@ -423,22 +417,19 @@ WORD mem_wword(WORD addr, WORD data) {
             tDSPCACHE.CharCacheInvalid=1;
             tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
         }
-        return 4;
+        return 2;
         break;
     case 0x1000000:
         sound_write(addr & V810_SOUND_RAM.highaddr, data & 0xff);
-        return 2;
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nWrite WORD  [%08x]:%08x  //VBRam",addr,data);
         ((WORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] = data;
-        return 2;
         break;
     case 0x6000000:
         is_sram = 1;
         //~ dtprintf(0,ferr,"\nWrite WORD  PC:%08x [%08x]:%08x  //GameRam",PC,addr,data);
         ((WORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] = data;
-        return 2;
         break;
     case 0x2000000:
         if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
@@ -600,7 +591,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
         //~ dtprintf(0,ferr,"\nWrite  BYTE HREG error [%08x]:%04x ",addr,data);
         break;
     }
-    return 1;
+    return 0;
 }
 
 HWORD hcreg_rhword(WORD addr) {
