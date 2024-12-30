@@ -1625,6 +1625,24 @@ static int drc_translateBlock(void) {
                 // interrupts don't save registers, and clearing levels relies on
                 // registers getting dirty
                 HALT(0x07002446);
+            } else if (inst_cache[i+1].opcode == V810_OP_ST_B
+                    && inst_cache[i+1].imm == 0x20
+                    && inst_cache[i].opcode == V810_OP_MOVEA
+                    && inst_cache[i].reg1 == 0
+                    && inst_cache[i].reg2 == inst_cache[i+1].reg2
+                    && inst_cache[i].imm == 0x1d) {
+                // Hack for Virtual Bowling and Niko-Chan Battle:
+                // These games acknowledge the timer in a way that only works
+                // if the timer is not zero at this point.
+                // Therefore, we need to handle the interrupt to update it,
+                // so that it doesn't accidentally run an extra time.
+                MRS(0);
+                LDW_I(1, inst_cache[i+1].PC);
+                ADD_I(10, 10, cycles & 0xFF, 0);
+                LDR_IO(2, 11, 68*4);
+                BLX(ARM_COND_AL, 2);
+                MSR(0);
+                cycles = 0;
             } else if (cycles >= 200) {
                 HANDLEINT(inst_cache[i + 1].PC);
             } else if (cycles != 0 && (inst_cache[i + 1].is_branch_target || inst_cache[i + 1].opcode == V810_OP_BSTR)) {
