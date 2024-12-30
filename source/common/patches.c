@@ -11,35 +11,6 @@ typedef struct {
 } Patch;
 
 static const Patch patches[] = {
-    // Jack Bros. relies on draw timings to line up in a certain way
-    // during level transitions. With the current implementation,
-    // this lines up incorrectly, resulting in the next transition
-    // being displayed for 1 frame at the end of a transition.
-    // I believe this is caused by large VRAM copies occuring over one
-    // allocated frame, which may take multiple actual frames.
-    // To simulate this, we increase the delay by 2 frame.
-    {
-        .gameid = "EBVJBE",
-        .address = 0x13714,
-        .size = 2,
-        .original = (const uint8_t[]){
-            0x21, 0x40, // mov 1,r1
-        },
-        .patched = (const uint8_t[]){
-            0x23, 0x40, // mov 3,r1
-        },
-    },
-    {
-        .gameid = "EBVJBJ",
-        .address = 0x136e2,
-        .size = 2,
-        .original = (const uint8_t[]){
-            0x21, 0x40, // mov 1,r1
-        },
-        .patched = (const uint8_t[]){
-            0x23, 0x40, // mov 3,r1
-        },
-    },
     // Innsmouth no Yakata does a lot during its busywait that can be skipped.
     {
         .gameid = "8FVIMJ",
