@@ -1486,10 +1486,10 @@ static int drc_translateBlock(void) {
                     HANDLEINT(inst_cache[i].PC);
                     int len_reg = phys_regs[28];
                     if (!len_reg) {
-                        LDR_IO(0, 11, 28);
+                        LDR_IO(0, 11, 28 * 4);
                     }
                     MRS(1);
-                    TST_I(len_reg, 0, 0);
+                    CMP_I(len_reg, 0, 0);
                     B(ARM_COND_EQ, 1);
                     MRS(1);
                     B(ARM_COND_AL, 0); // branches to start of instruction
@@ -1867,10 +1867,6 @@ int drc_run(void) {
         if (unlikely((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE))) {
             dprintf(0, "Bad entry %p\n", drc_getEntry(entry_PC, NULL));
             return DRC_ERR_BAD_ENTRY;
-        }
-
-        if (v810_state->PC == 0x070000da) {
-            dprintf(0, "hello %lx\n", v810_state->PC);
         }
 
         v810_state->cycles = clocks;

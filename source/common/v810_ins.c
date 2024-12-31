@@ -439,11 +439,19 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf | (s)
     #define FILTER(s,f) s & f
     #define OPTIMIZE
-    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    if (len == 0) { // type 6
+        v810_state->P_REG[30] = src;
+        v810_state->P_REG[29] = dst;
+        v810_state->P_REG[28] = len;
+        v810_state->P_REG[27] = srcoff;
+        v810_state->P_REG[26] = dstoff;
+        return 20;
+    }
 
     int cycle_cap = -(offs >> 10);
     int cycles;
@@ -492,18 +500,21 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
                 yint = 36;
             }
         }
-        int words = (srcoff + len) >> 5;
+        int words = (srcoff + len + 31) >> 5;
         if (words == 1) cycles = one + one_read + one_readwrite;
         else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = (slope + one_read + one_readwrite) * words + yint;
-            // if (cycles > cycle_cap) {
-            //     // we'll need stop partway for an interrupt check
-            //     words = 1 + (cycle_cap - yint) / slope;
-            //     cycles = slope * words + yint;
-            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
-            //     len -= len_remain;
-            // }
+            slope += one_read + one_readwrite;
+            cycles = slope * words + yint;
+            if (cycles > cycle_cap) {
+                // we'll need stop partway for an interrupt check
+                words = 1 + (cycle_cap - yint) / slope;
+                if (words < 3) words = 3;
+                cycles = slope * words + yint;
+                len_remain = len - (32 - srcoff) - 32 * (words - 1);
+                if (len_remain < 0) len_remain = 0;
+                len -= len_remain;
+            }
         }
     }
 
@@ -630,11 +641,19 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf & (s)
     #define FILTER(s,f) s | ~(f)
     #define OPTIMIZE
-    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+
+    if (len == 0) { // type 6
+        v810_state->P_REG[30] = src;
+        v810_state->P_REG[29] = dst;
+        v810_state->P_REG[28] = len;
+        v810_state->P_REG[27] = srcoff;
+        v810_state->P_REG[26] = dstoff;
+        return 20;
+    }
 
     int cycle_cap = -(offs >> 10);
     int cycles;
@@ -683,18 +702,21 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
                 yint = 36;
             }
         }
-        int words = (srcoff + len) >> 5;
+        int words = (srcoff + len + 31) >> 5;
         if (words == 1) cycles = one + one_read + one_readwrite;
         else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = (slope + one_read + one_readwrite) * words + yint;
-            // if (cycles > cycle_cap) {
-            //     // we'll need stop partway for an interrupt check
-            //     words = 1 + (cycle_cap - yint) / slope;
-            //     cycles = slope * words + yint;
-            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
-            //     len -= len_remain;
-            // }
+            slope += one_read + one_readwrite;
+            cycles = slope * words + yint;
+            if (cycles > cycle_cap) {
+                // we'll need stop partway for an interrupt check
+                words = 1 + (cycle_cap - yint) / slope;
+                if (words < 3) words = 3;
+                cycles = slope * words + yint;
+                len_remain = len - (32 - srcoff) - 32 * (words - 1);
+                if (len_remain < 0) len_remain = 0;
+                len -= len_remain;
+            }
         }
     }
 
@@ -820,12 +842,20 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
 int ins_xorbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf ^ (s)
     #define FILTER(s,f) s & f
-    #define OPTIMIZE OPT_XORBSU
-    if (len == 0) return 20; // type 6
+    #define OPTIMIZE //OPT_XORBSU
     WORD srcoff = offs & 31;
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+    
+    if (len == 0) { // type 6
+        v810_state->P_REG[30] = src;
+        v810_state->P_REG[29] = dst;
+        v810_state->P_REG[28] = len;
+        v810_state->P_REG[27] = srcoff;
+        v810_state->P_REG[26] = dstoff;
+        return 20;
+    }
 
     int cycle_cap = -(offs >> 10);
     int cycles;
@@ -874,18 +904,21 @@ int ins_xorbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
                 yint = 36;
             }
         }
-        int words = (srcoff + len) >> 5;
+        int words = (srcoff + len + 31) >> 5;
         if (words == 1) cycles = one + one_read + one_readwrite;
         else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = (slope + one_read + one_readwrite) * words + yint;
-            // if (cycles > cycle_cap) {
-            //     // we'll need stop partway for an interrupt check
-            //     words = 1 + (cycle_cap - yint) / slope;
-            //     cycles = slope * words + yint;
-            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
-            //     len -= len_remain;
-            // }
+            slope += one_read + one_readwrite;
+            cycles = slope * words + yint;
+            if (cycles > cycle_cap) {
+                // we'll need stop partway for an interrupt check
+                words = 1 + (cycle_cap - yint) / slope;
+                if (words < 3) words = 3;
+                cycles = slope * words + yint;
+                len_remain = len - (32 - srcoff) - 32 * (words - 1);
+                if (len_remain < 0) len_remain = 0;
+                len -= len_remain;
+            }
         }
     }
 
@@ -1013,11 +1046,19 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define FILTER(s,f) s & f
     #define OPTIMIZE
     #define CLEARDST
-    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+    
+    if (len == 0) { // type 6
+        v810_state->P_REG[30] = src;
+        v810_state->P_REG[29] = dst;
+        v810_state->P_REG[28] = len;
+        v810_state->P_REG[27] = srcoff;
+        v810_state->P_REG[26] = dstoff;
+        return 20;
+    }
 
     int cycle_cap = -(offs >> 10);
     int cycles;
@@ -1066,18 +1107,21 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
                 yint = 36;
             }
         }
-        int words = (srcoff + len) >> 5;
+        int words = (srcoff + len + 31) >> 5;
         if (words == 1) cycles = one + one_read + one_readwrite;
         else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = (slope + one_read + one_readwrite) * words + yint;
-            // if (cycles > cycle_cap) {
-            //     // we'll need stop partway for an interrupt check
-            //     words = 1 + (cycle_cap - yint) / slope;
-            //     cycles = slope * words + yint;
-            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
-            //     len -= len_remain;
-            // }
+            slope += one_read + one_readwrite;
+            cycles = slope * words + yint;
+            if (cycles > cycle_cap) {
+                // we'll need stop partway for an interrupt check
+                words = 1 + (cycle_cap - yint) / slope;
+                if (words < 3) words = 3;
+                cycles = slope * words + yint;
+                len_remain = len - (32 - srcoff) - 32 * (words - 1);
+                if (len_remain < 0) len_remain = 0;
+                len -= len_remain;
+            }
         }
     }
 
@@ -1204,11 +1248,19 @@ int ins_ornbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf | (s)
     #define FILTER(s,f) ~(s) & f
     #define OPTIMIZE
-    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+    
+    if (len == 0) { // type 6
+        v810_state->P_REG[30] = src;
+        v810_state->P_REG[29] = dst;
+        v810_state->P_REG[28] = len;
+        v810_state->P_REG[27] = srcoff;
+        v810_state->P_REG[26] = dstoff;
+        return 20;
+    }
 
     int cycle_cap = -(offs >> 10);
     int cycles;
@@ -1257,18 +1309,21 @@ int ins_ornbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
                 yint = 36;
             }
         }
-        int words = (srcoff + len) >> 5;
+        int words = (srcoff + len + 31) >> 5;
         if (words == 1) cycles = one + one_read + one_readwrite;
         else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = (slope + one_read + one_readwrite) * words + yint;
-            // if (cycles > cycle_cap) {
-            //     // we'll need stop partway for an interrupt check
-            //     words = 1 + (cycle_cap - yint) / slope;
-            //     cycles = slope * words + yint;
-            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
-            //     len -= len_remain;
-            // }
+            slope += one_read + one_readwrite;
+            cycles = slope * words + yint;
+            if (cycles > cycle_cap) {
+                // we'll need stop partway for an interrupt check
+                words = 1 + (cycle_cap - yint) / slope;
+                if (words < 3) words = 3;
+                cycles = slope * words + yint;
+                len_remain = len - (32 - srcoff) - 32 * (words - 1);
+                if (len_remain < 0) len_remain = 0;
+                len -= len_remain;
+            }
         }
     }
 
@@ -1395,11 +1450,19 @@ int ins_andnbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf & (s)
     #define FILTER(s,f) ~(s) | ~(f)
     #define OPTIMIZE
-    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+    
+    if (len == 0) { // type 6
+        v810_state->P_REG[30] = src;
+        v810_state->P_REG[29] = dst;
+        v810_state->P_REG[28] = len;
+        v810_state->P_REG[27] = srcoff;
+        v810_state->P_REG[26] = dstoff;
+        return 20;
+    }
 
     int cycle_cap = -(offs >> 10);
     int cycles;
@@ -1448,18 +1511,21 @@ int ins_andnbsu (WORD src, WORD dst, WORD len, SWORD offs) {
                 yint = 36;
             }
         }
-        int words = (srcoff + len) >> 5;
+        int words = (srcoff + len + 31) >> 5;
         if (words == 1) cycles = one + one_read + one_readwrite;
         else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = (slope + one_read + one_readwrite) * words + yint;
-            // if (cycles > cycle_cap) {
-            //     // we'll need stop partway for an interrupt check
-            //     words = 1 + (cycle_cap - yint) / slope;
-            //     cycles = slope * words + yint;
-            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
-            //     len -= len_remain;
-            // }
+            slope += one_read + one_readwrite;
+            cycles = slope * words + yint;
+            if (cycles > cycle_cap) {
+                // we'll need stop partway for an interrupt check
+                words = 1 + (cycle_cap - yint) / slope;
+                if (words < 3) words = 3;
+                cycles = slope * words + yint;
+                len_remain = len - (32 - srcoff) - 32 * (words - 1);
+                if (len_remain < 0) len_remain = 0;
+                len -= len_remain;
+            }
         }
     }
 
@@ -1586,11 +1652,19 @@ int ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     #define ADD(s) dstbuf ^ (s)
     #define FILTER(s,f) ~(s) & f
     #define OPTIMIZE
-    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+    
+    if (len == 0) { // type 6
+        v810_state->P_REG[30] = src;
+        v810_state->P_REG[29] = dst;
+        v810_state->P_REG[28] = len;
+        v810_state->P_REG[27] = srcoff;
+        v810_state->P_REG[26] = dstoff;
+        return 20;
+    }
 
     int cycle_cap = -(offs >> 10);
     int cycles;
@@ -1639,18 +1713,21 @@ int ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs) {
                 yint = 36;
             }
         }
-        int words = (srcoff + len) >> 5;
+        int words = (srcoff + len + 31) >> 5;
         if (words == 1) cycles = one + one_read + one_readwrite;
         else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = (slope + one_read + one_readwrite) * words + yint;
-            // if (cycles > cycle_cap) {
-            //     // we'll need stop partway for an interrupt check
-            //     words = 1 + (cycle_cap - yint) / slope;
-            //     cycles = slope * words + yint;
-            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
-            //     len -= len_remain;
-            // }
+            slope += one_read + one_readwrite;
+            cycles = slope * words + yint;
+            if (cycles > cycle_cap) {
+                // we'll need stop partway for an interrupt check
+                words = 1 + (cycle_cap - yint) / slope;
+                if (words < 3) words = 3;
+                cycles = slope * words + yint;
+                len_remain = len - (32 - srcoff) - 32 * (words - 1);
+                if (len_remain < 0) len_remain = 0;
+                len -= len_remain;
+            }
         }
     }
 
@@ -1778,11 +1855,19 @@ int ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #define FILTER(s,f) ~(s) & f
     #define OPTIMIZE
     #define CLEARDST
-    if (len == 0) return 20; // type 6
     WORD srcoff = offs & 31;
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
+    
+    if (len == 0) { // type 6
+        v810_state->P_REG[30] = src;
+        v810_state->P_REG[29] = dst;
+        v810_state->P_REG[28] = len;
+        v810_state->P_REG[27] = srcoff;
+        v810_state->P_REG[26] = dstoff;
+        return 20;
+    }
 
     int cycle_cap = -(offs >> 10);
     int cycles;
@@ -1831,18 +1916,21 @@ int ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
                 yint = 36;
             }
         }
-        int words = (srcoff + len) >> 5;
+        int words = (srcoff + len + 31) >> 5;
         if (words == 1) cycles = one + one_read + one_readwrite;
         else if (words == 2) cycles = two + 2 * (one_read + one_readwrite);
         else {
-            cycles = (slope + one_read + one_readwrite) * words + yint;
-            // if (cycles > cycle_cap) {
-            //     // we'll need stop partway for an interrupt check
-            //     words = 1 + (cycle_cap - yint) / slope;
-            //     cycles = slope * words + yint;
-            //     len_remain = len - (32 - srcoff) - 32 * (words - 1);
-            //     len -= len_remain;
-            // }
+            slope += one_read + one_readwrite;
+            cycles = slope * words + yint;
+            if (cycles > cycle_cap) {
+                // we'll need stop partway for an interrupt check
+                words = 1 + (cycle_cap - yint) / slope;
+                if (words < 3) words = 3;
+                cycles = slope * words + yint;
+                len_remain = len - (32 - srcoff) - 32 * (words - 1);
+                if (len_remain < 0) len_remain = 0;
+                len -= len_remain;
+            }
         }
     }
 
