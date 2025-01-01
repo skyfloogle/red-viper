@@ -1948,7 +1948,7 @@ void drc_dumpDebugInfo(int code) {
 
     fprintf(f, "VIP overclock: %d\n", tVBOpt.VIP_OVERCLOCK);
 
-    replay_save("debug_replay.bin");
+    replay_save("debug_replay.bin.gz");
 
     fclose(f);
 }
