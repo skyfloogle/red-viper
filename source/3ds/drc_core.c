@@ -633,6 +633,18 @@ static int drc_translateBlock(void) {
     bool is_jack_bros = memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0;
     bool chcw_load_seen = (v810_state->S_REG[CHCW] & 2) != 0;
 
+    // Golf's V810 performance is a very tight balancing act:
+    // In-game menu animations run at 50FPS, so if processing is
+    // too slow, visual glitches occur.
+    // For example, parts of the menu might disappear on the right eye,
+    // or a ghost of the golfer may appear after a shot.
+    // Conversely, if it's too fast, the ball spin animation runs too fast.
+    // For the time being, we'll opt for running it too fast.
+    // Specifically, we speed up memory access to prevent the ghost golfer,
+    // and we speed up bitstring instructions to stop the menu from disappearing.
+    // TODO: fix
+    bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+
     exec_block *block = NULL;
 
 #ifdef LITERAL_POOL
@@ -1167,6 +1179,8 @@ static int drc_translateBlock(void) {
                 // Add cycles returned in r1.
                 ADD(10, 10, 1);
 
+                if (is_golf) cycles -= 2;
+
                 if (inst_cache[i].opcode == V810_OP_IN_B) {
                     // lsl r0, r0, #24
                     new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 24, ARM_SHIFT_LSL, 0);
@@ -1200,6 +1214,8 @@ static int drc_translateBlock(void) {
 
                 // Add cycles returned in r1.
                 ADD(10, 10, 1);
+
+                if (is_golf) cycles -= 2;
 
                 if (inst_cache[i].opcode == V810_OP_IN_H) {
                     // lsl r0, r0, #16
@@ -1237,6 +1253,8 @@ static int drc_translateBlock(void) {
 
                 SAVE_REG2(0);
 
+                if (is_golf) cycles -= 4;
+
                 if (i > 0 && (inst_cache[i - 1].opcode & 0x34) == 0x30 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // load immediately following another load takes 4 cycles instead of 5
                     cycles -= 1;
@@ -1263,6 +1281,8 @@ static int drc_translateBlock(void) {
                 ADD_I(2, 2, DRC_RELOC_WBYTE*4, 0);
                 BLX(ARM_COND_AL, 2);
 
+                if (is_golf) cycles -= 2;
+
                 if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // with two consecutive stores, the second takes 2 cycles instead of 1
                     cycles += 1;
@@ -1288,6 +1308,8 @@ static int drc_translateBlock(void) {
                 ADD_I(2, 2, DRC_RELOC_WHWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
+                if (is_golf) cycles -= 2;
+
                 if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // with two consecutive stores, the second takes 2 cycles instead of 1
                     cycles += 1;
@@ -1312,6 +1334,8 @@ static int drc_translateBlock(void) {
                 LDR_IO(2, 11, 69 * 4);
                 ADD_I(2, 2, DRC_RELOC_WWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
+
+                if (is_golf) cycles -= 4;
 
                 if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // with two consecutive stores, the second takes 4 cycles instead of 1
@@ -1436,7 +1460,11 @@ static int drc_translateBlock(void) {
                     ORR_IS(3, 0, 3, ARM_SHIFT_LSL, 5);
 
                     // cycle count: arm r10 -> arm r3 hi
-                    ORR_IS(3, 3, 10, ARM_SHIFT_LSL, 10);
+                    if (!is_golf) {
+                        ORR_IS(3, 3, 10, ARM_SHIFT_LSL, 10);
+                    } else {
+                        ORR_I(3, 1, 2);
+                    }
                 } else {
                     // search, we only have a source
                     // v810 r27 -> arm r3 lo
@@ -1482,8 +1510,10 @@ static int drc_translateBlock(void) {
                     ORRS(0, 0, 0);
                 } else {
                     // add cycles and check interrupt
-                    ADD(10, 10, 0);
-                    HANDLEINT(inst_cache[i].PC);
+                    if (!is_golf) {
+                        ADD(10, 10, 0);
+                        HANDLEINT(inst_cache[i].PC);
+                    }
                     int len_reg = phys_regs[28];
                     if (!len_reg) {
                         LDR_IO(0, 11, 28 * 4);
