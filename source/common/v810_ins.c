@@ -12,6 +12,7 @@
 #include "v810_mem.h"  //Remove Me!!!
 #include "v810_ins.h"
 #include "vb_dsp.h"
+#include "vb_set.h"
 
 static int get_read_cycles(WORD addr) {
     if (((addr >> 24) & 7) == 0) {
@@ -518,6 +519,14 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
         }
     }
 
+    // Golf hack
+    bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    if (is_golf && !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0)) {
+        len += len_remain;
+        len_remain = 0;
+        cycles = 0;
+    }
+
     if (srcoff == dstoff) {
         if (srcoff != 0 && len > 32-srcoff) {
             dstbuf = mem_rword(dst);
@@ -718,6 +727,14 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
                 len -= len_remain;
             }
         }
+    }
+
+    // Golf hack
+    bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    if (is_golf && !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0)) {
+        len += len_remain;
+        len_remain = 0;
+        cycles = 0;
     }
 
     if (srcoff == dstoff) {
@@ -1123,6 +1140,14 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
                 len -= len_remain;
             }
         }
+    }
+
+    // Golf hack
+    bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    if (is_golf && !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0)) {
+        len += len_remain;
+        len_remain = 0;
+        cycles = 0;
     }
 
     if (srcoff == dstoff) {

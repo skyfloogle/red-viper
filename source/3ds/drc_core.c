@@ -638,11 +638,12 @@ static int drc_translateBlock(void) {
     // too slow, visual glitches occur.
     // For example, parts of the menu might disappear on the right eye,
     // or a ghost of the golfer may appear after a shot.
-    // Conversely, if it's too fast, the ball spin animation runs too fast.
-    // For the time being, we'll opt for running it too fast.
+    // Conversely, if it's too fast, the aim animation runs too fast.
+    // For the time being, we'll opt for running it too fast,
+    // except for during the aim animation.
     // Specifically, we speed up memory access to prevent the ghost golfer,
     // and we speed up bitstring instructions to stop the menu from disappearing.
-    // TODO: fix
+    // Bitstring speedup is done in the C implementation of the instructions.
     bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
 
     exec_block *block = NULL;
@@ -1460,11 +1461,7 @@ static int drc_translateBlock(void) {
                     ORR_IS(3, 0, 3, ARM_SHIFT_LSL, 5);
 
                     // cycle count: arm r10 -> arm r3 hi
-                    if (!is_golf) {
-                        ORR_IS(3, 3, 10, ARM_SHIFT_LSL, 10);
-                    } else {
-                        ORR_I(3, 1, 2);
-                    }
+                    ORR_IS(3, 3, 10, ARM_SHIFT_LSL, 10);
                 } else {
                     // search, we only have a source
                     // v810 r27 -> arm r3 lo
@@ -1510,10 +1507,8 @@ static int drc_translateBlock(void) {
                     ORRS(0, 0, 0);
                 } else {
                     // add cycles and check interrupt
-                    if (!is_golf) {
-                        ADD(10, 10, 0);
-                        HANDLEINT(inst_cache[i].PC);
-                    }
+                    ADD(10, 10, 0);
+                    HANDLEINT(inst_cache[i].PC);
                     int len_reg = phys_regs[28];
                     if (!len_reg) {
                         LDR_IO(0, 11, 28 * 4);
