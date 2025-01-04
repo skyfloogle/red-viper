@@ -34,6 +34,7 @@
 
 #ifdef __3DS__
 #include <3ds.h>
+#include <citro3d.h>
 #endif
 
 #include "utils.h"
@@ -50,6 +51,8 @@
 #include "arm_codegen.h"
 
 #include "replay.h"
+
+#include "vb_dsp.h"
 
 HWORD* rom_block_map;
 HWORD* rom_entry_map;
@@ -1868,6 +1871,15 @@ int drc_run(void) {
 
         v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;
+
+        // Golf hack: this function clears the screen, so we should do the same
+        if ((memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 && entry_PC == 0x0700ca64) || // USA
+            (memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0 && entry_PC == 0x0701602a) // JP
+        ) {
+            C3D_FrameBegin(0);
+            C3D_RenderTargetClear(screenTarget, C3D_CLEAR_COLOR, 0, 0);
+            C3D_FrameEnd(0);
+        }
 
         // Try to find a cached block
         // TODO: make sure we have enough free space
