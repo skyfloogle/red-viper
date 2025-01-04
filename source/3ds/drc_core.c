@@ -649,6 +649,8 @@ static int drc_translateBlock(void) {
     // Bitstring speedup is done in the C implementation of the instructions.
     bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
 
+    bool is_waterworld_sample = is_waterworld && (start_PC == 0x0701b2b2);
+
     exec_block *block = NULL;
 
 #ifdef LITERAL_POOL
@@ -738,6 +740,19 @@ static int drc_translateBlock(void) {
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         inst_ptr_start = inst_ptr;
         cycles += opcycle[inst_cache[i].opcode];
+
+        // Waterworld hack: slow down the sample at the start.
+        // This roughly emulates register hazards to a certain extent,
+        // with some tweaks to bring it as close as possible to a hardware recording.
+        // Emulating hazards for every game slows down games like Red Alarm too much.
+        if (is_waterworld_sample) {
+            if (inst_cache[i].PC == 0x0701b2b4) cycles -= 1;
+            if (opcycle[inst_cache[i].opcode] == 1 && (inst_cache[i].PC & 6) == 0) {
+                if (i > 0 && inst_cache[i-1].reg2 != 0xFF && (inst_cache[i].reg1 == inst_cache[i-1].reg2)) {
+                    cycles++;
+                }
+            }
+        }
 
         // save PC, for debugging purposes
         // LDW_I(0, inst_cache[i].PC);
