@@ -1867,6 +1867,9 @@ int drc_run(void) {
     WORD* entrypoint;
     WORD entry_PC;
 
+    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
+    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+
     // set up arm flags
     {
         WORD psw = v810_state->S_REG[PSW];
@@ -1888,9 +1891,8 @@ int drc_run(void) {
         entry_PC = v810_state->PC;
 
         // Golf hack: this function clears the screen, so we should do the same
-        if ((memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 && entry_PC == 0x0700ca64) || // USA
-            (memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0 && entry_PC == 0x0701602a) // JP
-        ) {
+        if (unlikely((is_golf_us && entry_PC == 0x0700ca64) ||
+                     (is_golf_jp && entry_PC == 0x0701602a))) {
             C3D_FrameBegin(0);
             C3D_RenderTargetClear(screenTarget, C3D_CLEAR_COLOR, 0, 0);
             C3D_FrameEnd(0);
@@ -1899,7 +1901,7 @@ int drc_run(void) {
         // Try to find a cached block
         // TODO: make sure we have enough free space
         entrypoint = drc_getEntry(v810_state->PC, &cur_block);
-        if (tVBOpt.DYNAREC && (entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc)) {
+        if (unlikely(tVBOpt.DYNAREC && (entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc))) {
             int result = drc_translateBlock();
             if (unlikely(result == DRC_ERR_CACHE_FULL || result == DRC_ERR_NO_BLOCKS)) {
                 drc_clearCache();
