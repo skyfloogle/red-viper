@@ -883,7 +883,8 @@ static int drc_translateBlock(void) {
                 if (inst_cache[i].busywait) {
                     BUSYWAIT(arm_cond, inst_cache[i].PC + inst_cache[i].branch_offset);
                 } else {
-                    if (inst_cache[i].branch_offset <= 0) {
+                    // If we just got back from a JAL, an interrupt check already happened, so don't bother.
+                    if (inst_cache[i].branch_offset <= 0 && (inst_cache[i].is_branch_target || (i > 0 && inst_cache[i-1].opcode != V810_OP_JAL))) {
                         // The Jack Bros. intro chime is the only part of any game where
                         // the instruction cache is turned off and performance is meaningful:
                         // the delay in the chime consists of "add; bne" loops.
