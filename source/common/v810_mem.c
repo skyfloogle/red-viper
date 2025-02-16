@@ -52,7 +52,7 @@ uint64_t mem_rbyte(WORD addr) {
         break;
     case 0x1000000:
         wait = 0LL << 32;
-        return (WORD)((SBYTE *)(V810_SOUND_RAM.off + (addr & V810_SOUND_RAM.highaddr)))[0] | wait;
+        return 0 | wait;
         break;
     case 0x5000000:
         wait = 0LL << 32;
@@ -113,7 +113,7 @@ uint64_t mem_rhword(WORD addr) {
         break;
     case 0x1000000:
         wait = 0LL << 32;
-        return (WORD)((SHWORD *)(V810_SOUND_RAM.off + (addr & V810_SOUND_RAM.highaddr)))[0] | wait;
+        return 0 | wait;
         break;
     case 0x5000000:
         wait = 0LL << 32;
@@ -174,7 +174,7 @@ uint64_t mem_rword(WORD addr) {
         break;
     case 0x1000000:
         wait = 0LL << 33;
-        return ((WORD *)(V810_SOUND_RAM.off + (addr & V810_SOUND_RAM.highaddr)))[0] | wait;
+        return 0 | wait;
         break;
     case 0x5000000:
         wait = 0LL << 33;

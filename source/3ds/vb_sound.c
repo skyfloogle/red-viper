@@ -103,13 +103,28 @@ void sound_update(uint32_t cycles) {
         if (samples > sound_state.effect_time)
             samples = sound_state.effect_time;
         memset(wavebufs[fill_buf].data_pcm16 + buf_pos * 2, 0, sizeof(s16) * samples * 2);
+
+        // early sweep frequency and shutoff
+        int new_sweep_frequency = sound_state.sweep_frequency;
+        if ((SNDMEM(S5INT) & 0x80) && !(SNDMEM(S5EV1) & 0x10)) {
+            int swp = SNDMEM(S5SWP);
+            int shift = swp & 0x7;
+            if (swp & 8) {
+                new_sweep_frequency += sound_state.sweep_frequency >> shift;
+                if (new_sweep_frequency >= 2048) SNDMEM(S5INT) = 0;
+            } else {
+                new_sweep_frequency -= sound_state.sweep_frequency >> shift;
+                if (new_sweep_frequency < 0) new_sweep_frequency = 0;
+            }
+        }
+
         for (int i = 0; i < 6; i++) {
             update_buf_with_freq(i, samples);
         }
         if ((sound_state.effect_time -= samples) == 0) {
             sound_state.effect_time = 48;
             // sweep
-            if (sound_state.modulation_enabled && (SNDMEM(S5INT) & 0x80)) {
+            if (SNDMEM(S5INT) & 0x80) {
                 int env = SNDMEM(S5EV1);
                 if ((env & 0x40) && --sound_state.sweep_time < 0) {
                     int swp = SNDMEM(S5SWP);
@@ -118,27 +133,19 @@ void sound_update(uint32_t cycles) {
                     if (sound_state.sweep_time != 0) {
                         if (env & 0x10) {
                             // modulation
-                            sound_state.sweep_frequency = GET_FREQ(4) + (s8)SNDMEM(MODDATA + 4 * sound_state.modulation_counter++);
-                            if (sound_state.modulation_counter >= 32) {
-                                if (env & 0x20) {
-                                    // repeat
-                                    sound_state.modulation_counter = 0;
-                                } else {
-                                    sound_state.modulation_enabled = false;
-                                }
+                            // only enable on first loop or if repeat
+                            if (sound_state.modulated_once || (env & 0x20)) {
+                                sound_state.sweep_frequency = GET_FREQ(4) + (s8)SNDMEM(MODDATA + 4 * sound_state.modulation_counter);
+                                if (sound_state.sweep_frequency < 0) sound_state.sweep_frequency = 0;
+                                if (sound_state.sweep_frequency > 0x7ff) sound_state.sweep_frequency = 0x7ff;
                             }
-                            sound_state.sweep_frequency &= 0x7ff;
-                        } else {
-                            // sweep
-                            int shift = swp & 0x7;
-                            if (swp & 8)
-                                sound_state.sweep_frequency += sound_state.sweep_frequency >> shift;
-                            else
-                                sound_state.sweep_frequency -= sound_state.sweep_frequency >> shift;
-                            if (sound_state.sweep_frequency <= 0 || sound_state.sweep_frequency >= 2048) {
-                                SNDMEM(S5INT) &= ~0x80;
-                                sound_state.modulation_enabled = false;
-                            }
+                        } else if (sound_state.modulated_once) {
+                            // sweep using old calculation
+                            sound_state.sweep_frequency = new_sweep_frequency;
+                        }
+                        if (++sound_state.modulation_counter >= 32) {
+                            sound_state.modulated_once = false;
+                            sound_state.modulation_counter = 0;
                         }
                     }
                 }
@@ -161,7 +168,7 @@ void sound_update(uint32_t cycles) {
             sound_state.envelope_divider += 4;
             for (int i = 0; i < 6; i++) {
                 int data1 = SNDMEM(S1EV1 + 0x40 * i);
-                if (data1 & 1) {
+                if ((data1 & 1) && !(sound_state.channels[i].envelope_time & 128)) {
                     if (--sound_state.channels[i].envelope_time & 8) {
                         int data0 = SNDMEM(S1EV0 + 0x40 * i);
                         sound_state.channels[i].envelope_time = data0 & 7;
@@ -171,6 +178,7 @@ void sound_update(uint32_t cycles) {
                                 sound_state.channels[i].envelope_value = data0 >> 4;
                             } else {
                                 sound_state.channels[i].envelope_value -= (data0 & 8) ? 1 : -1;
+                                sound_state.channels[i].envelope_time = 128;
                             }
                         }
                     }
@@ -218,6 +226,19 @@ void sound_update(uint32_t cycles) {
 void sound_write(int addr, uint16_t data) {
     if (addr & 3) return;
     sound_update(v810_state->cycles);
+    if (!(addr & 0x400)) {
+        // ram writes, these can be declined
+        // all ram writes are declined if channel 5 is active
+        if (SNDMEM(S5INT) & 0x80) return;
+        if ((addr & 0x370) < 0x280) {
+            // wave ram is declined if any channel is active
+            if ((SNDMEM(S1INT) & 0x80) ||
+                (SNDMEM(S2INT) & 0x80) ||
+                (SNDMEM(S3INT) & 0x80) ||
+                (SNDMEM(S4INT) & 0x80) ||
+                (SNDMEM(S6INT) & 0x80)) return;
+        }
+    }
     SNDMEM(addr) = data;
     int ch = (addr >> 6) & 7;
     if (addr < 0x01000280) {
@@ -239,14 +260,13 @@ void sound_write(int addr, uint16_t data) {
         }
     } else if ((addr & 0x3f) == (S1INT & 0x3f)) {
         if (ch == 4) {
-            sound_state.sweep_frequency = GET_FREQ(4);
             if (SNDMEM(S5EV1) & 0x40) {
                 // sweep/modulation
                 int swp = SNDMEM(S5SWP);
                 int interval = (swp >> 4) & 7;
                 sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
-                sound_state.modulation_enabled = true;
                 sound_state.modulation_counter = 0;
+                sound_state.modulated_once = true;
             }
         } else if (ch == 5) {
             sound_state.noise_shift = 0;
@@ -255,12 +275,13 @@ void sound_write(int addr, uint16_t data) {
         sound_state.channels[ch].sample_pos = 0;
         sound_state.channels[ch].freq_time = GET_FREQ_TIME(ch);
         int ev0 = SNDMEM(S1EV0 + 0x40 * ch);
-        sound_state.channels[ch].envelope_value = ev0 >> 4;
         sound_state.channels[ch].envelope_time = ev0 & 7;
     } else if ((addr & 0x3f) == (S1EV0 & 0x3f)) {
         sound_state.channels[ch].envelope_value = (data >> 4) & 0xf;
-    } else if (addr == S5FQL || addr == S5FQH) {
-        if (ch == 4) sound_state.sweep_frequency = GET_FREQ(4);
+    } else if (addr == S5FQL) {
+        ((uint8_t*)&sound_state.sweep_frequency)[0] = data;
+    } else if (addr == S5FQH) {
+        ((uint8_t*)&sound_state.sweep_frequency)[1] = data & 0x7;
     } else if (addr == S6EV1) {
         sound_state.noise_shift = 0;
     }
