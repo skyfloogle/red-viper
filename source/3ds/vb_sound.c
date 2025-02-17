@@ -134,17 +134,18 @@ void sound_update(uint32_t cycles) {
                         if (env & 0x10) {
                             // modulation
                             // only enable on first loop or if repeat
-                            if (sound_state.modulated_once || (env & 0x20)) {
+                            if (sound_state.modulation_state == 0 || (env & 0x20)) {
                                 sound_state.sweep_frequency = GET_FREQ(4) + (s8)SNDMEM(MODDATA + 4 * sound_state.modulation_counter);
                                 if (sound_state.sweep_frequency < 0) sound_state.sweep_frequency = 0;
                                 if (sound_state.sweep_frequency > 0x7ff) sound_state.sweep_frequency = 0x7ff;
                             }
-                        } else if (sound_state.modulated_once) {
+                            if (sound_state.modulation_state == 1) sound_state.modulation_state = 2;
+                        } else if (sound_state.modulation_state < 2) {
                             // sweep using old calculation
                             sound_state.sweep_frequency = new_sweep_frequency;
                         }
                         if (++sound_state.modulation_counter >= 32) {
-                            sound_state.modulated_once = false;
+                            if (sound_state.modulation_state == 0) sound_state.modulation_state = 1;
                             sound_state.modulation_counter = 0;
                         }
                     }
@@ -266,7 +267,7 @@ void sound_write(int addr, uint16_t data) {
                 int interval = (swp >> 4) & 7;
                 sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
                 sound_state.modulation_counter = 0;
-                sound_state.modulated_once = true;
+                sound_state.modulation_state = 0;
             }
         } else if (ch == 5) {
             sound_state.noise_shift = 0;

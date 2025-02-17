@@ -13,7 +13,8 @@ typedef struct {
 } ChannelState;
 typedef struct {
     ChannelState channels[6];
-    bool modulated_once;
+    uint8_t modulation_state; // 0: alive, 1: zombie, 2: dead
+    bool first_modulation;
     uint8_t modulation_counter;
     int8_t sweep_time;
     int16_t sweep_frequency;
