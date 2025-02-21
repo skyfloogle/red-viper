@@ -168,6 +168,7 @@ void sound_update(uint32_t cycles) {
             if (--sound_state.envelope_divider >= 0) goto effects_done;
             sound_state.envelope_divider += 4;
             for (int i = 0; i < 6; i++) {
+                if (!(SNDMEM(S1INT + 0x40 * i) & 0x80)) continue;
                 int data1 = SNDMEM(S1EV1 + 0x40 * i);
                 if ((data1 & 1) && !(sound_state.channels[i].envelope_time & 128)) {
                     if (--sound_state.channels[i].envelope_time & 8) {
