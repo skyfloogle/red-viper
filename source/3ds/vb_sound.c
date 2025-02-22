@@ -104,28 +104,28 @@ void sound_update(uint32_t cycles) {
             samples = sound_state.effect_time;
         memset(wavebufs[fill_buf].data_pcm16 + buf_pos * 2, 0, sizeof(s16) * samples * 2);
 
-        // early sweep frequency and shutoff
-        int new_sweep_frequency = sound_state.sweep_frequency;
-        if ((SNDMEM(S5INT) & 0x80) && !(SNDMEM(S5EV1) & 0x10)) {
-            int swp = SNDMEM(S5SWP);
-            int shift = swp & 0x7;
-            if (swp & 8) {
-                new_sweep_frequency += sound_state.sweep_frequency >> shift;
-                if (new_sweep_frequency >= 2048) SNDMEM(S5INT) = 0;
-            } else {
-                new_sweep_frequency -= sound_state.sweep_frequency >> shift;
-                if (new_sweep_frequency < 0) new_sweep_frequency = 0;
-            }
-        }
-
         for (int i = 0; i < 6; i++) {
             update_buf_with_freq(i, samples);
         }
+
         if ((sound_state.effect_time -= samples) == 0) {
             sound_state.effect_time = 48;
             // sweep
             if (SNDMEM(S5INT) & 0x80) {
+                // early sweep frequency and shutoff
                 int env = SNDMEM(S5EV1);
+                int swp = SNDMEM(S5SWP);
+                int new_sweep_frequency = sound_state.sweep_frequency;
+                if (!(env & 0x10)) {
+                    int shift = swp & 0x7;
+                    if (swp & 8) {
+                        new_sweep_frequency += sound_state.sweep_frequency >> shift;
+                        if (new_sweep_frequency >= 2048) SNDMEM(S5INT) = 0;
+                    } else {
+                        new_sweep_frequency -= sound_state.sweep_frequency >> shift;
+                        if (new_sweep_frequency < 0) new_sweep_frequency = 0;
+                    }
+                }
                 if ((env & 0x40) && --sound_state.sweep_time < 0) {
                     int swp = SNDMEM(S5SWP);
                     int interval = (swp >> 4) & 7;
