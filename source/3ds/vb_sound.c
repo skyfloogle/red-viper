@@ -262,14 +262,12 @@ void sound_write(int addr, uint16_t data) {
         }
     } else if ((addr & 0x3f) == (S1INT & 0x3f)) {
         if (ch == 4) {
-            if (SNDMEM(S5EV1) & 0x40) {
-                // sweep/modulation
-                int swp = SNDMEM(S5SWP);
-                int interval = (swp >> 4) & 7;
-                sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
-                sound_state.modulation_counter = 0;
-                sound_state.modulation_state = 0;
-            }
+            // sweep/modulation
+            int swp = SNDMEM(S5SWP);
+            int interval = (swp >> 4) & 7;
+            sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
+            sound_state.modulation_counter = 0;
+            sound_state.modulation_state = 0;
         } else if (ch == 5) {
             sound_state.noise_shift = 0;
         }
