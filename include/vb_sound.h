@@ -14,9 +14,9 @@ typedef struct {
 typedef struct {
     ChannelState channels[6];
     uint8_t modulation_state; // 0: alive, 1: zombie, 2: dead
-    bool first_modulation;
     uint8_t modulation_counter;
     int8_t sweep_time;
+    uint8_t modulation_lock; // 0: clear, 1: low locked, 2: high locked
     int16_t sweep_frequency;
     uint16_t effect_time;
     uint32_t last_cycles;

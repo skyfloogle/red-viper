@@ -140,6 +140,12 @@ void sound_update(uint32_t cycles) {
                                 if (sound_state.sweep_frequency > 0x7ff) sound_state.sweep_frequency = 0x7ff;
                             }
                             if (sound_state.modulation_state == 1) sound_state.modulation_state = 2;
+                            // hardware bug: writing to S5FQ* locks the relevant byte when modulating
+                            if (sound_state.modulation_lock == 1) {
+                                sound_state.sweep_frequency = (sound_state.sweep_frequency & 0x700) | SNDMEM(S5FQL);
+                            } else if (sound_state.modulation_lock == 2) {
+                                sound_state.sweep_frequency = (sound_state.sweep_frequency & 0xff) | ((SNDMEM(S5FQH) & 7) << 8);
+                            }
                         } else if (sound_state.modulation_state < 2) {
                             // sweep using old calculation
                             sound_state.sweep_frequency = new_sweep_frequency;
@@ -228,6 +234,7 @@ void sound_update(uint32_t cycles) {
 void sound_write(int addr, uint16_t data) {
     if (addr & 3) return;
     sound_update(v810_state->cycles);
+    sound_state.modulation_lock = 0;
     if (!(addr & 0x400)) {
         // ram writes, these can be declined
         // all ram writes are declined if channel 5 is active
@@ -280,8 +287,10 @@ void sound_write(int addr, uint16_t data) {
         sound_state.channels[ch].envelope_value = (data >> 4) & 0xf;
     } else if (addr == S5FQL) {
         ((uint8_t*)&sound_state.sweep_frequency)[0] = data;
+        if (SNDMEM(S5EV1) & 0x10) sound_state.modulation_lock = 1;
     } else if (addr == S5FQH) {
         ((uint8_t*)&sound_state.sweep_frequency)[1] = data & 0x7;
+        if (SNDMEM(S5EV1) & 0x10) sound_state.modulation_lock = 2;
     } else if (addr == S6EV1) {
         sound_state.noise_shift = 0;
     }
