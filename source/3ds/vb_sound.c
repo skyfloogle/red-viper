@@ -136,18 +136,17 @@ void sound_update(uint32_t cycles) {
                             // only enable on first loop or if repeat
                             if (sound_state.modulation_state == 0 || (env & 0x20)) {
                                 sound_state.sweep_frequency = GET_FREQ(4) + (s8)SNDMEM(MODDATA + 4 * sound_state.modulation_counter);
-                                if (sound_state.sweep_frequency < 0) sound_state.sweep_frequency = 0;
-                                if (sound_state.sweep_frequency > 0x7ff) sound_state.sweep_frequency = 0x7ff;
                             }
                             if (sound_state.modulation_state == 1) sound_state.modulation_state = 2;
                             // hardware bug: writing to S5FQ* locks the relevant byte when modulating
                             if (sound_state.modulation_lock == 1) {
                                 sound_state.sweep_frequency = (sound_state.sweep_frequency & 0x700) | SNDMEM(S5FQL);
                             } else if (sound_state.modulation_lock == 2) {
-                                sound_state.sweep_frequency = (sound_state.sweep_frequency & 0xff) | ((SNDMEM(S5FQH) & 7) << 8);
+                                sound_state.sweep_frequency = (sound_state.sweep_frequency & 0xff) | (SNDMEM(S5FQH) << 8);
                             }
+                            sound_state.sweep_frequency &= 0x7ff;
                         } else if (sound_state.modulation_state < 2) {
-                            // sweep using old calculation
+                            // sweep using previous calculation
                             sound_state.sweep_frequency = new_sweep_frequency;
                         }
                         if (++sound_state.modulation_counter >= 32) {
