@@ -15,6 +15,7 @@
 SOUND_STATE sound_state;
 
 static int constant_sample[5] = {-1, -1, -1, -1, -1};
+static bool changed_sample[5] = {0};
 
 static uint8_t fill_buf = 0;
 static uint16_t buf_pos = 0;
@@ -232,7 +233,6 @@ void sound_update(uint32_t cycles) {
 // technically always u8 but gotta pass u16 because otherwise optimizations break everything
 void sound_write(int addr, uint16_t data) {
     if (addr & 3) return;
-    sound_update(v810_state->cycles);
     sound_state.modulation_lock = 0;
     if (!(addr & 0x400)) {
         // ram writes, these can be declined
@@ -245,20 +245,21 @@ void sound_write(int addr, uint16_t data) {
                 (SNDMEM(S3INT) & 0x80) ||
                 (SNDMEM(S4INT) & 0x80) ||
                 (SNDMEM(S6INT) & 0x80)) return;
+            changed_sample[(addr >> 7) & 7] = true;
         }
+    } else if ((addr & 0x7ff) <= 0x580) {
+        sound_update(v810_state->cycles);
+    }
+    bool was_silent = false;
+    if ((addr & 0x3f) == (S1INT & 0x3f)) {
+        was_silent =
+            !(SNDMEM(S1INT) & 0x80) && !(SNDMEM(S2INT) & 0x80) &&
+            !(SNDMEM(S3INT) & 0x80) && !(SNDMEM(S4INT) & 0x80) &&
+            !(SNDMEM(S5INT) & 0x80) && !(SNDMEM(S6INT) & 0x80);
     }
     SNDMEM(addr) = data;
     int ch = (addr >> 6) & 7;
-    if (addr < 0x01000280) {
-        int sample = (addr >> 7) & 7;
-        constant_sample[sample] = SNDMEM(0x80 * sample);
-        for (int i = 1; i < 32; i++) {
-            if (SNDMEM(0x80 * sample + 4 * i) != constant_sample[sample]) {
-                constant_sample[sample] = -1;
-                break;
-            }
-        }
-    } else if (addr < 0x01000400) {
+    if (addr < 0x01000400) {
         // ignore
     } else if (addr == SSTOP) {
         if (data & 1) {
@@ -267,6 +268,21 @@ void sound_write(int addr, uint16_t data) {
             }
         }
     } else if ((addr & 0x3f) == (S1INT & 0x3f)) {
+        if (was_silent) {
+            // just turned on audio, so check for static samples
+            for (int sample = 0; sample < 5; sample++) {
+                if (changed_sample[sample]) {
+                    constant_sample[sample] = SNDMEM(0x80 * sample);
+                    for (int i = 1; i < 32; i++) {
+                        if (SNDMEM(0x80 * sample + 4 * i) != constant_sample[sample]) {
+                            constant_sample[sample] = -1;
+                            break;
+                        }
+                    }
+                    changed_sample[sample] = false;
+                }
+            }
+        }
         if (ch == 4) {
             // sweep/modulation
             int swp = SNDMEM(S5SWP);
@@ -297,6 +313,7 @@ void sound_write(int addr, uint16_t data) {
 
 void sound_refresh(void) {
     for (int sample = 0; sample < 5; sample++) {
+        changed_sample[sample] = false;
         constant_sample[sample] = SNDMEM(0x80 * sample);
         for (int i = 1; i < 32; i++) {
             if (SNDMEM(0x80 * sample + 4 * i) != constant_sample[sample]) {
