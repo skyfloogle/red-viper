@@ -445,7 +445,7 @@ WORD mem_wword(WORD addr, WORD data) {
 
 //////////////////////////////////////////////////////////////////////////////
 // Hardware Controll Reg....
-BYTE hcreg_rbyte(WORD addr) {
+SBYTE hcreg_rbyte(WORD addr) {
     addr = (addr & 0x0200003C);
     switch(addr) {
     case 0x02000000:    //CCR
@@ -623,7 +623,7 @@ void port_wbyte(WORD addr, BYTE data)   { mem_wbyte(addr,data); }
 void port_whword(WORD addr, HWORD data) { mem_whword(addr,data); }
 void port_wword(WORD addr, WORD data)   { mem_wword(addr,data); }
 
-BYTE vipcreg_rbyte(WORD addr) {
+SBYTE vipcreg_rbyte(WORD addr) {
     //~ dtprintf(0,ferr,"\nRead  BYTE VIP [%08x]:%02x **************",addr,0);
     return 0xFF;
 }

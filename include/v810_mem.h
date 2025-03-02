@@ -78,7 +78,7 @@ WORD mem_whword(WORD addr, WORD data);
 WORD mem_wword(WORD addr, WORD data);
 
 // Hardware control register read functions
-BYTE  hcreg_rbyte(WORD addr);
+SBYTE hcreg_rbyte(WORD addr);
 HWORD hcreg_rhword(WORD addr);
 WORD  hcreg_rword(WORD addr);
 
@@ -98,7 +98,7 @@ void port_whword(WORD addr, HWORD data);
 void port_wword(WORD addr, WORD data);
 
 // Register I/O read functions
-BYTE  vipcreg_rbyte(WORD addr);
+SBYTE vipcreg_rbyte(WORD addr);
 HWORD vipcreg_rhword(WORD addr);
 WORD  vipcreg_rword(WORD addr);
 
