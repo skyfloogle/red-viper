@@ -203,7 +203,7 @@ uint64_t mem_rword(WORD addr) {
 
 /////////////////////////////////////////////////////////////////////////////
 //Memory Write Func
-WORD mem_wbyte(WORD addr, BYTE data) {
+WORD mem_wbyte(WORD addr, WORD data) {
     int i =0;
     addr = addr & 0x07FFFFFF; // map to 24 bit address
 
@@ -283,7 +283,7 @@ WORD mem_wbyte(WORD addr, BYTE data) {
     return 0;
 }
 
-WORD mem_whword(WORD addr, HWORD data) {
+WORD mem_whword(WORD addr, WORD data) {
     int i = 0;
     addr = addr & 0x07FFFFFE; // map to 24 bit address, mask first bit
 

@@ -73,8 +73,8 @@ uint64_t mem_rhword(WORD addr);
 uint64_t   mem_rword(WORD addr);
 
 // Memory write functions
-WORD mem_wbyte(WORD addr, BYTE data);
-WORD mem_whword(WORD addr, HWORD data);
+WORD mem_wbyte(WORD addr, WORD data);
+WORD mem_whword(WORD addr, WORD data);
 WORD mem_wword(WORD addr, WORD data);
 
 // Hardware control register read functions
