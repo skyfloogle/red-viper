@@ -645,6 +645,9 @@ static int drc_translateBlock(void) {
         // Might no longer be necessary once display/render time is fixed?
         is_jack_bros;
 
+    // Emulating memory clocks introduces lag to Galactic Pinball's UFO table.
+    bool is_pinball = memcmp(tVBOpt.GAME_ID, "01VGPJ", 6) == 0;
+
     bool is_waterworld_sample = is_waterworld && (start_PC == 0x0701b2b2);
 
     exec_block *block = NULL;
@@ -1193,7 +1196,7 @@ static int drc_translateBlock(void) {
                 BLX(ARM_COND_AL, 1);
 
                 // Add cycles returned in r1.
-                ADD(10, 10, 1);
+                if (!is_pinball) ADD(10, 10, 1);
 
                 if (slow_memory) cycles += 2;
 
@@ -1229,7 +1232,7 @@ static int drc_translateBlock(void) {
                 BLX(ARM_COND_AL, 1);
 
                 // Add cycles returned in r1.
-                ADD(10, 10, 1);
+                if (!is_pinball) ADD(10, 10, 1);
 
                 if (slow_memory) cycles += 2;
 
@@ -1265,7 +1268,7 @@ static int drc_translateBlock(void) {
                 BLX(ARM_COND_AL, 1);
 
                 // Add cycles returned in r1.
-                ADD(10, 10, 1);
+                if (!is_pinball) ADD(10, 10, 1);
 
                 SAVE_REG2(0);
 
@@ -1305,7 +1308,7 @@ static int drc_translateBlock(void) {
                 }
 
                 // Add cycles returned in r0.
-                ADD(10, 10, 0);
+                if (!is_pinball) ADD(10, 10, 0);
                 break;
             case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_H: // out.h reg2, disp16 [reg1]
@@ -1332,7 +1335,7 @@ static int drc_translateBlock(void) {
                 }
 
                 // Add cycles returned in r0.
-                ADD(10, 10, 0);
+                if (!is_pinball) ADD(10, 10, 0);
                 break;
             case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_W: // out.h reg2, disp16 [reg1]
@@ -1359,7 +1362,7 @@ static int drc_translateBlock(void) {
                 }
 
                 // Add cycles returned in r0.
-                ADD(10, 10, 0);
+                if (!is_pinball) ADD(10, 10, 0);
 
                 // if we load the same thing immediately after saving it, skip the loading
                 if (i + 1 < num_v810_inst &&
