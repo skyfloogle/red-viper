@@ -636,18 +636,14 @@ static int drc_translateBlock(void) {
     bool is_jack_bros = memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0;
     bool chcw_load_seen = (v810_state->S_REG[CHCW] & 2) != 0;
 
-    // Golf's V810 performance is a very tight balancing act:
-    // In-game menu animations run at 50FPS, so if processing is
-    // too slow, visual glitches occur.
-    // For example, parts of the menu might disappear on the right eye,
-    // or a ghost of the golfer may appear after a shot.
-    // Conversely, if it's too fast, the aim animation runs too fast.
-    // For the time being, we'll opt for running it too fast,
-    // except for during the aim animation.
-    // Specifically, we speed up memory access to prevent the ghost golfer,
-    // and we speed up bitstring instructions to stop the menu from disappearing.
-    // Bitstring speedup is done in the C implementation of the instructions.
-    bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    // Virtual Bowling and Niko-Chan Battle need their interrupts to run a little slower
+    // in order for the samples to play at the right speed.
+    bool is_virtual_bowling = memcmp(tVBOpt.GAME_ID, "E7VVBJ", 6) == 0;
+    bool is_niko_chan = memcmp(tVBOpt.GAME_ID, "8BVTRJ", 6) == 0;
+    bool slow_memory = is_virtual_bowling || is_niko_chan ||
+        // Jack Bros. occasionally flashes during level transitions if it runs too fast.
+        // Might no longer be necessary once display/render time is fixed?
+        is_jack_bros;
 
     bool is_waterworld_sample = is_waterworld && (start_PC == 0x0701b2b2);
 
@@ -1199,7 +1195,7 @@ static int drc_translateBlock(void) {
                 // Add cycles returned in r1.
                 ADD(10, 10, 1);
 
-                if (is_golf) cycles -= 2;
+                if (slow_memory) cycles += 2;
 
                 if (inst_cache[i].opcode == V810_OP_IN_B) {
                     // lsl r0, r0, #24
@@ -1235,7 +1231,7 @@ static int drc_translateBlock(void) {
                 // Add cycles returned in r1.
                 ADD(10, 10, 1);
 
-                if (is_golf) cycles -= 2;
+                if (slow_memory) cycles += 2;
 
                 if (inst_cache[i].opcode == V810_OP_IN_H) {
                     // lsl r0, r0, #16
@@ -1273,7 +1269,7 @@ static int drc_translateBlock(void) {
 
                 SAVE_REG2(0);
 
-                if (is_golf) cycles -= 4;
+                if (slow_memory) cycles += 4;
 
                 if (i > 0 && (inst_cache[i - 1].opcode & 0x34) == 0x30 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // load immediately following another load takes 4 cycles instead of 5
@@ -1301,7 +1297,7 @@ static int drc_translateBlock(void) {
                 ADD_I(2, 2, DRC_RELOC_WBYTE*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                if (is_golf) cycles -= 2;
+                if (slow_memory) cycles += 2;
 
                 if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // with two consecutive stores, the second takes 2 cycles instead of 1
@@ -1328,7 +1324,7 @@ static int drc_translateBlock(void) {
                 ADD_I(2, 2, DRC_RELOC_WHWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                if (is_golf) cycles -= 2;
+                if (slow_memory) cycles += 2;
 
                 if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // with two consecutive stores, the second takes 2 cycles instead of 1
@@ -1355,7 +1351,7 @@ static int drc_translateBlock(void) {
                 ADD_I(2, 2, DRC_RELOC_WWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
-                if (is_golf) cycles -= 4;
+                if (slow_memory) cycles += 4;
 
                 if (i > 1 && (inst_cache[i - 1].opcode & 0x34) == 0x34 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // with two consecutive stores, the second takes 4 cycles instead of 1

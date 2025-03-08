@@ -413,6 +413,16 @@ bool ins_sch1bsd (WORD src, WORD skipped, WORD len, WORD offs) {
     return !searching;
 }
 
+// All the instructions have a Golf speedhack, but I'll write the explanation
+// here one time instead of copy-pasting it with everything else.
+// Golf's V810 performance is a very tight balancing act:
+// In-game menu animations run at 50FPS, so if processing is
+// too slow, visual glitches occur.
+// For example, parts of the menu might disappear on the right eye.
+// Conversely, if it's too fast, the aim animation runs too fast.
+// For the time being, we'll opt for running it too fast,
+// except for during the aim animation.
+
 #define OPT_XORBSU { \
     if (src == dst) { \
         /* niko-chan battle speedhack */ \
