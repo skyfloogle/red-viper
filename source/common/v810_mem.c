@@ -540,12 +540,11 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
         break;
     case 0x02000020:    //TCR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG TCR [%08x]:%02x ",addr,data);
-        if ((tHReg.TCR & 1) && ((data & 0x05) == 0x04)) break; //Cannot disable timer and clear ZStat at the same time!
-
         BYTE zstat = tHReg.TCR & 0x02;
         if ((data & 0x04) // Z-Stat-Clr
-            && !((tHReg.TCR & 1) && !(data & 1)) // can't clear zstat while disabling timer
-            && (tHReg.tCount != 0 || !(data & 1)) // only if timer is 0 or disabled
+            && (!(tHReg.TCR & 1) || // if timer is disabled, we can always clear
+                ((data & 1) // if timer is enabled, we can't be disabling it
+                && tHReg.tCount != 0)) // if timer is enabled, timer must be nonzero
         ) zstat = 0; // Clear the ZStat Flag...
         if (!zstat || !(data & 0x08)) tHReg.tInt = false;
 
