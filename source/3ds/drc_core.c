@@ -643,7 +643,9 @@ static int drc_translateBlock(void) {
     bool slow_memory = is_virtual_bowling || is_niko_chan ||
         // Jack Bros. occasionally flashes during level transitions if it runs too fast.
         // Might no longer be necessary once display/render time is fixed?
-        is_jack_bros;
+        is_jack_bros ||
+        // If memory is too fast, Blox 2's intro jingle doesn't finish.
+        memcmp(tVBOpt.GAME_ID, "CRVB2M", 6) == 0;
 
     // Emulating memory clocks introduces lag to Galactic Pinball's UFO table.
     bool is_pinball = memcmp(tVBOpt.GAME_ID, "01VGPJ", 6) == 0;
@@ -1889,6 +1891,10 @@ int drc_run(void) {
 
         v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;
+
+        if (entry_PC >= 0x070017ee && entry_PC <= 0x07001906) {
+            dprintf(0, "pc %lx music timer %x\n", entry_PC, *(short*)&V810_VB_RAM.pmemory[0x4178]);
+        }
 
         // Golf hack: this function clears the screen, so we should do the same
         if (unlikely((is_golf_us && entry_PC == 0x0700ca64) ||
