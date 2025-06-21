@@ -7,6 +7,7 @@
 #include <citro3d.h>
 
 #include "main.h"
+#include "cpp.h"
 #include "periodic.h"
 #include "v810_mem.h"
 #include "drc_core.h"
@@ -57,6 +58,8 @@ int main(void) {
         saveFileOptions();
     
     vblink_init();
+
+    cppInit();
 
     drc_init();
 
@@ -240,6 +243,7 @@ exit:
     drc_exit();
     v810_exit();
 
+    cppExit();
     ptmuExit();
     fsExit();
     gfxExit();

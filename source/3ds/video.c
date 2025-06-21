@@ -13,6 +13,7 @@
 #include "vb_gui.h"
 #include "replay.h"
 #include "periodic.h"
+#include "cpp.h"
 
 #include "final_shbin.h"
 #include "soft_shbin.h"
@@ -49,6 +50,7 @@ void battery_thread(void) {
 
 extern int arm_keys;
 u32 input_state = 0;
+static bool new_3ds = false;
 // Read the Controller, Fix Me....
 HWORD V810_RControll(bool reset) {
 	if (replay_playing()) {
@@ -63,6 +65,9 @@ HWORD V810_RControll(bool reset) {
 
 #ifdef __3DS__
     key = hidKeysHeld();
+	if (!new_3ds) {
+		key |= cppKeysHeld();
+	}
 
 #else
     ret_keys = arm_keys;
@@ -222,6 +227,7 @@ void video_init(void) {
 	gspWaitForVBlank();
 
 	// not technically video but we gotta do it somewhere
+	APT_CheckNew3DS(&new_3ds);
 	startPeriodic(battery_thread, 20000000, true);
 }
 
