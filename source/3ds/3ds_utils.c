@@ -70,6 +70,7 @@ void FlushInvalidateCache(void *addr, size_t len) {
             __asm__ volatile(
                 "ldr r0, =k_flushCaches\n\t"
                 "svc 0x80\n\t"
+                :::"r0"
             );
         } else {
             // works on citra, crashes on hardware
