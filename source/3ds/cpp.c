@@ -357,8 +357,8 @@ static void iruserThreadFunc(void* param) {
             if (ret == SAR_READERROR) continue; // Ignore read errors.
             if (input_response.head != 0x10) continue;
 
-            cPos.dx = (float)(s16)(input_response.pad_x - calibration_data.x_offset) * calibration_data.x_scale;
-            cPos.dy = (float)(s16)(input_response.pad_y - calibration_data.y_offset) * calibration_data.y_scale;
+            cPos.dx = (s16)((float)(s16)(input_response.pad_x - calibration_data.x_offset) * calibration_data.x_scale) / 8;
+            cPos.dy = (s16)((float)(s16)(input_response.pad_y - calibration_data.y_offset) * calibration_data.y_scale) / 8;
             
             u32 keys = 0;
             if (!input_response.r_up) keys |= KEY_R;
