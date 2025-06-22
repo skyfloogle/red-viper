@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <zlib.h>
+#include "c2d/text.h"
 #include "rom_db.h"
 #include <citro2d.h>
 #include "drc_core.h"
@@ -26,6 +27,8 @@
 #include "splash_t3x.h"
 #include "splash.h"
 #include "vblink.h"
+#include "cpp.h"
+#include "extrapad.h"
 
 #define COLOR_R(COLOR) ( ((COLOR) & 0x000000FF) )
 #define COLOR_G(COLOR) ( ((COLOR) & 0x0000FF00) >> 8)
@@ -103,7 +106,7 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
                 text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink, text_preset, text_custom,
                 text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo,
-                text_current_default, text_anaglyph, text_depth;
+                text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -231,7 +234,19 @@ static Button controls_buttons[] = {
     {.str="Touchscreen settings", .x=60, .y=144, .w=200, .h=48},
     #define CONTROLS_DISPLAY 3
     {.str="Input display", .x=200, .y=200, .w=120, .h=40, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
-    #define CONTROLS_BACK 4
+    #define CONTROLS_CPP 4
+    {.str="Circle Pad Pro", .x=60, .y=200, .w=130, .h=40},
+    #define CONTROLS_BACK 5
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+static void cpp_options(int initial_button);
+static Button cpp_options_buttons[] = {
+    #define CPP_TOGGLE 0
+    {.str = "CPP enabled", .x=60, .y=16, .w=200, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define CPP_CALIBRATE 1
+    {.str="Calibrate CPP", .x=60, .y=80, .w=200, .h=48},
+    #define CPP_BACK 2
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -521,6 +536,7 @@ static Button load_rom_buttons[] = {
     SETUP_BUTTONS(game_menu_buttons); \
     SETUP_BUTTONS(rom_loader_buttons); \
     SETUP_BUTTONS(controls_buttons); \
+    SETUP_BUTTONS(cpp_options_buttons); \
     SETUP_BUTTONS(preset_controls_buttons); \
     SETUP_BUTTONS(custom_3ds_mappings_buttons); \
     SETUP_BUTTONS(custom_vb_mappings_buttons); \
@@ -967,8 +983,12 @@ static void rom_loader(void) {
 }
 
 static void controls(int initial_button) {
+    bool new_3ds;
+    APT_CheckNew3DS(&new_3ds);
     controls_buttons[CONTROLS_CONTROL_SCHEME].toggle = tVBOpt.CUSTOM_CONTROLS;
     controls_buttons[CONTROLS_DISPLAY].toggle = tVBOpt.INPUTS;
+    controls_buttons[CONTROLS_CPP].hidden = new_3ds;
+
     LOOP_BEGIN(controls_buttons, initial_button);
     LOOP_END(controls_buttons);
     switch (button) {
@@ -984,9 +1004,38 @@ static void controls(int initial_button) {
             tVBOpt.INPUTS = !tVBOpt.INPUTS;
             tVBOpt.MODIFIED = true;
             return controls(CONTROLS_DISPLAY);
+        case CONTROLS_CPP:
+            return cpp_options(0);
         case CONTROLS_BACK:
             tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
             return options(OPTIONS_CONTROLS);
+    }
+}
+
+static void cpp_options(int initial_button) {
+    cpp_options_buttons[CPP_TOGGLE].toggle = tVBOpt.CPP_ENABLED;
+    LOOP_BEGIN(cpp_options_buttons, initial_button);
+        if (tVBOpt.CPP_ENABLED) C2D_DrawText(cppGetConnected() ? &text_cpp_on : &text_cpp_off, C2D_AlignCenter | C2D_WithColor, 160, 150, 0, 0.7, 0.7, TINT_COLOR);
+    LOOP_END(cpp_options_buttons);
+    switch (button) {
+        case CPP_TOGGLE:
+            tVBOpt.CPP_ENABLED = !tVBOpt.CPP_ENABLED;
+            tVBOpt.MODIFIED = true;
+            if (tVBOpt.CPP_ENABLED) {
+                cppInit();
+            } else {
+                cppExit();
+            }
+            return cpp_options(button);
+        case CPP_CALIBRATE:
+            if (tVBOpt.CPP_ENABLED) cppExit();
+            extraPadConf conf;
+            extraPadInit(&conf);
+            extraPadLaunch(&conf);
+            if (tVBOpt.CPP_ENABLED) cppInit();
+            return cpp_options(button);
+        case CPP_BACK:
+            return controls(CONTROLS_CPP);
     }
 }
 
@@ -1037,7 +1086,7 @@ static int *current_custom_mapping_vb_option;
 static int *current_custom_mapping_mod;
 
 static void custom_3ds_mappings(int initial_button) {
-    bool new_3ds = false;
+    bool new_3ds = tVBOpt.CPP_ENABLED;
     APT_CheckNew3DS(&new_3ds);
     if (!new_3ds) {
         custom_3ds_mappings_buttons[CUSTOM_3DS_MAPPINGS_ZL].hidden = true;
@@ -1153,8 +1202,8 @@ static void draw_shoulders(Button *self) {
 static void preset_controls(int initial_button) {
     bool shoulder_pressed = false;
     bool face_pressed = false;
-    bool new_3ds = false;
-    APT_CheckNew3DS(&new_3ds);
+    bool new_3ds = tVBOpt.CPP_ENABLED;
+    if (!new_3ds) APT_CheckNew3DS(&new_3ds);
     preset_controls_buttons[PRESET_CONTROLS_FACE].y = new_3ds ? 52 : 40;
     preset_controls_buttons[PRESET_CONTROLS_SHOULDER].hidden = !new_3ds;
     preset_controls_buttons[PRESET_CONTROLS_DPAD_MODE].option = tVBOpt.DPAD_MODE;
@@ -2269,6 +2318,8 @@ void guiInit(void) {
     STATIC_TEXT(&text_current_default, "Current mode is default")
     STATIC_TEXT(&text_anaglyph, "Anaglyph")
     STATIC_TEXT(&text_depth, "Depth")
+    STATIC_TEXT(&text_cpp_on, "Circle Pad Pro connected.")
+    STATIC_TEXT(&text_cpp_off, "No Circle Pad Pro found.")
 }
 
 static bool shouldRedrawMenu = true;
@@ -2439,8 +2490,8 @@ void setCustomControls(void) {
     vbkey[__builtin_ctz(KEY_L)] = tVBOpt.CUSTOM_MAPPING_L;
     vbkey[__builtin_ctz(KEY_R)] = tVBOpt.CUSTOM_MAPPING_R;
 
-    bool new_3ds = false;
-    APT_CheckNew3DS(&new_3ds);
+    bool new_3ds = tVBOpt.CPP_ENABLED;
+    if (!new_3ds) APT_CheckNew3DS(&new_3ds);
     if (new_3ds) {
         vbkey[__builtin_ctz(KEY_CSTICK_UP)] = tVBOpt.CUSTOM_MAPPING_CSTICK_UP;
         vbkey[__builtin_ctz(KEY_CSTICK_DOWN)] = tVBOpt.CUSTOM_MAPPING_CSTICK_DOWN;
@@ -2485,8 +2536,8 @@ void setPresetControls(bool buttons) {
             vbkey[__builtin_ctz(KEY_DRIGHT)] = vbkey[__builtin_ctz(KEY_A)];
             break;
     }
-    bool new_3ds = false;
-    APT_CheckNew3DS(&new_3ds);
+    bool new_3ds = tVBOpt.CPP_ENABLED;
+    if (!new_3ds) APT_CheckNew3DS(&new_3ds);
     if (new_3ds) {
         vbkey[__builtin_ctz(KEY_L)] = tVBOpt.ZLZR_MODE <= 1 ? VB_KEY_L : tVBOpt.ZLZR_MODE == 2 ? VB_KEY_B : VB_KEY_A;
         vbkey[__builtin_ctz(KEY_R)] = tVBOpt.ZLZR_MODE <= 1 ? VB_KEY_R : tVBOpt.ZLZR_MODE == 2 ? VB_KEY_A : VB_KEY_B;

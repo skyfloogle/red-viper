@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include "cpp.h"
+#include "3ds/services/apt.h"
 #include "3ds/services/hid.h"
 #include "3ds/thread.h"
 
@@ -103,9 +104,9 @@ static Handle iruserSharedMemHandle;
 static Thread iruserThread;
 static Handle iruserExitEvent;
 
-static volatile u32 kHeld;
-static volatile circlePosition cPos;
-static volatile u8 batteryLevel;
+static volatile u32 kHeld = 0;
+static volatile circlePosition cPos = {0, 0};
+static volatile u8 batteryLevel = 0;
 
 static int iruserRefCount = 0;
 
@@ -139,6 +140,10 @@ static Result iruserClearPacket(int count);
 
 Result cppInit(void)
 {
+    bool new_3ds;
+    APT_CheckNew3DS(&new_3ds);
+    if (new_3ds) return 0;
+
     Result ret = 0;
 
     if (AtomicPostIncrement(&iruserRefCount)) return -1;
@@ -200,6 +205,10 @@ Result cppInit(void)
 
 void cppExit()
 {
+    bool new_3ds;
+    APT_CheckNew3DS(&new_3ds);
+    if (new_3ds) return;
+
     if (AtomicDecrement(&iruserRefCount)) return;
 
     svcSignalEvent(iruserExitEvent);

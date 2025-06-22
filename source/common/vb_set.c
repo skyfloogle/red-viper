@@ -1,3 +1,4 @@
+#include "cpp.h"
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -110,6 +111,7 @@ void setDefaults(void) {
     tVBOpt.TOUCH_PADY = 128;
     tVBOpt.TOUCH_BUTTONS = 0;
     tVBOpt.TOUCH_SWITCH = true;
+    tVBOpt.CPP_ENABLED = true;
     tVBOpt.ABXY_MODE = 0;
     tVBOpt.ZLZR_MODE = 0;
     tVBOpt.DPAD_MODE = 0;
@@ -194,6 +196,8 @@ static int handler(void* user, const char* section, const char* name,
         char *last_slash = strrchr(pconfig->HOME_PATH, '/');
         if (last_slash != NULL && last_slash[1] == 0)
             *last_slash = 0;
+    } else if (MATCH("vbopt", "cpp_enabled")) {
+        pconfig->CPP_ENABLED = atoi(value);
     } else if (MATCH("vbopt", "custom_controls")) {
         pconfig->CUSTOM_CONTROLS = atoi(value);
     } else if (MATCH("vbopt", "abxy") || MATCH("controls_preset", "abxy")) {
@@ -358,15 +362,26 @@ int loadFileOptions(void) {
         if (stat("sdmc:/config/red-viper", &st) == -1) mkdir("sdmc:/config/red-viper", 0777);
         rename(CONFIG_FILENAME_LEGACY, CONFIG_FILENAME);
     }
+
+    bool old_cpp = tVBOpt.CPP_ENABLED;
+
     int ret = ini_parse(CONFIG_FILENAME, handler, &tVBOpt);
     if (!ret) tVBOpt.GAME_SETTINGS = false;
     tVBOpt.MODIFIED = false;
     buttons_on_screen = tVBOpt.TOUCH_BUTTONS;
     tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
+    osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
+
+    if (tVBOpt.CPP_ENABLED != old_cpp) {
+        if (tVBOpt.CPP_ENABLED) cppInit();
+        else cppExit();
+    }
     return ret;
 }
 
 int loadGameOptions(void) {
+    bool old_cpp = tVBOpt.CPP_ENABLED;
+
     char *ini_path = getGameIniPath();
     int ret = ENOENT;
     if (ini_path) ret = ini_parse(ini_path, handler, &tVBOpt);
@@ -375,6 +390,12 @@ int loadGameOptions(void) {
     tVBOpt.MODIFIED = false;
     buttons_on_screen = tVBOpt.TOUCH_BUTTONS;
     tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
+    osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
+
+    if (tVBOpt.CPP_ENABLED != old_cpp) {
+        if (tVBOpt.CPP_ENABLED) cppInit();
+        else cppExit();
+    }
     return ret;
 }
 
@@ -391,6 +412,7 @@ void writeOptionsFile(FILE* f, bool global) {
         fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH);
         fprintf(f, "homepath=%s\n", tVBOpt.HOME_PATH);
     }
+    fprintf(f, "cpp_enabled=%d\n", tVBOpt.CPP_ENABLED);
     fprintf(f, "custom_controls=%d\n", tVBOpt.CUSTOM_CONTROLS);
     fprintf(f, "\n[controls_preset]\n");
     fprintf(f, "abxy=%d\n", tVBOpt.ABXY_MODE);

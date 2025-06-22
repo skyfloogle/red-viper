@@ -53,13 +53,14 @@ int main(void) {
 
     APT_SetAppCpuTimeLimit(30);
 
+    // CPP defaults to on, so initialize already.
+    cppInit();
+
     setDefaults();
     if (loadFileOptions() < 0)
         saveFileOptions();
     
     vblink_init();
-
-    cppInit();
 
     drc_init();
 
@@ -90,8 +91,6 @@ int main(void) {
 
     clearCache();
     consoleClear();
-
-    osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
 
     svcCreateEvent(&frame_event, RESET_STICKY);
 
@@ -243,7 +242,7 @@ exit:
     drc_exit();
     v810_exit();
 
-    cppExit();
+    if (tVBOpt.CPP_ENABLED) cppExit();
     ptmuExit();
     fsExit();
     gfxExit();
