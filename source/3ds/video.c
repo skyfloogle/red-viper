@@ -4,6 +4,7 @@
 #include <3ds.h>
 #include <citro3d.h>
 
+#include "3ds/services/hid.h"
 #include "utils.h"
 
 #include "vb_dsp.h"
@@ -67,6 +68,12 @@ HWORD V810_RControll(bool reset) {
     key = hidKeysHeld();
 	if (!new_3ds) {
 		key |= cppKeysHeld();
+		circlePosition cpp;
+		cppCircleRead(&cpp);
+		if (cpp.dx >= 41) key |= KEY_CSTICK_RIGHT;
+		else if (cpp.dx <= -41) key |= KEY_CSTICK_LEFT;
+		if (cpp.dy >= 41) key |= KEY_CSTICK_UP;
+		else if (cpp.dy <= -41) key |= KEY_CSTICK_DOWN;
 	}
 
 #else
