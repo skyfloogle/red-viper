@@ -1892,10 +1892,6 @@ int drc_run(void) {
         v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;
 
-        if (entry_PC >= 0x070017ee && entry_PC <= 0x07001906) {
-            dprintf(0, "pc %lx music timer %x\n", entry_PC, *(short*)&V810_VB_RAM.pmemory[0x4178]);
-        }
-
         // Golf hack: this function clears the screen, so we should do the same
         if (unlikely((is_golf_us && entry_PC == 0x0700ca64) ||
                      (is_golf_jp && entry_PC == 0x0701602a))) {
