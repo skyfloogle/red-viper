@@ -1508,7 +1508,6 @@ static void colour_filter(void) {
             return colour_filter();
     }
 }
-HWORD* rom_block_map;
 
 static bool vblink_transfer() {
     C2D_Text fname;
