@@ -401,7 +401,7 @@ int serviceInt(unsigned int cycles, WORD PC) {
 
 int serviceDisplayInt(unsigned int cycles, WORD PC) {
     int gamestart;
-    unsigned int tfb = (cycles-tVIPREG.lastfb);
+    unsigned int disptime = (cycles - tVIPREG.lastdisp);
     bool pending_int = 0;
     
     v810_state->PC = PC;
@@ -414,9 +414,8 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
 
         int interrupts = FRAMESTART;
 
-        // subtract frame drawing time outside the FRMCYC check
-        if (tVIPREG.drawing) {
-            tVIPREG.frametime -= 400000;
+        if (!tVIPREG.drawing) {
+            tVIPREG.lastdraw = tVIPREG.lastdisp;
         }
 
         if (++tVIPREG.tFrame > tVIPREG.FRMCYC) {
@@ -449,19 +448,19 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
     {
         int dpstts_old = tVIPREG.DPSTTS;
         int dpstts_new = dpstts_old;
-        if (tfb >= 100000) {
+        if (disptime >= 200000) {
             // FCLK low (high was handled already)
             dpstts_new &= ~FCLK;
         }
         if (likely(tVIPREG.displaying)) {
-            if (tfb < 60000) {
-            } else if (tfb < 160000) {
+            if (disptime < 60000) {
+            } else if (disptime < 160000) {
                 // LxBSY high
                 dpstts_new |= tVIPREG.tFrameBuffer & 1 ? L1BSY : L0BSY;
-            } else if (tfb < 260000) {
+            } else if (disptime < 260000) {
                 // LxBSY low
                 dpstts_new &= ~DPBSY;
-            } else if (tfb < 360000) {
+            } else if (disptime < 360000) {
                 // RxBSY high
                 dpstts_new |= tVIPREG.tFrameBuffer & 1 ? R1BSY : R0BSY;
             } else {
@@ -479,9 +478,11 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
         }
     }
 
+    unsigned int drawtime = (cycles-tVIPREG.lastdraw);
+
     // XPSTTS management
     if (likely(tVIPREG.drawing)) {
-        int rowcount = tfb * 28 / tVIPREG.frametime;
+        int rowcount = drawtime * 28 / tVIPREG.frametime;
         if (unlikely(rowcount > tVIPREG.rowcount)) {
             pending_int = 1;
             if (rowcount < 28) {
@@ -498,18 +499,18 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
                 tVIPREG.XPSTTS = 0x1b00 | (tVIPREG.XPCTRL & XPEN);
                 tVIPREG.INTPND |= XPEND;
             }
-        } else if (unlikely(rowcount < 28 && rowcount * tVIPREG.frametime / 28 >= 1120)) {
+        } else if (unlikely(rowcount < 28 && drawtime - rowcount * tVIPREG.frametime / 28 >= 1120)) {
             // it's been roughly 56 microseconds, so clear SBOUT
             if (tVIPREG.XPSTTS | SBOUT) pending_int = 1;
             tVIPREG.XPSTTS &= ~SBOUT;
         }
     }
 
-    if (unlikely(tfb >= 400000)) {
+    if (unlikely(disptime >= 400000)) {
         // frame end
         tVIPREG.rowcount = 0;
         v810_state->ret = 1;
-        tVIPREG.lastfb += 400000;
+        tVIPREG.lastdisp += 400000;
         tVIPREG.newframe = true;
         pending_int = 1;
 

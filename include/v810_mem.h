@@ -26,7 +26,8 @@ typedef struct{
     HWORD BKCOL;
     int frametime;
     // timing
-    WORD lastfb;
+    WORD lastdisp;
+    WORD lastdraw;
     BYTE rowcount;
     bool drawing;
     bool displaying;
