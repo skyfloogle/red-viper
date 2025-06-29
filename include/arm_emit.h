@@ -665,13 +665,13 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // b<cond> imm
 // Branch
 #define B(cond, imm){ \
-    new_branch_link(cond, 0, imm); \
+    new_branch_link(cond, 0, (imm) & 0xFFFFFF); \
     if (!(imm)) \
         (inst_ptr-1)->needs_branch = true; \
 }
 
 #define Boff(cond, off) \
-    new_branch_link(cond, 0, (off)-2); \
+    new_branch_link(cond, 0, ((off)-2) & 0xFFFFFF); \
 
 // bl<cond> imm
 // Branch and link
@@ -739,8 +739,12 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     cycles = 0; \
 }
 
+#define HALT_LOOP_BODY 7
+#define HALT_SIZE HALT_LOOP_BODY + 2
+
 #define HALT(next_PC) { \
     MRS(0); \
+    /* LDW_I exploded to ensure a consistent loop size */ \
     MOV_I(1, (next_PC) & 0xff, 0); \
     ORR_I(1, ((next_PC) & 0xff00)>>8, 24); \
     ORR_I(1, ((next_PC) & 0xff0000)>>16, 16); \
@@ -748,25 +752,25 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     MOV_I(10, 0, 0); \
     LDR_IO(2, 11, offsetof(cpu_state, irq_handler)); \
     BLX(ARM_COND_AL, 2); \
-    B(ARM_COND_AL, (-9) & 0xffffff); \
+    Boff(ARM_COND_AL, -(HALT_LOOP_BODY)); \
     cycles = 0; \
 }
 
 #define BUSYWAIT(cond, ret_PC) { \
-    B(cond ^ 1, 8); \
+    Boff(cond ^ 1, HALT_SIZE + 1); \
     HALT(ret_PC); \
 }
 
 #define BUSYWAIT_BNH(ret_PC) { \
     Boff(ARM_COND_CS, 3); \
     Boff(ARM_COND_EQ, 2); \
-    B(ARM_COND_AL, 8); \
+    Boff(ARM_COND_AL, HALT_SIZE + 1); \
     HALT(ret_PC); \
 }
 
 #define BUSYWAIT_BH(ret_PC) { \
-    B(ARM_COND_CS, 9); \
-    B(ARM_COND_EQ, 8); \
+    Boff(ARM_COND_CS, HALT_SIZE + 2); \
+    Boff(ARM_COND_EQ, HALT_SIZE + 1); \
     HALT(ret_PC); \
 }
 

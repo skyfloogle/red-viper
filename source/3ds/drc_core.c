@@ -1537,7 +1537,7 @@ static int drc_translateBlock(void) {
                     }
                     MRS(1);
                     CMP_I(len_reg, 0, 0);
-                    B(ARM_COND_EQ, 1);
+                    Boff(ARM_COND_EQ, 3);
                     MRS(1);
                     B(ARM_COND_AL, 0); // branches to start of instruction
                     MRS(1);
