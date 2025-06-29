@@ -57,7 +57,7 @@ int interpreter_run(void) {
                     v810_state->P_REG[reg2] = reg1_val;
                     break;
                 case V810_OP_ADD: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     WORD res = reg2_val + reg1_val;
                     bool z = res == 0;
                     bool s = (SWORD)res < 0;
@@ -68,7 +68,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_SUB: case V810_OP_CMP: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     WORD res = reg2_val - reg1_val;
                     bool z = res == 0;
                     bool s = (SWORD)res < 0;
@@ -79,7 +79,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_SHL: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     reg1_val &= 31;
                     WORD res = reg2_val << reg1_val;
                     bool z = res == 0;
@@ -91,7 +91,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_SHR: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     reg1_val &= 31;
                     WORD res = reg2_val >> reg1_val;
                     bool z = res == 0;
@@ -106,7 +106,7 @@ int interpreter_run(void) {
                     PC = reg1_val;
                     break;
                 case V810_OP_SAR: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     reg1_val &= 31;
                     WORD res = (SWORD)reg2_val >> reg1_val;
                     bool z = res == 0;
@@ -143,7 +143,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_MULU: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     WORD res;
                     bool ov = __builtin_mul_overflow((SWORD)reg1_val, reg2_val, &res);
                     bool z = res == 0;
@@ -153,7 +153,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_DIVU: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     v810_state->P_REG[30] = reg2_val % reg1_val;
                     WORD res = reg2_val / reg1_val;
                     bool z = res == 0;
@@ -163,19 +163,19 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_OR: {
-                    WORD res = v810_state->P_REG[reg2] | reg1_val;
+                    WORD res = (reg2 ? v810_state->P_REG[reg2] : 0) | reg1_val;
                     v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
                     v810_state->P_REG[reg2] = res;
                     break;
                 }
                 case V810_OP_AND: {
-                    WORD res = v810_state->P_REG[reg2] & reg1_val;
+                    WORD res = (reg2 ? v810_state->P_REG[reg2] : 0) & reg1_val;
                     v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
                     v810_state->P_REG[reg2] = res;
                     break;
                 }
                 case V810_OP_XOR: {
-                    WORD res = v810_state->P_REG[reg2] ^ reg1_val;
+                    WORD res = (reg2 ? v810_state->P_REG[reg2] : 0) ^ reg1_val;
                     v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
                     v810_state->P_REG[reg2] = res;
                     break;
@@ -193,7 +193,7 @@ int interpreter_run(void) {
                 }
                 case V810_OP_ADD_I: {
                     WORD imm = reg1 & 0x10 ? reg1 | 0xfffffff0 : reg1;
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     WORD res = reg2_val + imm;
                     bool z = res == 0;
                     bool s = (SWORD)res < 0;
@@ -209,7 +209,7 @@ int interpreter_run(void) {
                 }
                 case V810_OP_CMP_I: {
                     WORD imm = reg1 & 0x10 ? reg1 | 0xfffffff0 : reg1;
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     WORD res = reg2_val - imm;
                     bool z = res == 0;
                     bool s = (SWORD)res < 0;
@@ -220,7 +220,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_SHL_I: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     WORD res = reg2_val << reg1;
                     bool z = res == 0;
                     bool s = (SWORD)res < 0;
@@ -231,7 +231,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_SHR_I: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     WORD res = reg2_val >> reg1;
                     bool z = res == 0;
                     bool s = (SWORD)res < 0;
@@ -245,7 +245,7 @@ int interpreter_run(void) {
                     v810_state->S_REG[PSW] &= ~(1 << 12);
                     break;
                 case V810_OP_SAR_I: {
-                    WORD reg2_val = v810_state->P_REG[reg2];
+                    WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                     WORD res = (SWORD)reg2_val >> reg1;
                     bool z = res == 0;
                     bool s = (SWORD)res < 0;
@@ -276,7 +276,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_LDSR:
-                    v810_state->S_REG[reg1] = v810_state->P_REG[reg2];
+                    v810_state->S_REG[reg1] = (reg2 ? v810_state->P_REG[reg2] : 0);
                     break;
                 case V810_OP_STSR:
                     v810_state->P_REG[reg2] = v810_state->S_REG[reg1];

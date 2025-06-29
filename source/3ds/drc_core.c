@@ -85,9 +85,9 @@ static void drc_mapRegs(exec_block* block) {
         if (max)
             reg_usage[block->reg_map[i]] = 0;
         else
-            // Use the "33rd register" as a placeholder if the register isn't
+            // Use P_REG[0] as a placeholder if the register isn't
             // used in the block
-            block->reg_map[i] = 32;
+            block->reg_map[i] = 0;
     }
 }
 
@@ -685,7 +685,8 @@ static int drc_translateBlock(void) {
 
     // Second pass: map the most used V810 registers to ARM registers
     drc_mapRegs(block);
-    for (i = 0; i < 32; i++)
+    phys_regs[0] = 0;
+    for (i = 1; i < 32; i++)
         phys_regs[i] = drc_getPhysReg(i, block->reg_map);
 
     inst_ptr = &trans_cache[0];
