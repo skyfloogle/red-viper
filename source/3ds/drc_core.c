@@ -27,6 +27,7 @@
  * SOFTWARE.
  */
 
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -695,7 +696,7 @@ static int drc_translateBlock(void) {
     #define LOAD_REG1() \
         if (arm_reg1 < 4) { \
             if (inst_cache[i].reg1) \
-                LDR_IO(arm_reg1, 11, inst_cache[i].reg1 * 4); \
+                LDR_IO(arm_reg1, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg1])); \
             else \
                 MOV_I(arm_reg1, 0, 0); \
         }
@@ -703,7 +704,7 @@ static int drc_translateBlock(void) {
     #define RELOAD_REG1(r) \
         if (arm_reg1 < 4) { \
             if (inst_cache[i].reg1) \
-                LDR_IO(r, 11, inst_cache[i].reg1 * 4); \
+                LDR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg1])); \
             else \
                 MOV_I(r, 0, 0); \
         } else { \
@@ -713,7 +714,7 @@ static int drc_translateBlock(void) {
     #define LOAD_REG2() \
         if (arm_reg2 < 4) { \
             if (inst_cache[i].reg2) \
-                LDR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4); \
+                LDR_IO(arm_reg2, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2])); \
             else \
                 MOV_I(arm_reg2, 0, 0); \
         }
@@ -721,7 +722,7 @@ static int drc_translateBlock(void) {
     #define RELOAD_REG2(r) \
         if (arm_reg2 < 4) { \
             if (inst_cache[i].reg2) \
-                LDR_IO(r, 11, inst_cache[i].reg2 * 4); \
+                LDR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2])); \
             else \
                 MOV_I(r, 0, 0); \
         } else { \
@@ -729,7 +730,7 @@ static int drc_translateBlock(void) {
         }
 
     #define SAVE_REG2(r) \
-        if (arm_reg2 < 4) STR_IO(r, 11, inst_cache[i].reg2 * 4); \
+        if (arm_reg2 < 4) STR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2])); \
         else MOV(arm_reg2, r);
 
     // Third pass: generate ARM instructions
@@ -757,7 +758,7 @@ static int drc_translateBlock(void) {
 
         // save PC, for debugging purposes
         // LDW_I(0, inst_cache[i].PC);
-        // STR_IO(0, 11, 33 * 4);
+        // STR_IO(0, 11, offsetof(cpu_state, PC));
 
         reg1_modified = false;
         reg2_modified = false;
@@ -791,7 +792,7 @@ static int drc_translateBlock(void) {
         switch (inst_cache[i].opcode) {
             case V810_OP_JMP: // jmp [reg1]
                 LOAD_REG1();
-                STR_IO(arm_reg1, 11, 33 * 4);
+                STR_IO(arm_reg1, 11, offsetof(cpu_state, PC));
                 ADDCYCLES();
                 POP(1 << 15);
                 break;
@@ -811,7 +812,7 @@ static int drc_translateBlock(void) {
                     ADDCYCLES();
                     LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
                     // Save the new PC
-                    STR_IO(0, 11, 33 * 4);
+                    STR_IO(0, 11, offsetof(cpu_state, PC));
                     POP(1 << 15);
                 }
                 break;
@@ -819,34 +820,34 @@ static int drc_translateBlock(void) {
                 LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
                 LDW_I(1, inst_cache[i].PC + 4);
                 // Save the new PC
-                STR_IO(0, 11, 33 * 4);
+                STR_IO(0, 11, offsetof(cpu_state, PC));
                 // Link the return address
                 if (phys_regs[31])
                     MOV(phys_regs[31], 1);
                 else
-                    STR_IO(1, 11, 31 * 4);
+                    STR_IO(1, 11, offsetof(cpu_state, P_REG[31]));
                 ADDCYCLES();
                 POP(1 << 15);
                 break;
             case V810_OP_RETI:
-                LDR_IO(0, 11, (35 + PSW) * 4);
+                LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
                 TST_I(0, PSW_NP >> 8, 24);
                 // ldrne r1, S_REG[FEPC]
-                new_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 1, (35 + FEPC) * 4);
+                new_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 1, offsetof(cpu_state, S_REG[FEPC]));
                 // ldrne r2, S_REG[FEPSW]
-                new_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 2, (35 + FEPSW) * 4);
+                new_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 2, offsetof(cpu_state, S_REG[FEPSW]));
                 // ldreq r1, S_REG[EIPC]
-                new_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 1, (35 + EIPC) * 4);
+                new_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 1, offsetof(cpu_state, S_REG[EIPC]));
                 // ldreq r2, S_REG[EIPSW]
-                new_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 2, (35 + EIPSW) * 4);
+                new_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 2, offsetof(cpu_state, S_REG[EIPSW]));
 
-                STR_IO(1, 11, 33 * 4);
-                STR_IO(2, 11, (35 + PSW) * 4);
+                STR_IO(1, 11, offsetof(cpu_state, PC));
+                STR_IO(2, 11, offsetof(cpu_state, S_REG[PSW]));
 
                 ADDCYCLES();
 
                 // restore flags
-                LDR_IO(1, 11, 70 * 4);
+                LDR_IO(1, 11, offsetof(cpu_state, except_flags));
                 MSR(1);
 
                 POP(1 << 15);
@@ -1037,7 +1038,7 @@ static int drc_translateBlock(void) {
                 // word of the multiplication will be in r0 (because
                 // phys_regs[30] == 0) and we'll have to save it manually
                 if (!phys_regs[30]) {
-                    STR_IO(0, 11, 30 * 4);
+                    STR_IO(0, 11, offsetof(cpu_state, P_REG[30]));
                 }
                 reg2_modified = true;
                 break;
@@ -1046,7 +1047,7 @@ static int drc_translateBlock(void) {
                 LOAD_REG2();
                 UMULLS(arm_reg2, phys_regs[30], arm_reg2, arm_reg1);
                 if (!phys_regs[30]) {
-                    STR_IO(0, 11, 30 * 4);
+                    STR_IO(0, 11, offsetof(cpu_state, P_REG[30]));
                 }
                 reg2_modified = true;
                 break;
@@ -1055,13 +1056,13 @@ static int drc_translateBlock(void) {
                 // reg2%reg1 -> r30 (r1)
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
-                LDR_IO(2, 11, 69 * 4);
+                LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
                 ADD_I(2, 2, DRC_RELOC_IDIVMOD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
                 if (inst_cache[i].reg2 != 30) {
                     if (!phys_regs[30])
-                        STR_IO(1, 11, 30 * 4);
+                        STR_IO(1, 11, offsetof(cpu_state, P_REG[30]));
                     else
                         MOV(phys_regs[30], 1);
                 }
@@ -1074,13 +1075,13 @@ static int drc_translateBlock(void) {
             case V810_OP_DIVU: // divu reg1, reg2
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
-                LDR_IO(2, 11, 69 * 4);
+                LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
                 ADD_I(2, 2, DRC_RELOC_UIDIVMOD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
                 if (inst_cache[i].reg2 != 30) {
                     if (!phys_regs[30])
-                        STR_IO(1, 11, 30 * 4);
+                        STR_IO(1, 11, offsetof(cpu_state, P_REG[30]));
                     else
                         MOV(phys_regs[30], 1);
                 }
@@ -1193,7 +1194,7 @@ static int drc_translateBlock(void) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                LDR_IO(1, 11, 69 * 4);
+                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
                 ADD_I(1, 1, DRC_RELOC_RBYTE*4, 0);
                 BLX(ARM_COND_AL, 1);
 
@@ -1229,7 +1230,7 @@ static int drc_translateBlock(void) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                LDR_IO(1, 11, 69 * 4);
+                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
                 ADD_I(1, 1, DRC_RELOC_RHWORD*4, 0);
                 BLX(ARM_COND_AL, 1);
 
@@ -1265,7 +1266,7 @@ static int drc_translateBlock(void) {
                     ADD(0, 0, arm_reg1);
                 }
 
-                LDR_IO(1, 11, 69 * 4);
+                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
                 ADD_I(1, 1, DRC_RELOC_RWORD*4, 0);
                 BLX(ARM_COND_AL, 1);
 
@@ -1298,7 +1299,7 @@ static int drc_translateBlock(void) {
                 else
                     RELOAD_REG2(1);
 
-                LDR_IO(2, 11, 69 * 4);
+                LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
                 ADD_I(2, 2, DRC_RELOC_WBYTE*4, 0);
                 BLX(ARM_COND_AL, 2);
 
@@ -1325,7 +1326,7 @@ static int drc_translateBlock(void) {
                 else
                     RELOAD_REG2(1);
 
-                LDR_IO(2, 11, 69 * 4);
+                LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
                 ADD_I(2, 2, DRC_RELOC_WHWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
@@ -1352,7 +1353,7 @@ static int drc_translateBlock(void) {
                 else
                     RELOAD_REG2(1);
 
-                LDR_IO(2, 11, 69 * 4);
+                LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
                 ADD_I(2, 2, DRC_RELOC_WWORD*4, 0);
                 BLX(ARM_COND_AL, 2);
 
@@ -1380,14 +1381,14 @@ static int drc_translateBlock(void) {
             case V810_OP_LDSR: // ldsr reg2, regID
                 // Stores reg2 in v810_state->S_REG[regID]
                 LOAD_REG2();
-                STR_IO(arm_reg2, 11, (35 + inst_cache[i].imm) * 4);
+                STR_IO(arm_reg2, 11, offsetof(cpu_state, S_REG[inst_cache[i].imm]));
                 if (inst_cache[i].imm == CHCW) chcw_load_seen = true;
                 if (inst_cache[i].imm == PSW || inst_cache[i].imm == EIPSW) {
                     // load status register
                     if (inst_cache[i].imm == PSW)
                         MRS(0);
                     else
-                        LDR_IO(0, 11, 70 * 4);
+                        LDR_IO(0, 11, offsetof(cpu_state, except_flags));
                     // clear out condition flags
                     MVN_I(1, 0xf, 4);
                     AND(0, 0, 1);
@@ -1407,13 +1408,13 @@ static int drc_translateBlock(void) {
                     if (inst_cache[i].imm == PSW)
                         MSR(0);
                     else
-                        STR_IO(0, 11, 70 * 4);
+                        STR_IO(0, 11, offsetof(cpu_state, except_flags));
                 }
                 break;
             case V810_OP_STSR: // stsr regID, reg2
                 // Loads v810_state->S_REG[regID] into reg2
                 LOAD_REG2();
-                LDR_IO(arm_reg2, 11, (35 + inst_cache[i].imm) * 4);
+                LDR_IO(arm_reg2, 11, offsetof(cpu_state, S_REG[inst_cache[i].imm]));
                 if (inst_cache[i].imm == PSW || inst_cache[i].imm == EIPSW) {
                     // clear out condition flags
                     MVN_I(0, 0xf, 0);
@@ -1421,7 +1422,7 @@ static int drc_translateBlock(void) {
                     // load except flags if relevant
                     if (inst_cache[i].imm == EIPSW) {
                         MRS(0);
-                        LDR_IO(1, 11, 70 * 4);
+                        LDR_IO(1, 11, offsetof(cpu_state, except_flags));
                         MSR(1);
                     }
                     // fill in the actual condition flags
@@ -1437,15 +1438,15 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_SEI: // sei
                 // Set the 12th bit in v810_state->S_REG[PSW]
-                LDR_IO(0, 11, (35 + PSW) * 4);
+                LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
                 ORR_I(0, 1, 20);
-                STR_IO(0, 11, (35 + PSW) * 4);
+                STR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
                 break;
             case V810_OP_CLI: // cli
                 // Clear the 12th bit in v810_state->S_REG[PSW]
-                LDR_IO(0, 11, (35 + PSW) * 4);
+                LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
                 BIC_I(0, 1, 20);
-                STR_IO(0, 11, (35 + PSW) * 4);
+                STR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
                 break;
             case V810_OP_SETF: // setf imm5, reg2
                 if ((inst_cache[i].imm & 0xF) == (V810_OP_BNH & 0xF)) {
@@ -1473,10 +1474,10 @@ static int drc_translateBlock(void) {
                 if (inst_cache[i].imm >= 4) {
                     // non-search, we have a destination
                     // v810 r26 -> arm r3 hi
-                    if (!phys_regs[26]) LDR_IO(0, 11, 26 * 4);
+                    if (!phys_regs[26]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[26]));
                     AND(3, phys_regs[26], 2);
                     // v810 r27 -> arm r3 lo
-                    if (!phys_regs[27]) LDR_IO(0, 11, 27 * 4);
+                    if (!phys_regs[27]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[27]));
                     AND(0, phys_regs[27], 2);
                     ORR_IS(3, 0, 3, ARM_SHIFT_LSL, 5);
 
@@ -1485,7 +1486,7 @@ static int drc_translateBlock(void) {
                 } else {
                     // search, we only have a source
                     // v810 r27 -> arm r3 lo
-                    if (!phys_regs[27]) LDR_IO(0, 11, 27 * 4);
+                    if (!phys_regs[27]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[27]));
                     AND(3, phys_regs[27], 2);
                 }
 
@@ -1494,26 +1495,26 @@ static int drc_translateBlock(void) {
                 if (inst_cache[i].imm >= 4) {
                     // non-search, clear the bottom two bits
                     // v810 r29 & (~3) -> arm r1
-                    if (!phys_regs[29]) LDR_IO(0, 11, 29 * 4);
+                    if (!phys_regs[29]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[29]));
                     AND(1, phys_regs[29], 2);
                 } else {
                     // search, leave as-is
                     // v810 r29 -> arm r1
-                    if (!phys_regs[29]) LDR_IO(1, 11, 29 * 4);
+                    if (!phys_regs[29]) LDR_IO(1, 11, offsetof(cpu_state, P_REG[29]));
                     else MOV(1, phys_regs[29]);
                 }
 
                 // v810 r30 & (~3) -> arm r0
-                if (!phys_regs[30]) LDR_IO(0, 11, 30 * 4);
+                if (!phys_regs[30]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[30]));
                 AND(0, phys_regs[30], 2);
 
                 // v810 r28 -> arm r2
-                if (!phys_regs[28]) LDR_IO(2, 11, 28 * 4);
+                if (!phys_regs[28]) LDR_IO(2, 11, offsetof(cpu_state, P_REG[28]));
                 else MOV(2, phys_regs[28]);
 
                 // call the function
                 PUSH(1<<5);
-                LDR_IO(5, 11, 69 * 4);
+                LDR_IO(5, 11, offsetof(cpu_state, reloc_table));
                 ADD_I(5, 5, (DRC_RELOC_BSTR+inst_cache[i].imm)*4, 0);
                 BLX(ARM_COND_AL, 5);
                 POP(1<<5);
@@ -1521,7 +1522,7 @@ static int drc_translateBlock(void) {
                 // reload registers
                 for (int j = inst_cache[i].imm >= 4 ? 26 : 27; j <= 30; j++)
                     if (phys_regs[j])
-                        LDR_IO(phys_regs[j], 11, j * 4);
+                        LDR_IO(phys_regs[j], 11, offsetof(cpu_state, P_REG[j]));
                 if (inst_cache[i].imm < 4) {
                     // zero flag for search
                     ORRS(0, 0, 0);
@@ -1531,7 +1532,7 @@ static int drc_translateBlock(void) {
                     HANDLEINT(inst_cache[i].PC);
                     int len_reg = phys_regs[28];
                     if (!len_reg) {
-                        LDR_IO(0, 11, 28 * 4);
+                        LDR_IO(0, 11, offsetof(cpu_state, P_REG[28]));
                     }
                     MRS(1);
                     CMP_I(len_reg, 0, 0);
@@ -1631,7 +1632,7 @@ static int drc_translateBlock(void) {
                     LOAD_REG1();
                     MOV_IS(0, arm_reg1, 0, 0);
                     RELOAD_REG2(1);
-                    LDR_IO(2, 11, 69 * 4);
+                    LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
                     ADD_I(2, 2, (DRC_RELOC_FPP+inst_cache[i].imm)*4, 0);
                     BLX(ARM_COND_AL, 2);
                     MOV_IS(arm_reg2, 0, 0, 0);
@@ -1659,9 +1660,9 @@ static int drc_translateBlock(void) {
 
         if (unmapped_registers) {
             if (arm_reg1 < 4 && reg1_modified)
-                STR_IO(arm_reg1, 11, inst_cache[i].reg1 * 4);
+                STR_IO(arm_reg1, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg1]));
             if (arm_reg2 < 4 && reg2_modified)
-                STR_IO(arm_reg2, 11, inst_cache[i].reg2 * 4);
+                STR_IO(arm_reg2, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2]));
         }
 
         if (i + 1 < num_v810_inst) {
@@ -1684,7 +1685,7 @@ static int drc_translateBlock(void) {
                 MRS(0);
                 LDW_I(1, inst_cache[i+1].PC);
                 ADD_I(10, 10, cycles & 0xFF, 0);
-                LDR_IO(2, 11, 68*4);
+                LDR_IO(2, 11, offsetof(cpu_state, irq_handler));
                 BLX(ARM_COND_AL, 2);
                 MSR(0);
                 cycles = 0;

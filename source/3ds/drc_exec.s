@@ -1,6 +1,33 @@
 .arm
 .align 4
 
+@ Defining v810_state offsets
+.struct 0
+state_regs:
+.struct state_regs + 4*33
+state_pc:
+.struct state_pc + 4
+state_flags:
+.struct state_flags + 4
+state_statusregs:
+.struct state_statusregs + (4*32)
+state_cycles:
+
+@ Defining exec_block offsets
+.struct 0
+block_phys_offset:
+.struct block_phys_offset + 4
+block_virt_loc:
+.struct block_virt_loc + 4
+block_size:
+.struct block_size + 4
+block_cycles:
+.struct block_cycles + 4
+block_free:
+.struct block_free + 1
+block_reg_map:
+.struct block_reg_map + 7
+
 .data
 
 .extern v810_state, serviceDisplayInt, serviceInt, serviceint, tVBOpt
@@ -12,11 +39,11 @@
     ldr     r11, [r11]
 
     @ Load the CPSR
-    ldr     r3, [r11, #(34*4)]
+    ldr     r3, [r11, #state_flags]
     msr     cpsr_f, r3
 
-    @ Load the address of the reg map (block+17)
-    add     r3, r1, #17
+    @ Load the address of the reg map
+    add     r3, r1, #block_reg_map
 
     @ Load cached V810 registers
     ldrb    r2, [r3], #1
@@ -36,12 +63,12 @@
 .macro stRegs
     ldr     r11, =v810_state
     ldr     r11, [r11]
-    @ Load the address of the reg map (block+17)
-    add     r1, r0, #17
+    @ Load the address of the reg map
+    add     r1, r0, #block_reg_map
 
     @ Save the CPSR
     mrs     r3, cpsr
-    str     r3, [r11, #(34*4)]
+    str     r3, [r11, #state_flags]
 
     @ Store cached V810 registers
     ldrb    r2, [r1], #1
@@ -83,9 +110,9 @@ postexec:
     ldr     r0, =tVBOpt
     ldr     r0, [r0]
     add     r10, r0
-    ldr     r0, [r11, #67<<2]
+    ldr     r0, [r11, #state_cycles]
     add     r0, r10
-    str     r0, [r11, #67<<2]
+    str     r0, [r11, #state_cycles]
     pop     {r4-r11, ip, pc}
 
 @ Checks for pending interrupts and exits the block if necessary
@@ -97,22 +124,22 @@ drc_handleInterrupts:
     mov     r5, r1
 
     @ Save flags
-    str     r4, [r11, #(34*4)]
+    str     r4, [r11, #state_flags]
 
     @ Load v810_state->cycles and add it to the total number of cycles
     @ (MAXCYCLES + r10 excess)
-    ldr     r0, [r11, #67<<2]
+    ldr     r0, [r11, #state_cycles]
     add     r0, r10
     ldr     r2, =tVBOpt
     ldr     r2, [r2]
     add     r0, r2
-    str     r0, [r11, #67<<2]
+    str     r0, [r11, #state_cycles]
 
     bl      serviceDisplayInt
     cmp     r0, #0
     bne     exit_block
 
-    ldr     r0, [r11, #67<<2]
+    ldr     r0, [r11, #state_cycles]
     mov     r1, r5
     bl      serviceInt
     cmp     r0, #0
