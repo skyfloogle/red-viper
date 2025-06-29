@@ -529,6 +529,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
         tHReg.TLB = data;
         tHReg.tTHW = (tHReg.TLB | (tHReg.tTHW & 0xFF00)); //Reset internal count
         tHReg.tCount = tHReg.tTHW;
+        if (tHReg.TCR & 0x01) predictEvent(true);
         //tHReg.tTHW = (tHReg.TLB | (tHReg.THB << 8)); //Reset internal count
         break;
     case 0x0200001C:    //THB
@@ -536,6 +537,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
         tHReg.THB = data;
         tHReg.tTHW = ((tHReg.THB << 8) | (tHReg.tTHW & 0xFF)); //Reset internal count
         tHReg.tCount = tHReg.tTHW;
+        if (tHReg.TCR & 0x01) predictEvent(true);
         //tHReg.tTHW = (tHReg.TLB | (tHReg.THB << 8)); //Reset internal count
         break;
     case 0x02000020:    //TCR
@@ -568,7 +570,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
             }
         }
 
-        predictEvent();
+        predictEvent(true);
 
         break;
     case 0x02000024:    //WCR
@@ -586,7 +588,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
                 tHReg.SCR |= 2;
                 tHReg.hwRead = 10240;
                 tHReg.lastinput = v810_state->cycles;
-                predictEvent();
+                predictEvent(true);
             }
         } else if(data & 0x20) { //Software Read, same for now....
         }

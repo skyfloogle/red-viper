@@ -343,7 +343,11 @@ void v810_reset(void) {
     );
 }
 
-void predictEvent(void) {
+void predictEvent(bool increment) {
+    if (increment) {
+        v810_state->cycles += v810_state->cycles_until_event_full - v810_state->cycles_until_event_partial;
+    }
+
     WORD cycles = v810_state->cycles;
     int disptime = cycles - tVIPREG.lastdisp;
     int next_event = 400000 - disptime;
@@ -356,8 +360,9 @@ void predictEvent(void) {
     }
     if (tHReg.TCR & 0x01) {
         int period = tHReg.TCR & 0x10 ? 400 : 2000;
-        int next_timer = -((int)(cycles % period) - period);
+        int next_timer = (tHReg.tCount ? tHReg.tCount : tHReg.tTHW) * period - (cycles - tHReg.lasttime);
         if (next_event > next_timer) next_event = next_timer;
+        
     }
     if (tHReg.SCR & 2) {
         int next_input = tHReg.hwRead - (cycles - tHReg.lastinput);
@@ -407,7 +412,7 @@ int serviceInt(unsigned int cycles, WORD PC) {
         }
     }
 
-    predictEvent();
+    predictEvent(false);
 
     if (tHReg.tInt) {
         // zero & interrupt enabled
@@ -540,7 +545,7 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
         pending_int = 1;
     }
 
-    if (pending_int) predictEvent();
+    if (pending_int) predictEvent(false);
 
     return pending_int;
 }
