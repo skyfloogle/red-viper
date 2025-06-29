@@ -410,6 +410,10 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define SUB_I(Rd, Rn, imm8, rot) \
     new_data_proc_imm(ARM_COND_AL, ARM_OP_SUB, 0, Rn, Rd, rot, imm8)
 
+// subs Rd, Rn, imm8, ror #rot
+#define SUBS_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_SUB, 1, Rn, Rd, rot, imm8)
+
 // and Rd, imm, ror #rot
 // And immediate
 // imm8 can be rotated an even number of times
@@ -725,21 +729,27 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #endif
 
 #define ADDCYCLES() { \
-    if (cycles != 0) { ADD_I(10, 10, cycles & 0xFF, 0); } \
+    if (cycles != 0) { \
+        LDR_IO(0, 11, offsetof(cpu_state, cycles_until_event_partial)); \
+        SUB_I(0, 0, cycles & 0xFF, 0); \
+        STR_IO(0, 11, offsetof(cpu_state, cycles_until_event_partial)); \
+    } \
     cycles = 0; \
 }
 
 #define HANDLEINT(ret_PC) { \
     MRS(0); \
     LDW_I(1, ret_PC); \
-    ADDS_I(10, 10, cycles & 0xFF, 0); \
-    LDR_IO(2, 11, offsetof(cpu_state, irq_handler)); \
-    BLX(ARM_COND_PL, 2); \
+    LDR_IO(2, 11, offsetof(cpu_state, cycles_until_event_partial)); \
+    LDR_IO(3, 11, offsetof(cpu_state, irq_handler)); \
+    SUBS_I(2, 2, cycles & 0xFF, 0); \
+    STR_IO(2, 11, offsetof(cpu_state, cycles_until_event_partial)); \
+    BLX(ARM_COND_LE, 3); \
     MSR(0); \
     cycles = 0; \
 }
 
-#define HALT_LOOP_BODY 7
+#define HALT_LOOP_BODY 9
 #define HALT_SIZE HALT_LOOP_BODY + 2
 
 #define HALT(next_PC) { \
@@ -750,8 +760,10 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     ORR_I(1, ((next_PC) & 0xff0000)>>16, 16); \
     ORR_I(1, ((next_PC) & 0xff000000)>>24, 8); \
     MOV_I(10, 0, 0); \
-    LDR_IO(2, 11, offsetof(cpu_state, irq_handler)); \
-    BLX(ARM_COND_AL, 2); \
+    MOV_I(2, 0, 0); \
+    LDR_IO(3, 11, offsetof(cpu_state, irq_handler)); \
+    STR_IO(2, 11, offsetof(cpu_state, cycles_until_event_partial)); \
+    BLX(ARM_COND_AL, 3); \
     Boff(ARM_COND_AL, -(HALT_LOOP_BODY)); \
     cycles = 0; \
 }

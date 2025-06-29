@@ -567,6 +567,9 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
                 }
             }
         }
+
+        predictEvent();
+
         break;
     case 0x02000024:    //WCR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG WCR [%08x]:%02x ",addr,data);
@@ -582,6 +585,8 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
             if(!(data&0x01)) { //Hardware Read Disabled
                 tHReg.SCR |= 2;
                 tHReg.hwRead = 10240;
+                tHReg.lastinput = v810_state->cycles;
+                predictEvent();
             }
         } else if(data & 0x20) { //Software Read, same for now....
         }

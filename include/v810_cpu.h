@@ -87,16 +87,15 @@ typedef struct {
 
 typedef struct {
     WORD P_REG[32]; // Main program reg pr0-pr31
-    // When reading and writing the registers before and after executing a
-    // block we need a place to store crap (the "33rd" register)
-    WORD TMP_REG;
+    WORD S_REG[32]; // System registers sr0-sr31
     WORD PC;
     WORD flags;
-    WORD S_REG[32]; // System registers sr0-sr31
+    WORD except_flags;
     WORD cycles;
+    int cycles_until_event_partial;
+    int cycles_until_event_full;
     int (*irq_handler)(WORD, WORD*);
     void(*reloc_table)(void);
-    WORD except_flags;
     BYTE ret;
 } cpu_state;
 
@@ -130,6 +129,8 @@ bool v810_int(WORD iNum, WORD PC);
 
 // Generate Exception #n
 void v810_exp(WORD iNum, WORD eCode);
+
+void predictEvent(void);
 
 int serviceInt(unsigned int cycles, WORD PC);
 int serviceDisplayInt(unsigned int cycles, WORD PC);
