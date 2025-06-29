@@ -1888,12 +1888,10 @@ int drc_run(void) {
         v810_state->flags = cpsr;
     }
 
-    while (true) {
-        serviceDisplayInt(clocks, v810_state->PC);
-        do {
-            tVBOpt.MAXCYCLES = serviceInt(clocks, v810_state->PC);
-        } while (unlikely(tVBOpt.MAXCYCLES <= 0));
+    serviceInt(v810_state->cycles, v810_state->PC);
+    serviceDisplayInt(v810_state->cycles, v810_state->PC);
 
+    while (true) {
         v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;
 

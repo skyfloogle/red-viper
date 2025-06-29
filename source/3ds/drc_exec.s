@@ -4,14 +4,21 @@
 @ Defining v810_state offsets
 .struct 0
 state_regs:
-.struct state_regs + 4*33
+.struct state_regs + (4*32)
+state_statusregs:
+.struct state_statusregs + (4*32)
 state_pc:
 .struct state_pc + 4
 state_flags:
 .struct state_flags + 4
-state_statusregs:
-.struct state_statusregs + (4*32)
+state_exceptflags:
+.struct state_exceptflags + 4
 state_cycles:
+.struct state_cycles + 4
+state_cycles_until_event_partial:
+.struct state_cycles_until_event_partial + 4
+state_cycles_until_event_full:
+.struct state_cycles_until_event_full + 4
 
 @ Defining exec_block offsets
 .struct 0
@@ -98,21 +105,21 @@ drc_executeBlock:
     push    {lr}
 
     ldRegs
-    @ r10 = -MAXCYCLES
-    ldr     r10, =tVBOpt
-    ldr     r10, [r10]
-    neg     r10, r10
+    mov     r10, #0
     bx      r0
 
 postexec:
     pop     {r0}
     stRegs
-    @ v810_state->cycles += MAXCYCLES + r10 excess
-    ldr     r0, =tVBOpt
-    ldr     r0, [r0]
-    add     r10, r0
+    @ cycles += cycles_until_event_full - cycles_until_event_partial
     ldr     r0, [r11, #state_cycles]
-    add     r0, r10
+    ldr     r2, [r11, #state_cycles_until_event_full]
+    ldr     r3, [r11, #state_cycles_until_event_partial]
+    sub     r3, r10
+    sub     r2, r3
+    str     r3, [r11, #state_cycles_until_event_full]
+    str     r3, [r11, #state_cycles_until_event_partial]
+    add     r0, r2
     str     r0, [r11, #state_cycles]
     pop     {r4-r11, ip, pc}
 
@@ -127,32 +134,29 @@ drc_handleInterrupts:
     @ Save flags
     str     r4, [r11, #state_flags]
 
-    @ Load v810_state->cycles and add it to the total number of cycles
-    @ (MAXCYCLES + r10 excess)
+    @ cycles += cycles_until_event_full - cycles_until_event_partial
     ldr     r0, [r11, #state_cycles]
-    add     r0, r10
-    ldr     r2, =tVBOpt
-    ldr     r2, [r2]
+    ldr     r2, [r11, #state_cycles_until_event_full]
+    ldr     r3, [r11, #state_cycles_until_event_partial]
+    sub     r3, r10
+    sub     r2, r3
+    str     r3, [r11, #state_cycles_until_event_full]
+    str     r3, [r11, #state_cycles_until_event_partial]
     add     r0, r2
     str     r0, [r11, #state_cycles]
+    mov     r10, #0
 
-    bl      serviceDisplayInt
+    bl      serviceInt
     cmp     r0, #0
     bne     exit_block
 
     ldr     r0, [r11, #state_cycles]
     mov     r1, r5
-    bl      serviceInt
+    bl      serviceDisplayInt
     cmp     r0, #0
-    ble     exit_block
+    bne     exit_block
 
 ret_to_block:
-    @ MAXCYCLES = serviceInt()
-    @ r10 = -MAXCYCLES
-    ldr     r10, =tVBOpt
-    str     r0, [r10]
-    neg     r10, r0
-
     @ Return to the block
     mov     r0, r4
     pop     {r4, r5, pc}
@@ -160,11 +164,6 @@ ret_to_block:
 exit_block:
     @ Restore CPSR
     msr     cpsr_f, r4
-
-    @ r10 = -MAXCYCLES (to cancel out adding MAXCYCLES in postexec)
-    ldr     r10, =tVBOpt
-    ldr     r10, [r10]
-    neg     r10, r10
 
     @ Exit the block ignoring linked return address
     pop     {r4, r5}

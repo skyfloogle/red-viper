@@ -343,41 +343,55 @@ void v810_reset(void) {
     );
 }
 
+void predictEvent(void) {
+    WORD cycles = v810_state->cycles;
+    int disptime = cycles - tVIPREG.lastdisp;
+    int next_event = 400000 - disptime;
+    if (tVIPREG.displaying) {
+        if (disptime < 60000) next_event = 60000 - disptime;
+        else if (disptime < 160000) next_event = 160000 - disptime;
+        else if (disptime < 200000) next_event = 200000 - disptime;
+        else if (disptime < 260000) next_event = 260000 - disptime;
+        else if (disptime < 360000) next_event = 360000 - disptime;
+    }
+    if (tHReg.TCR & 0x01) {
+        int period = tHReg.TCR & 0x10 ? 400 : 2000;
+        int next_timer = -((int)(cycles % period) - period);
+        if (next_event > next_timer) next_event = next_timer;
+    }
+    if (tHReg.SCR & 2) {
+        int next_input = tHReg.hwRead - (cycles - tHReg.lastinput);
+        if (next_event > next_input) next_event = next_input;
+    }
+    if (tVIPREG.drawing) {
+        int drawtime = cycles - tVIPREG.lastdraw;
+        int sboff = (tVIPREG.rowcount) * 28 / tVIPREG.frametime + 1120;
+        int nextrow = (tVIPREG.rowcount + 1) * 28 / tVIPREG.frametime;
+        int next_draw;
+        if (drawtime < sboff) next_draw = sboff - drawtime;
+        else next_draw = nextrow - drawtime;
+        if (next_event < next_draw) next_event = next_draw;
+    }
+
+    v810_state->cycles_until_event_full = v810_state->cycles_until_event_partial = next_event;
+}
+
 // Returns number of cycles until next timer interrupt.
 int serviceInt(unsigned int cycles, WORD PC) {
-    const static int MAXCYCLES = 512;
-
-    //OK, this is a strange muck of code... basically it attempts to hit interrupts and
-    //handle the VIP regs at the correct time. The timing needs a LOT of work. Right now,
-    //the count values I'm using are the best values from my old clock cycle table. In
-    //other words, the values are so far off. PBBT!  FIXME
-
-    //For whatever reason we dont need this code
-    //actualy it totaly breaks the emu if you don't call it on
-    //every cycle, fixme, what causes this to error out.
-    //Controller Int
-    //if ((!(tHReg.SCR & 0x80)) && (handle_input()&0xFFFC)) {
-    //  v810_int(0);
-    //}
-
-    bool fast_timer = !!(tHReg.TCR & 0x10);
-    int next_timer = (tHReg.TCR & 0x01) && tHReg.tCount != 0 ? tHReg.tCount * (fast_timer ? 400 : 2000) - (cycles - tHReg.lasttime) : MAXCYCLES;
-    int next_input = tHReg.SCR & 2 ? tHReg.hwRead - (cycles - tHReg.lastinput) : MAXCYCLES;
-    int next_interrupt = next_timer < next_input ? next_timer : next_input;
-    next_interrupt = next_interrupt < MAXCYCLES ? next_interrupt : MAXCYCLES;
-
     // hardware read timing
     if (tHReg.SCR & 2) {
+        int next_input = tHReg.hwRead - (cycles - tHReg.lastinput);
         tHReg.hwRead = next_input;
         if (next_input <= 0)
             tHReg.SCR &= ~2;
     }
     tHReg.lastinput = cycles;
 
+    // timer
     if ((cycles-tHReg.lasttime) >= 400) {
         int new_ticks = (cycles - tHReg.lasttime) / 400;
         tHReg.lasttime += 400 * new_ticks;
-        int steps = fast_timer ? new_ticks : (tHReg.ticks + new_ticks) / 5;
+        int steps = (tHReg.TCR & 0x10) ? new_ticks : (tHReg.ticks + new_ticks) / 5;
         tHReg.ticks = (tHReg.ticks + new_ticks) % 5;
         if (tHReg.TCR & 0x01) { // Timer Enabled
             tHReg.tCount -= steps;
@@ -392,11 +406,15 @@ int serviceInt(unsigned int cycles, WORD PC) {
             tHReg.THB = ((tHReg.tCount>>8)&0xFF);
         }
     }
+
+    predictEvent();
+
     if (tHReg.tInt) {
         // zero & interrupt enabled
-        return v810_int(1, PC) ? 0 : next_input;
+        return v810_int(1, PC);
     }
-    return next_interrupt;
+
+    return false;
 }
 
 int serviceDisplayInt(unsigned int cycles, WORD PC) {
@@ -521,6 +539,8 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
         v810_int(4, PC);
         pending_int = 1;
     }
+
+    if (pending_int) predictEvent();
 
     return pending_int;
 }
