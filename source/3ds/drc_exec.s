@@ -41,22 +41,22 @@ block_reg_map:
     msr     cpsr_f, r3
 
     @ Load the reg map
+    mov     r2, #0x1F
     ldr     r3, [r1, #block_reg_map]
-    mov     r1, #0x1F
 
     @ Load cached V810 registers
-    and     r2, r1, r3, lsr #0
-    ldr     r4, [r11, r2, lsl #2]
-    and     r2, r1, r3, lsr #5
-    ldr     r5, [r11, r2, lsl #2]
-    and     r2, r1, r3, lsr #10
-    ldr     r6, [r11, r2, lsl #2]
-    and     r2, r1, r3, lsr #15
-    ldr     r7, [r11, r2, lsl #2]
-    and     r2, r1, r3, lsr #20
-    ldr     r8, [r11, r2, lsl #2]
-    and     r2, r1, r3, lsr #25
-    ldr     r9, [r11, r2, lsl #2]
+    and     r4, r2, r3, lsr #0
+    and     r5, r2, r3, lsr #5
+    and     r6, r2, r3, lsr #10
+    and     r7, r2, r3, lsr #15
+    and     r8, r2, r3, lsr #20
+    and     r9, r2, r3, lsr #25
+    ldr     r4, [r11, r4, lsl #2]
+    ldr     r5, [r11, r5, lsl #2]
+    ldr     r6, [r11, r6, lsl #2]
+    ldr     r7, [r11, r7, lsl #2]
+    ldr     r8, [r11, r8, lsl #2]
+    ldr     r9, [r11, r9, lsl #2]
 .endm
 
 .macro stRegs
