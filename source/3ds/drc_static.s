@@ -1,7 +1,7 @@
 .arm
 .align 4
 
-.extern __divsi3, __modsi3, __udivsi3, __umodsi3, mem_rbyte, mem_rhword, mem_rword, mem_wbyte, mem_whword, mem_wword, ins_cmpf_s, ins_err, ins_cvt_ws, ins_cvt_sw, ins_addf_s, ins_subf_s, ins_mulf_s, ins_divf_s, ins_xb, ins_xh, ins_rev, ins_trnc_sw, ins_mpyhw
+.extern __divsi3, __modsi3, __udivsi3, __umodsi3, mem_rbyte, mem_rhword, mem_rword, mem_wbyte, mem_whword, mem_wword, ins_cmpf_s, ins_err, ins_cvt_ws, ins_cvt_sw, ins_addf_s, ins_subf_s, ins_mulf_s, ins_divf_s, ins_xb, ins_xh, ins_rev, ins_trnc_sw, ins_mpyhw, drc_clearScreenForGolf
 
 .text
 @ A cheap relocation table
@@ -47,3 +47,4 @@ drc_relocTable:
     b       ins_andnbsu
     b       ins_xornbsu
     b       ins_notbsu
+    b       drc_clearScreenForGolf

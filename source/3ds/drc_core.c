@@ -352,6 +352,12 @@ static void drc_findWaterworldBusywait(int size) {
     }
 }
 
+void drc_clearScreenForGolf(void) {
+    C3D_FrameBegin(0);
+    C3D_RenderTargetClear(screenTarget, C3D_CLEAR_COLOR, 0, 0);
+    C3D_FrameEnd(0);
+}
+
 // Workaround for an issue where the CPSR is modified outside of the block
 // before a conditional branch.
 // Sets save_flags for all unconditional instructions prior to a branch.
@@ -637,6 +643,8 @@ static int drc_translateBlock(void) {
     // Games with specific hacks; additional explanation follows where each check is used.
     bool is_waterworld = memcmp(tVBOpt.GAME_ID, "67VWEE", 6) == 0;
     bool is_virtual_lab = memcmp(tVBOpt.GAME_ID, "AHVJVJ", 6) == 0;
+    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
+    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
     bool is_jack_bros = memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0;
     bool chcw_load_seen = (v810_state->S_REG[CHCW] & 2) != 0;
 
@@ -746,6 +754,15 @@ static int drc_translateBlock(void) {
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         inst_ptr_start = inst_ptr;
         cycles += opcycle[inst_cache[i].opcode];
+
+    
+        // Golf hack: this function clears the screen, so we should do the same
+        if (unlikely((is_golf_us && inst_cache[i].PC == 0x0700ca64) ||
+                    (is_golf_jp && inst_cache[i].PC == 0x0701602a))) {
+            LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
+            ADD_I(2, 2, DRC_RELOC_GOLFHACK*4, 0);
+            BLX(ARM_COND_AL, 2);
+        }
 
         // Waterworld hack: slow down the sample at the start.
         // This roughly emulates register hazards to a certain extent,
@@ -1874,9 +1891,6 @@ int drc_run(void) {
     WORD* entrypoint;
     WORD entry_PC;
 
-    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
-    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
-
     // set up arm flags
     {
         WORD psw = v810_state->S_REG[PSW];
@@ -1894,14 +1908,6 @@ int drc_run(void) {
     while (true) {
         v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;
-
-        // Golf hack: this function clears the screen, so we should do the same
-        if (unlikely((is_golf_us && entry_PC == 0x0700ca64) ||
-                     (is_golf_jp && entry_PC == 0x0701602a))) {
-            C3D_FrameBegin(0);
-            C3D_RenderTargetClear(screenTarget, C3D_CLEAR_COLOR, 0, 0);
-            C3D_FrameEnd(0);
-        }
 
         // Try to find a cached block
         // TODO: make sure we have enough free space
