@@ -70,32 +70,35 @@ arm_inst *inst_ptr;
 
 // Maps the most used registers in the block to V810 registers
 static void drc_mapRegs(exec_block* block) {
-    int i, j, max;
+    int i, j, max, max_pos;
+
+    block->reg_map = 0;
 
     for (i = 0; i < ARM_NUM_CACHE_REGS; i++) {
-        max = 0;
+        max = max_pos = 0;
         // We don't care about P_REG[0] because it will always be 0 and it will
         // be optimized out
         for (j = 1; j < 32; j++) {
             if (reg_usage[j] > max) {
+                max_pos = j;
                 max = reg_usage[j];
-                block->reg_map[i] = (BYTE) j;
             }
         }
+        block->reg_map |= max_pos << (5 * i);
         if (max)
-            reg_usage[block->reg_map[i]] = 0;
+            reg_usage[(block->reg_map >> (5 * i)) & 0x1f] = 0;
         else
             // Use P_REG[0] as a placeholder if the register isn't
             // used in the block
-            block->reg_map[i] = 0;
+            block->reg_map &= ~(0x1f << (5 * i));
     }
 }
 
 // Gets the ARM register corresponding to a cached V810 register
-static BYTE drc_getPhysReg(BYTE vb_reg, BYTE reg_map[]) {
+static BYTE drc_getPhysReg(BYTE vb_reg, WORD reg_map) {
     int i;
     for (i = 0; i < ARM_NUM_CACHE_REGS; i++) {
-        if (reg_map[i] == vb_reg) {
+        if (((reg_map >> (i * 5)) & 0x1f) == vb_reg) {
             // The first usable register will be r4
             return (BYTE) (i + ARM_CACHE_REG_START);
         }

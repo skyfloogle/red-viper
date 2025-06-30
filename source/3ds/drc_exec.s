@@ -23,10 +23,8 @@ block_size:
 .struct block_size + 4
 block_cycles:
 .struct block_cycles + 4
-block_free:
-.struct block_free + 1
 block_reg_map:
-.struct block_reg_map + 7
+.struct block_reg_map + 4
 
 .data
 
@@ -42,46 +40,49 @@ block_reg_map:
     ldr     r3, [r11, #state_flags]
     msr     cpsr_f, r3
 
-    @ Load the address of the reg map
-    add     r3, r1, #block_reg_map
+    @ Load the reg map
+    ldr     r3, [r1, #block_reg_map]
+    mov     r1, #0x1F
 
     @ Load cached V810 registers
-    ldrb    r2, [r3], #1
+    and     r2, r1, r3, lsr #0
     ldr     r4, [r11, r2, lsl #2]
-    ldrb    r2, [r3], #1
+    and     r2, r1, r3, lsr #5
     ldr     r5, [r11, r2, lsl #2]
-    ldrb    r2, [r3], #1
+    and     r2, r1, r3, lsr #10
     ldr     r6, [r11, r2, lsl #2]
-    ldrb    r2, [r3], #1
+    and     r2, r1, r3, lsr #15
     ldr     r7, [r11, r2, lsl #2]
-    ldrb    r2, [r3], #1
+    and     r2, r1, r3, lsr #20
     ldr     r8, [r11, r2, lsl #2]
-    ldrb    r2, [r3], #1
+    and     r2, r1, r3, lsr #25
     ldr     r9, [r11, r2, lsl #2]
 .endm
 
 .macro stRegs
     ldr     r11, =v810_state
     ldr     r11, [r11]
-    @ Load the address of the reg map
-    add     r1, r0, #block_reg_map
 
     @ Save the CPSR
     mrs     r3, cpsr
     str     r3, [r11, #state_flags]
 
+    @ Load the address of the reg map
+    ldr     r1, [r0, #block_reg_map]
+    mov     r3, #0x1F
+
     @ Store cached V810 registers
-    ldrb    r2, [r1], #1
+    and     r2, r3, r1, lsr #0
     str     r4, [r11, r2, lsl #2]
-    ldrb    r2, [r1], #1
+    and     r2, r3, r1, lsr #5
     str     r5, [r11, r2, lsl #2]
-    ldrb    r2, [r1], #1
+    and     r2, r3, r1, lsr #10
     str     r6, [r11, r2, lsl #2]
-    ldrb    r2, [r1], #1
+    and     r2, r3, r1, lsr #15
     str     r7, [r11, r2, lsl #2]
-    ldrb    r2, [r1], #1
+    and     r2, r3, r1, lsr #20
     str     r8, [r11, r2, lsl #2]
-    ldrb    r2, [r1], #1
+    and     r2, r3, r1, lsr #25
     str     r9, [r11, r2, lsl #2]
 .endm
 

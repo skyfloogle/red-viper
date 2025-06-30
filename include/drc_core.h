@@ -51,11 +51,11 @@ typedef struct {
     WORD virt_loc;
     WORD size;
     WORD cycles;
-    bool free;
     // We can use ARM_NUM_CACHE_REGS registers at a time, r4-r10, and r11 will
     // have the address of v810_state
-    // reg_map[0] would have the VB register that is mapped to r4
-    BYTE reg_map[7];
+    // reg_map & 0x1F would have the VB register that is mapped to r4
+    WORD reg_map;
+    bool free;
     WORD start_pc;
     WORD end_pc; // The address of the last instruction in the block
 } exec_block;
