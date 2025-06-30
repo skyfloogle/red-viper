@@ -98,7 +98,6 @@ void setDefaults(void) {
     tVBOpt.DISASM   = 0;
     tVBOpt.SOUND    = 1;
     tVBOpt.DSP2X    = 0;
-    tVBOpt.DYNAREC  = 1;
     tVBOpt.FASTFORWARD = 0;
     tVBOpt.FF_TOGGLE = 0;
     tVBOpt.RENDERMODE = 1;

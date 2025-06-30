@@ -1840,14 +1840,9 @@ void drc_init(void) {
 
     hbHaxInit();
 
-    if (tVBOpt.DYNAREC) {
-        cache_start = linearMemAlign(CACHE_SIZE, 0x1000);
-        ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7);
-        detectCitra(cache_start);
-    } else {
-        // cache_start = &cache_dump_bin;
-        drc_loadSavedCache();
-    }
+    cache_start = linearMemAlign(CACHE_SIZE, 0x1000);
+    ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7);
+    detectCitra(cache_start);
 
     *cache_start = -1;
     cache_pos = cache_start + 1;
@@ -1861,8 +1856,7 @@ void drc_reset(void) {
 
 // Cleanup and exit
 void drc_exit(void) {
-    if (tVBOpt.DYNAREC)
-        linearFree(cache_start);
+    linearFree(cache_start);
     free(rom_block_map);
     linearFree(rom_entry_map);
     free(rom_data_code_map);
@@ -1912,7 +1906,7 @@ int drc_run(void) {
         // Try to find a cached block
         // TODO: make sure we have enough free space
         entrypoint = drc_getEntry(v810_state->PC, &cur_block);
-        if (unlikely(tVBOpt.DYNAREC && (entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc))) {
+        if (unlikely(entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc)) {
             int result = drc_translateBlock();
             if (unlikely(result == DRC_ERR_CACHE_FULL || result == DRC_ERR_NO_BLOCKS)) {
                 drc_clearCache();

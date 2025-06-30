@@ -49,11 +49,9 @@ void detectCitra(WORD *test_code) {
 void hbHaxInit(void) {
     Handle tempHandle;
 
-    if (tVBOpt.DYNAREC) {
-        if (!srvGetServiceHandle(&tempHandle, "am:u")) {
-            svcCloseHandle(tempHandle);
-            svcBackdoor(k_patchSVC);
-        }
+    if (!srvGetServiceHandle(&tempHandle, "am:u")) {
+        svcCloseHandle(tempHandle);
+        svcBackdoor(k_patchSVC);
     }
 }
 
@@ -64,25 +62,20 @@ void hbHaxExit(void) {
 void FlushInvalidateCache(void *addr, size_t len) {
     register void *addr_asm asm("r0") = addr;
     register size_t len_asm asm("r1") = len;
-    if (tVBOpt.DYNAREC) {
-        if (!is_citra) {
-            // works on hardware, does nothing on citra
-            __asm__ volatile(
-                "ldr r0, =k_flushCaches\n\t"
-                "svc 0x80\n\t"
-                :::"r0"
-            );
-        } else {
-            // works on citra, crashes on hardware
-            __asm__ volatile("svc 0x93"::"r"(addr_asm),"r"(len_asm));
-        }
+    if (!is_citra) {
+        // works on hardware, does nothing on citra
+        __asm__ volatile(
+            "ldr r0, =k_flushCaches\n\t"
+            "svc 0x80\n\t"
+            :::"r0"
+        );
+    } else {
+        // works on citra, crashes on hardware
+        __asm__ volatile("svc 0x93"::"r"(addr_asm),"r"(len_asm));
     }
 }
 
 Result ReprotectMemory(u32* addr, u32 pages, u32 mode) {
-    if (!tVBOpt.DYNAREC)
-        return 0xFFFFFFFF;
-
     Handle processHandle;
     svcDuplicateHandle(&processHandle, 0xFFFF8001);
     return svcControlProcessMemory(processHandle, (u32)addr, 0x0, pages*0x1000, MEMOP_PROT, mode);

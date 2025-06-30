@@ -7,7 +7,6 @@
 #include "vb_set.h"
 
 void hbHaxInit(void) {
-	tVBOpt.DYNAREC = 1;
 }
 
 void hbHaxExit(void) {
