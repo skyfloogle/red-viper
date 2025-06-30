@@ -163,13 +163,15 @@ static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
         exec_block *existing_block;
         if (drc_getEntry(cur_PC, &existing_block) != cache_start) {
             drc_free(existing_block);
-            if (cur_PC < existing_block->start_pc || cur_PC > existing_block->end_pc) {
-                for (WORD PC = existing_block->start_pc; PC <= existing_block->end_pc; PC += 2)
+            WORD existing_start = existing_block->start_pc;
+            WORD existing_end = existing_start + existing_block->pc_range;
+            if (cur_PC < existing_start || cur_PC > existing_end) {
+                for (WORD PC = existing_start; PC <= existing_end; PC += 2)
                     drc_markData(PC);
-                if (existing_block->start_pc < cur_PC) cur_PC = start_PC;
+                if (existing_start < cur_PC) cur_PC = start_PC;
             } else {
-                if (existing_block->start_pc < start_PC) start_PC = existing_block->start_pc;
-                if (existing_block->end_pc > end_PC) end_PC = existing_block->end_pc;
+                if (existing_start < start_PC) start_PC = existing_start;
+                if (existing_end > end_PC) end_PC = existing_end;
             }
         }
 
@@ -684,7 +686,7 @@ static int drc_translateBlock(void) {
     block->free = false;
 
     block->start_pc = start_PC;
-    block->end_pc = end_PC;
+    block->pc_range = end_PC - start_PC;
 
     // First pass: decode V810 instructions
     num_v810_inst = drc_decodeInstructions(block, start_PC, end_PC);
@@ -1885,6 +1887,8 @@ int drc_run(void) {
     WORD* entrypoint;
     WORD entry_PC;
 
+    v810_state->PC &= V810_ROM1.highaddr;
+
     // set up arm flags
     {
         WORD psw = v810_state->S_REG[PSW];
@@ -1900,13 +1904,13 @@ int drc_run(void) {
     serviceDisplayInt(v810_state->cycles, v810_state->PC);
 
     while (true) {
-        v810_state->PC &= V810_ROM1.highaddr;
         entry_PC = v810_state->PC;
 
         // Try to find a cached block
         // TODO: make sure we have enough free space
         entrypoint = drc_getEntry(v810_state->PC, &cur_block);
-        if (unlikely(entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc)) {
+        // entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc
+        if (unlikely(entrypoint == cache_start || entry_PC - cur_block->start_pc > cur_block->pc_range)) {
             int result = drc_translateBlock();
             if (unlikely(result == DRC_ERR_CACHE_FULL || result == DRC_ERR_NO_BLOCKS)) {
                 drc_clearCache();
@@ -1923,19 +1927,18 @@ int drc_run(void) {
             FlushInvalidateCache(cur_block->phys_offset, cur_block->size * 4);
         }
         dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
-        if (unlikely((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE))) {
+        // entrypoint <= cache_start || entrypoint >= cache_start + CACHE_SIZE
+        if (unlikely(entrypoint - (cache_start + 1) >= CACHE_SIZE - 1)) {
             dprintf(0, "Bad entry %p\n", drc_getEntry(entry_PC, NULL));
             return DRC_ERR_BAD_ENTRY;
         }
 
-        v810_state->cycles = clocks;
         drc_executeBlock(entrypoint, cur_block);
 
         v810_state->PC &= V810_ROM1.highaddr;
-        clocks = v810_state->cycles;
 
         dprintf(4, "[DRC]: end - 0x%lx\n", v810_state->PC);
-        if (unlikely(v810_state->PC < V810_ROM1.lowaddr || v810_state->PC > V810_ROM1.highaddr)) {
+        if (unlikely(v810_state->PC - V810_ROM1.lowaddr >= V810_ROM1.size)) {
             //dprintf(0, "Last entry: 0x%lx\n", entry_PC);
             //return DRC_ERR_BAD_PC;
             break;

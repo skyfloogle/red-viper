@@ -58,7 +58,7 @@ typedef struct {
     WORD reg_map;
     bool free;
     WORD start_pc;
-    WORD end_pc; // The address of the last instruction in the block
+    WORD pc_range; // start_pc + pc_range = the address of the last instruction in the block
 } exec_block;
 
 typedef struct {

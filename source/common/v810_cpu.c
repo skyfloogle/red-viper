@@ -55,6 +55,7 @@ void v810_init(void) {
     // Initialize our ram1 tables....
     V810_DISPLAY_RAM.lowaddr  = 0x00000000;
     V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
+    V810_DISPLAY_RAM.size     = 0x00040000;
     // Alocate space for it in memory
     V810_DISPLAY_RAM.pmemory = (unsigned char *)calloc(((V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr), sizeof(BYTE));
     V810_DISPLAY_RAM.pbackup = (unsigned char *)calloc(((V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr), sizeof(BYTE));
@@ -75,6 +76,7 @@ void v810_init(void) {
     // Initialize our SoundRam tables....
     V810_SOUND_RAM.lowaddr  = 0x01000000;
     V810_SOUND_RAM.highaddr = 0x010007FF; //0x010002FF
+    V810_SOUND_RAM.size     = 0x00000800;
     // Alocate space for it in memory
     V810_SOUND_RAM.pmemory = (unsigned char *)calloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr), sizeof(BYTE));
     V810_SOUND_RAM.pbackup = (unsigned char *)calloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr), sizeof(BYTE));
@@ -84,6 +86,7 @@ void v810_init(void) {
     // Initialize our VBRam tables....
     V810_VB_RAM.lowaddr  = 0x05000000;
     V810_VB_RAM.highaddr = 0x0500FFFF;
+    V810_VB_RAM.size     = 0x00010000;
     // Alocate space for it in memory
     V810_VB_RAM.pmemory = (unsigned char *)calloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr), sizeof(BYTE));
     V810_VB_RAM.pbackup = (unsigned char *)calloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr), sizeof(BYTE));
@@ -93,6 +96,7 @@ void v810_init(void) {
     // Initialize our GameRam tables.... (Cartrige Ram)
     V810_GAME_RAM.lowaddr  = 0x06000000;
     V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
+    V810_GAME_RAM.size     = 0x00004000;
     // Alocate space for it in memory
     V810_GAME_RAM.pmemory = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
     V810_GAME_RAM.pbackup = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
@@ -177,6 +181,7 @@ int v810_load_init(void) {
         }
     }
     ok:
+    V810_ROM1.size = rom_size;
     V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
 
     load_sram = fopen(tVBOpt.RAM_PATH, "rb");

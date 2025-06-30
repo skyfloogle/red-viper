@@ -69,6 +69,7 @@
 typedef struct {
     WORD lowaddr;  // Start of ram
     WORD highaddr; // end of ram
+    WORD size;     // Size of ram
     size_t off;    // Displacement... (off+addr = pmempry...)
     BYTE *pmemory; // Pointer to memory
     BYTE *pbackup; // Pointer to backup of same size (for savestates etc)

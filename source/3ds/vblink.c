@@ -244,6 +244,7 @@ static void vblink_thread(void*) {
             strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
         }
 
+        V810_ROM1.size = size;
         V810_ROM1.highaddr = 0x7000000 + size - 1;
         is_sram = false;
         gen_table();
