@@ -1884,12 +1884,53 @@ exec_block* drc_getNextBlockStruct(void) {
     return &block_ptr_start[block_pos++];
 }
 
+uint64_t drc_getOrCreateEntry(void) {
+    WORD entry_PC;
+    WORD* entrypoint;
+    exec_block* cur_block = NULL;
+
+    entry_PC = v810_state->PC & V810_ROM1.highaddr;
+    if (unlikely(entry_PC < V810_ROM1.lowaddr))
+        return 0;
+    if (unlikely(v810_state->ret))
+        return 0;
+
+    // Try to find a cached block
+    // TODO: make sure we have enough free space
+    entrypoint = drc_getEntry(v810_state->PC, &cur_block);
+    if (unlikely(tVBOpt.DYNAREC && (entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc))) {
+        int result = drc_translateBlock();
+        if (unlikely(result == DRC_ERR_CACHE_FULL || result == DRC_ERR_NO_BLOCKS)) {
+            drc_clearCache();
+            result = drc_translateBlock();
+        }
+        if (unlikely(result)) {
+            return result;
+        }
+
+        entrypoint = drc_getEntry(entry_PC, &cur_block);
+        dprintf(3, "[DRC]: ARM block size - %ld\n", cur_block->size);
+
+        FlushInvalidateCache(cur_block->phys_offset, cur_block->size * 4);
+    }
+    dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
+    if (unlikely((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE))) {
+        dprintf(0, "Bad entry %p\n", drc_getEntry(entry_PC, NULL));
+        return DRC_ERR_BAD_ENTRY;
+    }
+
+    return (uint64_t)(uint32_t)entrypoint | ((uint64_t)(uint32_t)cur_block << 32);
+}
+
 // Run V810 code until the next frame interrupt
 int drc_run(void) {
     unsigned int clocks = v810_state->cycles;
     exec_block* cur_block = NULL;
     WORD* entrypoint;
     WORD entry_PC;
+
+    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
+    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
 
     // set up arm flags
     {
@@ -1905,52 +1946,7 @@ int drc_run(void) {
     serviceInt(v810_state->cycles, v810_state->PC);
     serviceDisplayInt(v810_state->cycles, v810_state->PC);
 
-    while (true) {
-        v810_state->PC &= V810_ROM1.highaddr;
-        entry_PC = v810_state->PC;
-
-        // Try to find a cached block
-        // TODO: make sure we have enough free space
-        entrypoint = drc_getEntry(v810_state->PC, &cur_block);
-        if (unlikely(tVBOpt.DYNAREC && (entrypoint == cache_start || entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc))) {
-            int result = drc_translateBlock();
-            if (unlikely(result == DRC_ERR_CACHE_FULL || result == DRC_ERR_NO_BLOCKS)) {
-                drc_clearCache();
-                continue;
-            } else if (unlikely(result)) {
-                return result;
-            }
-
-//            drc_dumpCache("cache_dump_rf.bin");
-
-            entrypoint = drc_getEntry(entry_PC, &cur_block);
-            dprintf(3, "[DRC]: ARM block size - %ld\n", cur_block->size);
-
-            FlushInvalidateCache(cur_block->phys_offset, cur_block->size * 4);
-        }
-        dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
-        if (unlikely((entrypoint <= cache_start) || (entrypoint > cache_start + CACHE_SIZE))) {
-            dprintf(0, "Bad entry %p\n", drc_getEntry(entry_PC, NULL));
-            return DRC_ERR_BAD_ENTRY;
-        }
-
-        v810_state->cycles = clocks;
-        drc_executeBlock(entrypoint, cur_block);
-
-        v810_state->PC &= V810_ROM1.highaddr;
-        clocks = v810_state->cycles;
-
-        dprintf(4, "[DRC]: end - 0x%lx\n", v810_state->PC);
-        if (unlikely(v810_state->PC < V810_ROM1.lowaddr || v810_state->PC > V810_ROM1.highaddr)) {
-            //dprintf(0, "Last entry: 0x%lx\n", entry_PC);
-            //return DRC_ERR_BAD_PC;
-            break;
-        }
-
-        if (unlikely(v810_state->ret)) {
-            break;
-        }
-    }
+    int res = drc_loop();
 
     // sync arm flags to PSW
     {
@@ -1962,7 +1958,7 @@ int drc_run(void) {
         v810_state->S_REG[PSW] = psw;
     }
 
-    return 0;
+    return res;
 }
 
 void drc_loadSavedCache(void) {

@@ -82,7 +82,7 @@ int __modsi3(int a, int b);
 unsigned int __udivsi3(unsigned int a, unsigned int b);
 unsigned int __umodsi3(unsigned int a, unsigned int b);
 
-void drc_executeBlock(WORD* entrypoint, exec_block* block);
+int drc_loop(void);
 int drc_handleInterrupts(WORD cpsr, WORD* PC);
 void drc_relocTable(void);
 void drc_clearCache(void);
