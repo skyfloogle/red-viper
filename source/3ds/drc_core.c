@@ -970,7 +970,7 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
+                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 16);
                 // The zero-register will always be zero, so don't add it
                 if (inst_cache[i].reg1 == 0) {
                     SAVE_REG2(0);
@@ -983,7 +983,7 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_MOVEA: // movea imm16, reg1, reg2
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
+                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 16);
                 // The zero-register will always be zero, so don't add it
                 if (inst_cache[i].reg1 == 0) {
                     MOV_IS(arm_reg2, 0, ARM_SHIFT_ASR, 16);
@@ -1033,7 +1033,7 @@ static int drc_translateBlock(void) {
                 LOAD_REG1();
                 LOAD_REG2();
                 MOV(0, arm_reg1);
-                AND_I(0, 0x1F, 0);
+                AND_I(0, 0, 0x1F, 0);
                 LSLS(arm_reg2, arm_reg2, 0);
                 reg2_modified = true;
                 break;
@@ -1041,7 +1041,7 @@ static int drc_translateBlock(void) {
                 LOAD_REG1();
                 LOAD_REG2();
                 MOV(0, arm_reg1);
-                AND_I(0, 0x1F, 0);
+                AND_I(0, 0, 0x1F, 0);
                 LSRS(arm_reg2, arm_reg2, 0);
                 reg2_modified = true;
                 break;
@@ -1049,7 +1049,7 @@ static int drc_translateBlock(void) {
                 LOAD_REG1();
                 LOAD_REG2();
                 MOV(0, arm_reg1);
-                AND_I(0, 0x1F, 0);
+                AND_I(0, 0, 0x1F, 0);
                 ASRS(arm_reg2, arm_reg2, 0);
                 reg2_modified = true;
                 break;
@@ -1182,28 +1182,28 @@ static int drc_translateBlock(void) {
             case V810_OP_ANDI: // andi imm16, reg1, reg2
                 LOAD_REG1();
                 MOV_I(0, (inst_cache[i].imm >> 8), 24);
-                ORR_I(0, (inst_cache[i].imm & 0xFF), 0);
+                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 0);
                 ANDS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_XORI: // xori imm16, reg1, reg2
                 LOAD_REG1();
                 MOV_I(0, (inst_cache[i].imm >> 8), 24);
-                ORR_I(0, (inst_cache[i].imm & 0xFF), 0);
+                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 0);
                 EORS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
                 LOAD_REG1();
                 MOV_I(0, (inst_cache[i].imm >> 8), 24);
-                ORR_I(0, (inst_cache[i].imm & 0xFF), 0);
+                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 0);
                 ORRS(arm_reg2, arm_reg1, 0);
                 reg2_modified = true;
                 break;
             case V810_OP_ADDI: // addi imm16, reg1, reg2
                 LOAD_REG1();
                 MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                ORR_I(0, (inst_cache[i].imm & 0xFF), 16);
+                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 16);
                 // asr r0, r0, #16
                 new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
                 ADDS(arm_reg2, arm_reg1, 0);
@@ -1462,13 +1462,13 @@ static int drc_translateBlock(void) {
             case V810_OP_SEI: // sei
                 // Set the 12th bit in v810_state->S_REG[PSW]
                 LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
-                ORR_I(0, 1, 20);
+                ORR_I(0, 0, 1, 20);
                 STR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
                 break;
             case V810_OP_CLI: // cli
                 // Clear the 12th bit in v810_state->S_REG[PSW]
                 LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
-                BIC_I(0, 1, 20);
+                BIC_I(0, 0, 1, 20);
                 STR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
                 break;
             case V810_OP_SETF: // setf imm5, reg2

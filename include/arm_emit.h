@@ -376,25 +376,31 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // Compare immediate
 // imm8 can be rotated an even number of times
 #define CMP_I(Rn, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_CMP, 1, Rn, 0, rot>>1, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_CMP, 1, Rn, 0, (rot)>>1, imm8)
+
+// cmn Rn, imm8, ror #rot
+// Compare immediate negated
+// imm8 can be rotated an even number of times
+#define CMN_I(Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_CMN, 1, Rn, 0, (rot)>>1, imm8)
 
 // tst Rn, imm8, ror #rot
 // Test immediate
 // imm8 can be rotated an even number of times
 #define TST_I(Rn, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_TST, 1, Rn, 0, rot>>1, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_TST, 1, Rn, 0, (rot)>>1, imm8)
 
 // mov Rd, imm8, ror #rot
 // Mov immediate
 // imm8 can be rotated an even number of times
 #define MOV_I(Rd, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_MOV, 0, 0, Rd, rot>>1, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_MOV, 0, 0, Rd, (rot)>>1, imm8)
 
 // mvn Rd, imm8, ror #rot
 // Move and NOT immediate
 // imm8 can be rotated an even number of times
 #define MVN_I(Rd, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_MVN, 0, 0, Rd, rot>>1, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_MVN, 0, 0, Rd, (rot)>>1, imm8)
 
 // add Rd, Rn, imm8, ror #rot
 // Add immediate
@@ -414,35 +420,47 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define SUBS_I(Rd, Rn, imm8, rot) \
     new_data_proc_imm(ARM_COND_AL, ARM_OP_SUB, 1, Rn, Rd, rot, imm8)
 
-// and Rd, imm, ror #rot
+// and Rd, Rn, imm, ror #rot
 // And immediate
 // imm8 can be rotated an even number of times
-#define AND_I(Rd, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_AND, 0, Rd, Rd, rot>>1, imm8)
+#define AND_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_AND, 0, Rn, Rd, (rot)>>1, imm8)
+
+// ands Rd, Rn, imm, ror #rot
+#define ANDS_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_AND, 1, Rn, Rd, (rot)>>1, imm8)
 
 // orrcc Rd, imm, ror #rot
 // Or immediate with condition
 // imm8 can be rotated an even number of times
 #define ORRCC_I(arm_cond, Rd, imm8, rot) \
-    new_data_proc_imm(arm_cond, ARM_OP_ORR, 0, Rd, Rd, rot>>1, imm8)
+    new_data_proc_imm(arm_cond, ARM_OP_ORR, 0, Rd, Rd, (rot)>>1, imm8)
 
 // orr Rd, imm, ror #rot
 // Or immediate
 // imm8 can be rotated an even number of times
-#define ORR_I(Rd, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_ORR, 0, Rd, Rd, rot>>1, imm8)
+#define ORR_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_ORR, 0, Rn, Rd, (rot)>>1, imm8)
 
 // eor Rd, imm, ror #rot
 // Xor immediate
 // imm8 can be rotated an even number of times
-#define EOR_I(Rd, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_EOR, 0, Rd, Rd, rot>>1, imm8)
+#define EOR_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_EOR, 0, Rn, Rd, (rot)>>1, imm8)
 
-// bic Rd, imm, ror #rot
+// eors Rd, imm, ror #rot
+#define EORS_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_EOR, 1, Rn, Rd, (rot)>>1, imm8)
+
+// bic Rd, Rn, imm, ror #rot
 // Bit clear immediate
 // imm8 can be rotated an even number of times
-#define BIC_I(Rd, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_BIC, 0, Rd, Rd, rot>>1, imm8)
+#define BIC_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_BIC, 0, Rn, Rd, (rot)>>1, imm8)
+
+// bics Rd, Rn, imm, ror #rot
+#define BICS_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_BIC, 1, Rn, Rd, (rot)>>1, imm8)
 
 // add Rd, Rn, Rm, shift #shift_imm
 // Add immediate shift
@@ -477,19 +495,19 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // Mov immediate
 // imm8 can be rotated an even number of times
 #define MOVS_I(Rd, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_MOV, 1, 0, Rd, rot>>1, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_MOV, 1, 0, Rd, (rot)>>1, imm8)
 
 // orrs Rd, imm, ror #rot
 // Or immediate
 // imm8 can be rotated an even number of times
-#define ORRS_I(Rd, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_ORR, 1, Rd, Rd, rot>>1, imm8)
+#define ORRS_I(Rd, Rn, imm8, rot) \
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_ORR, 1, Rn, Rd, (rot)>>1, imm8)
 
 // rsbs Rd, Rn, imm8, ror #rot
 // Reverse substract immediate
 // imm8 can be rotated an even number of times
 #define RSBS_I(Rd, Rn, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_RSB, 1, Rn, Rd, rot>>1, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_RSB, 1, Rn, Rd, (rot)>>1, imm8)
 
 // adds Rd, Rn, Rm, shift #shift_imm
 // Add immediate shift
@@ -703,7 +721,7 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // Invert the carry flag
 #define INV_CARRY() { \
     MRS(0); \
-    EOR_I(0, 0b10, 4); \
+    EOR_I(0, 0, 0b10, 4); \
     MSR(0); \
 }
 
@@ -720,11 +738,11 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define LDW_I(reg, word) { \
     MOV_I(reg, (WORD)(word) & 0x000000FF, 0); \
     if ((WORD)(word) & 0x0000FF00) \
-        ORR_I(reg, ((WORD)(word) & 0x0000FF00)>>8, 24); \
+        ORR_I(reg, reg, ((WORD)(word) & 0x0000FF00)>>8, 24); \
     if ((WORD)(word) & 0x00FF0000) \
-        ORR_I(reg, ((WORD)(word) & 0x00FF0000)>>16, 16); \
+        ORR_I(reg, reg, ((WORD)(word) & 0x00FF0000)>>16, 16); \
     if ((WORD)(word) & 0xFF000000) \
-        ORR_I(reg, ((WORD)(word) & 0xFF000000)>>24, 8); \
+        ORR_I(reg, reg, ((WORD)(word) & 0xFF000000)>>24, 8); \
 }
 #endif
 
@@ -756,9 +774,9 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     MRS(0); \
     /* LDW_I exploded to ensure a consistent loop size */ \
     MOV_I(1, (next_PC) & 0xff, 0); \
-    ORR_I(1, ((next_PC) & 0xff00)>>8, 24); \
-    ORR_I(1, ((next_PC) & 0xff0000)>>16, 16); \
-    ORR_I(1, ((next_PC) & 0xff000000)>>24, 8); \
+    ORR_I(1, 1, ((next_PC) & 0xff00)>>8, 24); \
+    ORR_I(1, 1, ((next_PC) & 0xff0000)>>16, 16); \
+    ORR_I(1, 1, ((next_PC) & 0xff000000)>>24, 8); \
     MOV_I(10, 0, 0); \
     MOV_I(2, 0, 0); \
     LDR_IO(3, 11, offsetof(cpu_state, irq_handler)); \
