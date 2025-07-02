@@ -721,7 +721,7 @@ static int drc_translateBlock(void) {
                 LDR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg1])); \
             else \
                 MOV_I(r, 0, 0); \
-        } else { \
+        } else if (r != arm_reg1) { \
             MOV(r, arm_reg1); \
         }
 
@@ -739,13 +739,13 @@ static int drc_translateBlock(void) {
                 LDR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2])); \
             else \
                 MOV_I(r, 0, 0); \
-        } else { \
+        } else if(r != arm_reg2) { \
             MOV(r, arm_reg2); \
         }
 
     #define SAVE_REG2(r) \
         if (arm_reg2 < 4) STR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2])); \
-        else MOV(arm_reg2, r);
+        else if(arm_reg2 != r) MOV(arm_reg2, r);
 
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
