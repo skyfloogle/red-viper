@@ -762,7 +762,7 @@ static int drc_translateBlock(void) {
         if (unlikely((is_golf_us && inst_cache[i].PC == 0x0700ca64) ||
                     (is_golf_jp && inst_cache[i].PC == 0x0701602a))) {
             LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-            ADD_I(2, 2, DRC_RELOC_GOLFHACK*4, 0);
+            LDR_IO(2, 2, DRC_RELOC_GOLFHACK*4);
             BLX(ARM_COND_AL, 2);
         }
 
@@ -1080,7 +1080,7 @@ static int drc_translateBlock(void) {
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-                ADD_I(2, 2, DRC_RELOC_IDIVMOD*4, 0);
+                LDR_IO(2, 2, DRC_RELOC_IDIVMOD*4);
                 BLX(ARM_COND_AL, 2);
 
                 if (inst_cache[i].reg2 != 30) {
@@ -1099,7 +1099,7 @@ static int drc_translateBlock(void) {
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-                ADD_I(2, 2, DRC_RELOC_UIDIVMOD*4, 0);
+                LDR_IO(2, 2, DRC_RELOC_UIDIVMOD*4);
                 BLX(ARM_COND_AL, 2);
 
                 if (inst_cache[i].reg2 != 30) {
@@ -1218,7 +1218,7 @@ static int drc_translateBlock(void) {
                 }
 
                 LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                ADD_I(1, 1, DRC_RELOC_RBYTE*4, 0);
+                LDR_IO(1, 1, DRC_RELOC_RBYTE*4);
                 BLX(ARM_COND_AL, 1);
 
                 // Add cycles returned in r1.
@@ -1254,7 +1254,7 @@ static int drc_translateBlock(void) {
                 }
 
                 LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                ADD_I(1, 1, DRC_RELOC_RHWORD*4, 0);
+                LDR_IO(1, 1, DRC_RELOC_RHWORD*4);
                 BLX(ARM_COND_AL, 1);
 
                 // Add cycles returned in r1.
@@ -1290,7 +1290,7 @@ static int drc_translateBlock(void) {
                 }
 
                 LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                ADD_I(1, 1, DRC_RELOC_RWORD*4, 0);
+                LDR_IO(1, 1, DRC_RELOC_RWORD*4);
                 BLX(ARM_COND_AL, 1);
 
                 // Add cycles returned in r1.
@@ -1323,7 +1323,7 @@ static int drc_translateBlock(void) {
                     RELOAD_REG2(1);
 
                 LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-                ADD_I(2, 2, DRC_RELOC_WBYTE*4, 0);
+                LDR_IO(2, 2, DRC_RELOC_WBYTE*4);
                 BLX(ARM_COND_AL, 2);
 
                 if (slow_memory) cycles += 2;
@@ -1350,7 +1350,7 @@ static int drc_translateBlock(void) {
                     RELOAD_REG2(1);
 
                 LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-                ADD_I(2, 2, DRC_RELOC_WHWORD*4, 0);
+                LDR_IO(2, 2, DRC_RELOC_WHWORD*4);
                 BLX(ARM_COND_AL, 2);
 
                 if (slow_memory) cycles += 2;
@@ -1377,7 +1377,7 @@ static int drc_translateBlock(void) {
                     RELOAD_REG2(1);
 
                 LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-                ADD_I(2, 2, DRC_RELOC_WWORD*4, 0);
+                LDR_IO(2, 2, DRC_RELOC_WWORD*4);
                 BLX(ARM_COND_AL, 2);
 
                 if (slow_memory) cycles += 4;
@@ -1538,7 +1538,7 @@ static int drc_translateBlock(void) {
                 // call the function
                 PUSH(1<<5);
                 LDR_IO(5, 11, offsetof(cpu_state, reloc_table));
-                ADD_I(5, 5, (DRC_RELOC_BSTR+inst_cache[i].imm)*4, 0);
+                LDR_IO(5, 5, (DRC_RELOC_BSTR+inst_cache[i].imm)*4);
                 BLX(ARM_COND_AL, 5);
                 POP(1<<5);
 
@@ -1656,7 +1656,7 @@ static int drc_translateBlock(void) {
                     MOV_IS(0, arm_reg1, 0, 0);
                     RELOAD_REG2(1);
                     LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-                    ADD_I(2, 2, (DRC_RELOC_FPP+inst_cache[i].imm)*4, 0);
+                    LDR_IO(2, 2, (DRC_RELOC_FPP+inst_cache[i].imm)*4);
                     BLX(ARM_COND_AL, 2);
                     MOV_IS(arm_reg2, 0, 0, 0);
                     reg2_modified = true;

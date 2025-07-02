@@ -7,44 +7,44 @@
 @ A cheap relocation table
 .globl drc_relocTable
 drc_relocTable:
-    b       __aeabi_idivmod
-    b       __aeabi_uidivmod
-    b       mem_rbyte
-    b       mem_rhword
-    b       mem_rword
-    b       mem_wbyte
-    b       mem_whword
-    b       mem_wword
-    b       ins_cmpf_s
-    b       ins_err
-    b       ins_cvt_ws
-    b       ins_cvt_sw
-    b       ins_addf_s
-    b       ins_subf_s
-    b       ins_mulf_s
-    b       ins_divf_s
-    b       ins_xb
-    b       ins_xh
-    b       ins_rev
-    b       ins_trnc_sw
-    b       ins_mpyhw
-    b       ins_err
-    b       ins_err
-    b       ins_err
-    b       ins_sch0bsu
-    b       ins_sch0bsd
-    b       ins_sch1bsu
-    b       ins_sch1bsd
-    b       ins_err
-    b       ins_err
-    b       ins_err
-    b       ins_err
-    b       ins_orbsu
-    b       ins_andbsu
-    b       ins_xorbsu
-    b       ins_movbsu
-    b       ins_ornbsu
-    b       ins_andnbsu
-    b       ins_xornbsu
-    b       ins_notbsu
-    b       drc_clearScreenForGolf
+.word       __aeabi_idivmod
+.word       __aeabi_uidivmod
+.word       mem_rbyte
+.word       mem_rhword
+.word       mem_rword
+.word       mem_wbyte
+.word       mem_whword
+.word       mem_wword
+.word       ins_cmpf_s
+.word       ins_err
+.word       ins_cvt_ws
+.word       ins_cvt_sw
+.word       ins_addf_s
+.word       ins_subf_s
+.word       ins_mulf_s
+.word       ins_divf_s
+.word       ins_xb
+.word       ins_xh
+.word       ins_rev
+.word       ins_trnc_sw
+.word       ins_mpyhw
+.word       ins_err
+.word       ins_err
+.word       ins_err
+.word       ins_sch0bsu
+.word       ins_sch0bsd
+.word       ins_sch1bsu
+.word       ins_sch1bsd
+.word       ins_err
+.word       ins_err
+.word       ins_err
+.word       ins_err
+.word       ins_orbsu
+.word       ins_andbsu
+.word       ins_xorbsu
+.word       ins_movbsu
+.word       ins_ornbsu
+.word       ins_andnbsu
+.word       ins_xornbsu
+.word       ins_notbsu
+.word       drc_clearScreenForGolf
