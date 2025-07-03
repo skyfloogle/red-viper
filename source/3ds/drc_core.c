@@ -982,16 +982,16 @@ static int drc_translateBlock(void) {
                     int inv_width = (16 - clo) - cto;
                     if (width <= 8) {
                         // normal
-                if (inst_cache[i].reg1 != 0) {
-                    LOAD_REG1();
+                        if (inst_cache[i].reg1 != 0) {
+                            LOAD_REG1();
                             ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, 16 - ctz);
-                } else {
-MOV_I(arm_reg2, inst_cache[i].imm >> ctz, 16 - ctz);
+                        } else {
+                            MOV_I(arm_reg2, inst_cache[i].imm >> ctz, 16 - ctz);
                         }
                     } else if ((inst_cache[i].imm & 0x8000) && neg_width <= 8 && inst_cache[i].reg1 != 0) {
                         // negative
-                    LOAD_REG1();
-                    SUB_I(arm_reg2, arm_reg1, -(inst_cache[i].imm >> neg_ctz) & 0xff, 16 - neg_ctz);
+                        LOAD_REG1();
+                        SUB_I(arm_reg2, arm_reg1, -(inst_cache[i].imm >> neg_ctz) & 0xff, 16 - neg_ctz);
                     } else {
                         // full-size
                         if (inst_cache[i].reg1 != 0) {
@@ -1001,9 +1001,9 @@ MOV_I(arm_reg2, inst_cache[i].imm >> ctz, 16 - ctz);
                             MOV_I(arm_reg2, inst_cache[i].imm >> 8, 8);
                         }
                         ADD_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 16);
-}
+                    }
                     reg2_modified = true;
-} else {
+                } else {
                     // it's just a mov at this point
                     RELOAD_REG1(arm_reg2);
                     if (arm_reg1 != arm_reg2) reg2_modified = true;
@@ -1024,16 +1024,16 @@ MOV_I(arm_reg2, inst_cache[i].imm >> ctz, 16 - ctz);
                     int inv_width = (16 - clo) - cto;
                     if (!(inst_cache[i].imm & 0x8000) && width <= 8) {
                         // normal
-                if (inst_cache[i].reg1 != 0) {
-                    LOAD_REG1();
+                        if (inst_cache[i].reg1 != 0) {
+                            LOAD_REG1();
                             ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                } else {
-MOV_I(arm_reg2, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                        } else {
+                            MOV_I(arm_reg2, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                         }
                     } else if ((inst_cache[i].imm & 0x8000) && neg_width <= 8 && inst_cache[i].reg1 != 0) {
                         // negative, with alt register
-                    LOAD_REG1();
-                    SUB_I(arm_reg2, arm_reg1, (-inst_cache[i].imm & 0xffff) >> neg_ctz, (32 - neg_ctz) & 31);
+                        LOAD_REG1();
+                        SUB_I(arm_reg2, arm_reg1, (-inst_cache[i].imm & 0xffff) >> neg_ctz, (32 - neg_ctz) & 31);
                     } else if (inst_cache[i].imm == 0xFFFF || ((inst_cache[i].imm & 0x8000) && inv_width <= 8)) {
                         // inverted
                         if (inst_cache[i].reg1 != 0) {
@@ -1060,10 +1060,10 @@ MOV_I(arm_reg2, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                             LOAD_REG1();
                             SUB_I(arm_reg2, arm_reg1, (-inst_cache[i].imm & 0xffff) >> 8, 24);
                             SUB_I(arm_reg2, arm_reg2, -inst_cache[i].imm & 0xff, 0);
-                }
-}
-                reg2_modified = true;
-} else {
+                        }
+                    }
+                    reg2_modified = true;
+                } else {
                     // it's just a mov at this point
                     RELOAD_REG1(arm_reg2);
                     if (arm_reg1 != arm_reg2) reg2_modified = true;
@@ -1240,8 +1240,8 @@ MOV_I(arm_reg2, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                 if (!(inst_cache[i].imm & 0x10)) {
                     ADDS_I(arm_reg2, arm_reg2, inst_cache[i].imm, 0);
                 } else {
-                MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
-                ADDS_IS(arm_reg2, arm_reg2, 0, ARM_SHIFT_ASR, 24);
+                    MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
+                    ADDS_IS(arm_reg2, arm_reg2, 0, ARM_SHIFT_ASR, 24);
                 }
                 reg2_modified = true;
                 break;
@@ -1250,8 +1250,8 @@ MOV_I(arm_reg2, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                 if (!(inst_cache[i].imm & 0x10)) {
                     CMP_I(arm_reg2, inst_cache[i].imm, 0);
                 } else {
-                MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
-                CMP_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
+                    MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
+                    CMP_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
                 }
                 INV_CARRY();
                 reg2_modified = true;
@@ -1281,34 +1281,106 @@ MOV_I(arm_reg2, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                 }
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
-                LOAD_REG1();
-                MOV_I(0, (inst_cache[i].imm >> 8), 24);
-                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 0);
-                ANDS(arm_reg2, arm_reg1, 0);
+                if (inst_cache[i].imm == 0) {
+                    MOVS_I(arm_reg2, 0, 0);
+                } else if (inst_cache[i].imm == 0xFFFF) {
+                    BIC_I(arm_reg2, arm_reg1, 0xff, 8);
+                    BICS_I(arm_reg2, arm_reg2, 0xff, 16);
+                } else {
+                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
+                    int clz = __builtin_clz(inst_cache[i].imm << 16);
+                    int cto = __builtin_ctz(~inst_cache[i].imm) & ~1;
+                    int clo = __builtin_clz(~inst_cache[i].imm << 16);
+                    int width = (16 - clz) - ctz;
+                    int inv_width = (16 - clo) - cto;
+                    LOAD_REG1();
+                    if (width <= 8) {
+                        ANDS_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                    } else if (inv_width <= 8) {
+                        BICS_I(arm_reg2, arm_reg1, (~inst_cache[i].imm >> cto) & 0xff, (32 - cto) & 31);
+                    } else {
+                        BIC_I(arm_reg2, arm_reg1, ~inst_cache[i].imm >> 8, 24);
+                        ANDS_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 0);
+                    }
+                }
                 reg2_modified = true;
                 break;
             case V810_OP_XORI: // xori imm16, reg1, reg2
-                LOAD_REG1();
-                MOV_I(0, (inst_cache[i].imm >> 8), 24);
-                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 0);
-                EORS(arm_reg2, arm_reg1, 0);
-                reg2_modified = true;
+                if (inst_cache[i].imm != 0) {
+                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
+                    int clz = __builtin_clz(inst_cache[i].imm << 16);
+                    int width = (16 - clz) - ctz;
+                    LOAD_REG1();
+                    if (width <= 8) {
+                        EORS_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                    } else {
+                        EOR_I(arm_reg2, arm_reg1, inst_cache[i].imm >> 8, 24);
+                        EORS_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 0);
+                    }
+                    reg2_modified = true;
+                } else {
+                    // it's effectively a mov with flags at this point
+                    LOAD_REG1();
+                    MOVS(arm_reg2, arm_reg1);
+                    if (arm_reg1 != arm_reg2) reg2_modified = true;
+                }
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
-                LOAD_REG1();
-                MOV_I(0, (inst_cache[i].imm >> 8), 24);
-                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 0);
-                ORRS(arm_reg2, arm_reg1, 0);
-                reg2_modified = true;
+                if (inst_cache[i].imm != 0) {
+                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
+                    int clz = __builtin_clz(inst_cache[i].imm << 16);
+                    int width = (16 - clz) - ctz;
+                    LOAD_REG1();
+                    if (width <= 8) {
+                        ORRS_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                    } else {
+                        ORR_I(arm_reg2, arm_reg1, inst_cache[i].imm >> 8, 24);
+                        ORRS_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 0);
+                    }
+                    reg2_modified = true;
+                } else {
+                    // it's effectively a mov with flags at this point
+                    LOAD_REG1();
+                    MOVS(arm_reg2, arm_reg1);
+                    if (arm_reg1 != arm_reg2) reg2_modified = true;
+                }
                 break;
             case V810_OP_ADDI: // addi imm16, reg1, reg2
-                LOAD_REG1();
-                MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 16);
-                // asr r0, r0, #16
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_ASR, 0);
-                ADDS(arm_reg2, arm_reg1, 0);
-                reg2_modified = true;
+                if (inst_cache[i].imm != 0) {
+                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
+                    int clz = __builtin_clz(inst_cache[i].imm << 16);
+                    int width = (16 - clz) - ctz;
+                    if (clz == 0) {
+                        if (inst_cache[i].imm == 0xFFFF) {
+                            MVN_I(0, 0, 0);
+                        } else {
+                            int inv_ctz = __builtin_ctz(~inst_cache[i].imm) & ~1;
+                            int inv_clz = __builtin_clz(~inst_cache[i].imm << 16);
+                            int inv_width = (16 - inv_clz) - inv_ctz;
+                            if (inv_width <= 8) {
+                                MVN_I(0, (~inst_cache[i].imm & 0xffff) >> inv_ctz, (32 - inv_ctz) & 31);
+                            } else {
+                                MVN_I(0, ~inst_cache[i].imm & 0xff, 0);
+                                BIC_I(0, 0, inst_cache[i].imm >> 8, 24);
+                            }
+                        }
+                    } else {
+                        if (width <= 8) {
+                            MOV_I(0, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                        } else {
+                            MOV_I(0, (inst_cache[i].imm >> 8), 8);
+                            ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 16);
+                        }
+                    }
+                    LOAD_REG1();
+                    ADDS(arm_reg2, arm_reg1, 0);
+                    reg2_modified = true;
+                } else {
+                    // it's effectively a mov with flags at this point
+                    LOAD_REG1();
+                    MOVS(arm_reg2, arm_reg1);
+                    if (arm_reg1 != arm_reg2) reg2_modified = true;
+                }
                 break;
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
             case V810_OP_IN_B: // in.b disp16 [reg1], reg2
