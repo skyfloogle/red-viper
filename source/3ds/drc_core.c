@@ -1077,6 +1077,11 @@ static int drc_translateBlock(void) {
             case V810_OP_DIV: // div reg1, reg2
                 // reg2/reg1 -> reg2 (r0)
                 // reg2%reg1 -> r30 (r1)
+
+                // save flags
+                MRS(0);
+                PUSH(1 << 0);
+
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
@@ -1091,11 +1096,22 @@ static int drc_translateBlock(void) {
                 }
                 SAVE_REG2(0);
 
+                // restore flags
+                POP(1 << 1);
+                MSR(1);
+
                 // flags
                 ORRS(0, 0, 0);
 
                 break;
             case V810_OP_DIVU: // divu reg1, reg2
+                // reg2/reg1 -> reg2 (r0)
+                // reg2%reg1 -> r30 (r1)
+
+                // save flags
+                MRS(0);
+                PUSH(1 << 0);
+
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
                 LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
@@ -1109,6 +1125,10 @@ static int drc_translateBlock(void) {
                         MOV(phys_regs[30], 1);
                 }
                 SAVE_REG2(0);
+
+                // restore flags
+                POP(1 << 1);
+                MSR(1);
 
                 // flags
                 ORRS(0, 0, 0);
