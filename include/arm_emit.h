@@ -405,20 +405,20 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // add Rd, Rn, imm8, ror #rot
 // Add immediate
 #define ADD_I(Rd, Rn, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_ADD, 0, Rn, Rd, rot, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_ADD, 0, Rn, Rd, (rot)>>1, imm8)
 
 // adds Rd, Rn, imm8, ror #rot
 #define ADDS_I(Rd, Rn, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_ADD, 1, Rn, Rd, rot, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_ADD, 1, Rn, Rd, (rot)>>1, imm8)
 
 // sub Rd, Rn, imm8, ror #rot
 // Subtract immediate
 #define SUB_I(Rd, Rn, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_SUB, 0, Rn, Rd, rot, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_SUB, 0, Rn, Rd, (rot)>>1, imm8)
 
 // subs Rd, Rn, imm8, ror #rot
 #define SUBS_I(Rd, Rn, imm8, rot) \
-    new_data_proc_imm(ARM_COND_AL, ARM_OP_SUB, 1, Rn, Rd, rot, imm8)
+    new_data_proc_imm(ARM_COND_AL, ARM_OP_SUB, 1, Rn, Rd, (rot)>>1, imm8)
 
 // and Rd, Rn, imm, ror #rot
 // And immediate
