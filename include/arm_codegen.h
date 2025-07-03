@@ -129,6 +129,22 @@
     (0b1001)    <<4     |\
     (Rm)                )
 
+// 31   28      23   20   16   12    10     8      4    0
+// +-----------------------------------------------------+
+// | COND | 01101 | OP | Rn | Rd | ROT | SBZ | 0111 | Rm |
+// +-----------------------------------------------------+
+// Extend
+#define gen_extend(cond, op, Rn, Rd, rot, Rm) \
+                        (\
+    (cond)      <<28    |\
+    (0b01101)   <<23    |\
+    (op)        <<20    |\
+    (Rn)        <<16    |\
+    (Rd)        <<12    |\
+    (rot)       <<10    |\
+    (0b0111)    <<4     |\
+    (Rm)                )
+
 // 31   28      23  22    16   12     0
 // +-----------------------------------+
 // | COND | 00010 | R | SBO | Rd | SBZ |
@@ -366,6 +382,9 @@ static inline void drc_assemble(WORD* dst, arm_inst* src) {
             break;
         case ARM_MULL:
             *dst = gen_multiply_long(src->cond, src->mull.u, src->mull.a, src->mull.s, src->mull.RdHi, src->mull.RdLo, src->mull.Rn, src->mull.Rm);
+            break;
+        case ARM_EXTEND:
+            *dst = gen_extend(src->cond, src->extend.op, src->extend.Rn, src->extend.Rd, src->extend.rot, src->extend.Rm);
             break;
         case ARM_MOV_FROM_CPSR:
             *dst = gen_move_from_cpsr(src->cond, src->mfcpsr.r, src->mfcpsr.sbo, src->mfcpsr.Rd, src->mfcpsr.sbz);

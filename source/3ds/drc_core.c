@@ -969,39 +969,109 @@ static int drc_translateBlock(void) {
                 SUB_I(10, 10, 2, 0);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
-                MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 16);
-                // The zero-register will always be zero, so don't add it
-                if (inst_cache[i].reg1 == 0) {
-                    SAVE_REG2(0);
-                } else {
+                // we need to check if it's 0 to avoid UB with ctz and clz
+                if (inst_cache[i].imm != 0) {
+                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
+                    int clz = __builtin_clz(inst_cache[i].imm << 16);
+                    int neg_ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
+                    int neg_clz = __builtin_clz(-inst_cache[i].imm << 16);
+                    int cto = __builtin_ctz(~inst_cache[i].imm) & ~1;
+                    int clo = __builtin_clz(~inst_cache[i].imm << 16);
+                    int width = (16 - clz) - ctz;
+                    int neg_width = (16 - neg_clz) - neg_ctz;
+                    int inv_width = (16 - clo) - cto;
+                    if (width <= 8) {
+                        // normal
+                if (inst_cache[i].reg1 != 0) {
                     LOAD_REG1();
-                    ADD(arm_reg2, 0, arm_reg1);
+                            ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, 16 - ctz);
+                } else {
+MOV_I(arm_reg2, inst_cache[i].imm >> ctz, 16 - ctz);
+                        }
+                    } else if ((inst_cache[i].imm & 0x8000) && neg_width <= 8 && inst_cache[i].reg1 != 0) {
+                        // negative
+                    LOAD_REG1();
+                    SUB_I(arm_reg2, arm_reg1, -(inst_cache[i].imm >> neg_ctz) & 0xff, 16 - neg_ctz);
+                    } else {
+                        // full-size
+                        if (inst_cache[i].reg1 != 0) {
+                            LOAD_REG1();
+                            ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> 8, 8);
+                        } else {
+                            MOV_I(arm_reg2, inst_cache[i].imm >> 8, 8);
+                        }
+                        ADD_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 16);
+}
                     reg2_modified = true;
+} else {
+                    // it's just a mov at this point
+                    RELOAD_REG1(arm_reg2);
+                    if (arm_reg1 != arm_reg2) reg2_modified = true;
                 }
 
                 break;
             case V810_OP_MOVEA: // movea imm16, reg1, reg2
-                MOV_I(0, (inst_cache[i].imm >> 8), 8);
-                ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 16);
-                // The zero-register will always be zero, so don't add it
-                if (inst_cache[i].reg1 == 0) {
-                    MOV_IS(arm_reg2, 0, ARM_SHIFT_ASR, 16);
-                } else {
-                    LOAD_REG1();
-                    ADD_IS(arm_reg2, arm_reg1, 0, ARM_SHIFT_ASR, 16);
-                }
-
-                reg2_modified = true;
-                break;
-            case V810_OP_MOV: // mov reg1, reg2
+                // we need to check if it's 0 to avoid UB with ctz and clz
+                if (inst_cache[i].imm != 0) {
+                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
+                    int clz = __builtin_clz(inst_cache[i].imm << 16);
+                    int neg_ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
+                    int neg_clz = __builtin_clz(-inst_cache[i].imm << 16);
+                    int cto = __builtin_ctz(~inst_cache[i].imm) & ~1;
+                    int clo = __builtin_clz(~inst_cache[i].imm << 16);
+                    int width = (16 - clz) - ctz;
+                    int neg_width = (16 - neg_clz) - neg_ctz;
+                    int inv_width = (16 - clo) - cto;
+                    if (!(inst_cache[i].imm & 0x8000) && width <= 8) {
+                        // normal
                 if (inst_cache[i].reg1 != 0) {
                     LOAD_REG1();
-                    SAVE_REG2(arm_reg1);
+                            ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                 } else {
-                    MOV_I(arm_reg2, 0, 0);
-                    reg2_modified = true;
+MOV_I(arm_reg2, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                        }
+                    } else if ((inst_cache[i].imm & 0x8000) && neg_width <= 8 && inst_cache[i].reg1 != 0) {
+                        // negative, with alt register
+                    LOAD_REG1();
+                    SUB_I(arm_reg2, arm_reg1, (-inst_cache[i].imm & 0xffff) >> neg_ctz, (32 - neg_ctz) & 31);
+                    } else if (inst_cache[i].imm == 0xFFFF || ((inst_cache[i].imm & 0x8000) && inv_width <= 8)) {
+                        // inverted
+                        if (inst_cache[i].reg1 != 0) {
+                            LOAD_REG1();
+                            MVN_I(0, ((~inst_cache[i].imm) & 0xffff) >> cto, (32 - cto) & 31);
+                            ADD(arm_reg2, arm_reg1, 0);
+                        } else {
+                            MVN_I(arm_reg2, ((~inst_cache[i].imm & 0xffff) >> cto), (32 - cto) & 31);
+                        }
+                    } else if ((inst_cache[i].imm & 0x8000) && neg_width <= 8 && inst_cache[i].reg1 == 0) {
+                        // negative, with zero register
+                        LOAD_REG1();
+                        SUB_I(arm_reg2, arm_reg1, (-inst_cache[i].imm & 0xffff) >> neg_ctz, (32 - neg_ctz) & 31);
+                    } else {
+                        if (!(inst_cache[i].imm & 0x8000)) {
+                            if (inst_cache[i].reg1 != 0) {
+                                LOAD_REG1();
+                                ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> 8, 24);
+                            } else {
+                                MOV_I(arm_reg2, inst_cache[i].imm >> 8, 24);
+                            }
+                            ADD_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 0);
+                        } else {
+                            LOAD_REG1();
+                            SUB_I(arm_reg2, arm_reg1, (-inst_cache[i].imm & 0xffff) >> 8, 24);
+                            SUB_I(arm_reg2, arm_reg2, -inst_cache[i].imm & 0xff, 0);
                 }
+}
+                reg2_modified = true;
+} else {
+                    // it's just a mov at this point
+                    RELOAD_REG1(arm_reg2);
+                    if (arm_reg1 != arm_reg2) reg2_modified = true;
+                }
+                break;
+            case V810_OP_MOV: // mov reg1, reg2
+                RELOAD_REG1(arm_reg2);
+                if (arm_reg1 != arm_reg2) reg2_modified = true;
                 break;
             case V810_OP_ADD: // add reg1, reg2
                 LOAD_REG1();
@@ -1158,20 +1228,31 @@ static int drc_translateBlock(void) {
                 reg2_modified = true;
                 break;
             case V810_OP_MOV_I: // mov imm5, reg2
-                MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
-                MOV_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
+                if (!(inst_cache[i].imm & 0x10)) {
+                    MOV_I(arm_reg2, inst_cache[i].imm, 0);
+                } else {
+                    MVN_I(arm_reg2, ~sign_5(inst_cache[i].imm), 0);
+                }
                 reg2_modified = true;
                 break;
             case V810_OP_ADD_I: // add imm5, reg2
                 LOAD_REG2();
+                if (!(inst_cache[i].imm & 0x10)) {
+                    ADDS_I(arm_reg2, arm_reg2, inst_cache[i].imm, 0);
+                } else {
                 MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
                 ADDS_IS(arm_reg2, arm_reg2, 0, ARM_SHIFT_ASR, 24);
+                }
                 reg2_modified = true;
                 break;
             case V810_OP_CMP_I: // cmp imm5, reg2
                 LOAD_REG2();
+                if (!(inst_cache[i].imm & 0x10)) {
+                    CMP_I(arm_reg2, inst_cache[i].imm, 0);
+                } else {
                 MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
                 CMP_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
+                }
                 INV_CARRY();
                 reg2_modified = true;
                 break;
@@ -1247,10 +1328,7 @@ static int drc_translateBlock(void) {
                 if (slow_memory) cycles += 2;
 
                 if (inst_cache[i].opcode == V810_OP_IN_B) {
-                    // lsl r0, r0, #24
-                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 24, ARM_SHIFT_LSL, 0);
-                    // lsr reg2, r0, #24
-                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 24, ARM_SHIFT_LSR, 0);
+                    UXTB(arm_reg2, 0, 0);
                     reg2_modified = true;
                 } else {
                     SAVE_REG2(0);
@@ -1283,10 +1361,7 @@ static int drc_translateBlock(void) {
                 if (slow_memory) cycles += 2;
 
                 if (inst_cache[i].opcode == V810_OP_IN_H) {
-                    // lsl r0, r0, #16
-                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, 0, 16, ARM_SHIFT_LSL, 0);
-                    // lsr reg2, r0, #16
-                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 0, 0, arm_reg2, 16, ARM_SHIFT_LSR, 0);
+                    UXTH(arm_reg2, 0, 0);
                     reg2_modified = true;
                 } else {
                     SAVE_REG2(0);
@@ -1433,8 +1508,7 @@ static int drc_translateBlock(void) {
                     else
                         LDR_IO(0, 11, offsetof(cpu_state, except_flags));
                     // clear out condition flags
-                    MVN_I(1, 0xf, 4);
-                    AND(0, 0, 1);
+                    BIC_I(0, 0, 0xf, 4);
                     // zero flag
                     TST_I(arm_reg2, 1, 0);
                     ORRCC_I(ARM_COND_NE, 0, 1, 2);
@@ -1460,8 +1534,7 @@ static int drc_translateBlock(void) {
                 LDR_IO(arm_reg2, 11, offsetof(cpu_state, S_REG[inst_cache[i].imm]));
                 if (inst_cache[i].imm == PSW || inst_cache[i].imm == EIPSW) {
                     // clear out condition flags
-                    MVN_I(0, 0xf, 0);
-                    AND(arm_reg2, 0, arm_reg2);
+                    BIC_I(arm_reg2, arm_reg2, 0xf, 0);
                     // load except flags if relevant
                     if (inst_cache[i].imm == EIPSW) {
                         MRS(0);

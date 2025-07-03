@@ -130,6 +130,23 @@ static inline void new_multiply_long(BYTE cond, BYTE u, BYTE a, BYTE s, BYTE RdH
     inst_ptr++;
 }
 
+// Extend
+static inline void new_extend(BYTE cond, BYTE op, BYTE Rn, BYTE Rd, BYTE rot, BYTE Rm) {
+    inst_ptr->type = ARM_EXTEND;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->needs_branch = false;
+    inst_ptr->extend = (arm_inst_extend) {
+        op,
+        Rn,
+        Rd,
+        rot,
+        Rm
+    };
+
+    inst_ptr++;
+}
+
 // Move from status register
 static inline void new_move_from_cpsr(BYTE cond, BYTE r, BYTE sbo, BYTE Rd, HWORD sbz) {
     inst_ptr->type = ARM_MOV_FROM_CPSR;
@@ -624,6 +641,22 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // Unsigned multiply long
 #define UMULLS(RdLo, RdHi, Rn, Rm) \
     new_multiply_long(ARM_COND_AL, 0, 0, 1, RdHi, RdLo, Rn, Rm)
+
+// uxtab
+#define UXTAB(Rd, Rn, Rm, rot) \
+    new_extend(ARM_COND_AL, 0b1110, Rn, Rd, rot, Rm)
+
+// uxtb
+#define UXTB(Rd, Rm, rot) \
+    UXTAB(Rd, 15, Rm, rot)
+
+// uxtah
+#define UXTAH(Rd, Rn, Rm, rot) \
+    new_extend(ARM_COND_AL, 0b1111, Rn, Rd, rot, Rm)
+
+// uxth
+#define UXTH(Rd, Rm, rot) \
+    UXTAH(Rd, 15, Rm, rot)
 
 // vmov Sn, Rt
 #define VMOV_SR(Sn, Rt) \
