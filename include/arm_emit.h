@@ -484,6 +484,11 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define ADD_IS(Rd, Rn, Rm, shift, shift_imm) \
     new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_ADD, 0, Rn, Rd, shift_imm, shift, Rm)
 
+// sub Rd, Rn, Rm, shift #shift_imm
+// Subtract immediate shift
+#define SUB_IS(Rd, Rn, Rm, shift, shift_imm) \
+    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_SUB, 0, Rn, Rd, shift_imm, shift, Rm)
+
 // cmp Rn, Rm, shift #shift_imm
 // Compare immediate shift
 #define CMP_IS(Rn, Rm, shift, shift_imm) \
@@ -564,6 +569,10 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // add Rd, Rn, Rm
 #define ADD(Rd, Rn, Rm) \
     ADD_IS(Rd, Rn, Rm, 0, 0)
+
+// sub Rd, Rn, Rm
+#define SUB(Rd, Rn, Rm) \
+    SUB_IS(Rd, Rn, Rm, 0, 0)
 
 // cmp Rn, Rm
 #define CMP(Rn, Rm) \
@@ -793,6 +802,8 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     LDW_I(1, ret_PC); \
     LDR_IO(2, 11, offsetof(cpu_state, cycles_until_event_partial)); \
     LDR_IO(3, 11, offsetof(cpu_state, irq_handler)); \
+    SUB(2, 2, 10); \
+    MOV_I(10, 0, 0); \
     SUBS_I(2, 2, cycles & 0xFF, 0); \
     STR_IO(2, 11, offsetof(cpu_state, cycles_until_event_partial)); \
     BLX(ARM_COND_LE, 3); \

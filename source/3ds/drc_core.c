@@ -1355,26 +1355,26 @@ static int drc_translateBlock(void) {
                     if (clz != 0 && width <= 8) {
                         ADDS_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                     } else {
-                    if (clz == 0) {
-                        if (inst_cache[i].imm == 0xFFFF) {
-                            MVN_I(0, 0, 0);
-                        } else {
-                            int inv_ctz = __builtin_ctz(~inst_cache[i].imm) & ~1;
-                            int inv_clz = __builtin_clz(~inst_cache[i].imm << 16);
-                            int inv_width = (16 - inv_clz) - inv_ctz;
-                            if (inv_width <= 8) {
-                                MVN_I(0, (~inst_cache[i].imm & 0xffff) >> inv_ctz, (32 - inv_ctz) & 31);
+                        if (clz == 0) {
+                            if (inst_cache[i].imm == 0xFFFF) {
+                                MVN_I(0, 0, 0);
                             } else {
-                                MVN_I(0, ~inst_cache[i].imm & 0xff, 0);
-                                BIC_I(0, 0, ~inst_cache[i].imm >> 8, 24);
+                                int inv_ctz = __builtin_ctz(~inst_cache[i].imm) & ~1;
+                                int inv_clz = __builtin_clz(~inst_cache[i].imm << 16);
+                                int inv_width = (16 - inv_clz) - inv_ctz;
+                                if (inv_width <= 8) {
+                                    MVN_I(0, (~inst_cache[i].imm & 0xffff) >> inv_ctz, (32 - inv_ctz) & 31);
+                                } else {
+                                    MVN_I(0, ~inst_cache[i].imm & 0xff, 0);
+                                    BIC_I(0, 0, ~inst_cache[i].imm >> 8, 24);
+                                }
                             }
-                        }
-                    } else {
-                                                    MOV_I(0, (inst_cache[i].imm >> 8), 24);
+                        } else {
+                            MOV_I(0, (inst_cache[i].imm >> 8), 24);
                             ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 0);
                         }
-                                        ADDS(arm_reg2, arm_reg1, 0);
-}
+                        ADDS(arm_reg2, arm_reg1, 0);
+                    }
                     reg2_modified = true;
                 } else {
                     // it's effectively a mov with flags at this point
@@ -2070,6 +2070,11 @@ int drc_run(void) {
     serviceDisplayInt(v810_state->cycles, v810_state->PC);
 
     while (true) {
+        if (v810_state->cycles_until_event_partial <= 0) {
+            serviceInt(v810_state->cycles, v810_state->PC);
+            serviceDisplayInt(v810_state->cycles, v810_state->PC);
+        }
+
         entry_PC = v810_state->PC;
 
         // Try to find a cached block
