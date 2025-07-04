@@ -811,7 +811,7 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     cycles = 0; \
 }
 
-#define HALT_LOOP_BODY 9
+#define HALT_LOOP_BODY 8
 #define HALT_SIZE HALT_LOOP_BODY + 2
 
 #define HALT(next_PC) { \
@@ -822,9 +822,8 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     ORR_I(1, 1, ((next_PC) & 0xff0000)>>16, 16); \
     ORR_I(1, 1, ((next_PC) & 0xff000000)>>24, 8); \
     MOV_I(10, 0, 0); \
-    MOV_I(2, 0, 0); \
     LDR_IO(3, 11, offsetof(cpu_state, irq_handler)); \
-    STR_IO(2, 11, offsetof(cpu_state, cycles_until_event_partial)); \
+    STR_IO(10, 11, offsetof(cpu_state, cycles_until_event_partial)); \
     BLX(ARM_COND_AL, 3); \
     Boff(ARM_COND_AL, -(HALT_LOOP_BODY)); \
     cycles = 0; \

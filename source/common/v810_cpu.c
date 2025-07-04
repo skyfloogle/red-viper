@@ -367,7 +367,6 @@ void predictEvent(bool increment) {
         int period = tHReg.TCR & 0x10 ? 400 : 2000;
         int next_timer = (tHReg.tCount ? tHReg.tCount : tHReg.tTHW) * period - (cycles - tHReg.lasttime);
         if (next_event > next_timer) next_event = next_timer;
-        
     }
     if (tHReg.SCR & 2) {
         int next_input = tHReg.hwRead - (cycles - tHReg.lastinput);
@@ -375,13 +374,16 @@ void predictEvent(bool increment) {
     }
     if (tVIPREG.drawing) {
         int drawtime = cycles - tVIPREG.lastdraw;
-        int sboff = (tVIPREG.rowcount) * 28 / tVIPREG.frametime + 1120;
-        int nextrow = (tVIPREG.rowcount + 1) * 28 / tVIPREG.frametime;
+        int sboff = (tVIPREG.rowcount) * tVIPREG.frametime / 28 + 1120;
+        // the maths in serviceDisplayInt is slightly different, so add 1 to compensate
+        int nextrow = (tVIPREG.rowcount + 1) * tVIPREG.frametime / 28 + 1;
         int next_draw;
         if (drawtime < sboff) next_draw = sboff - drawtime;
         else next_draw = nextrow - drawtime;
-        if (next_event < next_draw) next_event = next_draw;
+        if (next_event > next_draw) next_event = next_draw;
     }
+
+    if (next_event < 0) next_event = 0;
 
     v810_state->cycles_until_event_full = v810_state->cycles_until_event_partial = next_event;
 }
@@ -550,7 +552,7 @@ int serviceDisplayInt(unsigned int cycles, WORD PC) {
         pending_int = 1;
     }
 
-    if (pending_int) predictEvent(false);
+    predictEvent(false);
 
     return pending_int;
 }
