@@ -1772,8 +1772,9 @@ static int drc_translateBlock(void) {
                     AND(0, phys_regs[27], 2);
                     ORR_IS(3, 0, 3, ARM_SHIFT_LSL, 5);
 
-                    // cycle count: arm r10 -> arm r3 hi
-                    ORR_IS(3, 3, 10, ARM_SHIFT_LSL, 10);
+                    // cycle count -> arm r3 hi
+                    LDR_IO(0, 11, offsetof(cpu_state, cycles_until_event_partial));
+                    ORR_IS(3, 3, 0, ARM_SHIFT_LSL, 10);
                 } else {
                     // search, we only have a source
                     // v810 r27 -> arm r3 lo
