@@ -869,10 +869,13 @@ static int drc_translateBlock(void) {
 
                 ADDCYCLES();
 
-                // restore flags
-                LDR_IO(1, 11, offsetof(cpu_state, except_flags));
-                MSR(1);
+                // restore flags and handle any lingering interrupts
+                LDR_IO(0, 11, offsetof(cpu_state, except_flags));
+                LDR_IO(2, 11, offsetof(cpu_state, irq_handler));
+                BLX(ARM_COND_AL, 2);
 
+                // if we didn't exit already, restore state
+                MSR(0);
                 POP(1 << 15);
                 break;
             case V810_OP_BR:
