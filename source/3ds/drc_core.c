@@ -2173,7 +2173,7 @@ int drc_run(void) {
     serviceDisplayInt(v810_state->cycles, v810_state->PC);
 
     while (true) {
-        if (v810_state->cycles_until_event_partial <= 0) {
+        if (unlikely(v810_state->cycles_until_event_partial <= 0)) {
             serviceInt(v810_state->cycles, v810_state->PC);
             serviceDisplayInt(v810_state->cycles, v810_state->PC);
         }
