@@ -647,6 +647,7 @@ static int drc_translateBlock(void) {
     bool is_virtual_lab = memcmp(tVBOpt.GAME_ID, "AHVJVJ", 6) == 0;
     bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
     bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    bool is_space_invaders = memcmp(tVBOpt.GAME_ID, "C0VSPJ", 6) == 0;
     bool is_jack_bros = memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0;
     bool chcw_load_seen = (v810_state->S_REG[CHCW] & 2) != 0;
 
@@ -840,6 +841,13 @@ static int drc_translateBlock(void) {
                 }
                 break;
             case V810_OP_JAL: // jal disp26
+                if (is_space_invaders && inst_cache[i].PC == 0x07007fb6) {
+                    // Make sure the Space Invaders intro FMV runs at the correct speed (ish).
+                    // Value determined through trial and error.
+                    // Correct for intro video, but attract video is very slightly slow.
+                    cycles += 24;
+                }
+
                 LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
                 LDW_I(1, inst_cache[i].PC + 4);
                 // Save the new PC
