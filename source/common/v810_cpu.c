@@ -389,6 +389,8 @@ void predictEvent(bool increment) {
     v810_state->cycles_until_event_full = v810_state->cycles_until_event_partial = next_event;
 }
 
+static int serviceDisplayInt(unsigned int cycles, WORD PC);
+
 // Returns number of cycles until next timer interrupt.
 int serviceInt(unsigned int cycles, WORD PC) {
     bool pending_int = false;
@@ -424,17 +426,20 @@ int serviceInt(unsigned int cycles, WORD PC) {
         }
     }
 
-    predictEvent(false);
+    // graphics has higher priority, so try that first
+    pending_int = serviceDisplayInt(cycles, PC) || pending_int;
 
     if (tHReg.tInt) {
         // zero & interrupt enabled
         pending_int = v810_int(1, PC) || pending_int;
     }
 
+    predictEvent(false);
+
     return pending_int;
 }
 
-int serviceDisplayInt(unsigned int cycles, WORD PC) {
+static int serviceDisplayInt(unsigned int cycles, WORD PC) {
     int gamestart;
     unsigned int disptime = (cycles - tVIPREG.lastdisp);
     bool pending_int = 0;

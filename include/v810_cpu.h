@@ -134,7 +134,6 @@ void v810_exp(WORD iNum, WORD eCode);
 void predictEvent(bool increment);
 
 int serviceInt(unsigned int cycles, WORD PC);
-int serviceDisplayInt(unsigned int cycles, WORD PC);
 
 int v810_run(void);
 

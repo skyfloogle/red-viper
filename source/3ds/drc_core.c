@@ -872,6 +872,7 @@ static int drc_translateBlock(void) {
                 // restore flags and handle any lingering interrupts
                 LDR_IO(0, 11, offsetof(cpu_state, except_flags));
                 LDR_IO(2, 11, offsetof(cpu_state, irq_handler));
+                STR_IO(0, 11, offsetof(cpu_state, flags));
                 BLX(ARM_COND_AL, 2);
 
                 // if we didn't exit already, restore state
@@ -2191,12 +2192,10 @@ int drc_run(void) {
     }
 
     serviceInt(v810_state->cycles, v810_state->PC);
-    serviceDisplayInt(v810_state->cycles, v810_state->PC);
 
     while (true) {
         if (unlikely(v810_state->cycles_until_event_partial <= 0)) {
             serviceInt(v810_state->cycles, v810_state->PC);
-            serviceDisplayInt(v810_state->cycles, v810_state->PC);
         }
 
         entry_PC = v810_state->PC;

@@ -35,7 +35,7 @@ block_reg_map:
 
 .data
 
-.extern v810_state, serviceDisplayInt, serviceInt, serviceint, tVBOpt
+.extern v810_state, serviceInt, serviceint, tVBOpt
 
 .text
 
@@ -151,12 +151,6 @@ drc_handleInterrupts:
     mov     r10, #0
 
     bl      serviceInt
-    cmp     r0, #0
-    bne     exit_block
-
-    ldr     r0, [r11, #state_cycles]
-    mov     r1, r5
-    bl      serviceDisplayInt
     cmp     r0, #0
     bne     exit_block
 

@@ -32,7 +32,7 @@ int interpreter_run(void) {
     do {
         if (cycles >= target) {
             v810_state->PC = PC;
-            if ((serviceInt(cycles, PC) || serviceDisplayInt(cycles, PC)) && PC != v810_state->PC) {
+            if (serviceInt(cycles, PC) && PC != v810_state->PC) {
                 // interrupt triggered, so we exit
                 // PC was modified so don't reset it
                 v810_state->cycles = cycles;
@@ -270,7 +270,6 @@ int interpreter_run(void) {
                         cycles += v810_state->cycles_until_event_partial;
                         v810_state->cycles_until_event_partial = v810_state->cycles_until_event_full = 0;
                         v810_state->cycles = cycles;
-                        serviceDisplayInt(cycles, PC);
                         serviceInt(cycles, PC);
 
                     } while (!v810_state->ret && v810_state->PC == PC);
