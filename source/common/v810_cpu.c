@@ -390,12 +390,16 @@ void predictEvent(bool increment) {
 
 // Returns number of cycles until next timer interrupt.
 int serviceInt(unsigned int cycles, WORD PC) {
+    bool pending_int = false;
+
     // hardware read timing
     if (tHReg.SCR & 2) {
         int next_input = tHReg.hwRead - (cycles - tHReg.lastinput);
         tHReg.hwRead = next_input;
-        if (next_input <= 0)
+        if (next_input <= 0) {
             tHReg.SCR &= ~2;
+            pending_int = true;
+        }
     }
     tHReg.lastinput = cycles;
 
@@ -423,18 +427,16 @@ int serviceInt(unsigned int cycles, WORD PC) {
 
     if (tHReg.tInt) {
         // zero & interrupt enabled
-        return v810_int(1, PC);
+        pending_int = v810_int(1, PC) || pending_int;
     }
 
-    return false;
+    return pending_int;
 }
 
 int serviceDisplayInt(unsigned int cycles, WORD PC) {
     int gamestart;
     unsigned int disptime = (cycles - tVIPREG.lastdisp);
     bool pending_int = 0;
-    
-    v810_state->PC = PC;
 
     if (unlikely(tVIPREG.newframe)) {
         // new frame

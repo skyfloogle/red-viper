@@ -111,7 +111,8 @@ drc_executeBlock:
 postexec:
     pop     {r0}
     stRegs
-    @ cycles += cycles_until_event_full - cycles_until_event_partial
+    @ cycles += cuef - cuep
+    @ cuef = cuep = cuef - cuep - r10
     ldr     r0, [r11, #state_cycles]
     ldr     r2, [r11, #state_cycles_until_event_full]
     ldr     r3, [r11, #state_cycles_until_event_partial]
@@ -131,10 +132,13 @@ drc_handleInterrupts:
     mov     r4, r0
     mov     r5, r1
 
-    @ Save flags
+    @ Save flags and PC
     str     r4, [r11, #state_flags]
+    str     r5, [r11, #state_pc]
 
-    @ cycles += cycles_until_event_full - cycles_until_event_partial
+    @ cycles += cuef - cuep - r10
+    @ cuef = cuep = cuef - cuep - r10
+    @ r10 = 0
     ldr     r0, [r11, #state_cycles]
     ldr     r2, [r11, #state_cycles_until_event_full]
     ldr     r3, [r11, #state_cycles_until_event_partial]
