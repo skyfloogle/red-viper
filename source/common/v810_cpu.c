@@ -364,8 +364,9 @@ void predictEvent(bool increment) {
         else if (disptime < 360000) next_event = 360000 - disptime;
     }
     if (tHReg.TCR & 0x01) {
-        int period = tHReg.TCR & 0x10 ? 400 : 2000;
-        int next_timer = (tHReg.tCount ? tHReg.tCount : tHReg.tTHW) * period - (cycles - tHReg.lasttime);
+        int ticks = tHReg.tCount ? tHReg.tCount : tHReg.tTHW;
+        if (!(tHReg.TCR & 0x10)) ticks = ticks * 5 - tHReg.ticks;
+        int next_timer = ticks * 400 - (cycles - tHReg.lasttime);
         if (next_event > next_timer) next_event = next_timer;
     }
     if (tHReg.SCR & 2) {
