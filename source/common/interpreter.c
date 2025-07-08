@@ -28,19 +28,17 @@ int interpreter_run(void) {
     WORD last_PC = PC;
     WORD cycles = v810_state->cycles;
     BYTE last_opcode = 0;
-    int maxcycles;
     WORD target = 0;
     do {
         if (cycles >= target) {
             v810_state->PC = PC;
-            maxcycles = serviceInt(cycles, PC);
-            if ((maxcycles <= 0 || serviceDisplayInt(cycles, PC)) && PC != v810_state->PC) {
+            if ((serviceInt(cycles, PC) || serviceDisplayInt(cycles, PC)) && PC != v810_state->PC) {
                 // interrupt triggered, so we exit
                 // PC was modified so don't reset it
                 v810_state->cycles = cycles;
                 return 0;
             }
-            target = cycles + maxcycles;
+            target = cycles + v810_state->cycles_until_event_partial;
         }
         HWORD instr = mem_rhword(PC);
         PC += 2;
@@ -269,9 +267,12 @@ int interpreter_run(void) {
                     cycles = target;
                     v810_state->PC = PC;
                     do {
+                        cycles += v810_state->cycles_until_event_partial;
+                        v810_state->cycles_until_event_partial = v810_state->cycles_until_event_full = 0;
+                        v810_state->cycles = cycles;
                         serviceDisplayInt(cycles, PC);
-                        maxcycles = serviceInt(cycles, PC);
-                        if (maxcycles > 0) cycles += maxcycles;
+                        serviceInt(cycles, PC);
+
                     } while (!v810_state->ret && v810_state->PC == PC);
                     break;
                 }
