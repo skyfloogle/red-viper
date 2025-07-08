@@ -1388,25 +1388,28 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
             case V810_OP_IN_B: // in.b disp16 [reg1], reg2
-                RELOAD_REG1(0);
-                if ((short)inst_cache[i].imm > 0) {
+                if (inst_cache[i].imm == 0) {
+                    RELOAD_REG1(0);
+                } else if ((short)inst_cache[i].imm > 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        ADD_I(0, 0, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                     } else {
-                        ADD_I(0, 0, inst_cache[i].imm & 0xff, 0);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
                         ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
                     }
                 } else if ((short)inst_cache[i].imm < 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(-inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        SUB_I(0, 0, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
+                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
                     } else {
-                        SUB_I(0, 0, -inst_cache[i].imm & 0xff, 0);
+                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
                         SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
                     }
                 }
@@ -1438,25 +1441,28 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
             case V810_OP_IN_H: // in.h disp16 [reg1], reg2
-                RELOAD_REG1(0);
-                if ((short)inst_cache[i].imm > 0) {
+                if (inst_cache[i].imm == 0) {
+                    RELOAD_REG1(0);
+                } else if ((short)inst_cache[i].imm > 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        ADD_I(0, 0, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                     } else {
-                        ADD_I(0, 0, inst_cache[i].imm & 0xff, 0);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
                         ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
                     }
                 } else if ((short)inst_cache[i].imm < 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(-inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        SUB_I(0, 0, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
+                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
                     } else {
-                        SUB_I(0, 0, -inst_cache[i].imm & 0xff, 0);
+                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
                         SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
                     }
                 }
@@ -1488,25 +1494,28 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
             case V810_OP_IN_W: // in.w disp16 [reg1], reg2
-                RELOAD_REG1(0);
-                if ((short)inst_cache[i].imm > 0) {
+                if (inst_cache[i].imm == 0) {
+                    RELOAD_REG1(0);
+                } else if ((short)inst_cache[i].imm > 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        ADD_I(0, 0, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                     } else {
-                        ADD_I(0, 0, inst_cache[i].imm & 0xff, 0);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
                         ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
                     }
                 } else if ((short)inst_cache[i].imm < 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(-inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        SUB_I(0, 0, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
+                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
                     } else {
-                        SUB_I(0, 0, -inst_cache[i].imm & 0xff, 0);
+                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
                         SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
                     }
                 }
@@ -1533,25 +1542,28 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_ST_B:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_B: // out.h reg2, disp16 [reg1]
-                RELOAD_REG1(0);
-                if ((short)inst_cache[i].imm > 0) {
+                if (inst_cache[i].imm == 0) {
+                    RELOAD_REG1(0);
+                } else if ((short)inst_cache[i].imm > 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        ADD_I(0, 0, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                     } else {
-                        ADD_I(0, 0, inst_cache[i].imm & 0xff, 0);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
                         ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
                     }
                 } else if ((short)inst_cache[i].imm < 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(-inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        SUB_I(0, 0, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
+                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
                     } else {
-                        SUB_I(0, 0, -inst_cache[i].imm & 0xff, 0);
+                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
                         SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
                     }
                 }
@@ -1577,25 +1589,28 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_H: // out.h reg2, disp16 [reg1]
-                RELOAD_REG1(0);
-                if ((short)inst_cache[i].imm > 0) {
+                if (inst_cache[i].imm == 0) {
+                    RELOAD_REG1(0);
+                } else if ((short)inst_cache[i].imm > 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        ADD_I(0, 0, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                     } else {
-                        ADD_I(0, 0, inst_cache[i].imm & 0xff, 0);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
                         ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
                     }
                 } else if ((short)inst_cache[i].imm < 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(-inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        SUB_I(0, 0, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
+                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
                     } else {
-                        SUB_I(0, 0, -inst_cache[i].imm & 0xff, 0);
+                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
                         SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
                     }
                 }
@@ -1621,25 +1636,28 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_W: // out.h reg2, disp16 [reg1]
-                RELOAD_REG1(0);
-                if ((short)inst_cache[i].imm > 0) {
+                if (inst_cache[i].imm == 0) {
+                    RELOAD_REG1(0);
+                } else if ((short)inst_cache[i].imm > 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        ADD_I(0, 0, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
                     } else {
-                        ADD_I(0, 0, inst_cache[i].imm & 0xff, 0);
+                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
                         ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
                     }
                 } else if ((short)inst_cache[i].imm < 0) {
+                    LOAD_REG1();
                     int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
                     int clz = __builtin_clz(-inst_cache[i].imm << 16);
                     int width = (16 - clz) - ctz;
                     if (width <= 8) {
-                        SUB_I(0, 0, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
+                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
                     } else {
-                        SUB_I(0, 0, -inst_cache[i].imm & 0xff, 0);
+                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
                         SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
                     }
                 }
