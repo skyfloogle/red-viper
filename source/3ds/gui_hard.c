@@ -114,7 +114,7 @@ PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
 PERFORM_FOR_EACH_VB_BUTTON(CUSTOM_VB_BUTTON_TEXT)
 
 static C2D_SpriteSheet sprite_sheet;
-static C2D_SpriteSheet splash_sheet;
+// static C2D_SpriteSheet splash_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite, vb_icon_sprite;
 static C2D_Sprite text_3ds_sprite, text_vb_sprite, text_toggle_sprite, text_turbo_sprite;
 // static C2D_Sprite splash_left, splash_right;
