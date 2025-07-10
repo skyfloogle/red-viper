@@ -24,8 +24,8 @@
 #include "periodic.h"
 #include "sprites_t3x.h"
 #include "sprites.h"
-#include "splash_t3x.h"
-#include "splash.h"
+// #include "splash_t3x.h"
+// #include "splash.h"
 #include "vblink.h"
 #include "cpp.h"
 #include "extrapad.h"
@@ -114,10 +114,10 @@ PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
 PERFORM_FOR_EACH_VB_BUTTON(CUSTOM_VB_BUTTON_TEXT)
 
 static C2D_SpriteSheet sprite_sheet;
-static C2D_SpriteSheet splash_sheet;
+// static C2D_SpriteSheet splash_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite, vb_icon_sprite;
 static C2D_Sprite text_3ds_sprite, text_vb_sprite, text_toggle_sprite, text_turbo_sprite;
-static C2D_Sprite splash_left, splash_right;
+// static C2D_Sprite splash_left, splash_right;
 
 // helpers
 #define dis(X1,Y1,X2,Y2) ( (((X2)-(X1)) * ((X2)-(X1))) + (((Y2)-(Y1)) * ((Y2)-(Y1))) )
@@ -566,8 +566,8 @@ static void draw_logo(void) {
     C2D_SceneBegin(screenTarget);
     C2D_ViewScale(1, -1);
     C2D_ViewTranslate(0, -512);
-    C2D_DrawSprite(&splash_left);
-    C2D_DrawSprite(&splash_right);
+//    C2D_DrawSprite(&splash_left);
+//    C2D_DrawSprite(&splash_right);
     C2D_ViewReset();
     C2D_SceneBegin(screen);
 }
@@ -2226,10 +2226,10 @@ void guiInit(void) {
     C2D_SpriteFromSheet(&text_toggle_sprite, sprite_sheet, sprites_toggle_text_idx);
     C2D_SpriteFromSheet(&text_turbo_sprite, sprite_sheet, sprites_turbo_text_idx);
 
-    splash_sheet = C2D_SpriteSheetLoadFromMem(splash_t3x, splash_t3x_size);
-    C2D_SpriteFromSheet(&splash_left, splash_sheet, splash_splash_left_idx);
-    C2D_SpriteFromSheet(&splash_right, splash_sheet, splash_splash_right_idx);
-    C2D_SpriteSetPos(&splash_right, 0, 256);
+//    splash_sheet = C2D_SpriteSheetLoadFromMem(splash_t3x, splash_t3x_size);
+//    C2D_SpriteFromSheet(&splash_left, splash_sheet, splash_splash_left_idx);
+//    C2D_SpriteFromSheet(&splash_right, splash_sheet, splash_splash_right_idx);
+//    C2D_SpriteSetPos(&splash_right, 0, 256);
 
     static_textbuf = C2D_TextBufNew(2048);
     dynamic_textbuf = C2D_TextBufNew(4096);
@@ -2258,7 +2258,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?")
     STATIC_TEXT(&text_debug_filenames, "Please share debug_info.txt and\ndebug_replay.bin.gz in your bug\nreport.")
     STATIC_TEXT(&text_anykeyexit, "Press any key to exit")
-    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nSplash screen by Morintari\nCustom control scheme by nevumx\nHeavily based on Reality Boy by David Tucker\nMore info at: github.com/skyfloogle/red-viper")
+//    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nSplash screen by Morintari\nCustom control scheme by nevumx\nHeavily based on Reality Boy by David Tucker\nMore info at: github.com/skyfloogle/red-viper")
     STATIC_TEXT(&text_loading, "Loading...")
     STATIC_TEXT(&text_loaderr, "Failed to load ROM.")
     STATIC_TEXT(&text_unloaded, "The current ROM has been unloaded.")
