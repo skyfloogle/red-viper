@@ -566,8 +566,8 @@ static void draw_logo(void) {
     C2D_SceneBegin(screenTarget);
     C2D_ViewScale(1, -1);
     C2D_ViewTranslate(0, -512);
-    C2D_DrawSprite(&splash_left);
-    C2D_DrawSprite(&splash_right);
+//    C2D_DrawSprite(&splash_left);
+//    C2D_DrawSprite(&splash_right);
     C2D_ViewReset();
     C2D_SceneBegin(screen);
 }
