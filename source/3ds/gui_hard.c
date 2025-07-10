@@ -117,7 +117,7 @@ static C2D_SpriteSheet sprite_sheet;
 static C2D_SpriteSheet splash_sheet;
 static C2D_Sprite colour_wheel_sprite, logo_sprite, vb_icon_sprite;
 static C2D_Sprite text_3ds_sprite, text_vb_sprite, text_toggle_sprite, text_turbo_sprite;
-static C2D_Sprite splash_left, splash_right;
+// static C2D_Sprite splash_left, splash_right;
 
 // helpers
 #define dis(X1,Y1,X2,Y2) ( (((X2)-(X1)) * ((X2)-(X1))) + (((Y2)-(Y1)) * ((Y2)-(Y1))) )
