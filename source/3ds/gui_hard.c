@@ -2226,10 +2226,10 @@ void guiInit(void) {
     C2D_SpriteFromSheet(&text_toggle_sprite, sprite_sheet, sprites_toggle_text_idx);
     C2D_SpriteFromSheet(&text_turbo_sprite, sprite_sheet, sprites_turbo_text_idx);
 
-    splash_sheet = C2D_SpriteSheetLoadFromMem(splash_t3x, splash_t3x_size);
-    C2D_SpriteFromSheet(&splash_left, splash_sheet, splash_splash_left_idx);
-    C2D_SpriteFromSheet(&splash_right, splash_sheet, splash_splash_right_idx);
-    C2D_SpriteSetPos(&splash_right, 0, 256);
+//    splash_sheet = C2D_SpriteSheetLoadFromMem(splash_t3x, splash_t3x_size);
+//    C2D_SpriteFromSheet(&splash_left, splash_sheet, splash_splash_left_idx);
+//    C2D_SpriteFromSheet(&splash_right, splash_sheet, splash_splash_right_idx);
+//    C2D_SpriteSetPos(&splash_right, 0, 256);
 
     static_textbuf = C2D_TextBufNew(2048);
     dynamic_textbuf = C2D_TextBufNew(4096);
