@@ -2258,7 +2258,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_sound_error, "Error: couldn't initialize audio.\nDid you dump your DSP firmware?")
     STATIC_TEXT(&text_debug_filenames, "Please share debug_info.txt and\ndebug_replay.bin.gz in your bug\nreport.")
     STATIC_TEXT(&text_anykeyexit, "Press any key to exit")
-    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nSplash screen by Morintari\nCustom control scheme by nevumx\nHeavily based on Reality Boy by David Tucker\nMore info at: github.com/skyfloogle/red-viper")
+//    STATIC_TEXT(&text_about, VERSION "\nBy Floogle, danielps, & others\nSplash screen by Morintari\nCustom control scheme by nevumx\nHeavily based on Reality Boy by David Tucker\nMore info at: github.com/skyfloogle/red-viper")
     STATIC_TEXT(&text_loading, "Loading...")
     STATIC_TEXT(&text_loaderr, "Failed to load ROM.")
     STATIC_TEXT(&text_unloaded, "The current ROM has been unloaded.")
