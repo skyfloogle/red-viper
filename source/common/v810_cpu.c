@@ -1,6 +1,7 @@
 //////////////////////////////////////////////////////////
 // Main CPU routines
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -168,7 +169,7 @@ int v810_load_init(void) {
     } else {
         // attempt to open as raw file
         load_file = fopen(tVBOpt.ROM_PATH, "rb");
-        if (!load_file) return UNZ_ERRNO;
+        if (!load_file) return errno;
         struct stat mystat;
         fstat(fileno(load_file), &mystat);
         rom_size = mystat.st_size;
@@ -177,7 +178,7 @@ int v810_load_init(void) {
         rom_size_valid = rom_size_valid && !(rom_size & (rom_size - 1));
         if (!rom_size_valid) {
             fclose(load_file);
-            return UNZ_ERRNO;
+            return EMSGSIZE;
         }
     }
     ok:
@@ -222,7 +223,7 @@ int v810_load_step(void) {
             if (!(bytes_read = fread(V810_ROM1.pmemory + load_pos, 1, chunk_size, load_file))) {
                 fclose(load_file);
                 if (load_sram) fclose(load_sram);
-                return UNZ_ERRNO;
+                return -ENOSPC;
             }
             load_pos += bytes_read;
         }
@@ -244,7 +245,7 @@ int v810_load_step(void) {
         size_t bytes_read = fread(V810_GAME_RAM.pmemory + load_pos - rom_size, 1, chunk_size, load_sram);
         if (bytes_read == 0 && !feof(load_sram)) {
             fclose(load_sram);
-            return UNZ_ERRNO;
+            return -ENETDOWN;
         }
         if ((load_pos += bytes_read) == all_size) {
             load_pos = all_size;

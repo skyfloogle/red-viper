@@ -1947,10 +1947,16 @@ static void about(void) {
 }
 
 static void load_error(int err, bool unloaded) {
+C2D_Text text;
+    char code_message[32];
+    snprintf(code_message, sizeof(code_message), "Error code: %d", err);
+    C2D_TextParse(&text, dynamic_textbuf, code_message);
+    C2D_TextOptimize(&text);
     LOOP_BEGIN(about_buttons, 0);
         C2D_DrawText(&text_loaderr, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
+C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
         if (unloaded) {
-            C2D_DrawText(&text_unloaded, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
+            C2D_DrawText(&text_unloaded, C2D_AlignCenter | C2D_WithColor, 320 / 2, 160, 0, 0.5, 0.5, TINT_COLOR);
         }
     LOOP_END(about_buttons);
     return rom_loader();
