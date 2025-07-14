@@ -422,6 +422,8 @@ bool ins_sch1bsd (WORD src, WORD skipped, WORD len, WORD offs) {
 // Conversely, if it's too fast, the aim animation runs too fast.
 // For the time being, we'll opt for running it too fast,
 // except for during the aim animation.
+// In addition, during terrain and golfer rendering, operations are set to take
+// twice as long to avoid exceeding the o3DS's frame budget.
 
 #define OPT_XORBSU { \
     if (src == dst) { \
@@ -531,10 +533,20 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
 
     // Golf hack
     bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
-    if (is_golf && !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0)) {
-        len += len_remain;
-        len_remain = 0;
-        cycles = 0;
+    if (is_golf) {
+        if (v810_state->P_REG[31] == 0x070036d4 ||
+            v810_state->P_REG[31] == 0x07005888 ||
+            v810_state->P_REG[31] == 0x070058c8
+        ) {
+            cycles *= 2;
+        } else if (
+            !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0) &&
+            !(v810_state->P_REG[31] >= 0x07005f34 && v810_state->P_REG[31] <= 0x07006026)
+        ) {
+            len += len_remain;
+            len_remain = 0;
+            cycles = 0;
+        }
     }
 
     if (srcoff == dstoff) {
@@ -741,10 +753,20 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
 
     // Golf hack
     bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
-    if (is_golf && !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0)) {
-        len += len_remain;
-        len_remain = 0;
-        cycles = 0;
+    if (is_golf) {
+        if (v810_state->P_REG[31] == 0x070036d4 ||
+            v810_state->P_REG[31] == 0x07005888 ||
+            v810_state->P_REG[31] == 0x070058c8
+        ) {
+            cycles *= 2;
+        } else if (
+            !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0) &&
+            !(v810_state->P_REG[31] >= 0x07005f34 && v810_state->P_REG[31] <= 0x07006026)
+        ) {
+            len += len_remain;
+            len_remain = 0;
+            cycles = 0;
+        }
     }
 
     if (srcoff == dstoff) {
@@ -1154,10 +1176,20 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
 
     // Golf hack
     bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
-    if (is_golf && !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0)) {
-        len += len_remain;
-        len_remain = 0;
-        cycles = 0;
+    if (is_golf) {
+        if (v810_state->P_REG[31] == 0x070036d4 ||
+            v810_state->P_REG[31] == 0x07005888 ||
+            v810_state->P_REG[31] == 0x070058c8
+        ) {
+            cycles *= 2;
+        } else if (
+            !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0) &&
+            !(v810_state->P_REG[31] >= 0x07005f34 && v810_state->P_REG[31] <= 0x07006026)
+        ) {
+            len += len_remain;
+            len_remain = 0;
+            cycles = 0;
+        }
     }
 
     if (srcoff == dstoff) {
