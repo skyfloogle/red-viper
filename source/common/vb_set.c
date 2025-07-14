@@ -121,6 +121,7 @@ void setDefaults(void) {
     tVBOpt.DEFAULT_EYE = 0;
     tVBOpt.PERF_INFO = false;
     tVBOpt.ROM_PATH[0] = 0;
+    tVBOpt.LAST_ROM[0] = 0;
     tVBOpt.VSYNC = true;
     tVBOpt.N3DS_SPEEDUP = true;
     toggleAnaglyph(false, false);
@@ -132,6 +133,7 @@ void setDefaults(void) {
     tVBOpt.INPUTS = false;
     tVBOpt.ANTIFLICKER = false;
     tVBOpt.VIP_OVERCLOCK = false;
+    tVBOpt.FORWARDER = false;
     strcpy(tVBOpt.HOME_PATH, "sdmc:/red-viper");
 
     // Default keys
@@ -184,6 +186,7 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->PERF_INFO = atoi(value);
     } else if (MATCH("vbopt", "lastrom")) {
         strcpy(pconfig->ROM_PATH, value);
+        strcpy(pconfig->LAST_ROM, value);
     } else if (MATCH("vbopt", "n3ds_speedup")) {
         pconfig->N3DS_SPEEDUP = atoi(value);
     } else if (MATCH("vbopt", "vip_overclock")) {
@@ -408,7 +411,7 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "n3ds_speedup=%d\n", tVBOpt.N3DS_SPEEDUP);
     fprintf(f, "vip_overclock=%d\n", tVBOpt.VIP_OVERCLOCK);
     if (global) {
-        fprintf(f, "lastrom=%s\n", tVBOpt.ROM_PATH);
+        fprintf(f, "lastrom=%s\n", tVBOpt.LAST_ROM);
         fprintf(f, "homepath=%s\n", tVBOpt.HOME_PATH);
     }
     fprintf(f, "cpp_enabled=%d\n", tVBOpt.CPP_ENABLED);
@@ -485,6 +488,8 @@ void writeOptionsFile(FILE* f, bool global) {
 }
 
 int saveFileOptions(void) {
+    if (!tVBOpt.FORWARDER) strcpy(tVBOpt.LAST_ROM, tVBOpt.ROM_PATH);
+
     struct stat st;
     if (stat("sdmc:/config", &st) == -1) mkdir("sdmc:/config", 0777);
     if (stat("sdmc:/config/red-viper", &st) == -1) mkdir("sdmc:/config/red-viper", 0777);

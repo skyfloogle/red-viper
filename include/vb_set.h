@@ -78,6 +78,7 @@ typedef struct VB_OPT {
     int   DPAD_MODE; // Left 3DS DPAD Behavior: 0: VB LPAD, 1: VB RPAD, 2: Mirror ABXY buttons
     char ROM_PATH[300];
     char RAM_PATH[300];
+    char LAST_ROM[300];
     int   CUSTOM_CONTROLS; // 0 - preset control scheme, 1 - custom control scheme
     int   CUSTOM_MAPPING_DUP; // These are all 3DS buttons, each set/mapped to a VB_* value from vb_dsp.h
     int   CUSTOM_MAPPING_DDOWN;
@@ -120,6 +121,7 @@ typedef struct VB_OPT {
     bool  ANTIFLICKER;
     bool  VIP_OVERCLOCK;
     bool  VIP_OVER_SOFT;
+    bool  FORWARDER;
 } VB_OPT;
 
 void setCustomMappingDefaults(void);

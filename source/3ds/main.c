@@ -7,6 +7,7 @@
 #include <citro3d.h>
 
 #include "main.h"
+#include "3ds/romfs.h"
 #include "cpp.h"
 #include "periodic.h"
 #include "v810_mem.h"
@@ -49,6 +50,7 @@ int main(void) {
     gfxInitDefault(); // hardware renderer
     fsInit();
     archiveMountSdmc();
+    romfsInit();
     ptmuInit();
 
     APT_SetAppCpuTimeLimit(30);
@@ -244,6 +246,7 @@ exit:
 
     if (tVBOpt.CPP_ENABLED) cppExit();
     ptmuExit();
+    romfsExit();
     fsExit();
     gfxExit();
     return 0;

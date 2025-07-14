@@ -150,7 +150,7 @@ static Button* selectedButton = NULL;
 static bool buttonLock = false;
 
 static inline int handle_buttons(Button buttons[], int count);
-#define HANDLE_BUTTONS(buttons) handle_buttons(buttons, sizeof(buttons) / sizeof(buttons[0]))
+#define HANDLE_BUTTONS(buttons) handle_buttons((buttons), sizeof((buttons)) / sizeof((buttons)[0]))
 
 #define STATIC_TEXT(var, str) {\
     C2D_TextParse(var, static_textbuf, str); \
@@ -165,7 +165,7 @@ static inline int handle_buttons(Button buttons[], int count);
     }
 
 #define LOOP_BEGIN(buttons, initial_button) \
-    if (initial_button >= 0) selectedButton = &buttons[initial_button]; \
+    if (initial_button >= 0) selectedButton = &(buttons)[initial_button]; \
     int button = -1; \
     bool loop = true; \
     while (loop && aptMainLoop()) { \
@@ -179,7 +179,7 @@ static inline int handle_buttons(Button buttons[], int count);
 #define DEFAULT_RETURN
 
 #define LOOP_END(buttons) \
-        button = HANDLE_BUTTONS(buttons); \
+        button = HANDLE_BUTTONS((buttons)); \
         if (button >= 0) loop = false; \
         C2D_Flush(); \
         C3D_FrameEnd(0); \
@@ -531,6 +531,11 @@ static Button load_rom_buttons[] = {
     {.str="Unload & cancel", .x=160-80, .y=180, .w=80*2, .h=48},
 };
 
+static void forwarder_error(int err);
+static Button forwarder_error_buttons[] = {
+    {.str = "Exit", .x=160-48, .y=180, .w=48*2, .h=48},
+};
+
 #define SETUP_ALL_BUTTONS \
     SETUP_BUTTONS(first_menu_buttons); \
     SETUP_BUTTONS(game_menu_buttons); \
@@ -573,6 +578,37 @@ static void draw_logo(void) {
 }
 
 static void first_menu(int initial_button) {
+    FILE *filename_txt = fopen("romfs:/filename.txt", "r");
+    if (!filename_txt) goto no_forwarder;
+    char forwarded_path[300] = {0};
+    strcpy(forwarded_path, "romfs:/");
+    char *filename = forwarded_path + strlen(forwarded_path);
+    fread(filename, 1, sizeof(forwarded_path) - 7, filename_txt);
+    fclose(filename_txt);
+    {
+        // trim any newline characters
+        char *cr = strchr(filename, '\r');
+        if (cr) *cr = 0;
+        char *lf = strchr(filename, '\n');
+        if (lf) *lf = 0;
+    }
+    // we have our filename, bail if it doesn't exist
+    if (access(forwarded_path, F_OK)) goto no_forwarder;
+
+    strcpy(tVBOpt.ROM_PATH, forwarded_path);
+    if (access(tVBOpt.HOME_PATH, F_OK)) mkdir(tVBOpt.HOME_PATH, 0777);
+    snprintf(tVBOpt.RAM_PATH, sizeof(tVBOpt.RAM_PATH), "%s/saves/", tVBOpt.HOME_PATH);
+    if (access(tVBOpt.RAM_PATH, F_OK)) mkdir(tVBOpt.RAM_PATH, 0777);
+    strncat(tVBOpt.RAM_PATH, filename, sizeof(tVBOpt.RAM_PATH) - 1);
+    char *extension = strrchr(tVBOpt.RAM_PATH, '.');
+    if (!extension) goto no_forwarder;
+    strcpy(extension, ".ram");
+
+    // at this point we know we're a forwarder, so just load the rom
+    tVBOpt.FORWARDER = true;
+    return load_rom();
+
+    no_forwarder:
     LOOP_BEGIN(first_menu_buttons, initial_button);
         draw_logo();
         if (hidKeysDown() & KEY_Y) loop = false;
@@ -595,10 +631,17 @@ static void first_menu(int initial_button) {
 }
 
 static void game_menu(int initial_button) {
+    if (tVBOpt.FORWARDER) {
+        game_menu_buttons[MAIN_MENU_LOAD_ROM].hidden = true;
+        game_menu_buttons[MAIN_MENU_RESET].x = 16;
+        game_menu_buttons[MAIN_MENU_RESET].w = 80 + 48;
+        game_menu_buttons[MAIN_MENU_SAVESTATES].x = 224 - 48;
+        game_menu_buttons[MAIN_MENU_SAVESTATES].w = 80 + 48;
+    }
     LOOP_BEGIN(game_menu_buttons, initial_button);
-        if (hidKeysDown() & KEY_Y) loop = false;
+        if (!tVBOpt.FORWARDER && (hidKeysDown() & KEY_Y)) loop = false;
     LOOP_END(game_menu_buttons);
-    if (hidKeysDown() & KEY_Y) return vblink();
+    if (!tVBOpt.FORWARDER && (hidKeysDown() & KEY_Y)) return vblink();
     switch (button) {
         case MAIN_MENU_LOAD_ROM: // Load ROM
             guiop = AKILL | VBRESET;
@@ -1947,14 +1990,14 @@ static void about(void) {
 }
 
 static void load_error(int err, bool unloaded) {
-C2D_Text text;
+    C2D_Text text;
     char code_message[32];
     snprintf(code_message, sizeof(code_message), "Error code: %d", err);
     C2D_TextParse(&text, dynamic_textbuf, code_message);
     C2D_TextOptimize(&text);
     LOOP_BEGIN(about_buttons, 0);
         C2D_DrawText(&text_loaderr, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
-C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
         if (unloaded) {
             C2D_DrawText(&text_unloaded, C2D_AlignCenter | C2D_WithColor, 320 / 2, 160, 0, 0.5, 0.5, TINT_COLOR);
         }
@@ -1962,12 +2005,26 @@ C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, 
     return rom_loader();
 }
 
+static void forwarder_error(int err) {
+    C2D_Text text;
+    char code_message[32];
+    snprintf(code_message, sizeof(code_message), "Error code: %d", err);
+    C2D_TextParse(&text, dynamic_textbuf, code_message);
+    C2D_TextOptimize(&text);
+    LOOP_BEGIN(forwarder_error_buttons, 0);
+        C2D_DrawText(&text_loaderr, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
+    LOOP_END(forwarder_error_buttons);
+    guiop = GUIEXIT;
+    return;
+}
+
 static void load_rom(void) {
     if (save_thread) threadJoin(save_thread, U64_MAX);
     int ret;
     if ((ret = v810_load_init())) {
         // instant fail
-        return load_error(ret, false);
+        return tVBOpt.FORWARDER ? forwarder_error(ret) : load_error(ret, false);
     }
     C2D_Text text;
     C2D_TextBufClear(dynamic_textbuf);
@@ -1976,6 +2033,9 @@ static void load_rom(void) {
     else filename = tVBOpt.ROM_PATH;
     C2D_TextParse(&text, dynamic_textbuf, filename);
     C2D_TextOptimize(&text);
+
+    if (tVBOpt.FORWARDER) load_rom_buttons[0].hidden = true;
+
     LOOP_BEGIN(load_rom_buttons, -1);
         ret = v810_load_step();
         if (ret < 0) {
@@ -2007,7 +2067,7 @@ static void load_rom(void) {
         C3D_FrameEnd(0);
         if (ret < 0) {
             // error
-            return load_error(ret, true);
+            return tVBOpt.FORWARDER ? forwarder_error(ret) : load_error(ret, true);
         } else {
             // cancelled
             v810_load_cancel();

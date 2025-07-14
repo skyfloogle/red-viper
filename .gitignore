@@ -6,3 +6,5 @@ build
 *.elf
 *.smdh
 *.lst
+*.vb
+*.zip

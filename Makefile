@@ -43,7 +43,7 @@ DATA		:=	data
 INCLUDES	:=	include source/common/inih
 GRAPHICS	:=	gfx gfx/maps
 GFXBUILD	:=	$(BUILD)
-ROMFS		:=	#romfs
+ROMFS		:=	romfs
 #GFXBUILD	:=	$(ROMFS)/gfx
 
 include $(TOPDIR)/resources/AppInfo
@@ -235,7 +235,7 @@ icon.icn: $(TOPDIR)/icon.png
 cia.rsf:
 	cat $(TOPDIR)/tools/template-cia.rsf | sed 's/{APP_TITLE}/$(APP_TITLE)/' | sed 's/{APP_PRODUCT_CODE}/$(APP_PRODUCT_CODE)/' | sed 's/{APP_UNIQUE_ID}/$(APP_UNIQUE_ID)/' | sed 's/{APP_ENCRYPTED}/$(APP_ENCRYPTED)/' | sed 's/{APP_SYSTEM_MODE}/$(APP_SYSTEM_MODE)/' | sed 's/{APP_SYSTEM_MODE_EXT}/$(APP_SYSTEM_MODE_EXT)/' > cia.rsf
 
-$(OUTPUT).cia: banner.bnr icon.icn cia.rsf $(OUTPUT).elf
+$(OUTPUT).cia: banner.bnr icon.icn cia.rsf $(OUTPUT).elf $(TOPDIR)/$(ROMFS)/*
 	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf $(OUTPUT).elf -icon icon.icn -banner banner.bnr -major ${VERSION_MAJOR} -minor ${VERSION_MINOR} -micro ${VERSION_MICRO}
 	@echo "built ... $(notdir $@)"
 
