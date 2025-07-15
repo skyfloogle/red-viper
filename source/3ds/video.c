@@ -247,7 +247,7 @@ void video_render(int alt_buf, bool on_time) {
 
 	if (tVBOpt.RENDERMODE > 0) {
 		// postproc (can be done early)
-		video_soft_render(alt_buf);
+		video_soft_to_texture(alt_buf);
 	}
 
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
@@ -270,6 +270,7 @@ void video_render(int alt_buf, bool on_time) {
 			video_hard_render();
 		} else {
 			C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, 0, 0);
+			video_soft_render(alt_buf);
 		}
 
 		// we need to have this cache during rendering

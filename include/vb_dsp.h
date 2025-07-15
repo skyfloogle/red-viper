@@ -167,6 +167,7 @@ extern C3D_Tex screenTexSoft[2];
 void video_soft_init(void);
 void video_soft_render(int alt_buf);
 void update_texture_cache_soft(void);
+void video_soft_to_texture(int alt_buf);
 
 #endif
 

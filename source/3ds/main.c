@@ -156,15 +156,17 @@ int main(void) {
                 }
                 C3D_FrameEnd(0);
             }
-            if (tVIPREG.XPCTRL & 0x0002) {
-                if (tDSPCACHE.DDSPDataState[alt_buf] != GPU_CLEAR) {
-                    memset(V810_DISPLAY_RAM.pmemory + 0x8000 * alt_buf, 0, 0x6000);
-                    memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
-                    for (int i = 0; i < 64; i++) {
-                        tDSPCACHE.SoftBufWrote[alt_buf][i].min = 0xff;
-                        tDSPCACHE.SoftBufWrote[alt_buf][i].max = 0;
+            if (tVBOpt.RENDERMODE < 2) {
+                if (tVIPREG.XPCTRL & 0x0002) {
+                    if (tDSPCACHE.DDSPDataState[alt_buf] != GPU_CLEAR) {
+                        memset(V810_DISPLAY_RAM.pmemory + 0x8000 * alt_buf, 0, 0x6000);
+                        memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
+                        for (int i = 0; i < 64; i++) {
+                            tDSPCACHE.SoftBufWrote[alt_buf][i].min = 0xff;
+                            tDSPCACHE.SoftBufWrote[alt_buf][i].max = 0;
+                        }
+                        tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
                     }
-                    tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
                 }
             }
         } else {

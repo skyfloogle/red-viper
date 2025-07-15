@@ -74,6 +74,101 @@ void update_texture_cache_soft(void) {
 }
 
 void video_soft_render(int alt_buf) {
+    tDSPCACHE.DDSPDataState[alt_buf] = CPU_WROTE;
+    for (int eye = 0; eye < 2; eye++) {
+        uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * alt_buf);
+        memset(fb, 0, 0x8000);
+	    u16 *windows = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
+        for (int wnd = 31; wnd >= 0; wnd--) {
+            if (windows[wnd * 16] & 0x40)
+                break;
+            if (!(windows[wnd * 16] & 0xc000))
+                continue;
+            
+            if ((windows[wnd * 16] & 0x3000) != 0x3000) {
+                // background world
+                uint8_t mapid = windows[wnd * 16] & 0xf;
+                uint8_t scx_pow = ((windows[wnd * 16] >> 10) & 3);
+                uint8_t scy_pow = ((windows[wnd * 16] >> 8) & 3);
+                uint8_t scx = 1 << scx_pow;
+                uint8_t scy = 1 << scy_pow;
+                bool over = windows[wnd * 16] & 0x80;
+                int16_t base_gx = (s16)(windows[wnd * 16 + 1] << 6) >> 6;
+                int16_t gp = (s16)(windows[wnd * 16 + 2] << 6) >> 6;
+                int16_t gy = windows[wnd * 16 + 3];
+                int16_t base_mx = (s16)(windows[wnd * 16 + 4] << 3) >> 3;
+                int16_t mp = (s16)(windows[wnd * 16 + 5] << 1) >> 1;
+                int16_t my = (s16)(windows[wnd * 16 + 6] << 3) >> 3;
+                int16_t w = windows[wnd * 16 + 7] + 1;
+                int16_t h = windows[wnd * 16 + 8] + 1;
+                int16_t over_tile = windows[wnd * 16 + 10] & 0x7ff;
+
+                u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+
+                if ((windows[wnd * 16] & 0x3000) == 0) {
+                    // normal world
+                    int mx = base_mx + (eye == 0 ? -mp : mp);
+                    int gx = base_gx + (eye == 0 ? -gp : gp);
+
+                    bool over_visible = !over || tileVisible[tilemap[over_tile] & 0x07ff];
+
+                    int tsy = my >> 3;
+                    int mapsy = tsy >> 6;
+                    tsy &= 63;
+                    if (!over) {
+                        mapsy &= scy - 1;
+                    }
+
+                    if ((gy & 7) || (my & 7)) {
+                        dprintf(0, "unaligned tiles not supported in software rendering\n");
+                    }
+
+                    for (int x = 0; x < w; x++) {
+                        if (gx + x < 0) continue;
+                        if (gx + x >= 384) break;
+                        int bpx = (mx + x) & 7;
+                        int tx = (mx + x) >> 3;
+                        int mapx = tx >> 6;
+                        tx &= 63;
+                        if (!over) mapx &= scx - 1;
+
+                        int ty = tsy;
+                        int mapy = mapsy;
+                        int current_map = mapid + scx * mapy + mapx;
+                        for (int y = 0; y < h; y += 8) {
+                            if (gy + y < 0) continue;
+                            if (gy + y >= 224) break;
+                            bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
+							uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
+                            if (++ty >= 64) {
+                                ty = 0;
+                                if ((++mapy & (scy - 1)) == 0 && !over) mapy = 0;
+								current_map = mapid + scx * mapy + mapx;
+                            }
+							uint16_t tileid = tile & 0x07ff;
+							if (!tileVisible[tileid]) continue;
+                            int palette = tile >> 14;
+                            int px = tile & 0x2000 ? 7 - bpx : bpx;
+                            int colors[] = {0, 0b0101010101010101, 0b1010101010101010, 0xffff};
+                            int value =
+                                (tileCache[tileid].u16.colmask[0][px] & colors[(tVIPREG.GPLT[palette] >> 2) & 3]) |
+                                (tileCache[tileid].u16.colmask[1][px] & colors[(tVIPREG.GPLT[palette] >> 4) & 3]) |
+                                (tileCache[tileid].u16.colmask[2][px] & colors[(tVIPREG.GPLT[palette] >> 6) & 3]);
+                            if (tile & 0x1000) {
+                                value = __builtin_bswap16(value);
+                                value = ((value & 0xf0f0) >> 4) | ((value << 4) & 0xf0f0);
+                                value = ((value & 0xcccc) >> 2) | ((value << 2) & 0xcccc);
+                            }
+                            fb[((gy + y) >> 3) + ((gx + x) * 256 / 8)] = value;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void video_soft_to_texture(int alt_buf) {
     uint32_t fb_size;
     uint32_t *out_fb = C3D_Tex2DGetImagePtr(&screenTexSoft[alt_buf], 0, &fb_size);
     if (tDSPCACHE.DDSPDataState[alt_buf] == CPU_WROTE) {
@@ -90,14 +185,21 @@ void video_soft_render(int alt_buf) {
     for (int eye = start_eye; eye < start_eye + eye_count; eye++) {
         for (int tx = 0; tx < 384 / 8; tx++) {
             uint32_t *column_ptr = &out_fb[8 * 8 / 4 * 2 * (eye * 256 / 8 + 512 / 8 * (512 / 8 - 1 - tx))];
-            SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][tx];
-            int ymin = column->min, ymax = column->max;
-            if (ymin > ymax) {
-                memset(column_ptr, 0, 8 * 8 * 2 * (224 / 8));
-                continue;
+            int ymin, ymax;
+            if (tVBOpt.RENDERMODE < 2) {
+                SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][tx];
+                ymin = column->min;
+                ymax = column->max;
+                if (ymin > ymax) {
+                    memset(column_ptr, 0, 8 * 8 * 2 * (224 / 8));
+                    continue;
+                }
+                memset(column_ptr, 0, 8 * 8 * 2 * ymin);
+                if (++ymax > 224 / 8) ymax = 224 / 8;
+            } else {
+                ymin = 0;
+                ymax = 224 / 8;
             }
-            memset(column_ptr, 0, 8 * 8 * 2 * ymin);
-            if (++ymax > 224 / 8) ymax = 224 / 8;
 
             for (int ty = ymin; ty < ymax; ty++) {
                 uint32_t *out_tile = &column_ptr[8 * 8 / 4 * 2 * (1 + ty)];
