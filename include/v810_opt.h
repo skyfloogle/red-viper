@@ -185,22 +185,22 @@ static suboperation bssuboptable[16] = {
 
 // Floating Point Subopcodes
 static suboperation fpsuboptable[16] = {
-    { "cmpf.s ", &(ins_cmpf_s ) },           // 0x00
-    { "FError1", &(ins_err )    },           // 0x01  // Unknown
-    { "cvt.ws ", &(ins_cvt_ws ) },           // 0x02
-    { "cvt.sw ", &(ins_cvt_sw ) },           // 0x03
-    { "addf.s ", &(ins_addf_s ) },           // 0x04
-    { "subf.s ", &(ins_subf_s ) },           // 0x05
-    { "mulf.s ", &(ins_mulf_s ) },           // 0x06
-    { "divf.s ", &(ins_divf_s ) },           // 0x07
-    { "xb     ", &(ins_xb )     },           // 0x08  // Undocumented opcode XB -- Special case, NOT an FPU opcode
-    { "xh     ", &(ins_xh )     },           // 0x09  // Undocumented opcode XH -- Special case, NOT an FPU opcode
-    { "rev    ", &(ins_rev )    },           // 0x0A  // Undocumented opcode XH -- Special case, NOT an FPU opcode
-    { "trnc.sw", &(ins_trnc_sw )},           // 0x0B
-    { "mpyhw  ", &(ins_mpyhw )  },           // 0x0C  // Undocumented opcode MPYHW -- Special case, NOT an FPU opcode
-    { "FErrorD", &(ins_err )    },           // 0x0D  // Unknown
-    { "FErrorE", &(ins_err )    },           // 0x0E  // Unknown
-    { "FErrorF", &(ins_err )    },           // 0x0F  // Unknown
+    { "cmpf.s ", &(ins_err) },           // 0x00
+    { "FError1", &(ins_err) },           // 0x01  // Unknown
+    { "cvt.ws ", &(ins_err) },           // 0x02
+    { "cvt.sw ", &(ins_err) },           // 0x03
+    { "addf.s ", &(ins_err) },           // 0x04
+    { "subf.s ", &(ins_err) },           // 0x05
+    { "mulf.s ", &(ins_err) },           // 0x06
+    { "divf.s ", &(ins_err) },           // 0x07
+    { "xb     ", &(ins_err) },           // 0x08  // Undocumented opcode XB -- Special case, NOT an FPU opcode
+    { "xh     ", &(ins_err) },           // 0x09  // Undocumented opcode XH -- Special case, NOT an FPU opcode
+    { "rev    ", &(ins_rev) },           // 0x0A  // Undocumented opcode XH -- Special case, NOT an FPU opcode
+    { "trnc.sw", &(ins_err) },           // 0x0B
+    { "mpyhw  ", &(ins_err) },           // 0x0C  // Undocumented opcode MPYHW -- Special case, NOT an FPU opcode
+    { "FErrorD", &(ins_err) },           // 0x0D  // Unknown
+    { "FErrorE", &(ins_err) },           // 0x0E  // Unknown
+    { "FErrorF", &(ins_err) },           // 0x0F  // Unknown
 };
 #pragma GCC diagnostic pop
 // All instructions greater than 0x50 are undefined (this should not be possible of course)

@@ -130,6 +130,23 @@ static inline void new_multiply_long(BYTE cond, BYTE u, BYTE a, BYTE s, BYTE RdH
     inst_ptr++;
 }
 
+// Media
+static inline void new_media(BYTE cond, BYTE op1, BYTE Rn, BYTE Rd, BYTE op2, BYTE Rm) {
+    inst_ptr->type = ARM_MEDIA;
+    inst_ptr->cond = cond;
+    inst_ptr->needs_pool = false;
+    inst_ptr->needs_branch = false;
+    inst_ptr->media = (arm_inst_media) {
+        op1,
+        Rn,
+        Rd,
+        op2,
+        Rm
+    };
+
+    inst_ptr++;
+}
+
 // Extend
 static inline void new_extend(BYTE cond, BYTE op, BYTE Rn, BYTE Rd, BYTE rot, BYTE Rm) {
     inst_ptr->type = ARM_EXTEND;
@@ -641,6 +658,9 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define ASRS(Rd, Rm, Rs) \
     new_data_proc_reg_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, Rd, Rs, ARM_SHIFT_ASR, Rm)
 
+#define MUL(Rd, Rn, Rm) \
+    new_multiply(ARM_COND_AL, 0, 0, Rd, 0, Rn, Rm)
+
 // smulls RdLo, RdHi, Rn, Rm
 // Signed multiply long
 #define SMULLS(RdLo, RdHi, Rn, Rm) \
@@ -650,6 +670,10 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 // Unsigned multiply long
 #define UMULLS(RdLo, RdHi, Rn, Rm) \
     new_multiply_long(ARM_COND_AL, 0, 0, 1, RdHi, RdLo, Rn, Rm)
+
+// rev Rd, Rm
+#define REV(Rd, Rm) \
+    new_media(ARM_COND_AL, 0b01011, 0b1111, Rd, 0b1111001, Rm)
 
 // uxtab
 #define UXTAB(Rd, Rn, Rm, rot) \

@@ -1932,6 +1932,7 @@ static int drc_translateBlock(void) {
                     reg2_modified = true;
                     break;
                 case V810_OP_DIVF_S:
+                    cycles += 44;
                     LOAD_REG1();
                     LOAD_REG2();
                     VMOV_SR(0, arm_reg1);
@@ -1943,6 +1944,30 @@ static int drc_translateBlock(void) {
                     VMOV_RS(arm_reg2, 0);
                     reg2_modified = true;
                     break;
+                case V810_OP_XB:
+                    cycles += 6;
+                    LOAD_REG2();
+                    REV(0, arm_reg2);
+                    MOV_IS(arm_reg2, arm_reg2, ARM_SHIFT_LSR, 16);
+                    MOV_IS(arm_reg2, arm_reg2, ARM_SHIFT_LSL, 16);
+                    ORR_IS(arm_reg2, arm_reg2, 0, ARM_SHIFT_LSR, 16);
+                    break;
+                case V810_OP_XH:
+                    cycles += 1;
+                    LOAD_REG2();
+                    MOV_IS(arm_reg2, arm_reg2, ARM_SHIFT_ROR, 16);
+                    reg2_modified = true;
+                    break;
+                case V810_OP_REV:
+                    cycles += 22;
+                    // RBIT would be great here, but that's only in ARMv6T2, so we'll do it manually.
+                    RELOAD_REG1(0);
+                    LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
+                    LDR_IO(1, 1, DRC_RELOC_REV*4);
+                    BLX(ARM_COND_AL, 1);
+                    MOV(arm_reg2, 0);
+                    reg2_modified = true;
+                    break;
                 case V810_OP_TRNC_SW:
                     LOAD_REG1();
                     VMOV_SR(0, arm_reg1);
@@ -1951,16 +1976,18 @@ static int drc_translateBlock(void) {
                     ORRS(arm_reg2, arm_reg2, arm_reg2);
                     reg2_modified = true;
                     break;
-                default:
-                    // TODO: Implement me!
+                case V810_OP_MPYHW:
+                    cycles += 9;
                     LOAD_REG1();
-                    MOV_IS(0, arm_reg1, 0, 0);
-                    RELOAD_REG2(1);
-                    LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-                    LDR_IO(2, 2, (DRC_RELOC_FPP+inst_cache[i].imm)*4);
-                    BLX(ARM_COND_AL, 2);
-                    MOV_IS(arm_reg2, 0, 0, 0);
+                    LOAD_REG2();
+                    MOV_IS(0, arm_reg1, ARM_SHIFT_LSL, 15);
+                    MOV_IS(0, 0, ARM_SHIFT_ASR, 15);
+                    MUL(arm_reg2, 0, arm_reg2);
                     reg2_modified = true;
+                    break;
+                default:
+                    dprintf(0, "[DRC]: Invalid FPU subop 0x%lx\n", inst_cache[i].imm);
+                    NOP();
                     break;
                 }
                 break;

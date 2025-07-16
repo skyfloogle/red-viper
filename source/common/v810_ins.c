@@ -2120,105 +2120,14 @@ int ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     return cycles;
 }
 
-//FPU SubOpcodes  
-float ins_cmpf_s(float reg1, float reg2) {
-    int flags = 0; // Set Flags, OV set to Zero
-    float fTemp = reg2 - reg1;
-    if (fTemp == 0.0F) flags = flags | PSW_Z;
-    if (fTemp < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
-    //	clocks+=7;
-    return reg2;
-}
-
-float ins_cvt_ws(int reg1, float reg2) {   //Int to Float
-    int flags = 0; // Set Flags, OV set to Zero
-    reg2 = (float)reg1;
-    if (reg2 == 0) flags = flags | PSW_Z;
-    if (reg2 < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
-    //	clocks+=5; //5 to 16
-    return reg2;
-}
-
-int ins_cvt_sw(float reg1, int reg2) {  //Float To Int
-    int flags = 0; // Set Flags, CY unchanged, OV set to Zero
-    reg2 = lroundf(reg1);
-    if (reg2 == 0) flags = flags | PSW_Z;
-    if (reg2 & 0x80000000)  flags = flags | PSW_S;
-    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF8)|flags;
-    //	clocks+=9; //9 to 14
-    return reg2;
-}
-
-float ins_addf_s(float reg1, float reg2) {
-    int flags = 0; // Set Flags, OV set to Zero
-    reg2 += reg1;
-    if (reg2 == 0.0F) flags = flags | PSW_Z;
-    if (reg2 < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
-    //	clocks+=9; //9 to 28
-    return reg2;
-}
-
-float ins_subf_s(float reg1, float reg2) {
-    int flags = 0; // Set Flags, OV set to Zero
-    reg2 -= reg1;
-    if (reg2 == 0.0F) flags = flags | PSW_Z;
-    if (reg2 < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
-    //	clocks+=12; //12 to 28
-    return reg2;
-}
-
-float ins_mulf_s(float reg1, float reg2) {
-    int flags = 0; // Set Flags, OV set to Zero
-    reg2 *= reg1;
-    if (reg2 == 0.0F) flags = flags | PSW_Z;
-    if (reg2 < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
-    //	clocks+=8; //8 to 30
-    return reg2;
-}
-
-float ins_divf_s(float reg1, float reg2) {
-    int flags = 0; // Set Flags, OV set to Zero
-    reg2 /= reg1;
-    if (reg2 == 0.0F) flags = flags | PSW_Z;
-    if (reg2 < 0.0F)  flags = flags | PSW_S | PSW_CY; //changed according to NEC docs
-    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF0)|flags;
-    //	clocks+=44; //always 44
-    return reg2;
-}
-
-int ins_trnc_sw(float reg1, int reg2) {
-    int flags = 0; // Set Flags, CY unchanged, OV set to Zero
-    reg2 = (int)trunc(reg1);
-    if (reg2 == 0) flags = flags | PSW_Z;
-    if (reg2 & 0x80000000)  flags = flags | PSW_S;
-    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & 0xFFFFFFF8)|flags;
-    //	clocks+=8; //8 to 14
-    return reg2;
-}
-
-int ins_xb(int arg1, int arg2) {
-    return ((arg2&0xFFFF0000) | (((arg2<<8)&0xFF00) | ((arg2>>8)&0xFF)));
-    //	clocks+=1; //just a guess
-}
-
-int ins_xh(int arg1, unsigned arg2) {
-    return (arg2<<16)|(arg2>>16);
-    //	clocks+=1; //just a guess
-}
-
-int ins_rev(int arg1, int arg2) {
-    WORD temp = 0;
-    int i;
-    for (i = 0; i < 32; i++) temp = ((temp << 1) | ((arg1 >> i) & 1));
-    return temp;
-}
-
-int ins_mpyhw(short arg1, short arg2) {
-    return (int)arg1 * (int)arg2; //signed multiplication
-    //	clocks+=9; //always 9
+WORD ins_rev(WORD n) {
+    // swap adjacent bits
+    n = ((n >> 1) & 0x55555555) | ((n << 1) & 0xAAAAAAAA);
+    // swap adjacent bit pairs
+    n = ((n >> 2) & 0x33333333) | ((n << 2) & 0xCCCCCCCC);
+    // swap adjacent nibbles
+    n = ((n >> 4) & 0x0F0F0F0F) | ((n << 4) & 0xF0F0F0F0);
+    // reverse bytes
+    n = __builtin_bswap32(n);
+    return n;
 }

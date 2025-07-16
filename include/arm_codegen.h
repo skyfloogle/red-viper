@@ -129,6 +129,23 @@
     (0b1001)    <<4     |\
     (Rm)                )
 
+// 31   28    25    20   16   12     5   4    0
+// +-------------------------------------------+
+// | COND | 011 | OP1 | Rn | Rd | OP2 | 1 | Rm |
+// +-------------------------------------------+
+// Media
+#define gen_media(cond, op1, Rn, Rd, op2, Rm) \
+                        (\
+    (cond)      <<28    |\
+    (0b011)     <<25    |\
+    (op1)       <<20    |\
+    (Rn)        <<16    |\
+    (Rd)        <<12    |\
+    (op2)       <<5     |\
+    (1)         <<4     |\
+    (Rm)                )
+
+
 // 31   28      23   20   16   12    10     8      4    0
 // +-----------------------------------------------------+
 // | COND | 01101 | OP | Rn | Rd | ROT | SBZ | 0111 | Rm |
@@ -382,6 +399,9 @@ static inline void drc_assemble(WORD* dst, arm_inst* src) {
             break;
         case ARM_MULL:
             *dst = gen_multiply_long(src->cond, src->mull.u, src->mull.a, src->mull.s, src->mull.RdHi, src->mull.RdLo, src->mull.Rn, src->mull.Rm);
+            break;
+        case ARM_MEDIA:
+            *dst = gen_media(src->cond, src->media.op1, src->media.Rn, src->media.Rd, src->media.op2, src->media.Rm);
             break;
         case ARM_EXTEND:
             *dst = gen_extend(src->cond, src->extend.op, src->extend.Rn, src->extend.Rd, src->extend.rot, src->extend.Rm);

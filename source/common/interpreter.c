@@ -541,18 +541,19 @@ int interpreter_run(void) {
                         }
                     } else {
                         // extended
+                        WORD reg2_val = v810_state->P_REG[reg2];
                         switch (subop) {
                             case V810_OP_MPYHW:
-                                v810_state->P_REG[reg2] *= v810_state->P_REG[reg1];
+                                v810_state->P_REG[reg2] *= (int)(v810_state->P_REG[reg1] << 15) >> 15;
                                 break;
                             case V810_OP_REV:
-                                v810_state->P_REG[reg2] = ins_rev(v810_state->P_REG[reg1], 0);
+                                v810_state->P_REG[reg2] = ins_rev(v810_state->P_REG[reg1]);
                                 break;
                             case V810_OP_XB:
-                                v810_state->P_REG[reg2] = ins_xb(0, v810_state->P_REG[reg2]);
+                                v810_state->P_REG[reg2] = (reg2_val & 0xFFFF0000) | ((reg2_val << 8) & 0xFF00) | ((reg2_val >> 8) & 0xFF);
                                 break;
                             case V810_OP_XH:
-                                v810_state->P_REG[reg2] = ins_xh(0, v810_state->P_REG[reg2]);
+                                v810_state->P_REG[reg2] = (reg2_val << 16) | (reg2_val >> 16);
                                 break;
                             default:
                                 return DRC_ERR_BAD_INST;

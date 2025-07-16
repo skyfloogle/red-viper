@@ -58,6 +58,7 @@ typedef enum {
     ARM_DATA_PROC_REG_SHIFT,
     ARM_MUL,
     ARM_MULL,
+    ARM_MEDIA,
     ARM_EXTEND,
     ARM_MOV_FROM_CPSR,
     ARM_MOV_IMM_CPSR,
@@ -120,6 +121,14 @@ typedef struct {
     BYTE Rn;
     BYTE Rm;
 } arm_inst_mull;
+
+typedef struct {
+    BYTE op1;
+    BYTE Rn;
+    BYTE Rd;
+    BYTE op2;
+    BYTE Rm;
+} arm_inst_media;
 
 typedef struct {
     BYTE op;
@@ -256,6 +265,7 @@ typedef struct {
         arm_inst_dprs dprs;
         arm_inst_mul mul;
         arm_inst_mull mull;
+        arm_inst_media media;
         arm_inst_extend extend;
         arm_inst_mfcpsr mfcpsr;
         arm_inst_micpsr micpsr;

@@ -41,9 +41,9 @@ enum {
     DRC_RELOC_WBYTE     = 5,
     DRC_RELOC_WHWORD    = 6,
     DRC_RELOC_WWORD     = 7,
-    DRC_RELOC_FPP       = 8,
-    DRC_RELOC_BSTR      = 24,
-    DRC_RELOC_GOLFHACK  = 40,
+    DRC_RELOC_BSTR      = 8,
+    DRC_RELOC_REV       = 24,
+    DRC_RELOC_GOLFHACK  = 25,
 };
 
 #define END_BLOCK 0xFF

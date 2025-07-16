@@ -33,18 +33,7 @@ extern int  ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs);
 extern int  ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs);
 
 //FPU SubOpcodes
-extern float ins_cmpf_s  (float reg1, float reg2);
-extern float ins_cvt_ws  (int   reg1, float reg2);
-extern int   ins_cvt_sw  (float reg1, int   reg2);
-extern float ins_addf_s  (float reg1, float reg2);
-extern float ins_subf_s  (float reg1, float reg2);
-extern float ins_mulf_s  (float reg1, float reg2);
-extern float ins_divf_s  (float reg1, float reg2);
-extern int   ins_trnc_sw (float reg1, int   reg2);
-extern int   ins_xb      (int   arg1, int    arg2);   //Undocumented opcode XB (non-FPU)
-extern int   ins_xh      (int   arg1, unsigned arg2);   //Undocumented opcode XH (non-FPU)
-extern int   ins_rev     (int   arg1, int    arg2);   //Undocumented opcode REV (non-FPU)
-extern int   ins_mpyhw   (short arg1, short  arg2); //Undocumented opcode MPYHW (non-FPU)
+extern WORD ins_rev(WORD n);   //Undocumented opcode REV (non-FPU)
 
 #endif
 
