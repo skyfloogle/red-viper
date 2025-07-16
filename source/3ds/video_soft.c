@@ -5,11 +5,11 @@
 typedef union {
     struct {
         uint16_t mask[8];
-        uint16_t colmask[3][8];
+        uint16_t colmask[3][4][8];
     } u16;
     struct {
         uint32_t mask[4];
-        uint32_t colmask[3][4];
+        uint32_t colmask[3][4][4];
     } u32;
 } CachedTile;
 
@@ -66,7 +66,10 @@ void update_texture_cache_soft(void) {
             tmp = ((column & 0xaaaaaaaa) >> 1) & column;
             colmask[2] = tmp | (tmp >> 1);
             for (int k = 0; k < 3; k++) {
-                tileCache[t].u32.colmask[k][i] = colmask[k];
+                for (int l = 0; l < 4; l++) {
+                    const uint32_t cols[4] = {0, 0x55555555, 0xaaaaaaaa, 0xffffffff};
+                    tileCache[t].u32.colmask[k][l][i] = colmask[k] & cols[l];
+                }
             }
             tileCache[t].u32.mask[i] = ~(colmask[0] | colmask[1] | colmask[2]);
         }
@@ -151,9 +154,9 @@ void video_soft_render(int alt_buf) {
                             int px = tile & 0x2000 ? 7 - bpx : bpx;
                             int colors[] = {0, 0b0101010101010101, 0b1010101010101010, 0xffff};
                             int value =
-                                (tileCache[tileid].u16.colmask[0][px] & colors[(tVIPREG.GPLT[palette] >> 2) & 3]) |
-                                (tileCache[tileid].u16.colmask[1][px] & colors[(tVIPREG.GPLT[palette] >> 4) & 3]) |
-                                (tileCache[tileid].u16.colmask[2][px] & colors[(tVIPREG.GPLT[palette] >> 6) & 3]);
+                                (tileCache[tileid].u16.colmask[0][(tVIPREG.GPLT[palette] >> 2) & 3][px]) |
+                                (tileCache[tileid].u16.colmask[1][(tVIPREG.GPLT[palette] >> 4) & 3][px]) |
+                                (tileCache[tileid].u16.colmask[2][(tVIPREG.GPLT[palette] >> 6) & 3][px]);
                             if (tile & 0x1000) {
                                 value = __builtin_bswap16(value);
                                 value = ((value & 0xf0f0) >> 4) | ((value << 4) & 0xf0f0);
