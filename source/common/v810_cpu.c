@@ -347,6 +347,8 @@ void v810_reset(void) {
         memcmp(tVBOpt.GAME_ID, "01VREE", 6) == 0 // Red Alarm (U)
         || memcmp(tVBOpt.GAME_ID, "E4VREJ", 6) == 0 // Red Alarm (J)
     );
+
+    tVBOpt.DOUBLE_BUFFER = memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0; // Test Chamber
 }
 
 void predictEvent(bool increment) {

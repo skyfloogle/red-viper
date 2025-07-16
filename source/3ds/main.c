@@ -135,6 +135,8 @@ int main(void) {
 
         // frameskip can cause bugs in golf when transitioning from VIP to software rendering
         if (memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0) just_lagged = false;
+        // frameskip causes visual glitches
+        if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) just_lagged = false;
 
         // Display a frame, only after the right number of 'skips'
         // Also don't display if drawing is still ongoing
