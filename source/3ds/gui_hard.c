@@ -568,11 +568,13 @@ static void draw_logo(void) {
 	memset(V810_DISPLAY_RAM.pmemory + 0x3dc00, 0, 0x400);
     tDSPCACHE.ColumnTableInvalid = true;
     
-    C2D_SceneBegin(screenTarget);
-    C2D_ViewScale(1, -1);
-    C2D_ViewTranslate(0, -512);
-    C2D_DrawSprite(&splash_left);
-    C2D_DrawSprite(&splash_right);
+    for (int i = 0; i < 2; i++) {
+        C2D_SceneBegin(screenTargetHard[i]);
+        C2D_ViewScale(1, -1);
+        C2D_ViewTranslate(0, -512);
+        C2D_DrawSprite(&splash_left);
+        C2D_DrawSprite(&splash_right);
+    }
     C2D_ViewReset();
     C2D_SceneBegin(screen);
 }
@@ -661,7 +663,9 @@ static void game_menu(int initial_button) {
         case MAIN_MENU_RESET: // Reset
             if (areyousure(&text_areyousure_reset)) {
                 // clear screen buffer
-                C2D_TargetClear(screenTarget, 0);
+                for (int i = 0; i < 2; i++) {
+                    C2D_TargetClear(screenTargetHard[i], 0);
+                }
                 C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
                 video_flush(true);
                 C3D_FrameEnd(0);
@@ -1001,7 +1005,9 @@ static void rom_loader(void) {
         return rom_loader();
     } else {
         // clear screen buffer
-        C2D_TargetClear(screenTarget, 0);
+        for (int i = 0; i < 2; i++) {
+            C2D_TargetClear(screenTargetHard[i], 0);
+        }
         tDSPCACHE.DDSPDataState[0] = tDSPCACHE.DDSPDataState[1] = GPU_CLEAR;
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 64; j++) {

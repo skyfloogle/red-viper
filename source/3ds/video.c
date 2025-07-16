@@ -5,6 +5,9 @@
 #include <citro3d.h>
 
 #include "3ds/services/hid.h"
+#include "c3d/renderqueue.h"
+#include "c3d/texenv.h"
+#include "c3d/texture.h"
 #include "utils.h"
 
 #include "vb_dsp.h"
@@ -217,7 +220,7 @@ void video_init(void) {
     video_hard_init();
 	video_soft_init();
 
-	// The hardware renderer creates 1 * 0.75MB + 4 * 1MB framebuffers.
+	// The hardware renderer creates 1 * 0.75MB + 8 * 0.5MB framebuffers.
 	// The 3DS has two 3MB VRAM banks, so for this to work, 3 framebuffers must go into one bank.
 	// However, the allocator alternates between banks, so we need to allocate those first,
 	// before even the final render targets.
@@ -239,15 +242,24 @@ void video_init(void) {
 }
 
 static int g_alt_buf = 0;
+static int vip_alt_buf = 0;
 
 void video_render(int alt_buf, bool on_time) {
 	if (tVBOpt.ANTIFLICKER && on_time) video_flush(false);
 	
 	g_alt_buf = alt_buf;
+	vip_alt_buf = tVBOpt.DOUBLE_BUFFER ? alt_buf : 0;
 
 	if (tVBOpt.RENDERMODE > 0) {
 		// postproc (can be done early)
 		video_soft_to_texture(alt_buf);
+	}
+
+	if (tVBOpt.DOUBLE_BUFFER) {
+		C3D_BlendingColor(0x80808080);
+		if (tVBOpt.ANTIFLICKER && on_time) C3D_AlphaBlend(GPU_BLEND_ADD, 0, GPU_CONSTANT_ALPHA, GPU_ONE_MINUS_CONSTANT_ALPHA, 0, 0);
+		video_flush(false);
+		C3D_ColorLogicOp(GPU_LOGICOP_COPY);
 	}
 
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
@@ -267,9 +279,9 @@ void video_render(int alt_buf, bool on_time) {
 		}
 
 		if (tVBOpt.RENDERMODE < 2) {
-			video_hard_render();
+			video_hard_render(vip_alt_buf);
 		} else {
-			C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, 0, 0);
+			C3D_RenderTargetClear(screenTargetHard[vip_alt_buf], C3D_CLEAR_ALL, 0, 0);
 			video_soft_render(alt_buf);
 		}
 
@@ -277,10 +289,12 @@ void video_render(int alt_buf, bool on_time) {
 		memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
 	}
 
-	C3D_BlendingColor(0x80808080);
-	if (tVBOpt.ANTIFLICKER && on_time) C3D_AlphaBlend(GPU_BLEND_ADD, 0, GPU_CONSTANT_ALPHA, GPU_ONE_MINUS_CONSTANT_ALPHA, 0, 0);
-	video_flush(false);
-	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
+	if (!tVBOpt.DOUBLE_BUFFER) {
+		C3D_BlendingColor(0x80808080);
+		if (tVBOpt.ANTIFLICKER && on_time) C3D_AlphaBlend(GPU_BLEND_ADD, 0, GPU_CONSTANT_ALPHA, GPU_ONE_MINUS_CONSTANT_ALPHA, 0, 0);
+		video_flush(false);
+		C3D_ColorLogicOp(GPU_LOGICOP_COPY);
+	}
 }
 
 extern bool any_2ds;
@@ -317,7 +331,7 @@ void video_flush(bool default_for_both) {
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
 	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
 
-	C3D_TexBind(0, &screenTexHard);
+	C3D_TexBind(0, &screenTexHard[vip_alt_buf]);
 	C3D_TexBind(1, &screenTexSoft[g_alt_buf]);
 	C3D_BindProgram(&sFinal);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);

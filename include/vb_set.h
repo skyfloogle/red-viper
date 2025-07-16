@@ -122,6 +122,7 @@ typedef struct VB_OPT {
     bool  VIP_OVERCLOCK;
     bool  VIP_OVER_SOFT;
     bool  FORWARDER;
+    bool  DOUBLE_BUFFER;
 } VB_OPT;
 
 void setCustomMappingDefaults(void);

@@ -156,10 +156,10 @@ extern int blankTile;
 extern shaderProgram_s sFinal;
 
 // video_hard
-extern C3D_Tex screenTexHard;
-extern C3D_RenderTarget *screenTarget;
+extern C3D_Tex screenTexHard[2];
+extern C3D_RenderTarget *screenTargetHard[2];
 void video_hard_init(void);
-void video_hard_render(void);
+void video_hard_render(int alt_buf);
 void update_texture_cache_hard(void);
 
 // video_soft

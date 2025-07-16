@@ -356,7 +356,9 @@ static void drc_findWaterworldBusywait(int size) {
 
 void drc_clearScreenForGolf(void) {
     C3D_FrameBegin(0);
-    C3D_RenderTargetClear(screenTarget, C3D_CLEAR_COLOR, 0, 0);
+    for (int i = 0; i < 2; i++) {
+        C3D_RenderTargetClear(screenTargetHard[i], C3D_CLEAR_COLOR, 0, 0);
+    }
     C3D_FrameEnd(0);
 }
 

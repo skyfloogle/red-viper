@@ -29,13 +29,13 @@
 #include "map8x2_t3x.h"
 #include "map8x4_t3x.h"
 
-C3D_Tex screenTexHard;
-C3D_RenderTarget *screenTarget;
+C3D_Tex screenTexHard[2];
+C3D_RenderTarget *screenTargetHard[2];
 
 static C3D_Tex tileTexture;
 
 // Virtual Bowling needs at least 4 for good performance
-#define AFFINE_CACHE_SIZE 8
+#define AFFINE_CACHE_SIZE 7
 typedef struct {
 	C3D_Tex tex;
 	C3D_RenderTarget *target;
@@ -47,7 +47,7 @@ typedef struct {
 	bool visible;
 	bool used;
 } AffineCacheEntry;
-static AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
+AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
 
 static C3D_Tex affine_masks[4][4];
 static C3D_Tex palette_mask;
@@ -111,12 +111,14 @@ void video_hard_init(void) {
 
 	params.width = 512;
 	params.height = 512;
-	params.format = GPU_RGB8;
+	params.format = GPU_RGBA4;
 	params.onVram = true;
-	C3D_TexInitWithParams(&screenTexHard, NULL, params);
-	// Drawing backwards with a depth buffer isn't faster, so omit the depth buffer.
-	screenTarget = C3D_RenderTargetCreateFromTex(&screenTexHard, GPU_TEXFACE_2D, 0, -1);
-	C3D_RenderTargetClear(screenTarget, C3D_CLEAR_ALL, 0, 0);
+	for (int i = 0; i < 2; i++) {
+		C3D_TexInitWithParams(&screenTexHard[i], NULL, params);
+		// Drawing backwards with a depth buffer isn't faster, so omit the depth buffer.
+		screenTargetHard[i] = C3D_RenderTargetCreateFromTex(&screenTexHard[i], GPU_TEXFACE_2D, 0, -1);
+		C3D_RenderTargetClear(screenTargetHard[i], C3D_CLEAR_ALL, 0, 0);
+	}
 
 	params.width = 512;
 	params.height = 512;
@@ -198,7 +200,7 @@ static void setRegularDrawing(void) {
 }
 
 // returns vertex count
-static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int umax, int vmin, int vmax) {
+int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int umax, int vmin, int vmax) {
 	int vcount = 0;
 
 	int cache_id = mapid % AFFINE_CACHE_SIZE;
@@ -308,8 +310,8 @@ static int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, 
 	return vcount;
 }
 
-void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
-	C3D_FrameDrawOn(screenTarget);
+static void draw_affine_layer(int alt_buf, avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
+	C3D_FrameDrawOn(screenTargetHard[alt_buf]);
 	C3D_BindProgram(&sAffine);
 
 	if (!use_masks) {
@@ -367,8 +369,8 @@ void draw_affine_layer(avertex *vbufs[], C3D_Tex **textures, int count, int base
 	setRegularDrawing();
 }
 
-void video_hard_render(void) {
-	C3D_FrameDrawOn(screenTarget);
+void video_hard_render(int alt_buf) {
+	C3D_FrameDrawOn(screenTargetHard[alt_buf]);
 
 	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
 	int end_eye = start_eye + eye_count;
@@ -783,7 +785,7 @@ void video_hard_render(void) {
 							bgmap_offsets[tex_count / 2].c[3 - 2 * (tex_count % 2) - 1] = base_v >> 9;
 							textures[tex_count] = &tileMapCache[cache_id].tex;
 							if (++tex_count == (use_masks ? 2 : 3)) {
-								draw_affine_layer(vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
+								draw_affine_layer(alt_buf, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 								tex_count = 0;
 							}
 						}
@@ -791,7 +793,7 @@ void video_hard_render(void) {
 				}
 				// clean up any leftovers
 				if (tex_count != 0) {
-					draw_affine_layer(vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
+					draw_affine_layer(alt_buf, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 				}
 			}
 		} else {
