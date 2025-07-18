@@ -532,16 +532,17 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
     }
 
     // Golf hack
-    bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
-    if (is_golf) {
-        if (v810_state->P_REG[31] == 0x070036d4 ||
-            v810_state->P_REG[31] == 0x07005888 ||
-            v810_state->P_REG[31] == 0x070058c8
+    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
+    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    if (is_golf_us || is_golf_jp) {
+        if (v810_state->P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
+            v810_state->P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
+            v810_state->P_REG[31] == (is_golf_us ? 0x070058c8 : 0x070055c0)
         ) {
             cycles *= 2;
         } else if (
-            !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0) &&
-            !(v810_state->P_REG[31] >= 0x07005f34 && v810_state->P_REG[31] <= 0x07006026)
+            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07006e80 : 0x07006b78) && v810_state->P_REG[31] <= (is_golf_us ? 0x070071d0 : 0x07006ec8)) &&
+            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07005f34 : 0x07006026) && v810_state->P_REG[31] <= (is_golf_us ? 0x07006026 : 0x07005d1e))
         ) {
             len += len_remain;
             len_remain = 0;
@@ -752,16 +753,17 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     }
 
     // Golf hack
-    bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
-    if (is_golf) {
-        if (v810_state->P_REG[31] == 0x070036d4 ||
-            v810_state->P_REG[31] == 0x07005888 ||
-            v810_state->P_REG[31] == 0x070058c8
+    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
+    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    if (is_golf_us || is_golf_jp) {
+        if (v810_state->P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
+            v810_state->P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
+            v810_state->P_REG[31] == (is_golf_us ? 0x070058c8 : 0x070055c0)
         ) {
             cycles *= 2;
         } else if (
-            !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0) &&
-            !(v810_state->P_REG[31] >= 0x07005f34 && v810_state->P_REG[31] <= 0x07006026)
+            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07006e80 : 0x07006b78) && v810_state->P_REG[31] <= (is_golf_us ? 0x070071d0 : 0x07006ec8)) &&
+            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07005f34 : 0x07006026) && v810_state->P_REG[31] <= (is_golf_us ? 0x07006026 : 0x07005d1e))
         ) {
             len += len_remain;
             len_remain = 0;
@@ -1175,16 +1177,17 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     }
 
     // Golf hack
-    bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
-    if (is_golf) {
-        if (v810_state->P_REG[31] == 0x070036d4 ||
-            v810_state->P_REG[31] == 0x07005888 ||
-            v810_state->P_REG[31] == 0x070058c8
+    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
+    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    if (is_golf_us || is_golf_jp) {
+        if (v810_state->P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
+            v810_state->P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
+            v810_state->P_REG[31] == (is_golf_us ? 0x070058c8 : 0x070055c0)
         ) {
             cycles *= 2;
         } else if (
-            !(v810_state->P_REG[31] >= 0x07006e80 && v810_state->P_REG[31] <= 0x070071d0) &&
-            !(v810_state->P_REG[31] >= 0x07005f34 && v810_state->P_REG[31] <= 0x07006026)
+            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07006e80 : 0x07006b78) && v810_state->P_REG[31] <= (is_golf_us ? 0x070071d0 : 0x07006ec8)) &&
+            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07005f34 : 0x07006026) && v810_state->P_REG[31] <= (is_golf_us ? 0x07006026 : 0x07005d1e))
         ) {
             len += len_remain;
             len_remain = 0;
