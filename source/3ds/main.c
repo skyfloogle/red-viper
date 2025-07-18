@@ -133,8 +133,10 @@ int main(void) {
             lag_frames = 0;
         }
 
+        bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+
         // frameskip can cause bugs in golf when transitioning from VIP to software rendering
-        if (memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0) just_lagged = false;
+        if (is_golf) just_lagged = false;
         // frameskip causes visual glitches
         if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) just_lagged = false;
 
@@ -147,6 +149,28 @@ int main(void) {
             // so just bite the bullet and do the frameskip, rather that than slowdown
             if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
                 guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
+
+                // Golf hack: switch to software rendering during gameplay.
+                if (is_golf) {
+                    if (V810_DISPLAY_RAM.pmemory[0x3dbc0] == 0x40 &&
+                        *(uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x3dbe6) == 0x48 &&
+                        memcmp(V810_DISPLAY_RAM.pmemory + 0x3dbec, "\0\0\x80\x01\x1f\0\0\x80\0\0", 10) == 0
+                    ) {
+                        // looks like hills, do software rendering
+                        if (tVBOpt.RENDERMODE != 2) {
+                            tVBOpt.RENDERMODE = 2;
+                            clearCache();
+                        }
+                    } else {
+                        // switch back to hardware rendering
+                        if (tVBOpt.RENDERMODE != 1) {
+                            tVBOpt.RENDERMODE = 1;
+                            for (int i = 0; i < 3; i++) {
+                                memset(V810_DISPLAY_RAM.pmemory + (0x8000 * i), 0, 0x6000);
+                            }
+                        }
+                    }
+                }
 
                 // if we just had a lagframe on which drawing happened, don't draw
                 if ((tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {
