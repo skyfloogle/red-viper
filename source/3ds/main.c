@@ -167,6 +167,7 @@ int main(void) {
                             tDSPCACHE.SoftBufWrote[alt_buf][i].min = 0xff;
                             tDSPCACHE.SoftBufWrote[alt_buf][i].max = 0;
                         }
+                        memset(tDSPCACHE.OpaquePixels.u32[alt_buf], 0, sizeof(tDSPCACHE.OpaquePixels.u32[alt_buf]));
                         tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
                     }
                 }

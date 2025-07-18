@@ -171,9 +171,10 @@ void video_soft_render(int alt_buf) {
     }
 }
 
-void video_soft_to_texture(int alt_buf) {
+// using a template to avoid checking a boolean in a hot loop
+template<bool copy_alpha> void video_soft_to_texture_inner(int alt_buf) {
     uint32_t fb_size;
-    uint32_t *out_fb = C3D_Tex2DGetImagePtr(&screenTexSoft[alt_buf], 0, &fb_size);
+    uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[alt_buf], 0, &fb_size);
     if (tDSPCACHE.DDSPDataState[alt_buf] == CPU_WROTE) {
         tDSPCACHE.DDSPDataState[alt_buf] = GPU_WROTE;
     } else {
@@ -207,9 +208,10 @@ void video_soft_to_texture(int alt_buf) {
             for (int ty = ymin; ty < ymax; ty++) {
                 uint32_t *out_tile = &column_ptr[8 * 8 / 4 * 2 * (1 + ty)];
                 uint16_t *in_fb_ptr = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * alt_buf + tx * (256 / 4 * 8) + ty * 2);
+                uint16_t *in_alpha_ptr = &tDSPCACHE.OpaquePixels.u16[alt_buf][eye][tx * (256 / 4 * 8) / 2 + ty];
 
                 for (int i = 0; i <= 2; i += 2) {
-                    uint32_t slice1, slice2;
+                    uint32_t slice1, slice2, slice1_alpha, slice2_alpha;
                     slice2 = *in_fb_ptr;
                     in_fb_ptr += 256 / 4 / 2;
                     slice2 |= (*in_fb_ptr << 16);
@@ -218,6 +220,17 @@ void video_soft_to_texture(int alt_buf) {
                     in_fb_ptr += 256 / 4 / 2;
                     slice1 |= (*in_fb_ptr << 16);
                     in_fb_ptr += 256 / 4 / 2;
+
+                    if (copy_alpha) {
+                        slice2_alpha = *in_alpha_ptr;
+                        in_alpha_ptr += 256 / 4 / 2;
+                        slice2_alpha |= (*in_alpha_ptr << 16);
+                        in_alpha_ptr += 256 / 4 / 2;
+                        slice1_alpha = *in_alpha_ptr;
+                        in_alpha_ptr += 256 / 4 / 2;
+                        slice1_alpha |= (*in_alpha_ptr << 16);
+                        in_alpha_ptr += 256 / 4 / 2;
+                    }
 	
                     // black, red, green, blue
                     const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
@@ -225,8 +238,10 @@ void video_soft_to_texture(int alt_buf) {
                     #define SQUARE(x, i) { \
                         uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
                         uint32_t right = x >> (2 + 4*i) & 0x00030003; \
-                        *--out_tile = colors[(uint16_t)left] | (colors[(uint16_t)right] << 16); \
-                        *--out_tile = colors[left >> 16] | (colors[right >> 16] << 16); \
+                        uint32_t left_alpha = copy_alpha ? x##_alpha >> (0 + 4*i) & 0x00030003 : 0; \
+                        uint32_t right_alpha = copy_alpha ? x##_alpha >> (2 + 4*i) & 0x00030003 : 0; \
+                        *--out_tile = colors[(uint16_t)left] | (0xf * !!(uint16_t)left_alpha) | (colors[(uint16_t)right] << 16) | (0xf0000 * !!(uint16_t)right_alpha); \
+                        *--out_tile = colors[left >> 16] | (0xf * !!(left_alpha >> 16)) | (colors[right >> 16] << 16) | (0xf0000 * !!(right_alpha >> 16)); \
                     }
 
                     SQUARE(slice2, 3);
@@ -243,5 +258,13 @@ void video_soft_to_texture(int alt_buf) {
             }
             memset(column_ptr + 8 * 8 / 4 * 2 * ymax, 0, 8 * 8 * 2 * (224 / 8 - ymax));
         }
+    }
+}
+
+void video_soft_to_texture(int alt_buf) {
+    if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) {
+        video_soft_to_texture_inner<true>(alt_buf);
+    } else {
+        video_soft_to_texture_inner<false>(alt_buf);
     }
 }

@@ -1014,6 +1014,7 @@ static void rom_loader(void) {
                 tDSPCACHE.SoftBufWrote[i][j].min = 0xff;
                 tDSPCACHE.SoftBufWrote[i][j].max = 0;
             }
+            memset(&tDSPCACHE.OpaquePixels, 0, sizeof(tDSPCACHE.OpaquePixels));
         }
         C3D_FrameBegin(0);
         video_flush(true);

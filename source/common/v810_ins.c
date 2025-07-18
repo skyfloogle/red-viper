@@ -1200,6 +1200,7 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
             #endif
             dstbuf = ADD(FILTER(mem_rword(src), ~((1 << srcoff) - 1)));
             mem_wword(dst, dstbuf);
+            if ((dst & 0x07007000) < 0x6000) tDSPCACHE.OpaquePixels.u32[!!(dst & 0x8000)][!!(dst & 0x10000)][(dst & 0x7fff) >> 2] |= ~((1 << srcoff) - 1);
             src += 4;
             dst += 4;
             len -= 32 - srcoff;
@@ -1215,6 +1216,7 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
                     dstbuf = mem_rword(dst);
                     #endif
                     mem_wword(dst, ADD(FILTER(mem_rword(src), -1)));
+                    if ((dst & 0x07007000) < 0x6000) tDSPCACHE.OpaquePixels.u32[!!(dst & 0x8000)][!!(dst & 0x10000)][(dst & 0x7fff) >> 2] = -1;
                     src += 4;
                     dst += 4;
                     len -= 32;
@@ -1231,6 +1233,7 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
             #endif
             dstbuf = ADD(FILTER(mem_rword(src), (((1 << len) - 1) << srcoff)));
             mem_wword(dst, dstbuf);
+            if ((dst & 0x07007000) < 0x6000) tDSPCACHE.OpaquePixels.u32[!!(dst & 0x8000)][!!(dst & 0x10000)][(dst & 0x7fff) >> 2] |= (((1 << len) - 1) << srcoff);
             srcoff = dstoff += len;
             if (srcoff == 32) {
                 srcoff = dstoff = 0;
@@ -1259,6 +1262,7 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
                     src += 4;
                     srcoff &= 31;
                 }
+                if ((dst & 0x07007000) < 0x6000) tDSPCACHE.OpaquePixels.u32[!!(dst & 0x8000)][!!(dst & 0x10000)][(dst & 0x7fff) >> 2] |= ((1 << bits_to_transfer) - 1) << dstoff;
                 // dstoff + bits_to_transfer < 32 guaranteed
                 dstoff += bits_to_transfer;
                 len -= bits_to_transfer;
@@ -1280,6 +1284,7 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
             #endif
             dstbuf = ADD(tmp);
             mem_wword(dst, dstbuf);
+            if ((dst & 0x07007000) < 0x6000) tDSPCACHE.OpaquePixels.u32[!!(dst & 0x8000)][!!(dst & 0x10000)][(dst & 0x7fff) >> 2] |= (((1 << bits_to_transfer) - 1) << dstoff);
             srcoff += bits_to_transfer;
             if (srcoff >= 32) {
                 src += 4;

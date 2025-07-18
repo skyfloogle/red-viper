@@ -4,6 +4,10 @@
 #ifndef V810_DISP_H_
 #define V810_DISP_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "vb_types.h"
 
 #ifdef __3DS__
@@ -70,6 +74,11 @@ typedef struct {
 	bool	CharacterCache[2048];	//Character chace
     DDSPSTATE DDSPDataState[2];     // Direct DisplayDraws True
     SOFTBOUND SoftBufWrote[2][64];
+    union {
+        BYTE u8[2][2][384*256];
+        HWORD u16[2][2][384*256/2];
+        WORD u32[2][2][384*256/4];
+    } OpaquePixels;
     bool    ColumnTableInvalid;     // Column Table is invalid
 } VB_DSPCACHE;
 
@@ -169,6 +178,10 @@ void video_soft_render(int alt_buf);
 void update_texture_cache_soft(void);
 void video_soft_to_texture(int alt_buf);
 
+#endif
+
+#ifdef __cplusplus
+} // extern "C"
 #endif
 
 #endif
