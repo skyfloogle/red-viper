@@ -2723,6 +2723,9 @@ void guiUpdate(float total_time, float drc_time) {
     if (!shouldRedrawMenu && !tVBOpt.PERF_INFO && !tVBOpt.INPUTS)
         return;
 
+    // unclear why this is necessary, but omitting it can lead to weird graphical glitches
+    C3D_UpdateUniforms(GPU_GEOMETRY_SHADER);
+
     C2D_Prepare();
     C2D_SceneBegin(screen);
 
