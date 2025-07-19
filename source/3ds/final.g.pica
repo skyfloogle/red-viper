@@ -1,15 +1,13 @@
 .gsh point c0
 
-.constf const1(1.0, 0.0, 0.0, 0.0)
+.constf const1(1.0, 0.0, -1, 1)
 
 ; for final screen output
 ; texcoord 0 (vip) is mirrored diagonally for 3ds screen
 ; texcoord 1 (softbuf) is not mirrored
 ; texcoord 2 (column table) is the input texcoord but only the bottom
-; v0: top left pos
-; v1: top left texcoord
-; v2: bottom right pos
-; v3: bottom right texcoord
+; v0: top left pos / bottom right pos
+; v1: top left texcoord / bottom right texcoord
 
 .out outpos position
 .out viptc texcoord0
@@ -18,9 +16,12 @@
 
 .entry gmain
 .proc gmain
+    ; z=-1 and w=1 are necessary for position output
+    mov r0, const1
     ; top left
     setemit 0
-    mov outpos, v0
+    mov r0.xy, v0.xy
+    mov outpos, r0
     mov viptc, v1
     mov r2.x, v1.y
     mov r2.y, v1.x
@@ -37,14 +38,14 @@
     mov coltc, r1
     ; texcoord vip: (v1.x, v3.y)
     mov r1, v1
-    mov r1.y, v3.y
+    mov r1.y, v1.w
     mov viptc, r1
     ; texcoord softbuf: v3.x, v1.y
-    mov r2.x, v3.y
+    mov r2.x, v1.w
     mov r2.y, v1.x
     mov softtc, r2
     ; position: v2.x, v0.y (really top right)
-    mov r0, v2
+    mov r0.x, v0.z
     mov r0.y, v0.y
     mov outpos, r0
     emit
@@ -52,16 +53,16 @@
     ; top right
     setemit 2, prim
     ; position: v0.x, v2.y (really bottom left)
-    mov r0, v2
+    mov r0.y, v0.w
     mov r0.x, v0.x
     mov outpos, r0
     ; texcoord vip: v3.x, v1.y
-    mov r1, v3
+    mov r1.x, v1.z
     mov r1.y, v1.y
     mov viptc, r1
     ; texcoord softbuf: v1.x, v3.y
     mov r2.x, v1.y
-    mov r2.y, v3.x
+    mov r2.y, v1.z
     mov softtc, r2
     ; texcoord shading: (v3.x, 0)
     mov r1.y, const1.x
@@ -70,10 +71,13 @@
 
     ; bottom right
     setemit 0, prim inv
-    mov outpos, v2
-    mov viptc, v3
-    mov r0.x, v3.y
-    mov r0.y, v3.x
+    mov r0.x, v0.z
+    mov r0.y, v0.w
+    mov outpos, r0
+    mov r0.xy, v1.zw
+    mov viptc, r0
+    mov r0.x, v1.w
+    mov r0.y, v1.z
     mov softtc, r0
     ; texcoord shading: reuse previous
     mov coltc, r1

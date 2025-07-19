@@ -199,7 +199,7 @@ void video_init(void) {
 	sFinal_dvlb = DVLB_ParseFile((u32 *)final_shbin, final_shbin_size);
 	shaderProgramInit(&sFinal);
 	shaderProgramSetVsh(&sFinal, &sFinal_dvlb->DVLE[0]);
-	shaderProgramSetGsh(&sFinal, &sFinal_dvlb->DVLE[1], 4);
+	shaderProgramSetGsh(&sFinal, &sFinal_dvlb->DVLE[1], 2);
 
 	sSoft_dvlb = DVLB_ParseFile((u32 *)soft_shbin, soft_shbin_size);
 	shaderProgramInit(&sSoft);
@@ -419,10 +419,8 @@ void video_flush(bool default_for_both) {
 		C3D_SetViewport(viewportY, viewportX+depthOffset, VIEWPORT_HEIGHT, VIEWPORT_WIDTH);
 		C3D_TexBind(2, &columnTableTexture[src_eye]);
 		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
-		C3D_ImmSendAttrib(1, 1, -1, 1);
-		C3D_ImmSendAttrib(0, src_eye ? 0.5 : 0, 0, 0);
-		C3D_ImmSendAttrib(-1, -1, -1, 1);
-		C3D_ImmSendAttrib(384.0 / 512, (src_eye ? 0.5 : 0) + 224.0 / 512, 0, 0);
+		C3D_ImmSendAttrib(1, 1, -1, -1);
+		C3D_ImmSendAttrib(0, src_eye ? 0.5 : 0, 384.0 / 512, (src_eye ? 0.5 : 0) + 224.0 / 512);
 		C3D_ImmDrawEnd();
 	}
 	

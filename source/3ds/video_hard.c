@@ -401,16 +401,12 @@ void video_hard_render(int alt_buf) {
 	C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
 	// left
 	if (start_eye == 0) {
-		C3D_ImmSendAttrib(384.0/256-1, 224.0/256-1, -1, 1);
-		C3D_ImmSendAttrib(0, 0, 0, 0);
-		C3D_ImmSendAttrib(-1, -1, -1, 1);
+		C3D_ImmSendAttrib(384.0/256-1, 224.0/256-1, -1, -1);
 		C3D_ImmSendAttrib(0, 0, 0, 0);
 	}
 	// right
 	if (end_eye == 2) {
-		C3D_ImmSendAttrib(384.0/256-1, 224.0/256, -1, 1);
-		C3D_ImmSendAttrib(0, 0, 0, 0);
-		C3D_ImmSendAttrib(-1, 0, -1, 1);
+		C3D_ImmSendAttrib(384.0/256-1, 224.0/256, -1, 0);
 		C3D_ImmSendAttrib(0, 0, 0, 0);
 	}
 	C3D_ImmDrawEnd();
