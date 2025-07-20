@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <zlib.h>
+#include "c2d/sprite.h"
 #include "c2d/text.h"
 #include "rom_db.h"
 #include <citro2d.h>
@@ -106,7 +107,8 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
                 text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink, text_preset, text_custom,
                 text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo,
-                text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off;
+                text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off,
+                text_monochrome, text_multicolor, text_brighten, text_brightness_disclaimer;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -410,11 +412,13 @@ static Button video_settings_buttons[] = {
 
 static void barrier_settings(int initial_button);
 static Button barrier_settings_buttons[] = {
-    #define BARRIER_COLOUR 0
-    {.str="Color mode", .x=16, .y=16, .w=288, .h=48},
-    #define BARRIER_DEFAULT_EYE 1
-    {.str="Default eye", .x=16, .y=80, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_right, .toggle_text_off=&text_left},
-    #define BARRIER_BACK 2
+    #define BARRIER_MODE 0
+    {.str="Color mode", .x=16, .y=16, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_multicolor, .toggle_text_off=&text_monochrome},
+    #define BARRIER_SETTINGS 1
+    {.str="Color settings", .x=16, .y=80, .w=288, .h=48},
+    #define BARRIER_DEFAULT_EYE 2
+    {.str="Default eye", .x=16, .y=80+64, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_right, .toggle_text_off=&text_left},
+    #define BARRIER_BACK 3
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
@@ -469,6 +473,26 @@ static Button colour_filter_buttons[] = {
     {.str="Red", .x=16, .y=64, .w=48, .h=32},
     #define COLOUR_GRAY 2
     {.str="Gray", .x=16, .y=128, .w=48, .h=32},
+};
+
+static void multicolour_settings(int initial_button);
+static Button multicolour_settings_buttons[] = {
+    #define MULTI_BLACK 0
+    {.str="Darkest", .x=16, .y=16, .w=200, .h=40},
+    #define MULTI_BRTA
+    {.str="Dark", .x=16, .y=16+48, .w=200, .h=40},
+    #define MULTI_BRTB
+    {.str="Light", .x=16, .y=16+48*2, .w=200, .h=40},
+    #define MULTI_BRTC
+    {.str="Lightest", .x=16, .y=16+48*3, .w=200, .h=40},
+    #define MULTI_BACK 4
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+static void multicolour_wheel(int colour_id);
+static Button multicolour_wheel_buttons[] = {
+    #define MULTIWHEEL_BACK 0
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static void vblink(void);
@@ -550,6 +574,8 @@ static Button forwarder_error_buttons[] = {
     SETUP_BUTTONS(barrier_settings_buttons); \
     SETUP_BUTTONS(anaglyph_settings_buttons); \
     SETUP_BUTTONS(colour_filter_buttons); \
+    SETUP_BUTTONS(multicolour_settings_buttons); \
+    SETUP_BUTTONS(multicolour_wheel_buttons); \
     SETUP_BUTTONS(dev_options_buttons); \
     SETUP_BUTTONS(sound_error_buttons); \
     SETUP_BUTTONS(touchscreen_settings_buttons); \
@@ -1452,102 +1478,153 @@ static void touchscreen_settings() {
     }
 }
 
-static void colour_filter(void) {
-    bool dragging = false;
+static void init_colour_wheel(int col_int, float *hue_p, float *saturation_p, float *lightness_p) {
+    // tint to hue saturation
+    float col[3] = {
+        (col_int & 0xff) / 255.0,
+        ((col_int >> 8) & 0xff) / 255.0,
+        ((col_int >> 16) & 0xff) / 255.0,
+    };
+    float max_rg = col[0] > col[1] ? col[0] : col[1];
+    float lightness = max_rg > col[2] ? max_rg : col[2];
+    if (lightness_p) *lightness_p = lightness;
+    if (lightness != 0) {
+        col[0] /= lightness;
+        col[1] /= lightness;
+        col[2] /= lightness;
+    }
+    float max = col[0] > col[1] ? col[0] : col[1];
+    max = max > col[2] ? max : col[2];
+    float min = col[0] < col[1] ? col[0] : col[1];
+    min = min < col[2] ? min : col[2];
+    if (max == min) {
+        // white
+        *hue_p = *saturation_p = 0;
+    } else {
+        float chroma = max - min;
+        float hprime;
+        if (max == col[0]) {
+            hprime = (col[1] - col[2]) / chroma;
+        } else if (max == col[1]) {
+            hprime = (col[2] - col[0]) / chroma + 2;
+        } else {
+            hprime = (col[0] - col[1]) / chroma + 4;
+        }
+        *hue_p = hprime * (M_PI / 3);
+        *saturation_p = chroma / max;
+    }
+}
+
+static int make_color(float hue, float saturation, float lightness) {
+    float hprime = fmod(hue / (M_PI / 3) + 6, 6);
+    float sub = saturation * (1 - fabs(fmod(hprime, 2) - 1));
+    float col[3] = {0};
+    if (hprime < 1) {
+        col[0] = saturation;
+        col[1] = sub;
+    } else if (hprime < 2) {
+        col[0] = sub;
+        col[1] = saturation;
+    } else if (hprime < 3) {
+        col[1] = saturation;
+        col[2] = sub;
+    } else if (hprime < 4) {
+        col[1] = sub;
+        col[2] = saturation;
+    } else if (hprime < 5) {
+        col[0] = sub;
+        col[2] = saturation;
+    } else {
+        col[0] = saturation;
+        col[2] = sub;
+    }
+    return 0xff000000 |
+        ((int)((col[0] + 1 - saturation) * lightness * 255)) |
+        ((int)((col[1] + 1 - saturation) * lightness * 255) << 8) |
+        ((int)((col[2] + 1 - saturation) * lightness * 255) << 16);
+}
+
+static void handle_colour_wheel(int *save_col, int wheel_x, int wheel_y, float *hue, float *saturation, float *lightness) {
+    static bool dragging_wheel = false;
+    static bool dragging_lightness = false;
+    C2D_SpriteSetPos(&colour_wheel_sprite, wheel_x, wheel_y);
     const float circle_x = colour_wheel_sprite.params.pos.x;
     const float circle_y = colour_wheel_sprite.params.pos.y;
     const float circle_w = colour_wheel_sprite.params.pos.w;
     const float circle_h = colour_wheel_sprite.params.pos.h;
 
+    const int lightness_x = 16;
+    const int lightness_y = 16;
+    const int lightness_width = 32;
+    const int lightness_height = 180;
+    const int lightness_cursor_height = 10;
+
+    touchPosition touch_pos;
+    hidTouchRead(&touch_pos);
+    float touch_dx = (touch_pos.px - circle_x) / (circle_w / 2);
+    float touch_dy = (touch_pos.py - circle_y) / (circle_h / 2);
+    float sat = sqrt(touch_dx * touch_dx + touch_dy * touch_dy);
+    if ((hidKeysDown() & KEY_TOUCH)) {
+        if (sat <= 1) dragging_wheel = true;
+        if (lightness &&
+            (unsigned)(touch_pos.px - (lightness_x - 2)) < lightness_width &&
+            abs((int)(touch_pos.py - lightness_y)) < lightness_height
+        ) dragging_lightness = true;
+    }
+    if (hidKeysUp() & KEY_TOUCH) {
+        dragging_wheel = false;
+        dragging_lightness = false;
+    }
+    if (dragging_wheel) {
+        tVBOpt.MODIFIED = true;
+        if (sat > 1) {
+            touch_dx /= sat;
+            touch_dy /= sat;
+            sat = 1;
+        }
+        *saturation = sat;
+        // touch position to hue saturation, then to rgb
+        *hue = atan2(touch_dy, touch_dx);
+        *save_col = make_color(*hue, *saturation, lightness ? *lightness : 1);
+    }
+    if (dragging_lightness) {
+        *lightness = 1 - C2D_Clamp((float)(touch_pos.py - lightness_y) / lightness_height, 0, 1);
+        *save_col = make_color(*hue, *saturation, *lightness);
+    }
+    C2D_DrawSprite(&colour_wheel_sprite);
+    if (!dragging_wheel) {
+        touch_dx = *saturation * cos(*hue);
+        touch_dy = *saturation * sin(*hue);
+    }
+    C2D_DrawCircleSolid(
+        circle_x + touch_dx * (circle_w / 2),
+        circle_y + touch_dy * (circle_h / 2),
+        0, 4, 0xff000000);
+    C2D_DrawCircleSolid(
+        circle_x + touch_dx * (circle_w / 2),
+        circle_y + touch_dy * (circle_h / 2),
+        0, 2, 0xff000000 | *save_col);
+    if (lightness) {
+        int max_lightness = make_color(*hue, *saturation, 1);
+        C2D_DrawRectSolid(lightness_x - 1, lightness_y - 1, 0, lightness_width + 2, lightness_height + 2, make_color(*hue + M_PI, *saturation, 1));
+        C2D_DrawRectangle(lightness_x, lightness_y, 0, lightness_width, lightness_height, max_lightness, max_lightness, 0xff000000, 0xff000000);
+        C2D_DrawRectSolid(lightness_x - 2, lightness_y + lightness_height * (1 - *lightness) - lightness_cursor_height / 2, 0, lightness_width + 4, lightness_cursor_height, 0xffffffff);
+        C2D_DrawRectSolid(lightness_x - 1, lightness_y + lightness_height * (1 - *lightness) - lightness_cursor_height / 2 + 1, 0, lightness_width + 2, lightness_cursor_height - 2, 0xff000000);
+        C2D_DrawRectSolid(lightness_x, lightness_y + lightness_height * (1 - *lightness) - lightness_cursor_height / 2 + 2, 0, lightness_width, lightness_cursor_height - 4, 0xff000000 | *save_col);
+    }
+}
+
+static void colour_filter(void) {
+    float hue, saturation, lightness;
+    init_colour_wheel(tVBOpt.TINT, &hue, &saturation, NULL);
+
     LOOP_BEGIN(colour_filter_buttons, -1);
-        touchPosition touch_pos;
-        hidTouchRead(&touch_pos);
-        float touch_dx = (touch_pos.px - circle_x) / (circle_w / 2);
-        float touch_dy = (touch_pos.py - circle_y) / (circle_h / 2);
-        float sat = sqrt(touch_dx * touch_dx + touch_dy * touch_dy);
-        if ((hidKeysDown() & KEY_TOUCH) && sat <= 1)
-            dragging = true;
-        if (hidKeysUp() & KEY_TOUCH)
-            dragging = false;
-        if (dragging) {
-            tVBOpt.MODIFIED = true;
-            if (sat > 1) {
-                touch_dx /= sat;
-                touch_dy /= sat;
-                sat = 1;
-            }
-            // touch position to hue saturation, then to rgb
-            float hue = atan2(touch_dy, touch_dx);
-            float hprime = fmod(hue / (M_PI / 3) + 6, 6);
-            float sub = sat * (1 - fabs(fmod(hprime, 2) - 1));
-            float col[3] = {0};
-            if (hprime < 1) {
-                col[0] = sat;
-                col[1] = sub;
-            } else if (hprime < 2) {
-                col[0] = sub;
-                col[1] = sat;
-            } else if (hprime < 3) {
-                col[1] = sat;
-                col[2] = sub;
-            } else if (hprime < 4) {
-                col[1] = sub;
-                col[2] = sat;
-            } else if (hprime < 5) {
-                col[0] = sub;
-                col[2] = sat;
-            } else {
-                col[0] = sat;
-                col[2] = sub;
-            }
-            tVBOpt.TINT = 0xff000000 |
-                ((int)((col[0] + 1 - sat) * 255)) |
-                ((int)((col[1] + 1 - sat) * 255) << 8) |
-                ((int)((col[2] + 1 - sat) * 255) << 16);
-        }
-        C2D_DrawSprite(&colour_wheel_sprite);
-        if (!dragging) {
-            // tint to hue saturation
-            float col[3] = {
-                (tVBOpt.TINT & 0xff) / 255.0,
-                ((tVBOpt.TINT >> 8) & 0xff) / 255.0,
-                ((tVBOpt.TINT >> 16) & 0xff) / 255.0,
-            };
-            float max = col[0] > col[1] ? col[0] : col[1];
-            max = max > col[2] ? max : col[2];
-            float min = col[0] < col[1] ? col[0] : col[1];
-            min = min < col[2] ? min : col[2];
-            if (max == min) {
-                // white
-                touch_dx = touch_dy = 0;
-            } else {
-                float chroma = max - min;
-                float hprime;
-                if (max == col[0]) {
-                    hprime = (col[1] - col[2]) / chroma;
-                } else if (max == col[1]) {
-                    hprime = (col[2] - col[0]) / chroma + 2;
-                } else {
-                    hprime = (col[0] - col[1]) / chroma + 4;
-                }
-                float hue = hprime * (M_PI / 3);
-                float sat = chroma / max;
-                touch_dx = sat * cos(hue);
-                touch_dy = sat * sin(hue);
-            }
-        }
-        C2D_DrawCircleSolid(
-            circle_x + touch_dx * (circle_w / 2),
-            circle_y + touch_dy * (circle_h / 2),
-            0, 4, 0xff000000);
-        C2D_DrawCircleSolid(
-            circle_x + touch_dx * (circle_w / 2),
-            circle_y + touch_dy * (circle_h / 2),
-            0, 2, tVBOpt.TINT);
+        handle_colour_wheel(&tVBOpt.TINT, 176, 112, &hue, &saturation, NULL);
     LOOP_END(colour_filter_buttons);
+
     switch (button) {
         case COLOUR_BACK: // Back
-            return barrier_settings(BARRIER_COLOUR);
+            return barrier_settings(BARRIER_SETTINGS);
         case COLOUR_RED: // Red
             tVBOpt.TINT = 0xff0000ff;
             tVBOpt.MODIFIED = true;
@@ -1556,6 +1633,60 @@ static void colour_filter(void) {
             tVBOpt.TINT = 0xffffffff;
             tVBOpt.MODIFIED = true;
             return colour_filter();
+    }
+}
+
+static void multicolour_wheel(int colour_id) {
+    float hue, saturation, lightness;
+    init_colour_wheel(tVBOpt.MTINT[colour_id], &hue, &saturation, &lightness);
+
+    const int scale_x = 272;
+    const int scale_y = 40;
+    const int scale_width = 32;
+    const int scale_height = 160;
+    const int scale_cursor_height = 10;
+    const int scale_offset = 1;
+
+    bool dragging_scale = 0;
+
+    LOOP_BEGIN(multicolour_wheel_buttons, 0);
+        handle_colour_wheel(&tVBOpt.MTINT[colour_id], 160, 112, &hue, &saturation, &lightness);
+
+        if (colour_id != 0) {
+            touchPosition touch_pos;
+            hidTouchRead(&touch_pos);
+            
+            if ((hidKeysDown() & KEY_TOUCH)) {
+                if ((unsigned)(touch_pos.px - (scale_x)) < scale_width &&
+                    abs((int)(touch_pos.py - scale_y)) < scale_height
+                ) dragging_scale = true;
+            }
+            if (hidKeysUp() & KEY_TOUCH) {
+                dragging_scale = false;
+            }
+            if (dragging_scale) {
+                float slider = 1 - C2D_Clamp((float)(touch_pos.py - scale_y) / scale_height, 0, 1);
+                tVBOpt.STINT[colour_id - 1] = slider + scale_offset;
+            }
+
+            C2D_DrawText(&text_brighten, C2D_AlignCenter | C2D_WithColor, scale_x + scale_width / 2, scale_y - 24, 0, 0.5, 0.5, TINT_COLOR);
+            C2D_DrawText(&text_brightness_disclaimer, C2D_AlignRight | C2D_WithColor, 316, 208, 0, 0.5, 0.5, TINT_COLOR);
+            C2D_DrawRectSolid(scale_x + scale_width / 2 - 1, scale_y, 0, 2, scale_height, 0xff404040);
+            C2D_DrawRectSolid(scale_x, scale_y + scale_height * (1 - (tVBOpt.STINT[colour_id - 1] - scale_offset)) - scale_cursor_height / 2, 0, scale_width, scale_cursor_height, TINT_COLOR);
+        }
+
+    LOOP_END(multicolour_wheel_buttons);
+
+    return multicolour_settings(colour_id);
+}
+
+static void multicolour_settings(int initial_button) {
+    LOOP_BEGIN(multicolour_settings_buttons, initial_button);
+    LOOP_END(multicolour_settings_buttons);
+    if (button == MULTI_BACK) {
+        return barrier_settings(BARRIER_SETTINGS);
+    } else {
+        return multicolour_wheel(button);
     }
 }
 
@@ -1800,13 +1931,17 @@ static void video_settings(int initial_button) {
 }
 
 static void barrier_settings(int initial_button) {
+    barrier_settings_buttons[BARRIER_MODE].toggle = tVBOpt.MULTICOL;
     barrier_settings_buttons[BARRIER_DEFAULT_EYE].toggle = tVBOpt.DEFAULT_EYE;
     LOOP_BEGIN(barrier_settings_buttons, initial_button);
     LOOP_END(barrier_settings_buttons);
     switch (button) {
-        case BARRIER_COLOUR: // Colour filter
-            return colour_filter();
+        case BARRIER_MODE:
+            tVBOpt.MULTICOL = !tVBOpt.MULTICOL;
+            tVBOpt.MODIFIED = true;
             return barrier_settings(button);
+        case BARRIER_SETTINGS: // Colour filter
+            return tVBOpt.MULTICOL ? multicolour_settings(0) : colour_filter();
         case BARRIER_DEFAULT_EYE: // Default eye
             tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
             tVBOpt.MODIFIED = true;
@@ -2287,7 +2422,6 @@ void guiInit(void) {
     sprite_sheet = C2D_SpriteSheetLoadFromMem(sprites_t3x, sprites_t3x_size);
     C2D_SpriteFromSheet(&colour_wheel_sprite, sprite_sheet, sprites_colour_wheel_idx);
     C2D_SpriteSetCenter(&colour_wheel_sprite, 0.5, 0.5);
-    C2D_SpriteSetPos(&colour_wheel_sprite, 176, 112);
     C2D_SpriteFromSheet(&logo_sprite, sprite_sheet, sprites_logo_idx);
     C2D_SpriteSetCenter(&logo_sprite, 0.5, 0.5);
     C2D_SpriteFromSheet(&text_3ds_sprite, sprite_sheet, sprites_3ds_text_idx);
@@ -2392,6 +2526,10 @@ void guiInit(void) {
     STATIC_TEXT(&text_depth, "Depth")
     STATIC_TEXT(&text_cpp_on, "Circle Pad Pro connected.")
     STATIC_TEXT(&text_cpp_off, "No Circle Pad Pro found.")
+    STATIC_TEXT(&text_monochrome, "Monochrome")
+    STATIC_TEXT(&text_multicolor, "Multicolor")
+    STATIC_TEXT(&text_brighten, "Brighten")
+    STATIC_TEXT(&text_brightness_disclaimer, "Actual brightness\nmay vary by game.")
 }
 
 static bool shouldRedrawMenu = true;
