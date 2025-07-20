@@ -63,7 +63,7 @@ bool startPeriodic(threadfunc_t func, int periodNanos, bool altcpu) {
                 threadrunning[i] = false;
                 return false;
             }
-            svcWaitSynchronization(periodArgs.readyEvent, 0);
+            svcWaitSynchronization(periodArgs.readyEvent, INT64_MAX);
             svcCloseHandle(periodArgs.readyEvent);
             return true;
         }
@@ -85,7 +85,7 @@ bool startPeriodicVsync(threadfunc_t func) {
                 threadrunning[i] = false;
                 return false;
             }
-            svcWaitSynchronization(periodArgs.readyEvent, 0);
+            svcWaitSynchronization(periodArgs.readyEvent, INT64_MAX);
             svcCloseHandle(periodArgs.readyEvent);
             return true;
         }
