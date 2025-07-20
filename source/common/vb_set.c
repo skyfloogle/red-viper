@@ -115,6 +115,7 @@ void setDefaults(void) {
     tVBOpt.DPAD_MODE = 0;
     tVBOpt.CUSTOM_CONTROLS = 0;
     setCustomMappingDefaults();
+    tVBOpt.MULTICOL = false;
     tVBOpt.TINT = 0xff0000ff;
     tVBOpt.MTINT[0] = 0;
     tVBOpt.MTINT[1] = tVBOpt.MTINT[2] = tVBOpt.MTINT[3] = 0xff0000ff;
@@ -422,7 +423,7 @@ int loadGameOptions(void) {
 
 void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "[vbopt]\n");
-    fprintf(f, "multicol=%d\n", tVBOpt.TINT);
+    fprintf(f, "multicol=%d\n", tVBOpt.MULTICOL);
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
     fprintf(f, "multitint0=%d\n", tVBOpt.MTINT[0]);
     fprintf(f, "multitint1=%d\n", tVBOpt.MTINT[1]);
