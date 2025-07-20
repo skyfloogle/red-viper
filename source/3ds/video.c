@@ -161,7 +161,7 @@ static int get_colour(int id, int brt_reg) {
 	if (id == 0) {
 		return tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.MTINT[0] : 0;
 	}
-	int brightness = clamp255(brightness_lut[clamp255(brt_reg)] * tVBOpt.STINT[id - 1]);
+	int brightness = clamp255(brightness_lut[clamp255(brt_reg)] * (tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.STINT[id - 1] : 1));
 	int fulltint = tVBOpt.ANAGLYPH ? 0xffffff : tVBOpt.MULTICOL ? tVBOpt.MTINT[id] : tVBOpt.TINT;
 	int col_tint =
 		((brightness * ((fulltint) & 0xff) / 255)) |
