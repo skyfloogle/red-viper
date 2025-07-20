@@ -10,14 +10,9 @@ hardware-accelerated renderer to achieve high performance on the 3DS's limited h
 * 3D support
 * Game saves and savestates are supported
 * 3DS display runs at 50Hz, like the Virtual Boy
-* Fully customizable button mapping, including New 3DS inputs
+* Fully customizable button mapping, including New 3DS inputs and the Circle Pad Pro
 * Virtual right D-Pad or A/B buttons on the touch screen
-* Configurable color filter
-
-Future additions:
-* Circle Pad Pro support
-* More versatile color filter
-* A forwarder to allow loading a specific game from the home menu
+* Configurable color palettes
 
 ## Usage
 
@@ -30,7 +25,7 @@ Future additions:
 </details>
 
 Alternatively, the latest release can be manually downloaded [here](https://github.com/skyfloogle/red-viper/releases),
-provided as a 3DSX (can be loaded with Homebrew Launcher) and as a CIA (can be installed to the home menu with FBI).
+provided as a 3DSX (can be loaded with Homebrew Launcher) and as a CIA (can be installed to the HOME Menu with FBI).
 ROMs can be placed in any desired location on your SD card. The emulator will remember the location of the last ROM you loaded.
 
 ## FAQ
@@ -80,6 +75,16 @@ Once that's all sorted, you can choose between four different make targets:
 * **`make testing`** adds `-O3` to CFLAGS. It will output basic debug info to a connected debugger.
 * **`make debug`** adds `-g -O0` to CFLAGS. It builds without optimizations so it can be debugged more easily.
 * **`make slowdebug`** adds `-g -O0` to CFLAGS. It will output a lot of debug information, which will slow emulation down but might be helpful to debug game-specific issues.
+
+### Forwarders
+
+When building Red Viper as a CIA, a ROM can be bundled in, so that that game takes a space on the HOME Menu.
+This can be done as follows:
+1. Place your ROM in the "romfs" directory.
+2. Write the ROM's filename into the filename.txt file already in that directory (including the .vb extension).
+3. Adjust the app title, description, product code, and unique ID in "resources/AppInfo".
+4. Update "icon.png" and "resources/banner.png".
+5. Build using `make`.
 
 ## License
 
