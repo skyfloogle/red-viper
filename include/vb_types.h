@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #define WORD  uint32_t    //Full 32bit
 #define HWORD uint16_t   //16bit

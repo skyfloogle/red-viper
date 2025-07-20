@@ -1,6 +1,5 @@
 #include <3ds.h>
 #include "utils.h"
-#include "vb_set.h"
 #include <stdio.h>
 
 s32 k_patchSVC(void) {

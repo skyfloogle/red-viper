@@ -87,7 +87,6 @@ int drc_handleInterrupts(WORD cpsr, WORD* PC);
 void drc_relocTable(void);
 void drc_clearCache(void);
 
-WORD* drc_getEntry(WORD loc, exec_block **p_block);
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block);
 exec_block* drc_getNextBlockStruct(void);
 

@@ -4,8 +4,6 @@
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_sound.h"
-#include "vb_types.h"
-#include <math.h>
 
 #define SAMPLE_RATE 50000
 #define CYCLES_PER_SAMPLE (20000000 / SAMPLE_RATE)

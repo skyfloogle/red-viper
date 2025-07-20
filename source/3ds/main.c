@@ -1,4 +1,3 @@
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -16,7 +15,6 @@
 #include "vb_set.h"
 #include "vb_sound.h"
 #include "vb_gui.h"
-#include "rom_db.h"
 #include "replay.h"
 #include "utils.h"
 #include "vblink.h"

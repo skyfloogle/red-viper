@@ -10,7 +10,6 @@
 
 #include "minizip/unzip.h"
 
-#include "v810_ins.h"
 #include "v810_opt.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"

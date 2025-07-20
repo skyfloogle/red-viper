@@ -13,9 +13,6 @@
 #include "vb_gui.h"
 #include "vb_set.h"
 #include "vb_sound.h"
-#include "rom_db.h"
-#include "drc_core.h"
-#include "main.h"
 
 #ifdef __3DS__
 #define GUI_STUB(void) { \

@@ -45,7 +45,6 @@
 #include "v810_mem.h"
 #include "v810_opt.h"
 #include "vb_set.h"
-#include "vb_gui.h"
 #include "vb_types.h"
 
 #include "arm_emit.h"
@@ -67,6 +66,8 @@ int block_pos = 1;
 static v810_instruction *inst_cache;
 static arm_inst *trans_cache;
 arm_inst *inst_ptr;
+
+static WORD* drc_getEntry(WORD loc, exec_block **p_block);
 
 // Maps the most used registers in the block to V810 registers
 static void drc_mapRegs(exec_block* block) {
@@ -2137,7 +2138,7 @@ void drc_clearCache(void) {
 // Returns the entrypoint for the V810 instruction in location loc if it exists
 // and NULL if it needs to be translated. If p_block != NULL it will point to
 // the block structure.
-WORD* drc_getEntry(WORD loc, exec_block **p_block) {
+static WORD* drc_getEntry(WORD loc, exec_block **p_block) {
     unsigned int map_pos;
     exec_block *block;
 
@@ -2210,7 +2211,6 @@ exec_block* drc_getNextBlockStruct(void) {
 
 // Run V810 code until the next frame interrupt
 int drc_run(void) {
-    unsigned int clocks = v810_state->cycles;
     exec_block* cur_block = NULL;
     WORD* entrypoint;
     WORD entry_PC;
@@ -2238,7 +2238,6 @@ int drc_run(void) {
         entry_PC = v810_state->PC;
 
         // Try to find a cached block
-        // TODO: make sure we have enough free space
         entrypoint = drc_getEntry(v810_state->PC, &cur_block);
         // entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc
         if (unlikely(entrypoint == cache_start || entry_PC - cur_block->start_pc > cur_block->pc_range)) {

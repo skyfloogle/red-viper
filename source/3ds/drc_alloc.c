@@ -1,5 +1,4 @@
 #include <stddef.h>
-#include <stdio.h>
 #include "vb_types.h"
 #include "drc_alloc.h"
 

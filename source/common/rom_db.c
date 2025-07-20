@@ -1,6 +1,4 @@
-#include <stdio.h>
 #include "v810_cpu.h"
-#include "vb_types.h"
 #include "v810_mem.h"
 #include "rom_db.h"
 

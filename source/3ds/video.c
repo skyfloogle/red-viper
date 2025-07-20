@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <3ds.h>
 #include <citro3d.h>
@@ -20,7 +18,6 @@
 #include "cpp.h"
 
 #include "final_shbin.h"
-#include "soft_shbin.h"
 
 #define TOP_SCREEN_WIDTH  400
 #define TOP_SCREEN_HEIGHT 240
@@ -157,9 +154,6 @@ shaderProgram_s sFinal;
 
 int uLoc_shading_offset;
 
-DVLB_s *sSoft_dvlb;
-shaderProgram_s sSoft;
-
 bool tileVisible[2048];
 int blankTile;
 
@@ -200,11 +194,6 @@ void video_init(void) {
 	shaderProgramInit(&sFinal);
 	shaderProgramSetVsh(&sFinal, &sFinal_dvlb->DVLE[0]);
 	shaderProgramSetGsh(&sFinal, &sFinal_dvlb->DVLE[1], 3);
-
-	sSoft_dvlb = DVLB_ParseFile((u32 *)soft_shbin, soft_shbin_size);
-	shaderProgramInit(&sSoft);
-	shaderProgramSetVsh(&sSoft, &sSoft_dvlb->DVLE[0]);
-	shaderProgramSetGsh(&sSoft, &sSoft_dvlb->DVLE[1], 4);
 
 	uLoc_shading_offset = shaderInstanceGetUniformLocation(sFinal.geometryShader, "shading_offset");
 

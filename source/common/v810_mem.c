@@ -1,7 +1,6 @@
 #include "v810_cpu.h"
 #include "vb_types.h"
 #include "vb_dsp.h"
-#include "vb_set.h"
 #include "vb_sound.h"
 #include "v810_mem.h"
 

@@ -66,10 +66,9 @@ ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 GIT_HASH := $(shell git log -1 --pretty=format:"%h")
 FULL_VERSION := "$(VERSION) - $(GIT_HASH)"
 
-# FIXME: Remove -fcommon once all multiple definitions are fixed
 CFLAGS	:=	-g -Wall -Wno-format-truncation -Werror -O2 -mword-relocations \
 			-Wno-unused-variable \
-			-ffunction-sections -fcommon \
+			-ffunction-sections \
 			-DVERSION=\"$(FULL_VERSION)\" \
 			$(ARCH)
 

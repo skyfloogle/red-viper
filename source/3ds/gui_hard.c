@@ -3,14 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <time.h>
 #include <malloc.h>
 #include <arpa/inet.h>
-#include <errno.h>
 #include <zlib.h>
 #include "c2d/sprite.h"
 #include "c2d/text.h"
-#include "rom_db.h"
 #include <citro2d.h>
 #include "drc_core.h"
 #include "vb_dsp.h"
@@ -18,10 +15,8 @@
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_sound.h"
-#include "vb_types.h"
 #include "replay.h"
 #include "main.h"
-#include "utils.h"
 #include "periodic.h"
 #include "sprites_t3x.h"
 #include "sprites.h"

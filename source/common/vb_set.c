@@ -9,7 +9,6 @@
 #endif
 
 #include "inih/ini.h"
-#include "vb_types.h"
 #include "vb_set.h"
 #include "vb_dsp.h"
 #include "vb_gui.h"
