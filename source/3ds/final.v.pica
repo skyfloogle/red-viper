@@ -1,11 +1,13 @@
 .out outpos dummy
-.out outtc0 dummy
+.out outtex dummy
+.out outcol dummy
 
 ; basic passthrough, no transforming at all
 
 .entry vmain
 .proc vmain
     mov outpos, v0
-    mov outtc0, v1
+    mov outtex, v1
+    mov outcol, v2
     end
 .end

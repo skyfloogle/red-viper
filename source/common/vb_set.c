@@ -117,6 +117,9 @@ void setDefaults(void) {
     tVBOpt.CUSTOM_CONTROLS = 0;
     setCustomMappingDefaults();
     tVBOpt.TINT = 0xff0000ff;
+    tVBOpt.MTINT[0] = 0;
+    tVBOpt.MTINT[1] = tVBOpt.MTINT[2] = tVBOpt.MTINT[3] = 0xff0000ff;
+    tVBOpt.STINT[0] = tVBOpt.STINT[1] = tVBOpt.STINT[2] = 1.0;
     tVBOpt.SLIDERMODE = SLIDER_3DS;
     tVBOpt.DEFAULT_EYE = 0;
     tVBOpt.PERF_INFO = false;
@@ -175,8 +178,24 @@ static int handler(void* user, const char* section, const char* name,
     VB_OPT* pconfig = (VB_OPT*)user;
 
     #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
-    if (MATCH("vbopt", "tint")) {
+    if (MATCH("vbopt", "multicol")) {
+        pconfig->MULTICOL = atoi(value);
+    } else if (MATCH("vbopt", "tint")) {
         pconfig->TINT = atoi(value);
+    } else if (MATCH("vbopt", "multitint0")) {
+        pconfig->MTINT[0] = atoi(value);
+    } else if (MATCH("vbopt", "multitint1")) {
+        pconfig->MTINT[1] = atoi(value);
+    } else if (MATCH("vbopt", "multitint2")) {
+        pconfig->MTINT[2] = atoi(value);
+    } else if (MATCH("vbopt", "multitint3")) {
+        pconfig->MTINT[3] = atoi(value);
+    } else if (MATCH("vbopt", "tintscale1")) {
+        pconfig->STINT[0] = atof(value);
+    } else if (MATCH("vbopt", "tintscale2")) {
+        pconfig->STINT[1] = atof(value);
+    } else if (MATCH("vbopt", "tintscale3")) {
+        pconfig->STINT[2] = atof(value);
     } else if (MATCH("vbopt", "slidermode")) {
         pconfig->SLIDERMODE = atoi(value);
     } else if (MATCH("vbopt", "default_eye")) {
@@ -404,7 +423,15 @@ int loadGameOptions(void) {
 
 void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "[vbopt]\n");
+    fprintf(f, "multicol=%d\n", tVBOpt.TINT);
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
+    fprintf(f, "multitint0=%d\n", tVBOpt.MTINT[0]);
+    fprintf(f, "multitint1=%d\n", tVBOpt.MTINT[1]);
+    fprintf(f, "multitint2=%d\n", tVBOpt.MTINT[2]);
+    fprintf(f, "multitint3=%d\n", tVBOpt.MTINT[3]);
+    fprintf(f, "tintscale1=%f\n", tVBOpt.STINT[0]);
+    fprintf(f, "tintscale2=%f\n", tVBOpt.STINT[1]);
+    fprintf(f, "tintscale3=%f\n", tVBOpt.STINT[2]);
     fprintf(f, "slidermode=%d\n", tVBOpt.SLIDERMODE);
     fprintf(f, "default_eye=%d\n", tVBOpt.DEFAULT_EYE);
     fprintf(f, "antiflicker=%d\n", tVBOpt.ANTIFLICKER);

@@ -138,8 +138,15 @@ void clearCache(void) {
 
 C3D_RenderTarget *finalScreen[2];
 
+static float *final_vbuf;
+static uint32_t *coltable_vbuf;
+
+static C3D_ProcTex procTex;
+static C3D_ProcTexLut procTexLut;
+static C3D_ProcTexColorLut procTexColorLut;
+
 uint8_t maxRepeat = 0, minRepeat = 0;
-C3D_Tex columnTableTexture[2];
+C3D_Tex columnTableTexture;
 
 u8 brightness_lut[256];
 
@@ -148,39 +155,32 @@ int eye_count = 2;
 DVLB_s *sFinal_dvlb;
 shaderProgram_s sFinal;
 
+int uLoc_shading_offset;
+
 DVLB_s *sSoft_dvlb;
 shaderProgram_s sSoft;
 
 bool tileVisible[2048];
 int blankTile;
 
-void processColumnTable(void) {
-	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
-	uint8_t newMaxRepeat, newMinRepeat;
-	newMinRepeat = newMaxRepeat = table[160];
-	for (int t = 0; t < 2; t++) {
-		for (int i = 161; i < 256; i++) {
-			u8 r = table[t * 512 + i * 2];
-			if (r < newMinRepeat) newMinRepeat = r;
-			if (r > newMaxRepeat) newMaxRepeat = r;
-		}
+static int get_colour(int id, int brt_reg) {
+	if (id == 0) {
+		return tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.MTINT[0] : 0;
 	}
-	minRepeat = newMinRepeat + 1;
-	maxRepeat = newMaxRepeat + 1;
-	if (minRepeat != maxRepeat) {
-		// populate the bottom row of the textures
-		for (int t = 0; t < 2; t++) {
-			uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture[t], 0, NULL);
-			for (int i = 0; i < 96; i++) {
-				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
-					+ 2] = brightness_lut[clamp255(tVIPREG.BRTA * (1 + table[t * 512 + (255 - i) * 2]))];
-				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
-					+ 1] = brightness_lut[clamp255(tVIPREG.BRTB * (1 + table[t * 512 + (255 - i) * 2]))];
-				tex[(((i & ~0xf) << 3) | ((i & 8) << 3) | ((i & 4) << 2) | ((i & 2) << 1) | (i & 1)) * 3
-					+ 0] = brightness_lut[clamp255((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]))];
-			}
-		}
-	}
+	int brightness = clamp255(brightness_lut[clamp255(brt_reg)] * tVBOpt.STINT[id - 1]);
+	int fulltint = tVBOpt.ANAGLYPH ? 0xffffff : tVBOpt.MULTICOL ? tVBOpt.MTINT[id] : tVBOpt.TINT;
+	int col_tint =
+		((brightness * ((fulltint) & 0xff) / 255)) |
+		((brightness * ((fulltint >> 8) & 0xff) / 255) << 8) |
+		((brightness * ((fulltint >> 16) & 0xff) / 255) << 16);
+
+	int black_brightness = 255 - brightness;
+	int black_tint = tVBOpt.ANAGLYPH ? 0 :
+		((black_brightness * ((tVBOpt.MTINT[0]) & 0xff) / 255)) |
+		((black_brightness * ((tVBOpt.MTINT[0] >> 8) & 0xff) / 255) << 8) |
+		((black_brightness * ((tVBOpt.MTINT[0] >> 16) & 0xff) / 255) << 16);
+	
+	return __builtin_arm_uqadd8(col_tint, black_tint);
 }
 
 void video_init(void) {
@@ -199,22 +199,56 @@ void video_init(void) {
 	sFinal_dvlb = DVLB_ParseFile((u32 *)final_shbin, final_shbin_size);
 	shaderProgramInit(&sFinal);
 	shaderProgramSetVsh(&sFinal, &sFinal_dvlb->DVLE[0]);
-	shaderProgramSetGsh(&sFinal, &sFinal_dvlb->DVLE[1], 2);
+	shaderProgramSetGsh(&sFinal, &sFinal_dvlb->DVLE[1], 3);
 
 	sSoft_dvlb = DVLB_ParseFile((u32 *)soft_shbin, soft_shbin_size);
 	shaderProgramInit(&sSoft);
 	shaderProgramSetVsh(&sSoft, &sSoft_dvlb->DVLE[0]);
 	shaderProgramSetGsh(&sSoft, &sSoft_dvlb->DVLE[1], 4);
 
+	uLoc_shading_offset = shaderInstanceGetUniformLocation(sFinal.geometryShader, "shading_offset");
+
+	coltable_vbuf = linearAlloc(4 * 96 * 2);
+	final_vbuf = linearAlloc(sizeof(float) * 4 * 2 * 96 * 2);
+	for (int i = 0; i < 96; i++) {
+		for (int src_eye = 0; src_eye < 2; src_eye++) {
+			final_vbuf[src_eye*8*96+i*8] = 1;
+			final_vbuf[src_eye*8*96+i*8+1] = ((96 - i) * 2 - 96) / 96.0;
+			final_vbuf[src_eye*8*96+i*8+2] = -1;
+			final_vbuf[src_eye*8*96+i*8+3] = ((95 - i) * 2 - 96) / 96.0;
+			final_vbuf[src_eye*8*96+i*8+4] = i * 4 / 512.0;
+			final_vbuf[src_eye*8*96+i*8+5] = src_eye ? 0.5 : 0;
+			final_vbuf[src_eye*8*96+i*8+6] = (i + 1) * 4 / 512.0;
+			final_vbuf[src_eye*8*96+i*8+7] = (src_eye ? 0.5 : 0) + 224.0 / 512;
+		}
+	}
+
+	// we only need 96*2 values, but add some more to avoid the edges
+	C3D_ProcTexInit(&procTex, 0, 96*2+3);
+	C3D_ProcTexClamp(&procTex, GPU_PT_REPEAT, 0);
+	C3D_ProcTexCombiner(&procTex, false, GPU_PT_U, GPU_PT_U);
+	C3D_ProcTexShift(&procTex, GPU_PT_NONE, GPU_PT_NONE);
+	C3D_ProcTexFilter(&procTex, GPU_PT_NEAREST);
+	
+	float linearLutData[129];
+	for (int i = 0; i <= 128; i++) {
+		// reading a 96*2+3 lut from a 256-"pixel" texture
+		// 1/2048 was subtracted to avoid weird noise on hardware
+		linearLutData[i] = (i / 128.0) * 256.0 / (96*2+2) - 1/512.0 - 1/2048.0;
+		// the right half should read from halfway through the lut
+		if (i >= 64) linearLutData[i] -= 43.0 / 256.0 - 3/1024.0 - 1/2048.0;
+	}
+	ProcTexLut_FromArray(&procTexLut, linearLutData);
+
 	C3D_TexInitParams params;
-	params.width = 128;
+	params.width = 256;
 	params.height = 8;
 	params.format = GPU_RGB8;
 	params.type = GPU_TEX_2D;
 	params.onVram = false;
 	params.maxLevel = 0;
 	for (int i = 0; i < 2; i++) {
-		C3D_TexInitWithParams(&columnTableTexture[i], NULL, params);
+		C3D_TexInitWithParams(&columnTableTexture, NULL, params);
 	}
 
     video_hard_init();
@@ -241,6 +275,44 @@ void video_init(void) {
 	startPeriodic(battery_thread, 20000000, true);
 }
 
+void processColumnTable(void) {
+	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
+	uint8_t newMaxRepeat, newMinRepeat;
+	newMinRepeat = newMaxRepeat = table[160];
+	for (int t = 0; t < 2; t++) {
+		for (int i = 161; i < 256; i++) {
+			u8 r = table[t * 512 + i * 2];
+			if (r < newMinRepeat) newMinRepeat = r;
+			if (r > newMaxRepeat) newMaxRepeat = r;
+		}
+	}
+	minRepeat = newMinRepeat + 1;
+	maxRepeat = newMaxRepeat + 1;
+	if (minRepeat != maxRepeat) {
+		u32 coltable_proctex[96*2+1];
+		// populate the bottom row of the textures
+		uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture, 0, NULL);
+		for (int t = 0; t < 2; t++) {
+			for (int i = 0; i < 96; i++) {
+				int col_a = get_colour(1, tVIPREG.BRTA * (1 + table[t * 512 + (255 - i) * 2]));
+				int col_b = get_colour(2, tVIPREG.BRTB * (1 + table[t * 512 + (255 - i) * 2]));
+				int col_c = get_colour(3, (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]));
+
+				u8 *px = &tex[(128*8*t+((((i+1) & ~0xf) << 3) | (((i+1) & 8) << 3) | (((i+1) & 4) << 2) | (((i+1) & 2) << 1) | ((i+1) & 1))) * 3];
+				px[0] = (col_a) & 0xff;
+				px[1] = (col_a >> 8) & 0xff;
+				px[2] = (col_a >> 16);
+
+				coltable_proctex[t*96+i+1] = col_b;
+				coltable_vbuf[t*96+i] = col_c;
+			}
+		}
+		// 1 pixel from the leftmost entry still leaks in
+		coltable_proctex[0] = coltable_proctex[1];
+		ProcTexColorLut_Write(&procTexColorLut, coltable_proctex, 0, 96*2+1);
+	}
+}
+
 static int g_alt_buf = 0;
 static int vip_alt_buf = 0;
 
@@ -264,8 +336,9 @@ void video_render(int alt_buf, bool on_time) {
 
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
-	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
-	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
+	AttrInfo_AddLoader(attrInfo, 0, GPU_FLOAT, 4);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 4);
+	AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4);
 
 	eye_count = tVBOpt.ANAGLYPH || CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
 
@@ -328,8 +401,9 @@ void video_flush(bool default_for_both) {
 
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
-	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
-	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 3);
+	AttrInfo_AddLoader(attrInfo, 0, GPU_FLOAT, 4);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 4);
+	AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4);
 
 	C3D_TexBind(0, &screenTexHard[vip_alt_buf]);
 	C3D_TexBind(1, &screenTexSoft[g_alt_buf]);
@@ -362,50 +436,59 @@ void video_flush(bool default_for_both) {
 	// Draw the softbuf onto the VIP, or vice versa.
 	env = C3D_GetTexEnv(2);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_TEXTURE1, GPU_TEXTURE1);
+	C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_TEXTURE1, GPU_TEXTURE1);
 	if (tDSPCACHE.DDSPDataState[g_alt_buf] != GPU_CLEAR) {
 		if (tVBOpt.VIP_OVER_SOFT) {
-			C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE1, GPU_PREVIOUS, GPU_TEXTURE0);
+			C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE1, GPU_PREVIOUS, GPU_TEXTURE0);
 		}
 		C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_RGB_SRC_COLOR);
 		C3D_TexEnvFunc(env, C3D_RGB, GPU_MULTIPLY_ADD);
-		C3D_TexEnvFunc(env, C3D_Alpha, GPU_ADD);
 	}
+	C3D_TexEnvColor(env, -1);
+	C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
+	C3D_TexEnvBufUpdate(C3D_RGB, 1 << 2);
 
-	// Apply brightness values to the three channels, possibly using the column table.
+	C3D_TexEnvBufColor(get_colour(0, 0));
 	env = C3D_GetTexEnv(3);
 	C3D_TexEnvInit(env);
-	if (minRepeat != maxRepeat) {
-		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE2, 0);
-	} else {
-		C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_CONSTANT, 0);
-		// brightness 1, 2, 3 into r, g, b
-		C3D_TexEnvColor(env,
-			(brightness_lut[clamp255(tVIPREG.BRTA * maxRepeat)]) |
-			(brightness_lut[clamp255(tVIPREG.BRTB * maxRepeat)] << 8) |
-			(brightness_lut[clamp255((tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat)] << 16)
-		);
-	}
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-	C3D_TexEnvBufUpdate(C3D_RGB, 1 << 3);
+	if (minRepeat == maxRepeat)
+		C3D_TexEnvColor(env, get_colour(1, tVIPREG.BRTA * maxRepeat));
+	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_TEXTURE2, GPU_PREVIOUS_BUFFER, GPU_PREVIOUS);
+	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_R);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
 
-	// Merge the first two brightness values.
 	env = C3D_GetTexEnv(4);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PREVIOUS, 0);
-	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_R, GPU_TEVOP_RGB_SRC_G, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
+	if (minRepeat == maxRepeat)
+		C3D_TexEnvColor(env, get_colour(2, tVIPREG.BRTB * maxRepeat));
+	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_TEXTURE3, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER);
+	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_G);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
 
-	// Merge in the third brightness value, then tint (if not anaglyph).
 	env = C3D_GetTexEnv(5);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvColor(env, tVBOpt.TINT);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER, GPU_CONSTANT);
-	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_B, GPU_TEVOP_RGB_SRC_COLOR);
-	C3D_TexEnvFunc(env, C3D_RGB, tVBOpt.ANAGLYPH ? GPU_ADD : GPU_ADD_MULTIPLY);
+	if (minRepeat == maxRepeat)
+		C3D_TexEnvColor(env, get_colour(3, (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat));
+	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_PRIMARY_COLOR, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER);
+	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_B);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
 	
 	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
 	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
+
+	C3D_BufInfo *bufInfo = C3D_GetBufInfo();
+	BufInfo_Init(bufInfo);
+	BufInfo_Add(bufInfo, final_vbuf, sizeof(float)*8, 2, 0x10);
+	BufInfo_Add(bufInfo, coltable_vbuf, 4, 1, 0x2);
+
+	C3D_TexBind(2, &columnTableTexture);
+	C3D_ProcTexBind(2, &procTex);
+	C3D_ProcTexLutBind(GPU_LUT_RGBMAP, &procTexLut);
+	C3D_ProcTexLutBind(GPU_LUT_ALPHAMAP, &procTexLut);
+	C3D_ProcTexLutBind(GPU_LUT_NOISE, &procTexLut);
+	C3D_ProcTexColorLutBind(&procTexColorLut);
+
+	C3D_AlphaTest(false, GPU_GREATER, 0);
 
 	for (int dst_eye = 0; dst_eye < (default_for_both ? 2 : eye_count); dst_eye++) {
 		int src_eye = default_for_both ? orig_eye : !tVBOpt.ANAGLYPH && CONFIG_3D_SLIDERSTATE == 0 ? tVBOpt.DEFAULT_EYE : dst_eye;
@@ -417,16 +500,15 @@ void video_flush(bool default_for_both) {
 		C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
 		C3D_FrameDrawOn(target);
 		C3D_SetViewport(viewportY, viewportX+depthOffset, VIEWPORT_HEIGHT, VIEWPORT_WIDTH);
-		C3D_TexBind(2, &columnTableTexture[src_eye]);
-		C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
-		C3D_ImmSendAttrib(1, 1, -1, -1);
-		C3D_ImmSendAttrib(0, src_eye ? 0.5 : 0, 384.0 / 512, (src_eye ? 0.5 : 0) + 224.0 / 512);
-		C3D_ImmDrawEnd();
+		C3D_FVUnifSet(GPU_GEOMETRY_SHADER, uLoc_shading_offset, (src_eye ? 0.5 : 0) + 1/256.0, 0, 0, 0);
+		C3D_DrawArrays(GPU_GEOMETRY_PRIM, src_eye*96, 96);
 	}
 	
 	if (tVBOpt.ANAGLYPH) {
 		C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
 	}
+
+	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	for (int i = 0; i <= 5; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
 }

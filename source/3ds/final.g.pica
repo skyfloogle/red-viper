@@ -1,6 +1,9 @@
 .gsh point c0
 
-.constf const1(1.0, 0.0, -1, 1)
+.fvec shading_offset
+
+.constf const1(0.5, 0, -1, 1)
+.constf rad255(0.00392156862745, 0.00392156862745, 0.00392156862745, 1)
 
 ; for final screen output
 ; texcoord 0 (vip) is mirrored diagonally for 3ds screen
@@ -8,16 +11,19 @@
 ; texcoord 2 (column table) is the input texcoord but only the bottom
 ; v0: top left pos / bottom right pos
 ; v1: top left texcoord / bottom right texcoord
+; v2: vertex colour
 
 .out outpos position
 .out viptc texcoord0
 .out softtc texcoord1
 .out coltc texcoord2
+.out vcol color
 
 .entry gmain
 .proc gmain
     ; z=-1 and w=1 are necessary for position output
     mov r0, const1
+    mul r4, rad255, v2
     ; top left
     setemit 0
     mov r0.xy, v0.xy
@@ -27,9 +33,11 @@
     mov r2.y, v1.x
     mov softtc, r2
     ; texcoord shading: bottom left (v1.x, 0)
-    mov r1, v1
-    mov r1.y, const1.x
+    mov r3, const1
+    mad r1.x, r3.x, v1.x, shading_offset.x
+    mov r1.y, const1.w
     mov coltc, r1
+    mov vcol, r4
     emit
 
     ; bottom left
@@ -48,6 +56,7 @@
     mov r0.x, v0.z
     mov r0.y, v0.y
     mov outpos, r0
+    mov vcol, r4
     emit
 
     ; top right
@@ -65,8 +74,11 @@
     mov r2.y, v1.z
     mov softtc, r2
     ; texcoord shading: (v3.x, 0)
-    mov r1.y, const1.x
+    mov r2, const1
+    mad r1.x, r1.x, r2.x, shading_offset.x
+    mov r1.y, const1.w
     mov coltc, r1
+    mov vcol, r4
     emit
 
     ; bottom right
@@ -81,6 +93,7 @@
     mov softtc, r0
     ; texcoord shading: reuse previous
     mov coltc, r1
+    mov vcol, r4
     emit
 
     end
