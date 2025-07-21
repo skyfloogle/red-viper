@@ -342,10 +342,10 @@ void video_render(int alt_buf, bool on_time) {
 		}
 
 		if (tVBOpt.RENDERMODE < 2) {
-			video_hard_render(vip_alt_buf);
+			video_hard_render(tVBOpt.DOUBLE_BUFFER ? !alt_buf : 0);
 		} else {
-			C3D_RenderTargetClear(screenTargetHard[vip_alt_buf], C3D_CLEAR_ALL, 0, 0);
-			video_soft_render(alt_buf);
+			C3D_RenderTargetClear(screenTargetHard[!vip_alt_buf], C3D_CLEAR_ALL, 0, 0);
+			video_soft_render(!alt_buf);
 		}
 
 		// we need to have this cache during rendering

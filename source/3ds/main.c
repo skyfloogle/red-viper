@@ -141,6 +141,8 @@ int main(void) {
         // Display a frame, only after the right number of 'skips'
         // Also don't display if drawing is still ongoing
         if(tVIPREG.tFrame == tVIPREG.FRMCYC && !tVIPREG.drawing) {
+            if (tVIPREG.XPCTRL & XPEN) if ((unsigned)(++tVIPREG.tFrameBuffer - 1) >= 2) tVIPREG.tFrameBuffer = 1;
+            // displayed fb
             int alt_buf = (tVIPREG.tFrameBuffer) % 2;
             // pass C3D_FRAME_NONBLOCK to enable frameskip, 0 to disable
             // it's only needed for 1 second in the mario clash intro afaik
@@ -182,15 +184,15 @@ int main(void) {
             }
             if (tVBOpt.RENDERMODE < 2) {
                 if (tVIPREG.XPCTRL & 0x0002) {
-                    if (tDSPCACHE.DDSPDataState[alt_buf] != GPU_CLEAR) {
-                        memset(V810_DISPLAY_RAM.pmemory + 0x8000 * alt_buf, 0, 0x6000);
-                        memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * alt_buf, 0, 0x6000);
+                    if (tDSPCACHE.DDSPDataState[!alt_buf] != GPU_CLEAR) {
+                        memset(V810_DISPLAY_RAM.pmemory + 0x8000 * !alt_buf, 0, 0x6000);
+                        memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * !alt_buf, 0, 0x6000);
                         for (int i = 0; i < 64; i++) {
-                            tDSPCACHE.SoftBufWrote[alt_buf][i].min = 0xff;
-                            tDSPCACHE.SoftBufWrote[alt_buf][i].max = 0;
+                            tDSPCACHE.SoftBufWrote[!alt_buf][i].min = 0xff;
+                            tDSPCACHE.SoftBufWrote[!alt_buf][i].max = 0;
                         }
-                        memset(tDSPCACHE.OpaquePixels.u32[alt_buf], 0, sizeof(tDSPCACHE.OpaquePixels.u32[alt_buf]));
-                        tDSPCACHE.DDSPDataState[alt_buf] = CPU_CLEAR;
+                        memset(tDSPCACHE.OpaquePixels.u32[!alt_buf], 0, sizeof(tDSPCACHE.OpaquePixels.u32[!alt_buf]));
+                        tDSPCACHE.DDSPDataState[!alt_buf] = CPU_CLEAR;
                     }
                 }
             }
