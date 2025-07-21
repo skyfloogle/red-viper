@@ -342,6 +342,9 @@ void v810_reset(void) {
     // we don't reset load_sram so it will be non-null if there was sram to load
     replay_reset(is_sram || (bool)load_sram);
 
+    // Golf might set this to 2, so reset it here.
+    tVBOpt.RENDERMODE = 1;
+
     tVBOpt.VIP_OVER_SOFT = (
         memcmp(tVBOpt.GAME_ID, "01VREE", 6) == 0 // Red Alarm (U)
         || memcmp(tVBOpt.GAME_ID, "E4VREJ", 6) == 0 // Red Alarm (J)
@@ -476,8 +479,6 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
                         // pre-0.9.7 behaviour
                         tVIPREG.frametime = 137216;
                     }
-                    tVIPREG.tFrameBuffer++;
-                    if ((tVIPREG.tFrameBuffer < 1) || (tVIPREG.tFrameBuffer > 2)) tVIPREG.tFrameBuffer = 1;
                     tVIPREG.XPSTTS = XPEN | (tVIPREG.tFrameBuffer<<2) | SBOUT;
                 }
             }
