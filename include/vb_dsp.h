@@ -131,7 +131,7 @@ typedef struct {
 int videoProcessingTime(void);
 
 void video_init(void);
-void video_render(int alt_buf, bool on_time);
+void video_render(int displayed_fb, bool on_time);
 void video_flush(bool left_for_both);
 void video_quit(void);
 
@@ -167,15 +167,15 @@ extern shaderProgram_s sFinal;
 extern C3D_Tex screenTexHard[2];
 extern C3D_RenderTarget *screenTargetHard[2];
 void video_hard_init(void);
-void video_hard_render(int alt_buf);
+void video_hard_render(int drawn_fb);
 void update_texture_cache_hard(void);
 
 // video_soft
 extern C3D_Tex screenTexSoft[2];
 void video_soft_init(void);
-void video_soft_render(int alt_buf);
+void video_soft_render(int drawn_fb);
 void update_texture_cache_soft(void);
-void video_soft_to_texture(int alt_buf);
+void video_soft_to_texture(int displayed_fb);
 
 #endif
 

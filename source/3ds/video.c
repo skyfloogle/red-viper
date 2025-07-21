@@ -303,18 +303,18 @@ void processColumnTable(void) {
 	}
 }
 
-static int g_alt_buf = 0;
-static int vip_alt_buf = 0;
+static int g_displayed_fb = 0;
+static int vip_displayed_fb = 0;
 
-void video_render(int alt_buf, bool on_time) {
+void video_render(int displayed_fb, bool on_time) {
 	if (tVBOpt.ANTIFLICKER && on_time) video_flush(false);
 	
-	g_alt_buf = alt_buf;
-	vip_alt_buf = tVBOpt.DOUBLE_BUFFER ? alt_buf : 0;
+	g_displayed_fb = displayed_fb;
+	vip_displayed_fb = tVBOpt.DOUBLE_BUFFER ? displayed_fb : 0;
 
 	if (tVBOpt.RENDERMODE > 0) {
 		// postproc (can be done early)
-		video_soft_to_texture(alt_buf);
+		video_soft_to_texture(displayed_fb);
 	}
 
 	if (tVBOpt.DOUBLE_BUFFER) {
@@ -342,10 +342,10 @@ void video_render(int alt_buf, bool on_time) {
 		}
 
 		if (tVBOpt.RENDERMODE < 2) {
-			video_hard_render(tVBOpt.DOUBLE_BUFFER ? !alt_buf : 0);
+			video_hard_render(tVBOpt.DOUBLE_BUFFER ? !displayed_fb : 0);
 		} else {
-			C3D_RenderTargetClear(screenTargetHard[!vip_alt_buf], C3D_CLEAR_ALL, 0, 0);
-			video_soft_render(!alt_buf);
+			C3D_RenderTargetClear(screenTargetHard[!vip_displayed_fb], C3D_CLEAR_ALL, 0, 0);
+			video_soft_render(!displayed_fb);
 		}
 
 		// we need to have this cache during rendering
@@ -395,14 +395,14 @@ void video_flush(bool default_for_both) {
 	AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 4);
 	AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4);
 
-	C3D_TexBind(0, &screenTexHard[vip_alt_buf]);
-	C3D_TexBind(1, &screenTexSoft[g_alt_buf]);
+	C3D_TexBind(0, &screenTexHard[vip_displayed_fb]);
+	C3D_TexBind(1, &screenTexSoft[g_displayed_fb]);
 	C3D_BindProgram(&sFinal);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
 	C3D_TexEnv *env;
 	// If drawing VIP on top of softbuf, create a mask of the VIP graphics by adding all 3 channels.
-	if ((tDSPCACHE.DDSPDataState[g_alt_buf] != GPU_CLEAR && tVBOpt.VIP_OVER_SOFT)) {
+	if ((tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR && tVBOpt.VIP_OVER_SOFT)) {
 		env = C3D_GetTexEnv(0);
 		C3D_TexEnvInit(env);
 		C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, 0);
@@ -417,7 +417,7 @@ void video_flush(bool default_for_both) {
 		C3D_TexEnvInit(C3D_GetTexEnv(0));
 		env = C3D_GetTexEnv(1);
 		C3D_TexEnvInit(env);
-		if (tDSPCACHE.DDSPDataState[g_alt_buf] != GPU_CLEAR) {
+		if (tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR) {
 			// Appears to be necessary, I wish I could tell you why.
 			C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE1, 0, 0);
 		}
@@ -427,7 +427,7 @@ void video_flush(bool default_for_both) {
 	env = C3D_GetTexEnv(2);
 	C3D_TexEnvInit(env);
 	C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_TEXTURE1, GPU_TEXTURE1);
-	if (tDSPCACHE.DDSPDataState[g_alt_buf] != GPU_CLEAR) {
+	if (tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR) {
 		if (tVBOpt.VIP_OVER_SOFT) {
 			C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE1, GPU_PREVIOUS, GPU_TEXTURE0);
 		}

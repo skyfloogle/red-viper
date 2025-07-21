@@ -481,7 +481,7 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
                         // pre-0.9.7 behaviour
                         tVIPREG.frametime = 137216;
                     }
-                    tVIPREG.XPSTTS = XPEN | (tVIPREG.tFrameBuffer<<2) | SBOUT;
+                    tVIPREG.XPSTTS = XPEN | ((!tVIPREG.tDisplayedFB+1)<<2) | SBOUT;
                 }
             }
         }
@@ -502,13 +502,13 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
             if (disptime < 60000) {
             } else if (disptime < 160000) {
                 // LxBSY high
-                dpstts_new |= tVIPREG.tFrameBuffer & 1 ? L1BSY : L0BSY;
+                dpstts_new |= tVIPREG.tDisplayedFB & 1 ? L1BSY : L0BSY;
             } else if (disptime < 260000) {
                 // LxBSY low
                 dpstts_new &= ~DPBSY;
             } else if (disptime < 360000) {
                 // RxBSY high
-                dpstts_new |= tVIPREG.tFrameBuffer & 1 ? R1BSY : R0BSY;
+                dpstts_new |= tVIPREG.tDisplayedFB & 1 ? R1BSY : R0BSY;
             } else {
                 // RxBSY low
                 dpstts_new &= ~DPBSY;

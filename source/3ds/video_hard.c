@@ -309,8 +309,8 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 	return vcount;
 }
 
-static void draw_affine_layer(int alt_buf, avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
-	C3D_FrameDrawOn(screenTargetHard[alt_buf]);
+static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
+	C3D_FrameDrawOn(screenTargetHard[drawn_fb]);
 	C3D_BindProgram(&sAffine);
 
 	if (!use_masks) {
@@ -368,8 +368,8 @@ static void draw_affine_layer(int alt_buf, avertex *vbufs[], C3D_Tex **textures,
 	setRegularDrawing();
 }
 
-void video_hard_render(int alt_buf) {
-	C3D_FrameDrawOn(screenTargetHard[alt_buf]);
+void video_hard_render(int drawn_fb) {
+	C3D_FrameDrawOn(screenTargetHard[drawn_fb]);
 
 	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
 	int end_eye = start_eye + eye_count;
@@ -782,7 +782,7 @@ void video_hard_render(int alt_buf) {
 							bgmap_offsets[tex_count / 2].c[3 - 2 * (tex_count % 2) - 1] = base_v >> 9;
 							textures[tex_count] = &tileMapCache[cache_id].tex;
 							if (++tex_count == (use_masks ? 2 : 3)) {
-								draw_affine_layer(alt_buf, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
+								draw_affine_layer(drawn_fb, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 								tex_count = 0;
 							}
 						}
@@ -790,7 +790,7 @@ void video_hard_render(int alt_buf) {
 				}
 				// clean up any leftovers
 				if (tex_count != 0) {
-					draw_affine_layer(alt_buf, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
+					draw_affine_layer(drawn_fb, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 				}
 			}
 		} else {

@@ -259,7 +259,7 @@ int emulation_lstate(int state) {
         READ_VAR(new_vipreg.FRMCYC);
         READ_VAR(new_vipreg.XPSTTS);
         READ_VAR(new_vipreg.XPCTRL);
-        READ_VAR(new_vipreg.tFrameBuffer);
+        READ_VAR(new_vipreg.tDisplayedFB);
         READ_VAR(new_vipreg.tFrame);
         READ_VAR(new_vipreg.SPT);
         READ_VAR(new_vipreg.GPLT);
@@ -290,7 +290,7 @@ int emulation_lstate(int state) {
         READ_VAR(new_vipreg.FRMCYC);
         READ_VAR(new_vipreg.XPSTTS);
         READ_VAR(new_vipreg.XPCTRL);
-        READ_VAR(new_vipreg.tFrameBuffer);
+        READ_VAR(new_vipreg.tDisplayedFB);
         READ_VAR(new_vipreg.tFrame);
         READ_VAR(new_vipreg.SPT);
         READ_VAR(new_vipreg.GPLT);
@@ -309,11 +309,12 @@ int emulation_lstate(int state) {
         goto bail;
     }
     //Validity checks
-    if (new_vipreg.tFrameBuffer > 2 ||
+    if (new_vipreg.tDisplayedFB > 2 ||
         new_vipreg.rowcount > 0x21
     ) {
         goto bail;
     }
+    new_vipreg.tDisplayedFB %= 2;
 
     //Load hardware control registers
     V810_HREGDAT new_hreg = {0};
@@ -396,7 +397,7 @@ int emulation_lstate(int state) {
 
     clearCache();
     C3D_FrameBegin(0);
-    video_render((tVIPREG.tFrameBuffer) % 2, false);
+    video_render((tVIPREG.tDisplayedFB) % 2, false);
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     C3D_FrameEnd(0);
 

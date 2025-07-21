@@ -18,7 +18,7 @@ typedef struct{
     HWORD FRMCYC;
     HWORD XPSTTS;
     HWORD XPCTRL;
-    HWORD tFrameBuffer;   //not publicly visible
+    HWORD tDisplayedFB;
     HWORD tFrame;
     HWORD SPT[4];
     HWORD GPLT[4];

@@ -76,13 +76,13 @@ void update_texture_cache_soft(void) {
     }
 }
 
-void video_soft_render(int alt_buf) {
-    tDSPCACHE.DDSPDataState[alt_buf] = CPU_WROTE;
+void video_soft_render(int drawn_fb) {
+    tDSPCACHE.DDSPDataState[drawn_fb] = CPU_WROTE;
     uint32_t fb_size;
-    uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[alt_buf], 0, &fb_size);
+    uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[drawn_fb], 0, &fb_size);
     memset(out_fb, 0, fb_size);
     for (int eye = 0; eye < 2; eye++) {
-        uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * alt_buf);
+        uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
         memset(fb, 0, 0x8000);
 	    u16 *windows = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
         for (int wnd = 31; wnd >= 0; wnd--) {
@@ -131,7 +131,7 @@ void video_soft_render(int alt_buf) {
 
                     for (int x = gx; x < gx + w && x < 384; x += 8) {
                         if (x < 0) continue;
-                        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][x / 8];
+                        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[drawn_fb][x / 8];
                         int min = gy / 8;
                         if (min < 0) min = 0;
                         if (column->min > min) column->min = min;
@@ -187,11 +187,11 @@ void video_soft_render(int alt_buf) {
 }
 
 // using a template to avoid checking a boolean in a hot loop
-template<bool copy_alpha> void video_soft_to_texture_inner(int alt_buf) {
+template<bool copy_alpha> void video_soft_to_texture_inner(int displayed_fb) {
     uint32_t fb_size;
-    uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[alt_buf], 0, &fb_size);
-    if (tDSPCACHE.DDSPDataState[alt_buf] == CPU_WROTE) {
-        tDSPCACHE.DDSPDataState[alt_buf] = GPU_WROTE;
+    uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[displayed_fb], 0, &fb_size);
+    if (tDSPCACHE.DDSPDataState[displayed_fb] == CPU_WROTE) {
+        tDSPCACHE.DDSPDataState[displayed_fb] = GPU_WROTE;
     } else {
         return;
     }
@@ -201,7 +201,7 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int alt_buf) {
         for (int tx = 0; tx < 384 / 8; tx++) {
             uint32_t *column_ptr = &out_fb[8 * 8 / 4 * 2 * (eye * 256 / 8 + 512 / 8 * (512 / 8 - 1 - tx))];
             int ymin, ymax;
-            SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][tx];
+            SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[displayed_fb][tx];
             ymin = column->min;
             ymax = column->max;
             if (ymin > ymax) {
@@ -211,8 +211,8 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int alt_buf) {
 
             for (int ty = ymin; ty < ymax; ty++) {
                 uint32_t *out_tile = &column_ptr[8 * 8 / 4 * 2 * (1 + ty)];
-                uint16_t *in_fb_ptr = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * alt_buf + tx * (256 / 4 * 8) + ty * 2);
-                uint16_t *in_alpha_ptr = &tDSPCACHE.OpaquePixels.u16[alt_buf][eye][tx * (256 / 4 * 8) / 2 + ty];
+                uint16_t *in_fb_ptr = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * displayed_fb + tx * (256 / 4 * 8) + ty * 2);
+                uint16_t *in_alpha_ptr = &tDSPCACHE.OpaquePixels.u16[displayed_fb][eye][tx * (256 / 4 * 8) / 2 + ty];
 
                 for (int i = 0; i <= 2; i += 2) {
                     uint32_t slice1, slice2, slice1_alpha, slice2_alpha;
@@ -264,16 +264,16 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int alt_buf) {
     }
     // reset column cache for any following writes
     for (int tx = 0; tx < 384 / 8; tx++) {
-        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][tx];
+        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[displayed_fb][tx];
         column->min = 0xff;
         column->max = 0;
     }
 }
 
-void video_soft_to_texture(int alt_buf) {
+void video_soft_to_texture(int displayed_fb) {
     if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) {
-        video_soft_to_texture_inner<true>(alt_buf);
+        video_soft_to_texture_inner<true>(displayed_fb);
     } else {
-        video_soft_to_texture_inner<false>(alt_buf);
+        video_soft_to_texture_inner<false>(displayed_fb);
     }
 }

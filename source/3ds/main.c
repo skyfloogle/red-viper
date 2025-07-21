@@ -122,7 +122,7 @@ int main(void) {
                 clearCache();
                 frame = 0;
                 tVIPREG.tFrame = 0;
-                tVIPREG.tFrameBuffer = 0;
+                tVIPREG.tDisplayedFB = 0;
             }
             if (guiop & AKILL) {
                 clearCache();
@@ -141,9 +141,8 @@ int main(void) {
         // Display a frame, only after the right number of 'skips'
         // Also don't display if drawing is still ongoing
         if(tVIPREG.tFrame == tVIPREG.FRMCYC && !tVIPREG.drawing) {
-            if (tVIPREG.XPCTRL & XPEN) if ((unsigned)(++tVIPREG.tFrameBuffer - 1) >= 2) tVIPREG.tFrameBuffer = 1;
-            // displayed fb
-            int alt_buf = (tVIPREG.tFrameBuffer) % 2;
+            if (tVIPREG.XPCTRL & XPEN) tVIPREG.tDisplayedFB = !tVIPREG.tDisplayedFB;
+            int displayed_fb = tVIPREG.tDisplayedFB;
             // pass C3D_FRAME_NONBLOCK to enable frameskip, 0 to disable
             // it's only needed for 1 second in the mario clash intro afaik
             // so just bite the bullet and do the frameskip, rather that than slowdown
@@ -174,7 +173,7 @@ int main(void) {
 
                 // if we just had a lagframe on which drawing happened, don't draw
                 if ((tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {
-                    video_render(alt_buf, on_time);
+                    video_render(displayed_fb, on_time);
                     on_time = true;
                 } else if (on_time) {
                     if (tVBOpt.ANTIFLICKER) video_flush(false);
@@ -184,18 +183,18 @@ int main(void) {
             }
             if (tVBOpt.RENDERMODE < 2) {
                 if (tVIPREG.XPCTRL & 0x0002) {
-                    if (tDSPCACHE.DDSPDataState[!alt_buf] != GPU_CLEAR) {
-                        memset(V810_DISPLAY_RAM.pmemory + 0x8000 * !alt_buf, 0, 0x6000);
-                        memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * !alt_buf, 0, 0x6000);
+                    if (tDSPCACHE.DDSPDataState[!displayed_fb] != GPU_CLEAR) {
+                        memset(V810_DISPLAY_RAM.pmemory + 0x8000 * !displayed_fb, 0, 0x6000);
+                        memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * !displayed_fb, 0, 0x6000);
                         for (int i = 0; i < 64; i++) {
-                            tDSPCACHE.SoftBufWrote[!alt_buf][i].min = 0xff;
-                            tDSPCACHE.SoftBufWrote[!alt_buf][i].max = 0;
+                            tDSPCACHE.SoftBufWrote[!displayed_fb][i].min = 0xff;
+                            tDSPCACHE.SoftBufWrote[!displayed_fb][i].max = 0;
                         }
-                        memset(tDSPCACHE.OpaquePixels.u32[!alt_buf], 0, sizeof(tDSPCACHE.OpaquePixels.u32[!alt_buf]));
+                        memset(tDSPCACHE.OpaquePixels.u32[!displayed_fb], 0, sizeof(tDSPCACHE.OpaquePixels.u32[!displayed_fb]));
                         uint32_t fb_size;
-                        uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[!alt_buf], 0, &fb_size);
+                        uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[!displayed_fb], 0, &fb_size);
                         memset(out_fb, 0, fb_size);
-                        tDSPCACHE.DDSPDataState[!alt_buf] = GPU_CLEAR;
+                        tDSPCACHE.DDSPDataState[!displayed_fb] = GPU_CLEAR;
                     }
                 }
             }
