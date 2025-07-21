@@ -353,7 +353,9 @@ void v810_reset(void) {
     // Double buffering is more accurate, but adds 1 frame of input lag.
     tVBOpt.DOUBLE_BUFFER =
         memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0 || // Test Chamber
-        memcmp(tVBOpt.GAME_ID, "01VBHE", 6) == 0; // Bound High
+        memcmp(tVBOpt.GAME_ID, "01VBHE", 6) == 0 || // Bound High
+        memcmp(tVBOpt.GAME_ID, "01VREE", 6) == 0 || // Red Alarm (U)
+        memcmp(tVBOpt.GAME_ID, "E4VREJ", 6) == 0; // Red Alarm (J)
 }
 
 void predictEvent(bool increment) {
