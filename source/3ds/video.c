@@ -167,6 +167,7 @@ static int get_colour(int id, int brt_reg) {
 		((brightness * ((fulltint) & 0xff) / 255)) |
 		((brightness * ((fulltint >> 8) & 0xff) / 255) << 8) |
 		((brightness * ((fulltint >> 16) & 0xff) / 255) << 16);
+	if (tVBOpt.ANAGLYPH || !tVBOpt.MULTICOL) return col_tint;
 
 	int black_brightness = 255 - brightness;
 	int black_tint = tVBOpt.ANAGLYPH ? 0 :
@@ -288,9 +289,9 @@ void processColumnTable(void) {
 				int col_c = get_colour(3, (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]));
 
 				u8 *px = &tex[(128*8*t+((((i+1) & ~0xf) << 3) | (((i+1) & 8) << 3) | (((i+1) & 4) << 2) | (((i+1) & 2) << 1) | ((i+1) & 1))) * 3];
-				px[0] = (col_a) & 0xff;
+				px[2] = (col_a) & 0xff;
 				px[1] = (col_a >> 8) & 0xff;
-				px[2] = (col_a >> 16);
+				px[0] = (col_a >> 16);
 
 				coltable_proctex[t*96+i+1] = col_b;
 				coltable_vbuf[t*96+i] = col_c;
