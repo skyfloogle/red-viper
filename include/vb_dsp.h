@@ -48,7 +48,6 @@ extern "C" {
 typedef enum {
     CPU_WROTE,
     GPU_WROTE,
-    CPU_CLEAR,
     GPU_CLEAR,
 } DDSPSTATE;
 

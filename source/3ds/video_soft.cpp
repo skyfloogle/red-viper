@@ -78,6 +78,9 @@ void update_texture_cache_soft(void) {
 
 void video_soft_render(int alt_buf) {
     tDSPCACHE.DDSPDataState[alt_buf] = CPU_WROTE;
+    uint32_t fb_size;
+    uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[alt_buf], 0, &fb_size);
+    memset(out_fb, 0, fb_size);
     for (int eye = 0; eye < 2; eye++) {
         uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * alt_buf);
         memset(fb, 0, 0x8000);
@@ -124,6 +127,18 @@ void video_soft_render(int alt_buf) {
 
                     if ((gy & 7) || (my & 7)) {
                         dprintf(0, "unaligned tiles not supported in software rendering\n");
+                    }
+
+                    for (int x = gx; x < gx + w && x < 384; x += 8) {
+                        if (x < 0) continue;
+                        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][x / 8];
+                        int min = gy / 8;
+                        if (min < 0) min = 0;
+                        if (column->min > min) column->min = min;
+                        int max = (gy + h) / 8;
+                        if (max < 0) max = 0;
+                        if (max > 31) max = 31;
+                        if (column->max < max) column->max = max;
                     }
 
                     for (int x = 0; x < w; x++) {
@@ -178,10 +193,6 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int alt_buf) {
     if (tDSPCACHE.DDSPDataState[alt_buf] == CPU_WROTE) {
         tDSPCACHE.DDSPDataState[alt_buf] = GPU_WROTE;
     } else {
-        if (tDSPCACHE.DDSPDataState[alt_buf] == CPU_CLEAR) {
-            tDSPCACHE.DDSPDataState[alt_buf] = GPU_CLEAR;
-            memset(out_fb, 0, fb_size);
-        }
         return;
     }
     // copy framebuffer
@@ -190,20 +201,13 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int alt_buf) {
         for (int tx = 0; tx < 384 / 8; tx++) {
             uint32_t *column_ptr = &out_fb[8 * 8 / 4 * 2 * (eye * 256 / 8 + 512 / 8 * (512 / 8 - 1 - tx))];
             int ymin, ymax;
-            if (tVBOpt.RENDERMODE < 2) {
-                SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][tx];
-                ymin = column->min;
-                ymax = column->max;
-                if (ymin > ymax) {
-                    memset(column_ptr, 0, 8 * 8 * 2 * (224 / 8));
-                    continue;
-                }
-                memset(column_ptr, 0, 8 * 8 * 2 * ymin);
-                if (++ymax > 224 / 8) ymax = 224 / 8;
-            } else {
-                ymin = 0;
-                ymax = 224 / 8;
+            SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][tx];
+            ymin = column->min;
+            ymax = column->max;
+            if (ymin > ymax) {
+                continue;
             }
+            if (++ymax > 224 / 8) ymax = 224 / 8;
 
             for (int ty = ymin; ty < ymax; ty++) {
                 uint32_t *out_tile = &column_ptr[8 * 8 / 4 * 2 * (1 + ty)];
@@ -256,8 +260,13 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int alt_buf) {
                     #undef SQUARE
                 }
             }
-            memset(column_ptr + 8 * 8 / 4 * 2 * ymax, 0, 8 * 8 * 2 * (224 / 8 - ymax));
         }
+    }
+    // reset column cache for any following writes
+    for (int tx = 0; tx < 384 / 8; tx++) {
+        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[alt_buf][tx];
+        column->min = 0xff;
+        column->max = 0;
     }
 }
 
