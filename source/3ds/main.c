@@ -149,7 +149,7 @@ int main(void) {
                 // yeah
                 if (memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 && v810_state->PC == 0x071ffe10 && v810_state->S_REG[0] == 0x07005c82 && tVIPREG.tDisplayedFB == 1) {
                     tVIPREG.tDisplayedFB = 0;
-                } else if (memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 && v810_state->PC == 0x071ffe10 && v810_state->S_REG[0] == 0x0700597a && tVIPREG.tDisplayedFB == 1) {
+                } else if (memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0 && v810_state->PC == 0x071ffe10 && v810_state->S_REG[0] == 0x0700597a && tVIPREG.tDisplayedFB == 1) {
                     tVIPREG.tDisplayedFB = 0;
                 }
             }
