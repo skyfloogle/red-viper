@@ -141,7 +141,18 @@ int main(void) {
         // Display a frame, only after the right number of 'skips'
         // Also don't display if drawing is still ongoing
         if(tVIPREG.tFrame == tVIPREG.FRMCYC && !tVIPREG.drawing) {
-            if (tVIPREG.XPCTRL & XPEN) tVIPREG.tDisplayedFB = !tVIPREG.tDisplayedFB;
+            if (tVIPREG.XPCTRL & XPEN) {
+                tVIPREG.tDisplayedFB = !tVIPREG.tDisplayedFB;
+            } else {
+                // you know when there's this really rough bug you can't figure out
+                // and release day is today
+                // yeah
+                if (memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 && v810_state->PC == 0x071ffe10 && v810_state->S_REG[0] == 0x07005c82 && tVIPREG.tDisplayedFB == 1) {
+                    tVIPREG.tDisplayedFB = 0;
+                } else if (memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 && v810_state->PC == 0x071ffe10 && v810_state->S_REG[0] == 0x0700597a && tVIPREG.tDisplayedFB == 1) {
+                    tVIPREG.tDisplayedFB = 0;
+                }
+            }
             int displayed_fb = tVIPREG.tDisplayedFB;
             // pass C3D_FRAME_NONBLOCK to enable frameskip, 0 to disable
             // it's only needed for 1 second in the mario clash intro afaik
