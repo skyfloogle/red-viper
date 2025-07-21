@@ -1677,10 +1677,10 @@ static void multicolour_wheel(int colour_id) {
 
 static void multicolour_settings(int initial_button) {
     LOOP_BEGIN(multicolour_settings_buttons, initial_button);
-        C2D_DrawRectSolid(16 + 260, 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[0]);
-        C2D_DrawRectSolid(16 + 260, 48 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[1]);
-        C2D_DrawRectSolid(16 + 260, 48 * 2 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[2]);
-        C2D_DrawRectSolid(16 + 260, 48 * 3 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[3]);
+        C2D_DrawRectSolid(16 + 240 + 8, 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[0]);
+        C2D_DrawRectSolid(16 + 240 + 8, 48 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[1]);
+        C2D_DrawRectSolid(16 + 240 + 8, 48 * 2 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[2]);
+        C2D_DrawRectSolid(16 + 240 + 8, 48 * 3 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[3]);
     LOOP_END(multicolour_settings_buttons);
     if (button == MULTI_BACK) {
         return barrier_settings(BARRIER_SETTINGS);
