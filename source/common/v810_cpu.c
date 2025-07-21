@@ -350,8 +350,6 @@ void v810_reset(void) {
     // Double buffering is more accurate, but adds 1 frame of input lag.
     tVBOpt.DOUBLE_BUFFER =
         memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0 || // Test Chamber
-        memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || // Jack Bros. (U)
-        memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0 || // Jack Bros. (J)
         memcmp(tVBOpt.GAME_ID, "01VBHE", 6) == 0; // Bound High
 }
 
