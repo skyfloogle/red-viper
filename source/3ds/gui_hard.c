@@ -473,13 +473,13 @@ static Button colour_filter_buttons[] = {
 static void multicolour_settings(int initial_button);
 static Button multicolour_settings_buttons[] = {
     #define MULTI_BLACK 0
-    {.str="Darkest", .x=16, .y=16, .w=200, .h=40},
+    {.str="Darkest", .x=16, .y=16, .w=240, .h=40},
     #define MULTI_BRTA
-    {.str="Dark", .x=16, .y=16+48, .w=200, .h=40},
+    {.str="Dark", .x=16, .y=16+48, .w=240, .h=40},
     #define MULTI_BRTB
-    {.str="Light", .x=16, .y=16+48*2, .w=200, .h=40},
+    {.str="Light", .x=16, .y=16+48*2, .w=240, .h=40},
     #define MULTI_BRTC
-    {.str="Lightest", .x=16, .y=16+48*3, .w=200, .h=40},
+    {.str="Lightest", .x=16, .y=16+48*3, .w=240, .h=40},
     #define MULTI_BACK 4
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
@@ -1677,6 +1677,10 @@ static void multicolour_wheel(int colour_id) {
 
 static void multicolour_settings(int initial_button) {
     LOOP_BEGIN(multicolour_settings_buttons, initial_button);
+        C2D_DrawRectSolid(16 + 260, 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[0]);
+        C2D_DrawRectSolid(16 + 260, 48 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[1]);
+        C2D_DrawRectSolid(16 + 260, 48 * 2 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[2]);
+        C2D_DrawRectSolid(16 + 260, 48 * 3 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[3]);
     LOOP_END(multicolour_settings_buttons);
     if (button == MULTI_BACK) {
         return barrier_settings(BARRIER_SETTINGS);
