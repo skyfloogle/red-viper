@@ -1641,6 +1641,7 @@ static void multicolour_wheel(int colour_id) {
     const int scale_height = 160;
     const int scale_cursor_height = 10;
     const int scale_offset = 1;
+    const int scale_range = 3;
 
     bool dragging_scale = 0;
 
@@ -1661,13 +1662,13 @@ static void multicolour_wheel(int colour_id) {
             }
             if (dragging_scale) {
                 float slider = 1 - C2D_Clamp((float)(touch_pos.py - scale_y) / scale_height, 0, 1);
-                tVBOpt.STINT[colour_id - 1] = slider + scale_offset;
+                tVBOpt.STINT[colour_id - 1] = slider * scale_range + scale_offset;
             }
 
             C2D_DrawText(&text_brighten, C2D_AlignCenter | C2D_WithColor, scale_x + scale_width / 2, scale_y - 24, 0, 0.5, 0.5, TINT_COLOR);
             C2D_DrawText(&text_brightness_disclaimer, C2D_AlignRight | C2D_WithColor, 316, 208, 0, 0.5, 0.5, TINT_COLOR);
             C2D_DrawRectSolid(scale_x + scale_width / 2 - 1, scale_y, 0, 2, scale_height, 0xff404040);
-            C2D_DrawRectSolid(scale_x, scale_y + scale_height * (1 - (tVBOpt.STINT[colour_id - 1] - scale_offset)) - scale_cursor_height / 2, 0, scale_width, scale_cursor_height, TINT_COLOR);
+            C2D_DrawRectSolid(scale_x, scale_y + scale_height * (1 - (tVBOpt.STINT[colour_id - 1] - scale_offset) / scale_range) - scale_cursor_height / 2, 0, scale_width, scale_cursor_height, TINT_COLOR);
         }
 
     LOOP_END(multicolour_wheel_buttons);
