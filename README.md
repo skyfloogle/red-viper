@@ -58,6 +58,19 @@ The target is usually 20ms, though some games only draw every other frame, so re
 
 ## Building
 
+### For newcomers looking to set up forwarders
+1. Install the [devkitPro](http://3dbrew.org/wiki/Setting_up_Development_Environment) 3DS tools (on Windows, this can be selected using the graphical installer).
+2. Download and extract the [source code zip archive](https://github.com/skyfloogle/red-viper/archive/refs/heads/master.zip).
+3. Additionally download and extract [inih](https://github.com/benhoyt/inih/archive/5e1d9e2625842dddb3f9c086a50f22e4f45dfc2b.zip) and copy the files into the `source/common/inih` directory, such that `inih.c` is located at `source/common/inih/inih.c`.
+4. Copy your main red-viper directory path to the clipboard.
+5. Open your terminal (on Windows, this will be the newly installed devKitPro MSYS terminal).
+6. In your terminal, type `cd ` followed by a space, right click and paste (don't expect Ctrl-V to work), make sure the path is surrounded by quotation marks, then hit enter. It should show that you are in red-viper directory.
+7. Paste `pacman -S 3ds-zlib` into the terminal, then hit enter. This will download additional dependencies.
+8. Type `make` and hit enter. You should see `red-viper.3dsx` and `red-viper.cia` appear in the directory.
+
+You can now build Red Viper from its source code. To set up a forwarder, see [the Forwarders section](https://github.com/skyfloogle/red-viper#forwarders).
+
+### For developers looking to contribute
 After setting up [devkitPro](http://3dbrew.org/wiki/Setting_up_Development_Environment), install the
 additional dependencies:
 ```bash
@@ -79,7 +92,7 @@ Once that's all sorted, you can choose between four different make targets:
 ### Forwarders
 
 When building Red Viper as a CIA, a ROM can be bundled in, so that that game takes a space on the HOME Menu.
-This can be done as follows:
+This can be done as follows, after following [the previous build steps](https://github.com/skyfloogle/red-viper#for-newcomers-looking-to-set-up-forwarders):
 1. Place your ROM in the "romfs" directory.
 2. Write the ROM's filename into the filename.txt file already in that directory (including the .vb extension).
 3. Adjust the app title, description, product code, and unique ID in "resources/AppInfo".
