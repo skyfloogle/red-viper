@@ -1912,7 +1912,7 @@ static void video_settings(int initial_button) {
     LOOP_END(video_settings_buttons);
     switch (button) {
         case VIDEO_MODE:
-            toggleAnaglyph(!tVBOpt.ANAGLYPH, false);
+            toggleAnaglyph(!tVBOpt.ANAGLYPH, true);
             tVBOpt.MODIFIED = true;
             return video_settings(button);
         case VIDEO_SETTINGS:
