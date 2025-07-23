@@ -1099,11 +1099,13 @@ static void cpp_options(int initial_button) {
             }
             return cpp_options(button);
         case CPP_CALIBRATE:
+            toggleVsync(false);
             if (tVBOpt.CPP_ENABLED) cppExit();
             extraPadConf conf;
             extraPadInit(&conf);
             extraPadLaunch(&conf);
             if (tVBOpt.CPP_ENABLED) cppInit();
+            toggleVsync(tVBOpt.VSYNC);
             return cpp_options(button);
         case CPP_BACK:
             return controls(CONTROLS_CPP);
