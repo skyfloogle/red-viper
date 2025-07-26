@@ -1535,7 +1535,7 @@ static int make_color(float hue, float saturation, float lightness) {
         col[0] = saturation;
         col[2] = sub;
     }
-    return 0xff000000 |
+    return
         ((int)((col[0] + 1 - saturation) * lightness * 255)) |
         ((int)((col[1] + 1 - saturation) * lightness * 255) << 8) |
         ((int)((col[2] + 1 - saturation) * lightness * 255) << 16);
@@ -1602,8 +1602,8 @@ static void handle_colour_wheel(int *save_col, int wheel_x, int wheel_y, float *
         circle_y + touch_dy * (circle_h / 2),
         0, 2, 0xff000000 | *save_col);
     if (lightness) {
-        int max_lightness = make_color(*hue, *saturation, 1);
-        C2D_DrawRectSolid(lightness_x - 1, lightness_y - 1, 0, lightness_width + 2, lightness_height + 2, make_color(*hue + M_PI, *saturation, 1));
+        int max_lightness = 0xff000000 | make_color(*hue, *saturation, 1);
+        C2D_DrawRectSolid(lightness_x - 1, lightness_y - 1, 0, lightness_width + 2, lightness_height + 2, 0xff000000 | make_color(*hue + M_PI, *saturation, 1));
         C2D_DrawRectangle(lightness_x, lightness_y, 0, lightness_width, lightness_height, max_lightness, max_lightness, 0xff000000, 0xff000000);
         C2D_DrawRectSolid(lightness_x - 2, lightness_y + lightness_height * (1 - *lightness) - lightness_cursor_height / 2, 0, lightness_width + 4, lightness_cursor_height, 0xffffffff);
         C2D_DrawRectSolid(lightness_x - 1, lightness_y + lightness_height * (1 - *lightness) - lightness_cursor_height / 2 + 1, 0, lightness_width + 2, lightness_cursor_height - 2, 0xff000000);

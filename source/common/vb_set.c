@@ -116,9 +116,9 @@ void setDefaults(void) {
     tVBOpt.CUSTOM_CONTROLS = 0;
     setCustomMappingDefaults();
     tVBOpt.MULTICOL = false;
-    tVBOpt.TINT = 0xff0000ff;
+    tVBOpt.TINT = 0x0000ff;
     tVBOpt.MTINT[0] = 0;
-    tVBOpt.MTINT[1] = tVBOpt.MTINT[2] = tVBOpt.MTINT[3] = 0xff0000ff;
+    tVBOpt.MTINT[1] = tVBOpt.MTINT[2] = tVBOpt.MTINT[3] = 0x0000ff;
     tVBOpt.STINT[0] = tVBOpt.STINT[1] = tVBOpt.STINT[2] = 1.0;
     tVBOpt.SLIDERMODE = SLIDER_3DS;
     tVBOpt.DEFAULT_EYE = 0;
