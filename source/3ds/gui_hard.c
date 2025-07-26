@@ -488,6 +488,10 @@ static void multicolour_wheel(int colour_id);
 static Button multicolour_wheel_buttons[] = {
     #define MULTIWHEEL_BACK 0
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
+    #define MULTIWHEEL_HEX 1
+    {.str="", .x=100, .y=212, .w=100, .h=28},
+    #define MULTIWHEEL_SCALE 2
+    {.str="", .x=220, .y=212, .w=100, .h=28},
 };
 
 static void vblink(void);
@@ -1541,6 +1545,82 @@ static int make_color(float hue, float saturation, float lightness) {
         ((int)((col[2] + 1 - saturation) * lightness * 255) << 16);
 }
 
+static void col_to_str(char *out, int col) {
+    snprintf(out, 8, "#%02x%02x%02x", col & 0xff, (col >> 8) & 0xff, (col >> 16) & 0xff);
+}
+
+static SwkbdCallbackResult swkbd_colour_callback(void *user, const char **message, const char *text, size_t text_len) {
+    if (text_len != 7) goto fail;
+    if (text[0] != '#') goto fail;
+    for (int i = 1; i <= 6; i++) {
+        if (!(text[i] >= '0' && text[i] <= '9') && !(text[i] >= 'a' && text[i] <= 'f') && !(text[i] >= 'A' && text[i] <= 'F')) goto fail;
+    }
+    return SWKBD_CALLBACK_OK;
+    fail:
+    *message = "Please provide a valid hex\ncolor code (# followed by six\nhex digits, eg. #1234ab).";
+    return SWKBD_CALLBACK_CONTINUE;
+}
+
+static bool swkbd_colour(int *save_col) {
+    char string_buf[8];
+    col_to_str(string_buf, *save_col);
+
+    SwkbdState swkbd;
+    swkbdInit(&swkbd, SWKBD_TYPE_QWERTY, 2, sizeof(string_buf)-1);
+    swkbdSetValidation(&swkbd, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+    swkbdSetFeatures(&swkbd, SWKBD_FIXED_WIDTH);
+    swkbdSetFilterCallback(&swkbd, swkbd_colour_callback, NULL);
+
+    swkbdSetInitialText(&swkbd, string_buf);
+
+    toggleVsync(false);
+    SwkbdButton button = swkbdInputText(&swkbd, string_buf, sizeof(string_buf));
+    toggleVsync(tVBOpt.VSYNC);
+
+    if (button == SWKBD_BUTTON_RIGHT) {
+        int rev_col = strtol(string_buf + 1, NULL, 16);
+        int new_col = (rev_col >> 16) | (rev_col & 0xff00) | ((rev_col & 0xff) << 16);
+        if (*save_col != new_col) {
+            *save_col = new_col;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static SwkbdCallbackResult swkbd_scale_callback(void *user, const char **message, const char *text, size_t text_len) {
+    float scale = atoff(text);
+    if (scale < 1 || scale > 4) {
+        *message = "Scale must be a number between 1.0 and 4.0.";
+        return SWKBD_CALLBACK_CONTINUE;
+    }
+    return SWKBD_CALLBACK_OK;
+}
+
+static bool swkbd_scale(float *scale) {
+    char string_buf[8];
+    snprintf(string_buf, sizeof(string_buf), "%.5f", *scale);
+
+    SwkbdState swkbd;
+    swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 2, sizeof(string_buf)-1);
+    swkbdSetValidation(&swkbd, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+    swkbdSetNumpadKeys(&swkbd, '.', '.');
+    swkbdSetFilterCallback(&swkbd, swkbd_scale_callback, NULL);
+
+    swkbdSetInitialText(&swkbd, string_buf);
+
+    toggleVsync(false);
+    SwkbdButton button = swkbdInputText(&swkbd, string_buf, sizeof(string_buf));
+    toggleVsync(tVBOpt.VSYNC);
+
+    if (button == SWKBD_BUTTON_RIGHT) {
+        *scale = atoff(string_buf);
+        return true;
+    }
+    return false;
+}
+
 static void handle_colour_wheel(int *save_col, int wheel_x, int wheel_y, float *hue, float *saturation, float *lightness) {
     static bool dragging_wheel = false;
     static bool dragging_lightness = false;
@@ -1623,11 +1703,12 @@ static void colour_filter(void) {
         case COLOUR_BACK: // Back
             return barrier_settings(BARRIER_SETTINGS);
         case COLOUR_RED: // Red
-            tVBOpt.TINT = 0xff0000ff;
+            tVBOpt.TINT = 0x0000ff;
             tVBOpt.MODIFIED = true;
+            swkbd_colour(&tVBOpt.TINT);
             return colour_filter();
         case COLOUR_GRAY: // Gray
-            tVBOpt.TINT = 0xffffffff;
+            tVBOpt.TINT = 0xffffff;
             tVBOpt.MODIFIED = true;
             return colour_filter();
     }
@@ -1646,8 +1727,21 @@ static void multicolour_wheel(int colour_id) {
     const int scale_range = 3;
 
     bool dragging_scale = 0;
+    
+    multicolour_wheel_buttons[MULTIWHEEL_SCALE].hidden = colour_id == 0;
 
     LOOP_BEGIN(multicolour_wheel_buttons, 0);
+        char initial_string[9];
+        C2D_TextBufClear(dynamic_textbuf);
+
+        col_to_str(initial_string, tVBOpt.MTINT[colour_id]);
+        C2D_TextParse(&multicolour_wheel_buttons[MULTIWHEEL_HEX].text, dynamic_textbuf, initial_string);
+        C2D_TextOptimize(&multicolour_wheel_buttons[MULTIWHEEL_HEX].text);
+
+        snprintf(initial_string, sizeof(initial_string), "%.5f", tVBOpt.STINT[colour_id - 1]);
+        C2D_TextParse(&multicolour_wheel_buttons[MULTIWHEEL_SCALE].text, dynamic_textbuf, initial_string);
+        C2D_TextOptimize(&multicolour_wheel_buttons[MULTIWHEEL_SCALE].text);
+
         handle_colour_wheel(&tVBOpt.MTINT[colour_id], 160, 112, &hue, &saturation, &lightness);
 
         if (colour_id != 0) {
@@ -1668,14 +1762,23 @@ static void multicolour_wheel(int colour_id) {
             }
 
             C2D_DrawText(&text_brighten, C2D_AlignCenter | C2D_WithColor, scale_x + scale_width / 2, scale_y - 24, 0, 0.5, 0.5, TINT_COLOR);
-            C2D_DrawText(&text_brightness_disclaimer, C2D_AlignRight | C2D_WithColor, 316, 208, 0, 0.5, 0.5, TINT_COLOR);
+            C2D_DrawText(&text_brightness_disclaimer, C2D_AlignRight | C2D_WithColor, 316, 0, 0, 0.5, 0.5, TINT_COLOR);
             C2D_DrawRectSolid(scale_x + scale_width / 2 - 1, scale_y, 0, 2, scale_height, 0xff404040);
             C2D_DrawRectSolid(scale_x, scale_y + scale_height * (1 - (tVBOpt.STINT[colour_id - 1] - scale_offset) / scale_range) - scale_cursor_height / 2, 0, scale_width, scale_cursor_height, TINT_COLOR);
         }
 
     LOOP_END(multicolour_wheel_buttons);
 
-    return multicolour_settings(colour_id);
+    switch (button) {
+        case MULTIWHEEL_BACK:
+            return multicolour_settings(colour_id);
+        case MULTIWHEEL_HEX:
+            if (swkbd_colour(&tVBOpt.MTINT[colour_id])) tVBOpt.MODIFIED = true;
+            return multicolour_wheel(colour_id);
+        case MULTIWHEEL_SCALE:
+            if (swkbd_scale(&tVBOpt.STINT[colour_id - 1])) tVBOpt.MODIFIED = true;
+            return multicolour_wheel(colour_id);
+    }
 }
 
 static void multicolour_settings(int initial_button) {
@@ -2531,7 +2634,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_monochrome, "Monochrome")
     STATIC_TEXT(&text_multicolor, "Multicolor")
     STATIC_TEXT(&text_brighten, "Brighten")
-    STATIC_TEXT(&text_brightness_disclaimer, "Actual brightness\nmay vary by game.")
+    STATIC_TEXT(&text_brightness_disclaimer, "Actual brightness may vary by game.")
 }
 
 static bool shouldRedrawMenu = true;
