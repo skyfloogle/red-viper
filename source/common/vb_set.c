@@ -117,9 +117,22 @@ void setDefaults(void) {
     setCustomMappingDefaults();
     tVBOpt.MULTICOL = false;
     tVBOpt.TINT = 0x0000ff;
-    tVBOpt.MTINT[0] = 0;
-    tVBOpt.MTINT[1] = tVBOpt.MTINT[2] = tVBOpt.MTINT[3] = 0x0000ff;
-    tVBOpt.STINT[0] = tVBOpt.STINT[1] = tVBOpt.STINT[2] = 1.0;
+    tVBOpt.MULTIID = 0;
+    tVBOpt.MTINT[0][0] = 0;
+    tVBOpt.MTINT[0][1] = tVBOpt.MTINT[0][2] = tVBOpt.MTINT[0][3] = 0x0000ff;
+    tVBOpt.STINT[0][0] = tVBOpt.STINT[0][1] = tVBOpt.STINT[0][2] = 1.0;
+    tVBOpt.MTINT[1][0] = 0x394129;
+    tVBOpt.MTINT[1][1] = tVBOpt.MTINT[1][2] = tVBOpt.MTINT[1][3] = 0x10827b;
+    tVBOpt.STINT[1][0] = tVBOpt.STINT[1][1] = tVBOpt.STINT[1][2] = 1.0;
+    tVBOpt.MTINT[2][0] = 0x000208;
+    tVBOpt.MTINT[2][1] = 0x031342;
+    tVBOpt.MTINT[2][2] = 0x00bb1d;
+    tVBOpt.MTINT[2][3] = 0x00d8ff;
+    tVBOpt.STINT[2][0] = 2.5;
+    tVBOpt.STINT[2][1] = tVBOpt.STINT[2][2] = 1.0;
+    tVBOpt.MTINT[3][0] = 0xffffff;
+    tVBOpt.MTINT[3][1] = tVBOpt.MTINT[3][2] = tVBOpt.MTINT[3][3] = 0;
+    tVBOpt.STINT[3][0] = tVBOpt.STINT[3][1] = tVBOpt.STINT[3][2] = 1.0;
     tVBOpt.SLIDERMODE = SLIDER_3DS;
     tVBOpt.DEFAULT_EYE = 0;
     tVBOpt.PERF_INFO = false;
@@ -182,20 +195,25 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->MULTICOL = atoi(value);
     } else if (MATCH("vbopt", "tint")) {
         pconfig->TINT = atoi(value);
+    } else if (MATCH("vbopt", "multicolid")) {
+        pconfig->MULTIID = atoi(value);
+
+    // multitint - legacy
     } else if (MATCH("vbopt", "multitint0")) {
-        pconfig->MTINT[0] = atoi(value);
+        pconfig->MTINT[0][0] = atoi(value);
     } else if (MATCH("vbopt", "multitint1")) {
-        pconfig->MTINT[1] = atoi(value);
+        pconfig->MTINT[0][1] = atoi(value);
     } else if (MATCH("vbopt", "multitint2")) {
-        pconfig->MTINT[2] = atoi(value);
+        pconfig->MTINT[0][2] = atoi(value);
     } else if (MATCH("vbopt", "multitint3")) {
-        pconfig->MTINT[3] = atoi(value);
+        pconfig->MTINT[0][3] = atoi(value);
     } else if (MATCH("vbopt", "tintscale1")) {
-        pconfig->STINT[0] = atof(value);
+        pconfig->STINT[0][0] = atof(value);
     } else if (MATCH("vbopt", "tintscale2")) {
-        pconfig->STINT[1] = atof(value);
+        pconfig->STINT[0][1] = atof(value);
     } else if (MATCH("vbopt", "tintscale3")) {
-        pconfig->STINT[2] = atof(value);
+        pconfig->STINT[0][2] = atof(value);
+
     } else if (MATCH("vbopt", "slidermode")) {
         pconfig->SLIDERMODE = atoi(value);
     } else if (MATCH("vbopt", "default_eye")) {
@@ -348,6 +366,67 @@ static int handler(void* user, const char* section, const char* name,
         tVBOpt.TOUCH_SWITCH = atoi(value);
     } else if (MATCH("touch", "inputs")) {
         tVBOpt.INPUTS = atoi(value);
+
+    } else if (MATCH("palette0", "tint0")) {
+        pconfig->MTINT[0][0] = atoi(value);
+    } else if (MATCH("palette0", "tint1")) {
+        pconfig->MTINT[0][1] = atoi(value);
+    } else if (MATCH("palette0", "tint2")) {
+        pconfig->MTINT[0][2] = atoi(value);
+    } else if (MATCH("palette0", "tint3")) {
+        pconfig->MTINT[0][3] = atoi(value);
+    } else if (MATCH("palette0", "scale1")) {
+        pconfig->STINT[0][0] = atof(value);
+    } else if (MATCH("palette0", "scale2")) {
+        pconfig->STINT[0][1] = atof(value);
+    } else if (MATCH("palette0", "scale3")) {
+        pconfig->STINT[0][2] = atof(value);
+
+    } else if (MATCH("palette1", "tint0")) {
+        pconfig->MTINT[1][0] = atoi(value);
+    } else if (MATCH("palette1", "tint1")) {
+        pconfig->MTINT[1][1] = atoi(value);
+    } else if (MATCH("palette1", "tint2")) {
+        pconfig->MTINT[1][2] = atoi(value);
+    } else if (MATCH("palette1", "tint3")) {
+        pconfig->MTINT[1][3] = atoi(value);
+    } else if (MATCH("palette1", "scale1")) {
+        pconfig->STINT[1][0] = atof(value);
+    } else if (MATCH("palette1", "scale2")) {
+        pconfig->STINT[1][1] = atof(value);
+    } else if (MATCH("palette1", "scale3")) {
+        pconfig->STINT[1][2] = atof(value);
+
+    } else if (MATCH("palette2", "tint0")) {
+        pconfig->MTINT[2][0] = atoi(value);
+    } else if (MATCH("palette2", "tint1")) {
+        pconfig->MTINT[2][1] = atoi(value);
+    } else if (MATCH("palette2", "tint2")) {
+        pconfig->MTINT[2][2] = atoi(value);
+    } else if (MATCH("palette2", "tint3")) {
+        pconfig->MTINT[2][3] = atoi(value);
+    } else if (MATCH("palette2", "scale1")) {
+        pconfig->STINT[2][0] = atof(value);
+    } else if (MATCH("palette2", "scale2")) {
+        pconfig->STINT[2][1] = atof(value);
+    } else if (MATCH("palette2", "scale3")) {
+        pconfig->STINT[2][2] = atof(value);
+
+    } else if (MATCH("palette3", "tint0")) {
+        pconfig->MTINT[3][0] = atoi(value);
+    } else if (MATCH("palette3", "tint1")) {
+        pconfig->MTINT[3][1] = atoi(value);
+    } else if (MATCH("palette3", "tint2")) {
+        pconfig->MTINT[3][2] = atoi(value);
+    } else if (MATCH("palette3", "tint3")) {
+        pconfig->MTINT[3][3] = atoi(value);
+    } else if (MATCH("palette3", "scale1")) {
+        pconfig->STINT[3][0] = atof(value);
+    } else if (MATCH("palette3", "scale2")) {
+        pconfig->STINT[3][1] = atof(value);
+    } else if (MATCH("palette3", "scale3")) {
+        pconfig->STINT[3][2] = atof(value);
+        
     } else {
         return 1;  // unknown section/name, ignore
     }
@@ -425,13 +504,7 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "[vbopt]\n");
     fprintf(f, "multicol=%d\n", tVBOpt.MULTICOL);
     fprintf(f, "tint=%d\n", tVBOpt.TINT);
-    fprintf(f, "multitint0=%d\n", tVBOpt.MTINT[0]);
-    fprintf(f, "multitint1=%d\n", tVBOpt.MTINT[1]);
-    fprintf(f, "multitint2=%d\n", tVBOpt.MTINT[2]);
-    fprintf(f, "multitint3=%d\n", tVBOpt.MTINT[3]);
-    fprintf(f, "tintscale1=%f\n", tVBOpt.STINT[0]);
-    fprintf(f, "tintscale2=%f\n", tVBOpt.STINT[1]);
-    fprintf(f, "tintscale3=%f\n", tVBOpt.STINT[2]);
+    fprintf(f, "multicolid=%d\n", tVBOpt.MULTIID);
     fprintf(f, "slidermode=%d\n", tVBOpt.SLIDERMODE);
     fprintf(f, "default_eye=%d\n", tVBOpt.DEFAULT_EYE);
     fprintf(f, "antiflicker=%d\n", tVBOpt.ANTIFLICKER);
@@ -513,6 +586,16 @@ void writeOptionsFile(FILE* f, bool global) {
     fprintf(f, "buttons=%d\n", tVBOpt.TOUCH_BUTTONS);
     fprintf(f, "switch=%d\n", tVBOpt.TOUCH_SWITCH);
     fprintf(f, "inputs=%d\n", tVBOpt.INPUTS);
+    for (int i = 0; i < 4; i++) {
+        fprintf(f, "\n[palette%d]\n", i);
+    fprintf(f, "tint0=%d\n", tVBOpt.MTINT[i][0]);
+    fprintf(f, "tint1=%d\n", tVBOpt.MTINT[i][1]);
+    fprintf(f, "tint2=%d\n", tVBOpt.MTINT[i][2]);
+    fprintf(f, "tint3=%d\n", tVBOpt.MTINT[i][3]);
+    fprintf(f, "scale1=%f\n", tVBOpt.STINT[i][0]);
+    fprintf(f, "scale2=%f\n", tVBOpt.STINT[i][1]);
+    fprintf(f, "scale3=%f\n", tVBOpt.STINT[i][2]);
+    }
 }
 
 int saveFileOptions(void) {

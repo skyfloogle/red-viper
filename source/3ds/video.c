@@ -159,10 +159,10 @@ int blankTile;
 
 static int get_colour(int id, int brt_reg) {
 	if (id == 0) {
-		return tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.MTINT[0] : 0;
+		return tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.MTINT[tVBOpt.MULTIID][0] : 0;
 	}
-	int brightness = clamp255(brightness_lut[clamp255(brt_reg)] * (tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.STINT[id - 1] : 1));
-	int fulltint = tVBOpt.ANAGLYPH ? 0xffffff : tVBOpt.MULTICOL ? tVBOpt.MTINT[id] : tVBOpt.TINT;
+	int brightness = clamp255(brightness_lut[clamp255(brt_reg)] * (tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.STINT[tVBOpt.MULTIID][id - 1] : 1));
+	int fulltint = tVBOpt.ANAGLYPH ? 0xffffff : tVBOpt.MULTICOL ? tVBOpt.MTINT[tVBOpt.MULTIID][id] : tVBOpt.TINT;
 	int col_tint =
 		((brightness * ((fulltint) & 0xff) / 255)) |
 		((brightness * ((fulltint >> 8) & 0xff) / 255) << 8) |
@@ -171,9 +171,9 @@ static int get_colour(int id, int brt_reg) {
 
 	int black_brightness = 255 - brightness;
 	int black_tint = tVBOpt.ANAGLYPH ? 0 :
-		((black_brightness * ((tVBOpt.MTINT[0]) & 0xff) / 255)) |
-		((black_brightness * ((tVBOpt.MTINT[0] >> 8) & 0xff) / 255) << 8) |
-		((black_brightness * ((tVBOpt.MTINT[0] >> 16) & 0xff) / 255) << 16);
+		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0]) & 0xff) / 255)) |
+		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0] >> 8) & 0xff) / 255) << 8) |
+		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0] >> 16) & 0xff) / 255) << 16);
 	
 	return __builtin_arm_uqadd8(col_tint, black_tint);
 }
