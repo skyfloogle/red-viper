@@ -473,13 +473,13 @@ static Button colour_filter_buttons[] = {
 static void multicolour_settings(int initial_button);
 static Button multicolour_settings_buttons[] = {
     #define MULTI_BLACK 0
-    {.str="Darkest", .x=16, .y=16, .w=240, .h=40},
+    {.str="Darkest", .x=16, .y=16, .w=170, .h=40},
     #define MULTI_BRTA
-    {.str="Dark", .x=16, .y=16+48, .w=240, .h=40},
+    {.str="Dark", .x=16, .y=16+48, .w=170, .h=40},
     #define MULTI_BRTB
-    {.str="Light", .x=16, .y=16+48*2, .w=240, .h=40},
+    {.str="Light", .x=16, .y=16+48*2, .w=170, .h=40},
     #define MULTI_BRTC
-    {.str="Lightest", .x=16, .y=16+48*3, .w=240, .h=40},
+    {.str="Lightest", .x=16, .y=16+48*3, .w=170, .h=40},
     #define MULTI_BACK 4
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
@@ -1782,11 +1782,53 @@ static void multicolour_wheel(int colour_id) {
 }
 
 static void multicolour_settings(int initial_button) {
+    C2D_Text darkest_col, dark_col, light_col, lightest_col;
+    C2D_Text dark_scale, light_scale, lightest_scale;
+
+    char textbuf[8];
+    C2D_TextBufClear(dynamic_textbuf);
+
+    col_to_str(textbuf, tVBOpt.MTINT[0]);
+    C2D_TextParse(&darkest_col, dynamic_textbuf, textbuf);
+    C2D_TextOptimize(&darkest_col);
+
+    col_to_str(textbuf, tVBOpt.MTINT[1]);
+    C2D_TextParse(&dark_col, dynamic_textbuf, textbuf);
+    C2D_TextOptimize(&dark_col);
+
+    col_to_str(textbuf, tVBOpt.MTINT[2]);
+    C2D_TextParse(&light_col, dynamic_textbuf, textbuf);
+    C2D_TextOptimize(&light_col);
+
+    col_to_str(textbuf, tVBOpt.MTINT[3]);
+    C2D_TextParse(&lightest_col, dynamic_textbuf, textbuf);
+    C2D_TextOptimize(&lightest_col);
+
+    snprintf(textbuf, sizeof(textbuf), "%.5f", tVBOpt.STINT[0]);
+    C2D_TextParse(&dark_scale, dynamic_textbuf, textbuf);
+    C2D_TextOptimize(&dark_scale);
+
+    snprintf(textbuf, sizeof(textbuf), "%.5f", tVBOpt.STINT[1]);
+    C2D_TextParse(&light_scale, dynamic_textbuf, textbuf);
+    C2D_TextOptimize(&light_scale);
+
+    snprintf(textbuf, sizeof(textbuf), "%.5f", tVBOpt.STINT[2]);
+    C2D_TextParse(&lightest_scale, dynamic_textbuf, textbuf);
+    C2D_TextOptimize(&lightest_scale);
+
     LOOP_BEGIN(multicolour_settings_buttons, initial_button);
-        C2D_DrawRectSolid(16 + 240 + 8, 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[0]);
-        C2D_DrawRectSolid(16 + 240 + 8, 48 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[1]);
-        C2D_DrawRectSolid(16 + 240 + 8, 48 * 2 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[2]);
-        C2D_DrawRectSolid(16 + 240 + 8, 48 * 3 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[3]);
+        C2D_DrawRectSolid(16 + 170 + 8, 48 * 0 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[0]);
+        C2D_DrawRectSolid(16 + 170 + 8, 48 * 1 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[1]);
+        C2D_DrawRectSolid(16 + 170 + 8, 48 * 2 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[2]);
+        C2D_DrawRectSolid(16 + 170 + 8, 48 * 3 + 16 + 1, 0, 38, 38, 0xff000000 | tVBOpt.MTINT[3]);
+
+        C2D_DrawText(&darkest_col, C2D_WithColor | C2D_AlignRight, 316, 48 * 0 + 24, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&dark_col, C2D_WithColor | C2D_AlignRight, 316, 48 * 1 + 16, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&light_col, C2D_WithColor | C2D_AlignRight, 316, 48 * 2 + 16, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&lightest_col, C2D_WithColor | C2D_AlignRight, 316, 48 * 3 + 16, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&dark_scale, C2D_WithColor | C2D_AlignRight, 316, 48 * 1 + 36, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&light_scale, C2D_WithColor | C2D_AlignRight, 316, 48 * 2 + 36, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&lightest_scale, C2D_WithColor | C2D_AlignRight, 316, 48 * 3 + 36, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(multicolour_settings_buttons);
     if (button == MULTI_BACK) {
         return barrier_settings(BARRIER_SETTINGS);
