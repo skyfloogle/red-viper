@@ -2231,8 +2231,10 @@ int drc_run(void) {
     serviceInt(v810_state->cycles, v810_state->PC);
 
     while (true) {
+        // extra interrupt check in case we're jumping functions without looping
         if (unlikely(v810_state->cycles_until_event_partial <= 0)) {
             serviceInt(v810_state->cycles, v810_state->PC);
+            if (unlikely(v810_state->ret)) break;
         }
 
         entry_PC = v810_state->PC;
