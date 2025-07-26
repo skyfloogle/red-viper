@@ -81,6 +81,9 @@ int main(void) {
 
     toggleAnaglyph(tVBOpt.ANAGLYPH, false);
 
+    aptHookCookie cookie;
+    aptHook(&cookie, aptBacklight, NULL);
+
     guiop = 0;
     openMenu();
     if (guiop & GUIEXIT) {
@@ -98,9 +101,6 @@ int main(void) {
 
     TickCounter drcTickCounter;
     TickCounter frameTickCounter;
-
-    aptHookCookie cookie;
-    aptHook(&cookie, aptBacklight, NULL);
 
     while(aptMainLoop()) {
         osTickCounterStart(&frameTickCounter);
