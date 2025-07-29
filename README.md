@@ -58,19 +58,6 @@ The target is usually 20ms, though some games only draw every other frame, so re
 
 ## Building
 
-### For newcomers looking to set up forwarders
-1. Install the [devkitPro](http://3dbrew.org/wiki/Setting_up_Development_Environment) 3DS tools (on Windows, this can be selected using the graphical installer).
-2. Download and extract the [source code zip archive](https://github.com/skyfloogle/red-viper/archive/refs/heads/master.zip).
-3. Additionally download and extract [inih](https://github.com/benhoyt/inih/archive/5e1d9e2625842dddb3f9c086a50f22e4f45dfc2b.zip) and copy the files into the `source/common/inih` directory, such that `inih.c` is located at `source/common/inih/inih.c`.
-4. Copy your main red-viper directory path to the clipboard.
-5. Open your terminal (on Windows, this will be the newly installed devKitPro MSYS terminal).
-6. In your terminal, type `cd ` followed by a space, right click and paste (don't expect Ctrl-V to work), make sure the path is surrounded by quotation marks, then hit enter. It should show that you are in red-viper directory.
-7. Paste `pacman -S 3ds-zlib` into the terminal, then hit enter. This will download additional dependencies.
-8. Type `make` and hit enter. You should see `red-viper.3dsx` and `red-viper.cia` appear in the directory.
-
-You can now build Red Viper from its source code. To set up a forwarder, see [the Forwarders section](https://github.com/skyfloogle/red-viper#forwarders).
-
-### For developers looking to contribute
 After setting up [devkitPro](http://3dbrew.org/wiki/Setting_up_Development_Environment), install the
 additional dependencies:
 ```bash
@@ -91,13 +78,22 @@ Once that's all sorted, you can choose between four different make targets:
 
 ### Forwarders
 
-When building Red Viper as a CIA, a ROM can be bundled in, so that that game takes a space on the HOME Menu.
-This can be done as follows, after following [the previous build steps](https://github.com/skyfloogle/red-viper#for-newcomers-looking-to-set-up-forwarders):
-1. Place your ROM in the "romfs" directory.
-2. Write the ROM's filename into the filename.txt file already in that directory (including the .vb extension).
-3. Adjust the app title, description, product code, and unique ID in "resources/AppInfo".
-4. Update "icon.png" and "resources/banner.png".
-5. Build using `make`.
+A Virtual Boy ROM can be bundled into a Red Viper CIA, so that the game takes a space on the HOME Menu.
+This can be done as follows:
+1. Download New Super Ultimate Injector (NSUI), txobtool, and the CIA build of Red Viper.
+2. Open NSUI, and open Tools > CIA extract and rebuild.
+3. Drag red-viper.cia onto the new window, select it in the list, and extract.
+4. Adjust name, icon, publisher, icon, and product code to your liking. Make sure to select the correct language. Also make sure to [generate a new title ID](https://studionamehere.github.io/HomebrewTitleIDGenerator/), as this is the unique identifier on the home menu.
+5. Open the extract folder.
+6. In extracted/ExtractedRomFS, place your .vb ROM file, and modify the existing "filename.txt" to contain the filename of your inserted ROM file.
+7. Most of the remainder of this guide will be for modifying the banner. To start with, navigate back to the "extracted" folder in your file explorer.
+8. Open a command prompt, type `cd ` followed by a space, then drag the ExtractedBanner folder into your command prompt window, then hit enter. The terminal should now display the path to your ExtractedBanner folder.
+9. Drag txobtool.exe onto your command prompt window, add a space followed by ` -evfd banner.cgfx bannerout`, then hit enter. A new "bannerout" folder should be created.
+10. Replace the COMMON1.png image within with a new image, with the same dimensions. Make sure the image is saved as 32-bit, or has transparent parts.
+11. Drag txobtool.exe onto your command prompt window, add a space followed by ` -ivfd banner.cgfx bannerout`, then hit enter. Note that unlike step 9, with "-evfd", this one contains "-ivfd".
+12. Back in NSUI, rebuild the CIA.
+
+You should now have a "red-viper_Edited.cia" file in your extract folder. This contains your provided ROM and all the metadata changes.
 
 ## License
 
