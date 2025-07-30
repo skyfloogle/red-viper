@@ -154,9 +154,6 @@ shaderProgram_s sFinal;
 
 int uLoc_shading_offset;
 
-bool tileVisible[2048];
-int blankTile;
-
 static int get_colour(int id, int brt_reg) {
 	if (id == 0) {
 		return tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.MTINT[tVBOpt.MULTIID][0] : 0;

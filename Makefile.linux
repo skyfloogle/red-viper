@@ -17,6 +17,7 @@ VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
 
 CFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 OFILES	:=	$(addsuffix .o,$(BINFILES)) \
 			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
@@ -26,7 +27,7 @@ INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 CFLAGS	+=	$(INCLUDE)
 ASFLAGS	:=	-g $(ARCH)
-LIBS	:=	-lm -lminizip -lz
+LIBS	:=	-lm -lminizip -lz -lSDL3
 
 all: slowdebug
 release:	CFLAGS += -O3 -DDEBUGLEVEL=0
@@ -34,10 +35,15 @@ testing:	CFLAGS += -O3 -DDEBUGLEVEL=1
 debug:		CFLAGS += -g -O0 -DDEBUGLEVEL=2
 slowdebug:	CFLAGS += -g -O0 -DDEBUGLEVEL=3
 
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -g
+
 release testing debug slowdebug: $(BUILD) $(OUTPUT).elf
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $(DEPSDIR)/$@
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $(DEPSDIR)/$@
 
 %.o: %.s
 	$(CC) $(CFLAGS) -c $< -o $(DEPSDIR)/$@

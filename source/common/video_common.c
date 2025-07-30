@@ -2,6 +2,9 @@
 #include "vb_dsp.h"
 #include "v810_mem.h"
 
+bool tileVisible[2048];
+int blankTile;
+
 int videoProcessingTime(void) {
 	int time = 54688;
 	WORLD *worlds = (WORLD*)(V810_DISPLAY_RAM.pmemory + 0x3d800);
