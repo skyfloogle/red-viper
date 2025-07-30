@@ -140,7 +140,6 @@ void setDefaults(void) {
     tVBOpt.LAST_ROM[0] = 0;
     tVBOpt.VSYNC = true;
     tVBOpt.N3DS_SPEEDUP = true;
-    toggleAnaglyph(false, false);
     tVBOpt.ANAGLYPH_LEFT = 0b001;
     tVBOpt.ANAGLYPH_RIGHT = 0b110;
     tVBOpt.ANAGLYPH_DEPTH = 0;
@@ -182,6 +181,8 @@ void setDefaults(void) {
     vbkey[__builtin_ctz(KEY_R)] = VB_KEY_R;
     vbkey[__builtin_ctz(KEY_ZL)] = VB_KEY_B;
     vbkey[__builtin_ctz(KEY_ZR)] = VB_KEY_A;
+
+    toggleAnaglyph(false, false);
 #endif
 }
 
@@ -247,7 +248,9 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("vbopt", "dpad_mode") || MATCH("controls_preset", "dpad")) {
         pconfig->DPAD_MODE = atoi(value) % 3;
     } else if (MATCH("anaglyph", "enabled")) {
+        #ifdef __3DS__
         toggleAnaglyph(atoi(value), false);
+        #endif
     } else if (MATCH("anaglyph", "left")) {
         tVBOpt.ANAGLYPH_LEFT = atoi(value);
     } else if (MATCH("anaglyph", "right")) {
@@ -471,12 +474,15 @@ int loadFileOptions(void) {
     tVBOpt.MODIFIED = false;
     buttons_on_screen = tVBOpt.TOUCH_BUTTONS;
     tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
-    osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
 
+    #ifdef __3DS__
+    osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
     if (tVBOpt.CPP_ENABLED != old_cpp) {
         if (tVBOpt.CPP_ENABLED) cppInit();
         else cppExit();
     }
+    #endif
+
     return ret;
 }
 
@@ -491,12 +497,14 @@ int loadGameOptions(void) {
     tVBOpt.MODIFIED = false;
     buttons_on_screen = tVBOpt.TOUCH_BUTTONS;
     tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
+    #ifdef __3DS__
     osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
-
     if (tVBOpt.CPP_ENABLED != old_cpp) {
         if (tVBOpt.CPP_ENABLED) cppInit();
         else cppExit();
     }
+    #endif
+    
     return ret;
 }
 
