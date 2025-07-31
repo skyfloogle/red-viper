@@ -1827,6 +1827,7 @@ static void multicolour_picker(int initial_button) {
 }
 
 static void multicolour_settings(int palette_id, int initial_button) {
+    // local variables are static to avoid blowing up frame size and preventing tail call optimization
     static C2D_Text darkest_col, dark_col, light_col, lightest_col;
     static C2D_Text dark_scale, light_scale, lightest_scale;
 
