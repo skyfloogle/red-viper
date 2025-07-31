@@ -1827,10 +1827,10 @@ static void multicolour_picker(int initial_button) {
 }
 
 static void multicolour_settings(int palette_id, int initial_button) {
-    C2D_Text darkest_col, dark_col, light_col, lightest_col;
-    C2D_Text dark_scale, light_scale, lightest_scale;
+    static C2D_Text darkest_col, dark_col, light_col, lightest_col;
+    static C2D_Text dark_scale, light_scale, lightest_scale;
 
-    char textbuf[8];
+    static char textbuf[8];
     C2D_TextBufClear(dynamic_textbuf);
 
     col_to_str(textbuf, tVBOpt.MTINT[palette_id][0]);
