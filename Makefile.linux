@@ -27,7 +27,7 @@ INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 CFLAGS	+=	$(INCLUDE)
 ASFLAGS	:=	-g $(ARCH)
-LIBS	:=	-lm -lminizip -lz -lSDL3
+LIBS	:=	-lm -lminizip -lz -lSDL2
 
 all: slowdebug
 release:	CFLAGS += -O3 -DDEBUGLEVEL=0
@@ -52,7 +52,7 @@ $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 
 $(OUTPUT).elf: $(OFILES)
-	$(CC) $(CFLAGS) $(LIBS) -o $@ $(BUILD)/*.o
+	$(CC) $(CFLAGS) -o $@ $(BUILD)/*.o $(LIBS)
 
 clean:
 	@rm -rf build $(OUTPUT).elf

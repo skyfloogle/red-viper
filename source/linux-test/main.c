@@ -1,10 +1,3 @@
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_oldnames.h>
-#include <SDL3/SDL_scancode.h>
-#include <SDL3/SDL_surface.h>
-#include <SDL3/SDL_timer.h>
-#include <SDL3/SDL_video.h>
 #include <stdio.h>
 #include <unistd.h>
 #include "stdlib.h"
@@ -15,8 +8,8 @@
 #include "v810_mem.h"
 #include "vb_dsp.h"
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_main.h>
 
 // dummy
 #include "vb_dsp.h"
@@ -39,13 +32,15 @@ void sdl_flush(bool displayed_fb) {
         for (int y = 0; y < 224; y += 8) {
             uint64_t vb_word = vb_fb[x * 32 + (y / 8)];
             for (int i = 0; i < 8; i++) {
-                out_fb[(y + i) * 384 + x] = brightnesses[vb_word & 3] * 2;
+                uint32_t brt = brightnesses[vb_word & 3] * 2;
+                if (brt > 255) brt = 255;
+                out_fb[(y + i) * 384 + x] = brt;
                 vb_word = vb_word >> 2;
             }
         }
     }
     SDL_UnlockSurface(game_surface);
-    SDL_BlitSurfaceScaled(game_surface, NULL, window_surface, NULL, SDL_SCALEMODE_NEAREST);
+    SDL_BlitScaled(game_surface, NULL, window_surface, NULL);
     SDL_UpdateWindowSurface(window);
 }
 
@@ -78,9 +73,9 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-    window = SDL_CreateWindow("Red Viper", 384*2, 224*2, 0);
+    window = SDL_CreateWindow("Red Viper", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 384*2, 224*2, 0);
     window_surface = SDL_GetWindowSurface(window);
-    game_surface = SDL_CreateSurface(384, 224, SDL_PIXELFORMAT_XBGR8888);
+    game_surface = SDL_CreateRGBSurfaceWithFormat(0, 384, 224, 32, SDL_PIXELFORMAT_XBGR8888);
 
     while (true) {
         err = v810_run();
@@ -111,11 +106,11 @@ int main(int argc, char* argv[]) {
 
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_EVENT_QUIT) {
+            if (e.type == SDL_QUIT) {
                 return 0;
-            } else if (e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP) {
+            } else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
                 int flag = 0;
-                switch (e.key.scancode) {
+                switch (e.key.keysym.scancode) {
                     case SDL_SCANCODE_LEFT: flag = VB_LPAD_L; break;
                     case SDL_SCANCODE_RIGHT: flag = VB_LPAD_R; break;
                     case SDL_SCANCODE_UP: flag = VB_LPAD_U; break;
@@ -123,11 +118,11 @@ int main(int argc, char* argv[]) {
                     case SDL_SCANCODE_RETURN: flag = VB_KEY_START; break;
                     case SDL_SCANCODE_Z: flag = VB_KEY_A; break;
                     case SDL_SCANCODE_X: flag = VB_KEY_B; break;
-                    case SDL_SCANCODE_TAB: tVBOpt.FASTFORWARD = e.type == SDL_EVENT_KEY_DOWN; break;
+                    case SDL_SCANCODE_TAB: tVBOpt.FASTFORWARD = e.type == SDL_KEYDOWN; break;
                     case SDL_SCANCODE_ESCAPE: return 0;
                     default: flag = 0; break;
                 }
-                if (e.type == SDL_EVENT_KEY_DOWN) {
+                if (e.type == SDL_KEYDOWN) {
                     tHReg.SLB |= flag & 0xff;
                     tHReg.SHB |= flag >> 8;
                 } else {
