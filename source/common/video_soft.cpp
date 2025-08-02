@@ -46,10 +46,10 @@ void update_texture_cache_soft(void) {
             uint32_t colmask[3];
             tmp = (column & (~(column & 0xaaaaaaaa) >> 1)) & 0x55555555;
             colmask[0] = tmp | (tmp << 1);
-            tmp = (column & (~(column & 0x55555555) >> 1)) & 0xaaaaaaaa;
+            tmp = (column & (~(column & 0x55555555) << 1)) & 0xaaaaaaaa;
             colmask[1] = tmp | (tmp >> 1);
             tmp = ((column & 0xaaaaaaaa) >> 1) & column;
-            colmask[2] = tmp | (tmp >> 1);
+            colmask[2] = tmp | (tmp << 1);
             for (int k = 0; k < 3; k++) {
                 for (int l = 0; l < 4; l++) {
                     const uint32_t cols[4] = {0, 0x55555555, 0xaaaaaaaa, 0xffffffff};
@@ -80,6 +80,8 @@ void video_soft_render(int drawn_fb) {
             
             if ((windows[wnd * 16] & 0x3000) != 0x3000) {
                 // background world
+                if (!(windows[wnd * 16] & (0x8000 >> eye)))
+                    continue;
                 uint8_t mapid = windows[wnd * 16] & 0xf;
                 uint8_t scx_pow = ((windows[wnd * 16] >> 10) & 3);
                 uint8_t scy_pow = ((windows[wnd * 16] >> 8) & 3);
