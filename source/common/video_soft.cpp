@@ -71,6 +71,29 @@ void update_texture_cache_soft(void) {
     }
 }
 
+static uint16_t get_tile_column(int tileid, uint16_t pal, int x, bool yflip) {
+    int value =
+        (tileCache[tileid].u16.colmask[0][(pal >> 2) & 3][x]) |
+        (tileCache[tileid].u16.colmask[1][(pal >> 4) & 3][x]) |
+        (tileCache[tileid].u16.colmask[2][(pal >> 6) & 3][x]);
+    if (yflip) {
+        value = __builtin_bswap16(value);
+        value = ((value & 0xf0f0) >> 4) | ((value << 4) & 0xf0f0);
+        value = ((value & 0xcccc) >> 2) | ((value << 2) & 0xcccc);
+    }
+    return value;
+}
+
+static uint16_t get_tile_mask(int tileid, int x, bool yflip) {
+    int value = tileCache[tileid].u16.mask[x];
+    if (yflip) {
+        value = __builtin_bswap16(value);
+        value = ((value & 0xf0f0) >> 4) | ((value << 4) & 0xf0f0);
+        value = ((value & 0xcccc) >> 2) | ((value << 2) & 0xcccc);
+    }
+    return value;
+}
+
 template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int eye, int drawn_fb) {
     uint8_t mapid = world->head & 0xf;
     uint8_t scx_pow = ((world->head >> 10) & 3);
@@ -147,16 +170,8 @@ template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int 
             if (!tileVisible[tileid] && (aligned || prev_mask == -1 >> (16 - gy_shift))) continue;
             int palette = tile >> 14;
             int px = tile & 0x2000 ? 7 - bpx : bpx;
-            int value =
-                (tileCache[tileid].u16.colmask[0][(tVIPREG.GPLT[palette] >> 2) & 3][px]) |
-                (tileCache[tileid].u16.colmask[1][(tVIPREG.GPLT[palette] >> 4) & 3][px]) |
-                (tileCache[tileid].u16.colmask[2][(tVIPREG.GPLT[palette] >> 6) & 3][px]);
-            if (tile & 0x1000) {
-                value = __builtin_bswap16(value);
-                value = ((value & 0xf0f0) >> 4) | ((value << 4) & 0xf0f0);
-                value = ((value & 0xcccc) >> 2) | ((value << 2) & 0xcccc);
-            }
-            uint16_t mask = tileCache[tileid].u16.mask[px];
+            int value = get_tile_column(tileid, tVIPREG.GPLT[palette], px, (tile & 0x1000) != 0);
+            uint16_t mask = get_tile_mask(tileid, px, (tile & 0x1000) != 0);
             uint16_t current_out, current_mask;
             if (aligned) {
                 current_out = value;
@@ -188,6 +203,7 @@ void video_soft_render(int drawn_fb) {
     memset(out_fb, 0, fb_size);
     #endif
     for (int eye = 0; eye < 2; eye++) {
+	    uint8_t object_group_id = 3;
         uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
         memset(fb, 0, 0x8000);
 	    WORLD *worlds = (WORLD *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
@@ -235,7 +251,47 @@ void video_soft_render(int drawn_fb) {
             } else {
                 // object world
 
-                // TODO
+                int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
+                int end_index = tVIPREG.SPT[object_group_id] & 1023;
+                for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
+                    u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
+
+                    u16 cw3 = obj_ptr[3];
+                    u16 tileid = cw3 & 0x07ff;
+                    if (!tileVisible[tileid]) continue;
+
+                    u16 base_x = obj_ptr[0];
+                    u16 cw1 = obj_ptr[1];
+                    s16 y = *(u8*)&obj_ptr[2];
+                    if (y > 224) y = (s8)y;
+
+				    short palette = (cw3 >> 14);
+
+				    s16 jp = (s16)(cw1 << 6) >> 6;
+
+					if (!(cw1 & (0x8000 >> eye)))
+						continue;
+
+					u16 x = base_x;
+					if (eye == 0)
+						x -= jp;
+					else
+						x += jp;
+                    
+                    for (int bpx = 0; bpx < 8; bpx++) {
+                        int px = cw3 & 0x2000 ? 7 - bpx : bpx;
+                        int value = get_tile_column(tileid, tVIPREG.JPLT[palette], px, (cw3 & 0x1000) != 0);
+                        uint16_t mask = get_tile_mask(tileid, px, (cw3 & 0x1000) != 0);
+                        
+                        uint16_t *out_word = &fb[((y) >> 3) + ((x + px) * 256 / 8)];
+                        *out_word = (*out_word & ((mask >> ((y & 7) * 2)) | (-1 << (16 - (y & 7) * 2)))) | (value >> ((y & 7) * 2));
+
+                        if (y & 7) {
+                            out_word++;
+                            *out_word = (*out_word & ((mask << (16 - (y & 7) * 2) | (-1 >> ((y & 7) * 2))))) | (value >> (16 - (y & 7) * 2));
+                        }
+                    }
+                }
             }
         }
     }
