@@ -159,3 +159,27 @@ int videoProcessingTime(void) {
 	}
 	return time;
 }
+
+
+void clearCache(void) {
+    int i;
+    tDSPCACHE.BgmPALMod = 1;                // World Palette Changed
+    tDSPCACHE.ObjPALMod = 1;                // Obj Palette Changed
+    tDSPCACHE.BrtPALMod = 1;                // Britness for Palette Changed
+    tDSPCACHE.ObjDataCacheInvalid = 1;      // Object Cache Is invalid
+    tDSPCACHE.ObjCacheInvalid = 1;          // Object Cache Is invalid
+    for(i = 0; i < 14; i++)
+        tDSPCACHE.BGCacheInvalid[i] = 1;    // Object Cache Is invalid
+    for (i = 0; i < 2; i++) {
+		tDSPCACHE.DDSPDataState[i] = CPU_WROTE; // Direct Screen Draw changed
+		for (int j = 0; j < 64; j++) {
+			tDSPCACHE.SoftBufWrote[i][j].min = 0;
+			tDSPCACHE.SoftBufWrote[i][j].max = 31;
+		}
+	}
+	tDSPCACHE.CharCacheInvalid = true;
+	tDSPCACHE.CharCacheForceInvalid = true;
+	for (i = 0; i < 2048; i++)
+		tDSPCACHE.CharacterCache[i] = true;
+	tDSPCACHE.ColumnTableInvalid = true;
+}

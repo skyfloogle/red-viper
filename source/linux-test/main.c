@@ -72,18 +72,14 @@ int main(int argc, char* argv[]) {
         if (ret == 100) break;
     }
 
+    clearCache();
+
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     window = SDL_CreateWindow("Red Viper", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 384*2, 224*2, 0);
     window_surface = SDL_GetWindowSurface(window);
     game_surface = SDL_CreateRGBSurfaceWithFormat(0, 384, 224, 32, SDL_PIXELFORMAT_XBGR8888);
 
     while (true) {
-        err = v810_run();
-        if (err) {
-            printf("Error code %d\n", err);
-            return 1;
-        }
-
         if(tVIPREG.tFrame == tVIPREG.FRMCYC && !tVIPREG.drawing) {
             if (tVIPREG.XPCTRL & XPEN) {
                 tVIPREG.tDisplayedFB = !tVIPREG.tDisplayedFB;
@@ -94,12 +90,18 @@ int main(int argc, char* argv[]) {
                 }
 
                 video_soft_render(!tVIPREG.tDisplayedFB);
+
+                // we need to have this cache during rendering
+                memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
             }
 
-            // we need to have this cache during rendering
-            memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
-
             sdl_flush(tVIPREG.tDisplayedFB);
+        }
+
+        err = v810_run();
+        if (err) {
+            printf("Error code %d\n", err);
+            return 1;
         }
         
         if (!tVBOpt.FASTFORWARD) SDL_Delay(20);
