@@ -79,6 +79,8 @@ int main(int argc, char* argv[]) {
     window_surface = SDL_GetWindowSurface(window);
     game_surface = SDL_CreateRGBSurfaceWithFormat(0, 384, 224, 32, SDL_PIXELFORMAT_XBGR8888);
 
+    int lasttime = SDL_GetTicks();
+
     while (true) {
         if(tVIPREG.tFrame == tVIPREG.FRMCYC && !tVIPREG.drawing) {
             if (tVIPREG.XPCTRL & XPEN) {
@@ -104,7 +106,13 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         
-        if (!tVBOpt.FASTFORWARD) SDL_Delay(20);
+        if (!tVBOpt.FASTFORWARD) {
+            int remaining = 20 - (SDL_GetTicks() - lasttime);
+            if (remaining > 0) {
+                SDL_Delay(remaining);
+            }
+            lasttime = SDL_GetTicks();
+        }
 
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
