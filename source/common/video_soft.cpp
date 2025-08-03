@@ -205,7 +205,7 @@ void video_soft_render(int drawn_fb) {
 	    uint8_t object_group_id = 3;
     for (int eye = 0; eye < 2; eye++) {
         uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
-        memset(fb, 0, 0x8000);
+        memset(fb, 0, 0x6000);
     }
     WORLD *worlds = (WORLD *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
     for (int wrld = 31; wrld >= 0; wrld--) {
