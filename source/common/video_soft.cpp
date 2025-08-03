@@ -299,8 +299,11 @@ void video_soft_render(int drawn_fb) {
                                 int palette = tile >> 14;
                                 int px = tile & 0x2000 ? 7 - bpx : bpx;
                                 int py = tile & 0x1000 ? 7 - bpy : bpy;
-                                if (!((get_tile_mask(tileid, px, false) >> (py*2)) & 3)) {
-                                    int pxvalue = (get_tile_column(tileid, tVIPREG.GPLT[palette], px, false) >> (py*2)) & 3;
+		                        uint16_t *tiledata = (uint16_t*)(V810_DISPLAY_RAM.pmemory + ((tileid & 0x600) << 6) + 0x6000 + (tileid & 0x1ff) * 16);
+                                uint16_t tilerow = tiledata[py];
+                                int pxindex = (tilerow >> (px*2)) & 3;
+                                if (pxindex) {
+                                    int pxvalue = (tVIPREG.GPLT[palette] >> (pxindex*2)) & 3;
                                     uint8_t *out_word = &((uint8_t*)(&fb[x * 256 / 8]))[((gy + y) >> 2)];
                                     *out_word = (*out_word & ~(3 << shift)) | (pxvalue << shift);
                                 }
