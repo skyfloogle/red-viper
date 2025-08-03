@@ -247,7 +247,56 @@ void video_soft_render(int drawn_fb) {
 
                 u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
 
-                // TODO
+                int mx = base_mx + (eye == 0 ? -mp : mp);
+                int gx = base_gx + (eye == 0 ? -gp : gp);
+
+				u16 param_base = worlds[wrld].param;
+				s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + param_base * 2]);
+
+                if ((worlds[wrld].head & 0x3000) == 0x1000) {
+                    // h-bias
+                    // TODO
+                } else {
+                    // affine
+                    for (int y = 0; y < h; y++) {
+                        if (gy + y < 0) continue;
+                        if (gy + y >= 224) break;
+                        int mx = params[y * 8 + 0] << 6;
+                        s16 mp = params[y * 8 + 1];
+                        int my = params[y * 8 + 2] << 6;
+                        s32 dx = params[y * 8 + 3];
+                        s32 dy = params[y * 8 + 4];
+                        mx += (mp >= 0 ? mp * eye : -mp * !eye) * dx << 6;
+                        my += (mp >= 0 ? mp * eye : -mp * !eye) * dy << 6;
+
+                        int shift = ((y & 3) * 2);
+
+                        for (int x = gx; x < gx + w; x++) {
+                            if (x >= 384) break;
+                            if (x >= 0) {
+                                int xmap = mx >> (13 + 9);
+                                int ymap = my >> (13 + 9);
+                                int tx = (mx >> (13 + 3)) & 63;
+                                int ty = (my >> (13 + 3)) & 63;
+                                int bpx = (mx >> 13) & 7;
+                                int bpy = (my >> 13) & 7;
+                                int this_map = mapid + ymap * scx + xmap;
+                                u16 tile = tilemap[this_map * 4096 + ty * 64 + tx];
+                                u16 tileid = tile & 0x07ff;
+                                int palette = tile >> 14;
+                                int px = tile & 0x2000 ? 7 - bpx : bpx;
+                                int py = tile & 0x1000 ? 7 - bpy : bpy;
+                                int pxvalue = (get_tile_column(tileid, tVIPREG.GPLT[palette], px, false) >> bpy) & 3;
+                                uint16_t pxmask = (get_tile_mask(tileid, px, false) >> bpy) & 3;
+
+                                uint8_t *out_word = &((uint8_t*)(&fb[((gy + y) >> 3)]))[((x) * 256 / 4)];
+                                *out_word = (*out_word & (pxmask << shift)) | (pxvalue << shift);
+                            }
+                            mx += dx;
+                            my += dy;
+                        }
+                    }
+                }
             } else {
                 // object world
 
