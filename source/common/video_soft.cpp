@@ -274,31 +274,36 @@ void video_soft_render(int drawn_fb) {
                         int my = params[y * 8 + 2] << 6;
                         s32 dx = params[y * 8 + 3];
                         s32 dy = params[y * 8 + 4];
-                        mx += (mp >= 0 ? mp * eye : -mp * !eye) * dx << 6;
-                        my += (mp >= 0 ? mp * eye : -mp * !eye) * dy << 6;
+                        mx += (mp >= 0 ? mp * eye : -mp * !eye) * dx;
+                        my += (mp >= 0 ? mp * eye : -mp * !eye) * dy;
 
-                        int shift = ((y & 3) * 2);
+                        int shift = (((gy + y) & 3) * 2);
 
                         for (int x = gx; x < gx + w; x++) {
                             if (x >= 384) break;
                             if (x >= 0) {
-                                int xmap = mx >> (13 + 9);
-                                int ymap = my >> (13 + 9);
-                                int tx = (mx >> (13 + 3)) & 63;
-                                int ty = (my >> (13 + 3)) & 63;
-                                int bpx = (mx >> 13) & 7;
-                                int bpy = (my >> 13) & 7;
-                                int this_map = mapid + ymap * scx + xmap;
-                                u16 tile = tilemap[this_map * 4096 + ty * 64 + tx];
+                                int xmap = mx >> (9 + 9);
+                                int ymap = my >> (9 + 9);
+                                int tx = (mx >> (9 + 3)) & 63;
+                                int ty = (my >> (9 + 3)) & 63;
+                                int bpx = (mx >> 9) & 7;
+                                int bpy = (my >> 9) & 7;
+                                u16 tile;
+                                if (over && ((xmap & (scx - 1)) != xmap || (ymap & (scy - 1)) != ymap)) {
+                                    tile = tilemap[over_tile];
+                                } else {
+                                    int this_map = mapid + (ymap & (scy - 1)) * scx + (xmap & (scx - 1));
+                                    tile = tilemap[this_map * 4096 + ty * 64 + tx];
+                                }
                                 u16 tileid = tile & 0x07ff;
                                 int palette = tile >> 14;
                                 int px = tile & 0x2000 ? 7 - bpx : bpx;
                                 int py = tile & 0x1000 ? 7 - bpy : bpy;
-                                int pxvalue = (get_tile_column(tileid, tVIPREG.GPLT[palette], px, false) >> bpy) & 3;
-                                uint16_t pxmask = (get_tile_mask(tileid, px, false) >> bpy) & 3;
-
-                                uint8_t *out_word = &((uint8_t*)(&fb[((gy + y) >> 3)]))[((x) * 256 / 4)];
-                                *out_word = (*out_word & (pxmask << shift)) | (pxvalue << shift);
+                                if (!((get_tile_mask(tileid, px, false) >> (py*2)) & 3)) {
+                                    int pxvalue = (get_tile_column(tileid, tVIPREG.GPLT[palette], px, false) >> (py*2)) & 3;
+                                    uint8_t *out_word = &((uint8_t*)(&fb[x * 256 / 8]))[((gy + y) >> 2)];
+                                    *out_word = (*out_word & ~(3 << shift)) | (pxvalue << shift);
+                                }
                             }
                             mx += dx;
                             my += dy;
