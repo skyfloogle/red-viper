@@ -282,11 +282,14 @@ void video_soft_render(int drawn_fb) {
                         int px = cw3 & 0x2000 ? 7 - bpx : bpx;
                         int value = get_tile_column(tileid, tVIPREG.JPLT[palette], px, (cw3 & 0x1000) != 0);
                         uint16_t mask = get_tile_mask(tileid, px, (cw3 & 0x1000) != 0);
+                        if (mask == -1) continue;
                         
                         uint16_t *out_word = &fb[((y) >> 3) + ((x + px) * 256 / 8)];
-                        *out_word = (*out_word & ((mask >> ((y & 7) * 2)) | (-1 << (16 - (y & 7) * 2)))) | (value >> ((y & 7) * 2));
+                        if (y >= 0) {
+                            *out_word = (*out_word & ((mask >> ((y & 7) * 2)) | (-1 << (16 - (y & 7) * 2)))) | (value >> ((y & 7) * 2));
+                        }
 
-                        if (y & 7) {
+                        if ((y & 7) && y < 224-8) {
                             out_word++;
                             *out_word = (*out_word & ((mask << (16 - (y & 7) * 2) | (-1 >> ((y & 7) * 2))))) | (value >> (16 - (y & 7) * 2));
                         }
