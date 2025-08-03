@@ -202,21 +202,24 @@ void video_soft_render(int drawn_fb) {
     uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[drawn_fb], 0, &fb_size);
     memset(out_fb, 0, fb_size);
     #endif
-    for (int eye = 0; eye < 2; eye++) {
 	    uint8_t object_group_id = 3;
+    for (int eye = 0; eye < 2; eye++) {
         uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
         memset(fb, 0, 0x8000);
-	    WORLD *worlds = (WORLD *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
-        for (int wrld = 31; wrld >= 0; wrld--) {
-            if (worlds[wrld].head & 0x40)
-                break;
-            if (!(worlds[wrld].head & 0xc000))
-                continue;
-            
-            if ((worlds[wrld].head & 0x3000) == 0) {
-                // normal world
+    }
+    WORLD *worlds = (WORLD *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
+    for (int wrld = 31; wrld >= 0; wrld--) {
+        if (worlds[wrld].head & 0x40)
+            break;
+        if (!(worlds[wrld].head & 0xc000))
+            continue;
+        
+        if ((worlds[wrld].head & 0x3000) == 0) {
+            // normal world
+            for (int eye = 0; eye < 2; eye++) {
                 if (!(worlds[wrld].head & (0x8000 >> eye)))
                     continue;
+                uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
                 int16_t gy = worlds[wrld].gy;
                 int16_t my = (s16)(worlds[wrld].my << 3) >> 3;
                 int16_t h = worlds[wrld].h + 1;
@@ -225,33 +228,38 @@ void video_soft_render(int drawn_fb) {
                 } else {
                     render_normal_world<true>(fb, &worlds[wrld], eye, drawn_fb);
                 }
-            } else if ((worlds[wrld].head & 0x3000) != 0x3000) {
-                // h-bias or affine world
+            }
+        } else if ((worlds[wrld].head & 0x3000) != 0x3000) {
+            // h-bias or affine world
+            uint8_t mapid = worlds[wrld].head & 0xf;
+            uint8_t scx_pow = ((worlds[wrld].head >> 10) & 3);
+            uint8_t scy_pow = ((worlds[wrld].head >> 8) & 3);
+            uint8_t scx = 1 << scx_pow;
+            uint8_t scy = 1 << scy_pow;
+            bool over = worlds[wrld].head & 0x80;
+            int16_t base_gx = (s16)(worlds[wrld].gx << 6) >> 6;
+            int16_t gp = (s16)(worlds[wrld].gp << 6) >> 6;
+            int16_t gy = worlds[wrld].gy;
+            int16_t base_mx = (s16)(worlds[wrld].mx << 3) >> 3;
+            int16_t mp = (s16)(worlds[wrld].mp << 1) >> 1;
+            int16_t my = (s16)(worlds[wrld].my << 3) >> 3;
+            int16_t w = worlds[wrld].w + 1;
+            int16_t h = worlds[wrld].h + 1;
+            int16_t over_tile = worlds[wrld].over & 0x7ff;
+
+            u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+
+            u16 param_base = worlds[wrld].param;
+            s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + param_base * 2]);
+
+            for (int eye = 0; eye < 2; eye++) {
                 if (!(worlds[wrld].head & (0x8000 >> eye)))
                     continue;
-                uint8_t mapid = worlds[wrld].head & 0xf;
-                uint8_t scx_pow = ((worlds[wrld].head >> 10) & 3);
-                uint8_t scy_pow = ((worlds[wrld].head >> 8) & 3);
-                uint8_t scx = 1 << scx_pow;
-                uint8_t scy = 1 << scy_pow;
-                bool over = worlds[wrld].head & 0x80;
-                int16_t base_gx = (s16)(worlds[wrld].gx << 6) >> 6;
-                int16_t gp = (s16)(worlds[wrld].gp << 6) >> 6;
-                int16_t gy = worlds[wrld].gy;
-                int16_t base_mx = (s16)(worlds[wrld].mx << 3) >> 3;
-                int16_t mp = (s16)(worlds[wrld].mp << 1) >> 1;
-                int16_t my = (s16)(worlds[wrld].my << 3) >> 3;
-                int16_t w = worlds[wrld].w + 1;
-                int16_t h = worlds[wrld].h + 1;
-                int16_t over_tile = worlds[wrld].over & 0x7ff;
 
-                u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+                uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
 
                 int mx = base_mx + (eye == 0 ? -mp : mp);
                 int gx = base_gx + (eye == 0 ? -gp : gp);
-
-				u16 param_base = worlds[wrld].param;
-				s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + param_base * 2]);
 
                 if ((worlds[wrld].head & 0x3000) == 0x1000) {
                     // h-bias
@@ -297,54 +305,61 @@ void video_soft_render(int drawn_fb) {
                         }
                     }
                 }
-            } else {
-                // object world
+            }
+        } else {
+            // object world
 
-                int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
-                int end_index = tVIPREG.SPT[object_group_id] & 1023;
-                for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
-                    u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
+            int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
+            int end_index = tVIPREG.SPT[object_group_id] & 1023;
+            for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
+                u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
 
-                    u16 cw3 = obj_ptr[3];
-                    u16 tileid = cw3 & 0x07ff;
-                    if (!tileVisible[tileid]) continue;
+                u16 cw3 = obj_ptr[3];
+                u16 tileid = cw3 & 0x07ff;
+                if (!tileVisible[tileid]) continue;
 
-                    u16 base_x = obj_ptr[0];
-                    u16 cw1 = obj_ptr[1];
-                    s16 y = *(u8*)&obj_ptr[2];
-                    if (y > 224) y = (s8)y;
+                u16 base_x = obj_ptr[0];
+                u16 cw1 = obj_ptr[1];
+                s16 y = *(u8*)&obj_ptr[2];
+                if (y > 224) y = (s8)y;
 
-				    short palette = (cw3 >> 14);
+                short palette = (cw3 >> 14);
 
-				    s16 jp = (s16)(cw1 << 6) >> 6;
+                s16 jp = (s16)(cw1 << 6) >> 6;
 
-					if (!(cw1 & (0x8000 >> eye)))
-						continue;
+                for (int eye = 0; eye < 2; eye++) {
+                    if (!(cw1 & (0x8000 >> eye)))
+                        continue;
 
-					u16 x = base_x;
-					if (eye == 0)
-						x -= jp;
-					else
-						x += jp;
+                    uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
+
+                    s16 x = base_x;
+                    if (eye == 0)
+                        x -= jp;
+                    else
+                        x += jp;
                     
                     for (int bpx = 0; bpx < 8; bpx++) {
+                        if (x + bpx < 0) continue;
+                        if (x + bpx >= 384) break;
                         int px = cw3 & 0x2000 ? 7 - bpx : bpx;
                         int value = get_tile_column(tileid, tVIPREG.JPLT[palette], px, (cw3 & 0x1000) != 0);
                         uint16_t mask = get_tile_mask(tileid, px, (cw3 & 0x1000) != 0);
                         if (mask == -1) continue;
                         
-                        uint16_t *out_word = &fb[((y) >> 3) + ((x + px) * 256 / 8)];
+                        uint16_t *out_word = &fb[((y) >> 3) + ((x + bpx) * 256 / 8)];
                         if (y >= 0) {
-                            *out_word = (*out_word & ((mask >> ((y & 7) * 2)) | (-1 << (16 - (y & 7) * 2)))) | (value >> ((y & 7) * 2));
+                            *out_word = (*out_word & ((mask << ((y & 7) * 2)) | ((u16)-1 >> (16 - (y & 7) * 2)))) | (value << ((y & 7) * 2));
                         }
 
                         if ((y & 7) && y < 224-8) {
                             out_word++;
-                            *out_word = (*out_word & ((mask << (16 - (y & 7) * 2) | (-1 >> ((y & 7) * 2))))) | (value >> (16 - (y & 7) * 2));
+                            *out_word = (*out_word & ((mask >> (16 - (y & 7) * 2) | (-1 << ((y & 7) * 2))))) | (value >> (16 - (y & 7) * 2));
                         }
                     }
                 }
             }
+            object_group_id = (object_group_id - 1) & 3;
         }
     }
 }
