@@ -59,18 +59,15 @@ void hbHaxExit(void) {
 }
 
 void FlushInvalidateCache(void *addr, size_t len) {
-    register void *addr_asm asm("r0") = addr;
-    register size_t len_asm asm("r1") = len;
     if (!is_citra) {
         // works on hardware, does nothing on citra
-        __asm__ volatile(
-            "ldr r0, =k_flushCaches\n\t"
-            "svc 0x80\n\t"
-            :::"r0"
-        );
+        register void *func asm("r0") = k_flushCaches;
+        __asm__ volatile("svc 0x80":"+r"(func));
     } else {
         // works on citra, crashes on hardware
-        __asm__ volatile("svc 0x93"::"r"(addr_asm),"r"(len_asm));
+        register void *addr_asm asm("r0") = addr;
+        register size_t len_asm asm("r1") = len;
+        __asm__ volatile("svc 0x93":"+r"(addr_asm),"+r"(len_asm));
     }
 }
 
