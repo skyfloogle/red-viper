@@ -273,7 +273,8 @@ int interpreter_run(void) {
                         serviceInt(cycles, PC);
 
                     } while (!v810_state->ret && v810_state->PC == PC);
-                    break;
+                    // PC was modified so don't reset it
+                    return 0;
                 }
                 case V810_OP_LDSR:
                     v810_state->S_REG[reg1] = (reg2 ? v810_state->P_REG[reg2] : 0);
