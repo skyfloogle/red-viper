@@ -1,18 +1,26 @@
 #include "vb_dsp.h"
 #include "v810_mem.h"
 
-typedef union {
+struct {
+    // half-nibbles are colour indices
+    union {
+        uint16_t u16[8];
+        uint32_t u32[4];
+    } indices;
+    // only one index, for each colour
     struct {
-        uint16_t mask[8];
-        uint16_t colmask[3][4][8];
-    } u16;
-    struct {
-        uint32_t mask[4];
-        uint32_t colmask[3][4][4];
-    } u32;
-} CachedTile;
-
-CachedTile tileCache[2048];
+        struct {
+            struct {
+                uint16_t shade[4];
+            } col[4]; // actually 3 but 4 is better aligned
+        } column[8];
+    } colmask;
+    // mask where transparent pixels are 1
+    union {
+        uint16_t u16[8];
+        uint32_t u32[4];
+    } mask;
+} tileCache[2048];
 
 void update_texture_cache_soft(void) {
     for (int t = 0; t < 2048; t++) {
@@ -29,14 +37,9 @@ void update_texture_cache_soft(void) {
 			bool tv = ((uint64_t*)tile)[0] | ((uint64_t*)tile)[1];
 			tileVisible[t] = tv;
 			if (!tv) {
-                for (int i = 0; i < 4; i++) {
-                    tileCache[t].u32.mask[i] = -1;
-                    for (int j = 0; j < 3; j++) {
-                        for (int k = 0; k < 4; k++) {
-                            tileCache[t].u32.colmask[j][i][k] = 0;
-                        }
-                    }
-                }
+                memset(&tileCache[t].indices, 0, sizeof(tileCache[t].indices));
+                memset(&tileCache[t].colmask, 0, sizeof(tileCache[t].colmask));
+                memset(&tileCache[t].mask, -1, sizeof(tileCache[t].mask));
                 continue;
             }
 		}
@@ -52,6 +55,7 @@ void update_texture_cache_soft(void) {
                     ((row & (0x0c0000) << 4*i))
                 ) >> 4*i << 4*j;
             }
+            tileCache[t].indices.u32[i] = column;
             uint32_t tmp;
             uint32_t colmask[3];
             tmp = (column & (~(column & 0xaaaaaaaa) >> 1)) & 0x55555555;
@@ -63,19 +67,21 @@ void update_texture_cache_soft(void) {
             for (int k = 0; k < 3; k++) {
                 for (int l = 0; l < 4; l++) {
                     const uint32_t cols[4] = {0, 0x55555555, 0xaaaaaaaa, 0xffffffff};
-                    tileCache[t].u32.colmask[k][l][i] = colmask[k] & cols[l];
+                    uint32_t columns = colmask[k] & cols[l];
+                    tileCache[t].colmask.column[i * 2].col[k].shade[l] = columns;
+                    tileCache[t].colmask.column[i * 2 + 1].col[k].shade[l] = columns >> 16;
                 }
             }
-            tileCache[t].u32.mask[i] = ~(colmask[0] | colmask[1] | colmask[2]);
+            tileCache[t].mask.u32[i] = ~(colmask[0] | colmask[1] | colmask[2]);
         }
     }
 }
 
 static uint16_t get_tile_column(int tileid, uint16_t pal, int x, bool yflip) {
     int value =
-        (tileCache[tileid].u16.colmask[0][(pal >> 2) & 3][x]) |
-        (tileCache[tileid].u16.colmask[1][(pal >> 4) & 3][x]) |
-        (tileCache[tileid].u16.colmask[2][(pal >> 6) & 3][x]);
+        (tileCache[tileid].colmask.column[x].col[0].shade[(pal >> 2) & 3]) |
+        (tileCache[tileid].colmask.column[x].col[1].shade[(pal >> 4) & 3]) |
+        (tileCache[tileid].colmask.column[x].col[2].shade[(pal >> 6) & 3]);
     if (yflip) {
         value = __builtin_bswap16(value);
         value = ((value & 0xf0f0) >> 4) | ((value << 4) & 0xf0f0);
@@ -85,7 +91,7 @@ static uint16_t get_tile_column(int tileid, uint16_t pal, int x, bool yflip) {
 }
 
 static uint16_t get_tile_mask(int tileid, int x, bool yflip) {
-    int value = tileCache[tileid].u16.mask[x];
+    int value = tileCache[tileid].mask.u16[x];
     if (yflip) {
         value = __builtin_bswap16(value);
         value = ((value & 0xf0f0) >> 4) | ((value << 4) & 0xf0f0);
@@ -299,9 +305,8 @@ void video_soft_render(int drawn_fb) {
                                 int palette = tile >> 14;
                                 int px = tile & 0x2000 ? 7 - bpx : bpx;
                                 int py = tile & 0x1000 ? 7 - bpy : bpy;
-		                        uint16_t *tiledata = (uint16_t*)(V810_DISPLAY_RAM.pmemory + ((tileid & 0x600) << 6) + 0x6000 + (tileid & 0x1ff) * 16);
-                                uint16_t tilerow = tiledata[py];
-                                int pxindex = (tilerow >> (px*2)) & 3;
+                                uint16_t tilecolumn = tileCache[tileid].indices.u16[px];
+                                int pxindex = (tilecolumn >> (py*2)) & 3;
                                 if (pxindex) {
                                     int pxvalue = (tVIPREG.GPLT[palette] >> (pxindex*2)) & 3;
                                     uint8_t *out_word = &((uint8_t*)(&fb[x * 256 / 8]))[((gy + y) >> 2)];
