@@ -125,9 +125,16 @@ int main(int argc, char* argv[]) {
                     case SDL_SCANCODE_RIGHT: flag = VB_LPAD_R; break;
                     case SDL_SCANCODE_UP: flag = VB_LPAD_U; break;
                     case SDL_SCANCODE_DOWN: flag = VB_LPAD_D; break;
+                    case SDL_SCANCODE_I: flag = VB_RPAD_U; break;
+                    case SDL_SCANCODE_J: flag = VB_RPAD_L; break;
+                    case SDL_SCANCODE_K: flag = VB_RPAD_D; break;
+                    case SDL_SCANCODE_L: flag = VB_RPAD_R; break;
                     case SDL_SCANCODE_RETURN: flag = VB_KEY_START; break;
+                    case SDL_SCANCODE_RSHIFT: flag = VB_KEY_SELECT; break;
                     case SDL_SCANCODE_Z: flag = VB_KEY_A; break;
                     case SDL_SCANCODE_X: flag = VB_KEY_B; break;
+                    case SDL_SCANCODE_A: flag = VB_KEY_L; break;
+                    case SDL_SCANCODE_S: flag = VB_KEY_R; break;
                     case SDL_SCANCODE_TAB: tVBOpt.FASTFORWARD = e.type == SDL_KEYDOWN; break;
                     case SDL_SCANCODE_ESCAPE: return 0;
                     default: flag = 0; break;
