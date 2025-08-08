@@ -34,7 +34,7 @@ C3D_RenderTarget *screenTargetHard[2];
 static C3D_Tex tileTexture;
 
 // Virtual Bowling needs at least 4 for good performance
-#define AFFINE_CACHE_SIZE 7
+#define AFFINE_CACHE_SIZE 8
 typedef struct {
 	C3D_Tex tex;
 	C3D_RenderTarget *target;
