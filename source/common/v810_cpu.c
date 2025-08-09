@@ -560,6 +560,10 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
         tVIPREG.newframe = true;
         pending_int = 1;
 
+        if (tVIPREG.tFrame >= tVIPREG.FRMCYC && !tVIPREG.drawing && (tVIPREG.XPCTRL & XPEN)) {
+            tVIPREG.tDisplayedFB = !tVIPREG.tDisplayedFB;
+        }
+
         sound_update(cycles);
     }
 

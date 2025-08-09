@@ -82,10 +82,8 @@ int main(int argc, char* argv[]) {
     int lasttime = SDL_GetTicks();
 
     while (true) {
-        if(tVIPREG.tFrame == tVIPREG.FRMCYC && !tVIPREG.drawing) {
+        if(tVIPREG.tFrame >= tVIPREG.FRMCYC && !tVIPREG.drawing) {
             if (tVIPREG.XPCTRL & XPEN) {
-                tVIPREG.tDisplayedFB = !tVIPREG.tDisplayedFB;
-
                 if (tDSPCACHE.CharCacheInvalid) {
                     tDSPCACHE.CharCacheInvalid = false;
                     update_texture_cache_soft();

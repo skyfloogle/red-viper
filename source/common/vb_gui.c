@@ -225,7 +225,7 @@ int emulation_lstate(int state) {
     // Load header
     FREAD(&id, 4, 1, state_file);
     FREAD(&ver, 4, 1, state_file);
-    if ((id != 0x53535652) || (ver != SAVESTATE_VER)) {
+    if ((id != 0x53535652) || (ver != 1 && ver != SAVESTATE_VER)) {
         goto bail;
     }
     FREAD(&crc, 4, 1, state_file);
@@ -315,6 +315,10 @@ int emulation_lstate(int state) {
         goto bail;
     }
     new_vipreg.tDisplayedFB %= 2;
+    // in version 2, modifying tDisplayedFB was moved to end-of-frame instead of start-of-frame
+    if (ver < 2 && new_vipreg.tFrame >= new_vipreg.FRMCYC && !new_vipreg.drawing && (new_vipreg.XPCTRL & XPEN)) {
+        new_vipreg.tDisplayedFB = !new_vipreg.tDisplayedFB;
+    }
 
     //Load hardware control registers
     V810_HREGDAT new_hreg = {0};

@@ -7,7 +7,7 @@
 #define GUIEXIT         0x04
 #define VBRESET         0x08
 
-#define SAVESTATE_VER   0x00000001
+#define SAVESTATE_VER   0x00000002
 
 #define LENGTH(array) (sizeof(array)/sizeof(array[0]))
 
