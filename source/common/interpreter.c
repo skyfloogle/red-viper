@@ -288,10 +288,12 @@ int interpreter_run(void) {
                 case V810_OP_BSTR: {
                     typedef bool (*bstr_func)(WORD,WORD,WORD,WORD);
                     bstr_func func = (bstr_func)bssuboptable[reg1].func;
-                    WORD lastarg = reg1 < 4 ? v810_state->P_REG[27] & 31 : ((v810_state->P_REG[27] & 31)) | ((v810_state->P_REG[26] & 31) << 16);
-                    bool res = func(v810_state->P_REG[30], v810_state->P_REG[29], v810_state->P_REG[28], lastarg);
+                    WORD lastarg = reg1 < 4 ? v810_state->P_REG[27] & 31 : ((v810_state->P_REG[27] & 31)) | ((v810_state->P_REG[26] & 31) << 5) | ((target - cycles) << 10);
+                    WORD res = func(v810_state->P_REG[30], v810_state->P_REG[29], v810_state->P_REG[28], lastarg);
                     if (reg1 < 4) {
                         v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~1) | !res;
+                    } else {
+                        v810_state->cycles += res;
                     }
                     break;
                 }
