@@ -116,7 +116,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_MUL: {
-                    SWORD reg2_val = (SWORD)v810_state->P_REG[reg2];
+                    SWORD reg2_val = reg2 ? (SWORD)v810_state->P_REG[reg2] : 0;
                     SWORD res;
                     bool ov = __builtin_mul_overflow((SWORD)reg1_val, reg2_val, &res);
                     bool z = res == 0;
@@ -126,7 +126,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_DIV: {
-                    SWORD reg2_val = (SWORD)v810_state->P_REG[reg2];
+                    SWORD reg2_val = reg2 ? (SWORD)v810_state->P_REG[reg2] : 0;
                     if (reg2_val == 0x80000000 && (SWORD)reg1_val == -1) {
                         v810_state->P_REG[30] = 0;
                         v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | 6;
@@ -323,7 +323,7 @@ int interpreter_run(void) {
                     break;
                 }
                 case V810_OP_ADDI: {
-                    WORD reg1_val = v810_state->P_REG[reg1];
+                    WORD reg1_val = reg1 ? v810_state->P_REG[reg1] : 0;
                     WORD imm = (SHWORD)instr2;
                     WORD res = reg1_val + imm;
                     bool z = res == 0;
@@ -497,14 +497,14 @@ int interpreter_run(void) {
                     #pragma GCC diagnostic push
                     #pragma GCC diagnostic ignored "-Wstrict-aliasing"
                     if (subop == V810_OP_CVT_WS) {
-                        float res = (float)(SWORD)v810_state->P_REG[reg1];
+                        float res = reg1 ? (float)(SWORD)v810_state->P_REG[reg1] : 0;
                         bool z = res == 0;
                         int scy = res < 0 ? 0xa : 0;
                         v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
                         *(float*)&v810_state->P_REG[reg2] = res;
                     } else if (!(subop & 8) || subop == V810_OP_TRNC_SW) {
                         // float
-                        float reg1_val = *(float*)&v810_state->P_REG[reg1];
+                        float reg1_val = reg1 ? *(float*)&v810_state->P_REG[reg1] : 0;
                         if (subop == V810_OP_CVT_SW) {
                             SWORD res = round(reg1_val);
                             bool z = res == 0;
@@ -518,7 +518,7 @@ int interpreter_run(void) {
                             v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
                             v810_state->P_REG[reg2] = res;
                         } else {
-                            float reg2_val = *(float*)&v810_state->P_REG[reg2];
+                            float reg2_val = reg2 ? *(float*)&v810_state->P_REG[reg2] : 0;
                             float res;
                             switch (subop) {
                                 case V810_OP_ADDF_S:
@@ -544,13 +544,13 @@ int interpreter_run(void) {
                         }
                     } else {
                         // extended
-                        WORD reg2_val = v810_state->P_REG[reg2];
+                        WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
                         switch (subop) {
                             case V810_OP_MPYHW:
-                                v810_state->P_REG[reg2] *= (int)(v810_state->P_REG[reg1] << 15) >> 15;
+                                v810_state->P_REG[reg2] *= reg1 ? (int)(v810_state->P_REG[reg1] << 15) >> 15 : 0;
                                 break;
                             case V810_OP_REV:
-                                v810_state->P_REG[reg2] = ins_rev(v810_state->P_REG[reg1]);
+                                v810_state->P_REG[reg2] = reg1 ? ins_rev(v810_state->P_REG[reg1]) : 0;
                                 break;
                             case V810_OP_XB:
                                 v810_state->P_REG[reg2] = (reg2_val & 0xFFFF0000) | ((reg2_val << 8) & 0xFF00) | ((reg2_val >> 8) & 0xFF);
