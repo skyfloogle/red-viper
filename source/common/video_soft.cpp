@@ -182,6 +182,7 @@ template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int 
             if (aligned) {
                 current_out = value;
                 current_mask = mask;
+                if (mask == -1) continue;
             } else {
                 current_out = ((value << gy_shift)) | prev_out;
                 current_mask = ((mask << gy_shift)) | prev_mask;
