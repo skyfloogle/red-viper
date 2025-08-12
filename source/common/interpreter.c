@@ -296,6 +296,9 @@ int interpreter_run(void) {
                         v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~1) | !res;
                     } else {
                         v810_state->cycles += res;
+                        if (v810_state->P_REG[28]) {
+                            PC = last_PC;
+                        }
                     }
                     break;
                 }
