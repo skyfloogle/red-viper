@@ -160,7 +160,7 @@ template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int 
         int current_map = mapid + scx * mapy + mapx;
 
         uint16_t prev_out = 0;
-        uint16_t prev_mask = -1;
+        uint16_t prev_mask = 0xffff >> (16 - gy_shift);
 
         for (int y = gy - (my & 7); y < gy + h; y += 8) {
             if (y >= 224) break;
@@ -188,6 +188,10 @@ template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int 
                 current_mask = ((mask << gy_shift)) | prev_mask;
                 prev_out = (value) >> (16 - gy_shift);
                 prev_mask = (mask) >> (16 - gy_shift);
+                if (y < gy) {
+                    current_mask |= 0xffff >> ((gy & 7) * 2);
+                    current_out &= ~current_mask;
+                }
             }
             if (y < 0) continue;
             uint16_t *out_word = &fb[((y) >> 3) + ((gx + x) * 256 / 8)];
