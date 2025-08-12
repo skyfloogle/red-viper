@@ -197,7 +197,7 @@ template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int 
             uint16_t *out_word = &fb[((y) >> 3) + ((gx + x) * 256 / 8)];
             *out_word = (*out_word & current_mask) | current_out;
         }
-        if ((gy + h) & 7) {
+        if (((gy & 7) + h) >= 8 && ((gy + h) & 7) != 0) {
             uint16_t current_out = prev_out;
             uint16_t current_mask = (-1 << gy_shift) | prev_mask;
             uint16_t *out_word = &fb[((gy - (my & 7) + h) >> 3) + ((gx + x) * 256 / 8)];
