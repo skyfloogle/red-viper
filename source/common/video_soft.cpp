@@ -134,13 +134,13 @@ template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int 
     uint8_t gy_shift = ((gy - my) & 7) * 2;
     uint8_t my_shift = (my & 7) * 2;
 
-    for (int x = gx; x < gx + w && x < 384; x += 8) {
+    for (int x = gx & ~7; x < gx + w && x < 384; x += 8) {
         if (x < 0) continue;
         SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[drawn_fb][x / 8];
         int min = gy / 8;
         if (min < 0) min = 0;
         if (column->min > min) column->min = min;
-        int max = (gy + h) / 8;
+        int max = (gy + h - 1) / 8;
         if (max < 0) max = 0;
         if (max > 31) max = 31;
         if (column->max < max) column->max = max;
@@ -263,6 +263,18 @@ void video_soft_render(int drawn_fb) {
             u16 param_base = worlds[wrld].param;
             s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + param_base * 2]);
 
+            for (int x = (base_gx - abs(gp)) & ~7; x < base_gx + abs(gp) + w && x < 384; x += 8) {
+                if (x < 0) continue;
+                SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[drawn_fb][x / 8];
+                int min = gy / 8;
+                if (min < 0) min = 0;
+                if (column->min > min) column->min = min;
+                int max = (gy + h - 1) / 8;
+                if (max < 0) max = 0;
+                if (max > 31) max = 31;
+                if (column->max < max) column->max = max;
+            }
+
             for (int eye = 0; eye < 2; eye++) {
                 if (!(worlds[wrld].head & (0x8000 >> eye)))
                     continue;
@@ -344,6 +356,18 @@ void video_soft_render(int drawn_fb) {
                 short palette = (cw3 >> 14);
 
                 s16 jp = (s16)(cw1 << 6) >> 6;
+
+                for (int x = (base_x - abs(jp)) & ~7; x < base_x + abs(jp) && x < 384; x += 8) {
+                    if (x < 0) continue;
+                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[drawn_fb][x / 8];
+                    int min = y / 8;
+                    if (min < 0) min = 0;
+                    if (column->min > min) column->min = min;
+                    int max = (y + 7) / 8;
+                    if (max < 0) max = 0;
+                    if (max > 31) max = 31;
+                    if (column->max < max) column->max = max;
+                }
 
                 for (int eye = 0; eye < 2; eye++) {
                     if (!(cw1 & (0x8000 >> eye)))
