@@ -117,12 +117,13 @@ int interpreter_run(void) {
                 }
                 case V810_OP_MUL: {
                     SWORD reg2_val = reg2 ? (SWORD)v810_state->P_REG[reg2] : 0;
-                    SWORD res;
-                    bool ov = __builtin_mul_overflow((SWORD)reg1_val, reg2_val, &res);
+                    int64_t res = (int64_t)(SWORD)reg1_val * (int64_t)reg2_val;
+                    bool ov = res != (int64_t)(int32_t)res;
                     bool z = res == 0;
                     bool s = res < 0;
                     v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | (s << 1) | (ov << 2);
-                    v810_state->P_REG[reg2] = res;
+                    v810_state->P_REG[30] = (WORD)(res >> 32);
+                    v810_state->P_REG[reg2] = (WORD)res;
                     break;
                 }
                 case V810_OP_DIV: {
@@ -142,12 +143,13 @@ int interpreter_run(void) {
                 }
                 case V810_OP_MULU: {
                     WORD reg2_val = reg2 ? v810_state->P_REG[reg2] : 0;
-                    WORD res;
-                    bool ov = __builtin_mul_overflow(reg1_val, reg2_val, &res);
+                    uint64_t res = (uint64_t)reg1_val * (uint64_t)reg2_val;
+                    bool ov = res != (uint64_t)(uint32_t)res;
                     bool z = res == 0;
                     bool s = (SWORD)res < 0;
                     v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | (s << 1) | (ov << 2);
-                    v810_state->P_REG[reg2] = res;
+                    v810_state->P_REG[30] = (WORD)(res >> 32);
+                    v810_state->P_REG[reg2] = (WORD)res;
                     break;
                 }
                 case V810_OP_DIVU: {
