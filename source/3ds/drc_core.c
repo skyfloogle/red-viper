@@ -1141,7 +1141,7 @@ static int drc_translateBlock(void) {
             case V810_OP_MUL: // mul reg1, reg2
                 LOAD_REG1();
                 LOAD_REG2();
-                SMULLS(arm_reg2, phys_regs[30], arm_reg2, arm_reg1);
+                SMULLS(arm_reg2, inst_cache->reg2 != 30 ? phys_regs[30] : 0, arm_reg2, arm_reg1);
                 // If the 30th register isn't being used in the block, the high
                 // word of the multiplication will be in r0 (because
                 // phys_regs[30] == 0) and we'll have to save it manually
@@ -1153,7 +1153,7 @@ static int drc_translateBlock(void) {
             case V810_OP_MULU: // mul reg1, reg2
                 LOAD_REG1();
                 LOAD_REG2();
-                UMULLS(arm_reg2, phys_regs[30], arm_reg2, arm_reg1);
+                UMULLS(arm_reg2, inst_cache->reg2 != 30 ? phys_regs[30] : 0, arm_reg2, arm_reg1);
                 if (!phys_regs[30]) {
                     STR_IO(0, 11, offsetof(cpu_state, P_REG[30]));
                 }
