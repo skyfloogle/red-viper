@@ -61,8 +61,6 @@ int main(int argc, char* argv[]) {
     v810_init();
     replay_init();
 
-    tVBOpt.RENDERMODE = 2;
-
     strncpy(tVBOpt.ROM_PATH, argv[1], sizeof(tVBOpt.ROM_PATH));
 
     v810_load_init();
@@ -71,6 +69,8 @@ int main(int argc, char* argv[]) {
         if (ret < 0) return ret;
         if (ret == 100) break;
     }
+
+    tVBOpt.RENDERMODE = 2;
 
     clearCache();
 
