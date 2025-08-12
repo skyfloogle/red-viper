@@ -24,6 +24,10 @@
 
 #include "replay.h"
 
+#ifdef __3DS__
+#include <3ds.h>
+#endif
+
 #define NEG(n) ((n) >> 31)
 #define POS(n) ((~(n)) >> 31)
 
@@ -344,6 +348,15 @@ void v810_reset(void) {
 
     // Golf might set this to 2, so reset it here.
     tVBOpt.RENDERMODE = 1;
+
+    // Software rendering for Test Chamber, only on New 3DS.
+    if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) {
+        bool new_3ds = true;
+        #ifdef __3DS__
+        APT_CheckNew3DS(&new_3ds);
+        #endif
+        if (new_3ds) tVBOpt.RENDERMODE = 2;
+    }
 
     tVBOpt.VIP_OVER_SOFT = (
         memcmp(tVBOpt.GAME_ID, "01VREE", 6) == 0 // Red Alarm (U)
