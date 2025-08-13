@@ -429,10 +429,10 @@ bool ins_sch1bsd (WORD src, WORD skipped, WORD len, WORD offs) {
     if (src == dst) { \
         /* niko-chan battle speedhack */ \
         if (dst == 0x78800 && len == 0x3c000) { \
-            memset(V810_DISPLAY_RAM.pmemory + 0x06800, 0, 0x1800); \
-            memset(V810_DISPLAY_RAM.pmemory + 0x0e000, 0, 0x2000); \
-            memset(V810_DISPLAY_RAM.pmemory + 0x16000, 0, 0x2000); \
-            memset(V810_DISPLAY_RAM.pmemory + 0x1e000, 0, 0x2000); \
+            memset((u8*)V810_DISPLAY_RAM.off + 0x06800, 0, 0x1800); \
+            memset((u8*)V810_DISPLAY_RAM.off + 0x0e000, 0, 0x2000); \
+            memset((u8*)V810_DISPLAY_RAM.off + 0x16000, 0, 0x2000); \
+            memset((u8*)V810_DISPLAY_RAM.off + 0x1e000, 0, 0x2000); \
             memset(tDSPCACHE.CharacterCache + 0x80, 1, 0x780); \
             src += 0x7800; \
             dst += 0x7800; \

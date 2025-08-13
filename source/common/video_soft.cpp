@@ -30,7 +30,7 @@ void update_texture_cache_soft(void) {
 		else
 			continue;
 
-		uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
+		uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.off + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
 
 		// optimize invisible tiles
 		{
@@ -117,7 +117,7 @@ template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int 
     int16_t h = world->h + 1;
     int16_t over_tile = world->over & 0x7ff;
 
-    u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+    u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.off + 0x20000);
 
     int mx = base_mx + (eye == 0 ? -mp : mp);
     int gx = base_gx + (eye == 0 ? -gp : gp);
@@ -215,10 +215,10 @@ void video_soft_render(int drawn_fb) {
     #endif
 	    uint8_t object_group_id = 3;
     for (int eye = 0; eye < 2; eye++) {
-        uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
+        uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
         memset(fb, 0, 0x6000);
     }
-    WORLD *worlds = (WORLD *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
+    WORLD *worlds = (WORLD *)(V810_DISPLAY_RAM.off + 0x3d800);
     for (int wrld = 31; wrld >= 0; wrld--) {
         if (worlds[wrld].head & 0x40)
             break;
@@ -230,7 +230,7 @@ void video_soft_render(int drawn_fb) {
             for (int eye = 0; eye < 2; eye++) {
                 if (!(worlds[wrld].head & (0x8000 >> eye)))
                     continue;
-                uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
+                uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
                 int16_t gy = worlds[wrld].gy;
                 int16_t my = (s16)(worlds[wrld].my << 3) >> 3;
                 int16_t h = worlds[wrld].h + 1;
@@ -258,10 +258,10 @@ void video_soft_render(int drawn_fb) {
             int16_t h = worlds[wrld].h + 1;
             int16_t over_tile = worlds[wrld].over & 0x7ff;
 
-            u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+            u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.off + 0x20000);
 
             u16 param_base = worlds[wrld].param;
-            s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + param_base * 2]);
+            s16 *params = (s16 *)(V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
 
             for (int x = (base_gx - abs(gp)) & ~7; x < base_gx + abs(gp) + w && x < 384; x += 8) {
                 if (x < 0) continue;
@@ -279,7 +279,7 @@ void video_soft_render(int drawn_fb) {
                 if (!(worlds[wrld].head & (0x8000 >> eye)))
                     continue;
 
-                uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
+                uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
 
                 int mx = base_mx + (eye == 0 ? -mp : mp);
                 int gx = base_gx + (eye == 0 ? -gp : gp);
@@ -342,7 +342,7 @@ void video_soft_render(int drawn_fb) {
             int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
             int end_index = tVIPREG.SPT[object_group_id] & 1023;
             for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
-                u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
+                u16 *obj_ptr = (u16 *)(V810_DISPLAY_RAM.off + 0x0003E000 + 8 * i);
 
                 u16 cw3 = obj_ptr[3];
                 u16 tileid = cw3 & 0x07ff;
@@ -373,7 +373,7 @@ void video_soft_render(int drawn_fb) {
                     if (!(cw1 & (0x8000 >> eye)))
                         continue;
 
-                    uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * drawn_fb);
+                    uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
 
                     s16 x = base_x;
                     if (eye == 0)

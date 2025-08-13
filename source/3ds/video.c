@@ -240,7 +240,7 @@ void video_init(void) {
 }
 
 void processColumnTable(void) {
-	u8 *table = V810_DISPLAY_RAM.pmemory + 0x3dc01;
+	u8 *table = (u8*)V810_DISPLAY_RAM.off + 0x3dc01;
 	uint8_t newMaxRepeat, newMinRepeat;
 	newMinRepeat = newMaxRepeat = table[160];
 	for (int t = 0; t < 2; t++) {

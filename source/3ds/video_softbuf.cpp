@@ -41,7 +41,7 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int displayed_fb) {
 
             for (int ty = ymin; ty < ymax; ty++) {
                 uint32_t *out_tile = &column_ptr[8 * 8 / 4 * 2 * (1 + ty)];
-                uint16_t *in_fb_ptr = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x10000 * eye + 0x8000 * displayed_fb + tx * (256 / 4 * 8) + ty * 2);
+                uint16_t *in_fb_ptr = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * displayed_fb + tx * (256 / 4 * 8) + ty * 2);
                 uint16_t *in_alpha_ptr = &tDSPCACHE.OpaquePixels.u16[displayed_fb][eye][tx * (256 / 4 * 8) / 2 + ty];
 
                 for (int i = 0; i <= 2; i += 2) {

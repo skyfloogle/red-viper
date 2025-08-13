@@ -150,9 +150,9 @@ int main(void) {
 
                 // Golf hack: switch to software rendering during gameplay.
                 if (is_golf) {
-                    if (V810_DISPLAY_RAM.pmemory[0x3dbc0] == 0x40 &&
-                        *(uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x3dbe6) == 0x48 &&
-                        memcmp(V810_DISPLAY_RAM.pmemory + 0x3dbec, "\0\0\x80\x01\x1f\0\0\x80\0\0", 10) == 0
+                    if (*(uint8_t*)(V810_DISPLAY_RAM.off + 0x3dbc0) == 0x40 &&
+                        *(uint16_t*)(V810_DISPLAY_RAM.off + 0x3dbe6) == 0x48 &&
+                        memcmp((uint8_t*)V810_DISPLAY_RAM.off + 0x3dbec, "\0\0\x80\x01\x1f\0\0\x80\0\0", 10) == 0
                     ) {
                         // looks like hills, do software rendering
                         if (tVBOpt.RENDERMODE != 2) {
@@ -164,7 +164,7 @@ int main(void) {
                         if (tVBOpt.RENDERMODE != 1) {
                             tVBOpt.RENDERMODE = 1;
                             for (int i = 0; i < 3; i++) {
-                                memset(V810_DISPLAY_RAM.pmemory + (0x8000 * i), 0, 0x6000);
+                                memset((uint8_t*)V810_DISPLAY_RAM.off + (0x8000 * i), 0, 0x6000);
                             }
                         }
                     }
@@ -183,8 +183,8 @@ int main(void) {
             if (tVBOpt.RENDERMODE < 2) {
                 if (tVIPREG.XPCTRL & 0x0002) {
                     if (tDSPCACHE.DDSPDataState[!displayed_fb] != GPU_CLEAR) {
-                        memset(V810_DISPLAY_RAM.pmemory + 0x8000 * !displayed_fb, 0, 0x6000);
-                        memset(V810_DISPLAY_RAM.pmemory + 0x10000 + 0x8000 * !displayed_fb, 0, 0x6000);
+                        memset((uint8_t*)V810_DISPLAY_RAM.off + 0x8000 * !displayed_fb, 0, 0x6000);
+                        memset((uint8_t*)V810_DISPLAY_RAM.off + 0x10000 + 0x8000 * !displayed_fb, 0, 0x6000);
                         for (int i = 0; i < 64; i++) {
                             tDSPCACHE.SoftBufWrote[!displayed_fb][i].min = 0xff;
                             tDSPCACHE.SoftBufWrote[!displayed_fb][i].max = 0;

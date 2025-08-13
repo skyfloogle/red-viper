@@ -25,7 +25,7 @@ SDL_Surface *game_surface, *window_surface;
 
 void sdl_flush(bool displayed_fb) {
     SDL_LockSurface(game_surface);
-    uint16_t *vb_fb = (uint16_t*)(V810_DISPLAY_RAM.pmemory + 0x8000 * displayed_fb);
+    uint16_t *vb_fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x8000 * displayed_fb);
     uint32_t *out_fb = (uint32_t*)game_surface->pixels;
     uint32_t brightnesses[4] = {0, tVIPREG.BRTA, tVIPREG.BRTB, tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC};
     for (int x = 0; x < 384; x++) {

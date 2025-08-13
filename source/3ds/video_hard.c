@@ -254,7 +254,7 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 	bool uwrap = uumin > uumax;
 	bool vwrap = vvmin > vvmax;
 
-	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000 + 8192 * (mapid));
+	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.off + 0x20000 + 8192 * (mapid));
 	for (int y = vwrap ? 0 : vvmin; y <= (vwrap ? 511 : vvmax); y += 8) {
 		if (vwrap && !(y >= vvmin || y <= vvmax)) continue;
 		bool new_row = force_redraw || (old_vmax - old_vmin < 512 && (y < old_vmin || y > old_vmax));
@@ -439,7 +439,7 @@ void video_hard_render(int drawn_fb) {
 
 	C3D_CullFace(GPU_CULL_NONE);
 
-	u16 *windows = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x3d800);
+	u16 *windows = (u16 *)(V810_DISPLAY_RAM.off + 0x3d800);
 
 	uint8_t object_group_id = 3;
 
@@ -472,7 +472,7 @@ void video_hard_render(int drawn_fb) {
 			int16_t h = windows[wnd * 16 + 8] + 1;
 			int16_t over_tile = windows[wnd * 16 + 10] & 0x7ff;
 
-			u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.pmemory + 0x20000);
+			u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.off + 0x20000);
 
 			if (h == 0) continue;
 
@@ -574,7 +574,7 @@ void video_hard_render(int drawn_fb) {
 			} else {
 				// hbias or affine world
 				u16 param_base = windows[wnd * 16 + 9];
-				s16 *params = (s16 *)(&V810_DISPLAY_RAM.pmemory[0x20000 + param_base * 2]);
+				s16 *params = (s16 *)(V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
 
 				int full_w = 512 * scx;
 				int full_h = 512 * scy;
@@ -799,7 +799,7 @@ void video_hard_render(int drawn_fb) {
 			int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
 			int end_index = tVIPREG.SPT[object_group_id] & 1023;
 			for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
-				u16 *obj_ptr = (u16 *)(&V810_DISPLAY_RAM.pmemory[0x0003E000 + 8 * i]);
+				u16 *obj_ptr = (u16 *)(V810_DISPLAY_RAM.off + 0x0003E000 + 8 * i);
 
 				u16 cw3 = obj_ptr[3];
 				u16 tileid = cw3 & 0x07ff;
@@ -866,7 +866,7 @@ void update_texture_cache_hard(void) {
 			continue;
 		}
 
-		uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.pmemory + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
+		uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.off + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
 
 		int y = 63 - t / 32;
 		int x = t % 32;
