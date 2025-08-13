@@ -1952,6 +1952,7 @@ static int drc_translateBlock(void) {
                     MOV_IS(arm_reg2, arm_reg2, ARM_SHIFT_LSR, 16);
                     MOV_IS(arm_reg2, arm_reg2, ARM_SHIFT_LSL, 16);
                     ORR_IS(arm_reg2, arm_reg2, 0, ARM_SHIFT_LSR, 16);
+                    reg2_modified = true;
                     break;
                 case V810_OP_XH:
                     cycles += 1;
