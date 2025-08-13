@@ -61,29 +61,18 @@ void v810_init(void) {
     V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
     V810_DISPLAY_RAM.size     = 0x00040000;
     // Alocate space for it in memory
-    V810_DISPLAY_RAM.pmemory = (unsigned char *)calloc(((V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr), sizeof(BYTE));
-    V810_DISPLAY_RAM.pbackup = (unsigned char *)calloc(((V810_DISPLAY_RAM.highaddr +1) - V810_DISPLAY_RAM.lowaddr), sizeof(BYTE));
+    V810_DISPLAY_RAM.pmemory = (unsigned char *)calloc(V810_DISPLAY_RAM.size, sizeof(BYTE));
+    V810_DISPLAY_RAM.pbackup = (unsigned char *)calloc(V810_DISPLAY_RAM.size, sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_DISPLAY_RAM.off = (size_t)V810_DISPLAY_RAM.pmemory - V810_DISPLAY_RAM.lowaddr;
-
-    // Initialize our VIPC Reg tables....
-    V810_VIPCREG.lowaddr  = 0x0005F800; //0x0005F800
-    V810_VIPCREG.highaddr = 0x0005FFFF; //0x0005F870
-    // Point to the handler funcs...
-    V810_VIPCREG.rfuncb = &(vipcreg_rbyte);
-    V810_VIPCREG.wfuncb = &(vipcreg_wbyte);
-    V810_VIPCREG.rfunch = &(vipcreg_rhword);
-    V810_VIPCREG.wfunch = &(vipcreg_whword);
-    V810_VIPCREG.rfuncw = &(vipcreg_rword);
-    V810_VIPCREG.wfuncw = &(vipcreg_wword);
 
     // Initialize our SoundRam tables....
     V810_SOUND_RAM.lowaddr  = 0x01000000;
     V810_SOUND_RAM.highaddr = 0x010007FF; //0x010002FF
     V810_SOUND_RAM.size     = 0x00000800;
     // Alocate space for it in memory
-    V810_SOUND_RAM.pmemory = (unsigned char *)calloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr), sizeof(BYTE));
-    V810_SOUND_RAM.pbackup = (unsigned char *)calloc(((V810_SOUND_RAM.highaddr +1) - V810_SOUND_RAM.lowaddr), sizeof(BYTE));
+    V810_SOUND_RAM.pmemory = (unsigned char *)calloc(V810_SOUND_RAM.size, sizeof(BYTE));
+    V810_SOUND_RAM.pbackup = (unsigned char *)calloc(V810_SOUND_RAM.size, sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_SOUND_RAM.off = (size_t)V810_SOUND_RAM.pmemory - V810_SOUND_RAM.lowaddr;
 
@@ -92,8 +81,8 @@ void v810_init(void) {
     V810_VB_RAM.highaddr = 0x0500FFFF;
     V810_VB_RAM.size     = 0x00010000;
     // Alocate space for it in memory
-    V810_VB_RAM.pmemory = (unsigned char *)calloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr), sizeof(BYTE));
-    V810_VB_RAM.pbackup = (unsigned char *)calloc(((V810_VB_RAM.highaddr +1) - V810_VB_RAM.lowaddr), sizeof(BYTE));
+    V810_VB_RAM.pmemory = (unsigned char *)calloc(V810_VB_RAM.size, sizeof(BYTE));
+    V810_VB_RAM.pbackup = (unsigned char *)calloc(V810_VB_RAM.size, sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_VB_RAM.off = (size_t)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
 
@@ -102,21 +91,10 @@ void v810_init(void) {
     V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
     V810_GAME_RAM.size     = 0x00004000;
     // Alocate space for it in memory
-    V810_GAME_RAM.pmemory = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
-    V810_GAME_RAM.pbackup = (unsigned char *)calloc(((V810_GAME_RAM.highaddr +1) - V810_GAME_RAM.lowaddr), sizeof(BYTE));
+    V810_GAME_RAM.pmemory = (unsigned char *)calloc(V810_GAME_RAM.size, sizeof(BYTE));
+    V810_GAME_RAM.pbackup = (unsigned char *)calloc(V810_GAME_RAM.size, sizeof(BYTE));
     // Offset + Lowaddr = pmemory
     V810_GAME_RAM.off = (size_t)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
-
-    // Initialize our HCREG tables.... // realy reg01
-    V810_HCREG.lowaddr  = 0x02000000;
-    V810_HCREG.highaddr = 0x02FFFFFF; // Realy just 0200002C but its mirrored...
-    // Point to the handler funcs...
-    V810_HCREG.rfuncb = &(hcreg_rbyte);
-    V810_HCREG.wfuncb = &(hcreg_wbyte);
-    V810_HCREG.rfunch = &(hcreg_rhword);
-    V810_HCREG.wfunch = &(hcreg_whword);
-    V810_HCREG.rfuncw = &(hcreg_rword);
-    V810_HCREG.wfuncw = &(hcreg_wword);
 
     v810_state = calloc(1, sizeof(cpu_state));
 }

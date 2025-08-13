@@ -11,9 +11,6 @@ V810_MEMORYFETCH V810_SOUND_RAM;
 V810_MEMORYFETCH V810_VB_RAM;
 V810_MEMORYFETCH V810_GAME_RAM;
 
-V810_REGFETCH V810_VIPCREG;
-V810_REGFETCH V810_HCREG;
-
 V810_VIPREGDAT tVIPREG;
 V810_HREGDAT   tHReg;
 
@@ -21,7 +18,6 @@ int is_sram = 0;
 
 // Memory read functions
 uint64_t mem_rbyte(WORD addr) {
-    addr = addr & 0x07FFFFFF; // map to 24 bit address CFFFFFFF
     uint64_t wait;
 
     switch((addr&0x7000000)) {// switch on address
@@ -30,14 +26,15 @@ uint64_t mem_rbyte(WORD addr) {
         return (WORD)((SBYTE *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
         break;
     case 0:
-        if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
+        addr &= 0x7ffff;
+        if(!(addr & 0x40000)) {
             wait = 4LL << 32;
             return (WORD)((SBYTE *)(V810_DISPLAY_RAM.off + addr))[0] | wait;
-        } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
+        } else if((addr & 0x7e000) == 0x5e000) {
             wait = 1LL << 32;
-            return (WORD)(*V810_VIPCREG.rfuncb)(addr) | wait;
+            return (WORD)vipcreg_rbyte(addr) | wait;
             // Mirror the Chr ram table to 078000-07FFFF
-        } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
+        } else if(addr >= 0x00078000) {
             wait = 4LL << 32;
             if(addr < 0x0007A000) //CHR 0-511
                 return (WORD)((SBYTE *)(V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0] | wait;
@@ -56,7 +53,7 @@ uint64_t mem_rbyte(WORD addr) {
     case 0x5000000:
         wait = 0LL << 32;
         //~ dtprintf(0,ferr,"\nRead  BYTE  [%08x]:%02x  //VBRam",addr,((BYTE *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
-        return (WORD)((SBYTE *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] | wait;
+        return (WORD)((SBYTE *)(V810_VB_RAM.off + (addr & 0x0500ffff)))[0] | wait;
         break;
     case 0x6000000:
         is_sram = 1;
@@ -66,9 +63,7 @@ uint64_t mem_rbyte(WORD addr) {
         break;
     case 0x2000000:
         wait = 0LL << 32;
-        if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
-            return (WORD)(*V810_HCREG.rfuncb)(addr) | wait;
-        }
+        return (WORD)hcreg_rbyte(addr & 0x3c) | wait;
         break;
     default:
         //~ dtprintf(0,ferr,"\nRead  BYTE  [%08x]:%02x",addr,0);
@@ -79,7 +74,6 @@ uint64_t mem_rbyte(WORD addr) {
 }
 
 uint64_t mem_rhword(WORD addr) {
-    addr = addr & 0x07FFFFFE; // map to 24 bit address, mask first bit
     uint64_t wait;
 
     //~ if(dbg_watchpt_en)
@@ -91,14 +85,15 @@ uint64_t mem_rhword(WORD addr) {
         return (WORD)((SHWORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
         break;
     case 0:
-        if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
+        addr &= 0x7fffe;
+        if(!(addr & 0x40000)) {
             wait = 4LL << 32;
             return (WORD)((SHWORD *)(V810_DISPLAY_RAM.off + addr))[0] | wait;
-        } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
+        } else if((addr & 0x7e000) == 0x5e000) {
             wait = 1LL << 32;
-            return (WORD)(*V810_VIPCREG.rfunch)(addr) | wait;
+            return (WORD)vipcreg_rhword(addr) | wait;
             // Mirror the Chr ram table to 078000-07FFFF
-        } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
+        } else if(addr >= 0x00078000) {
             wait = 4LL << 32;
             if(addr < 0x0007A000) //CHR 0-511
                 return (WORD)((SHWORD *)(V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0] | wait;
@@ -117,19 +112,17 @@ uint64_t mem_rhword(WORD addr) {
     case 0x5000000:
         wait = 0LL << 32;
         //~ dtprintf(0,ferr,"\nRead  HWORD [%08x]:%04x  //VBRam",addr,((HWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
-        return (WORD)((SHWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] | wait;
+        return (WORD)((SHWORD *)(V810_VB_RAM.off + (addr & 0x0500fffe)))[0] | wait;
         break;
     case 0x6000000:
         is_sram = 1;
         wait = 0LL << 32;
         //~ dtprintf(0,ferr,"\nRead  HWORD PC:%08x [%08x]:%04x  //GameRam",PC,addr,((HWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0]);
-        return (WORD)((SHWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] | wait;
+        return (WORD)((SHWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr & ~1)))[0] | wait;
         break;
     case 0x2000000:
         wait = 0LL << 32;
-        if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
-            return (WORD)(*V810_HCREG.rfunch)(addr) | wait;
-        }
+        return (WORD)hcreg_rhword(addr & 0x3c) | wait;
         break;
     default:
         //~ dtprintf(0,ferr,"\nRead  HWORD [%08x]:%04x",addr,0);
@@ -140,7 +133,6 @@ uint64_t mem_rhword(WORD addr) {
 }
 
 uint64_t mem_rword(WORD addr) {
-    addr = addr & 0x07FFFFFC; // map to 24 bit address, mask first 2 bytes to zero
     uint64_t wait;
 
     //~ if(dbg_watchpt_en)
@@ -152,14 +144,15 @@ uint64_t mem_rword(WORD addr) {
         return ((WORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
         break;
     case 0:
-        if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
+        addr &= 0x7fffc;
+        if(!(addr & 0x40000)) {
             wait = 4LL << 33;
             return ((WORD *)(V810_DISPLAY_RAM.off + addr))[0] | wait;
-        } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
+        } else if((addr & 0x7e000) == 0x5e000) {
             wait = 1LL << 33;
-            return (*V810_VIPCREG.rfuncw)(addr) | wait;
+            return vipcreg_rword(addr) | wait;
             // Mirror the Chr ram table to 078000-07FFFF
-        } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
+        } else  if(addr >= 0x00078000) {
             wait = 4LL << 33;
             if(addr < 0x0007A000) //CHR 0-511
                 return ((WORD *)(V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0] | wait;
@@ -178,19 +171,17 @@ uint64_t mem_rword(WORD addr) {
     case 0x5000000:
         wait = 0LL << 33;
         //~ dtprintf(0,ferr,"\nRead  WORD  [%08x]:%08x  //VBRam",addr,((WORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0]);
-        return ((WORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] | wait;
+        return ((WORD *)(V810_VB_RAM.off + (addr & 0x0500fffc)))[0] | wait;
         break;
     case 0x6000000:
         is_sram = 1;
         wait = 0LL << 33;
         //~ dtprintf(0,ferr,"\nRead  WORD  PC:%08x [%08x]:%08x  //GameRam",PC,addr,((WORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0]);
-        return ((WORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] | wait;
+        return ((WORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr & ~3)))[0] | wait;
         break;
     case 0x2000000:
         wait = 0LL << 33;
-        if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
-            return (*V810_HCREG.rfuncw)(addr) | wait;
-        }
+        return hcreg_rword(addr & 0x3c) | wait;
         break;
     default:
         //~ dtprintf(0,ferr,"\nRead  WORD  [%08x]:%08x",addr,0);
@@ -204,22 +195,19 @@ uint64_t mem_rword(WORD addr) {
 //Memory Write Func
 WORD mem_wbyte(WORD addr, WORD data) {
     int i =0;
-    addr = addr & 0x07FFFFFF; // map to 24 bit address
 
     //~ if(dbg_watchpt_en)
     //~ dbg_watchpt(addr, 8, 1, data);
 
     switch((addr&0x7000000)) {
     case 0:
-        if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
+        addr &= 0x7ffff;
+        if(!(addr & 0x40000)) {
             ((BYTE *)(V810_DISPLAY_RAM.off + addr))[0] = data;
 
             if(addr < BGMAP_OFFSET) {
                 //Kill it if writes to Char Table
-                if(((addr>=0x00006000)&&(addr<0x00008000)) |
-                        ((addr>=0x0000E000)&&(addr<0x00010000)) |
-                        ((addr>=0x00016000)&&(addr<0x00018000)) |
-                        ((addr>=0x0001E000)&&(addr<0x00020000))) {
+                if((addr & 0x6000) == 0x6000) {
                     for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
                     tDSPCACHE.ObjDataCacheInvalid=1;
                     tDSPCACHE.CharCacheInvalid=1;
@@ -238,10 +226,10 @@ WORD mem_wbyte(WORD addr, WORD data) {
             } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
                 tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
             }
-        } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
-            (*V810_VIPCREG.wfuncb)(addr,data);
+        } else if((addr & 0x7e000) == 0x5e000) {
+            vipcreg_wbyte(addr, data);
             // Mirror the Chr ram table to 078000-07FFFF
-        } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
+        } else if(addr >= 0x00078000) {
             if(addr < 0x0007A000) //CHR 0-511
                 ((BYTE *)(V810_DISPLAY_RAM.off + ((addr-0x00078000) + 0x00006000)))[0] = data;
             else if(addr < 0x0007C000) //CHR 512-1023
@@ -259,11 +247,11 @@ WORD mem_wbyte(WORD addr, WORD data) {
         return 1;
         break;
     case 0x1000000:
-        sound_write(addr & V810_SOUND_RAM.highaddr, data & 0xff);
+        sound_write(addr & 0x010007ff, data & 0xff);
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nWrite BYTE  [%08x]:%02x  //VBRam",addr,data);
-        ((BYTE *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] = data;
+        ((BYTE *)(V810_VB_RAM.off + (addr & 0x0500ffff)))[0] = data;
         break;
     case 0x6000000:
         is_sram = 1;
@@ -271,9 +259,7 @@ WORD mem_wbyte(WORD addr, WORD data) {
         ((BYTE *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] = data;
         break;
     case 0x2000000:
-        if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
-            return (*V810_HCREG.wfuncb)(addr,data);
-        }
+        return hcreg_wbyte(addr & 0x3c, data);
         break;
     default:
         //~ dtprintf(0,ferr,"\nWrite BYTE  [%08x]:%02x",addr,data);
@@ -291,14 +277,12 @@ WORD mem_whword(WORD addr, WORD data) {
 
     switch((addr&0x7000000)) {
     case 0:
-        if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
+        addr &= 0x7fffe;
+        if(!(addr & 0x40000)) {
             ((HWORD *)(V810_DISPLAY_RAM.off + addr))[0] = data;
             if(addr < BGMAP_OFFSET) { //Kill it if writes to Char Table
                 //Kill it if writes to Char Table
-                if(((addr>=0x00006000)&&(addr<0x00008000)) |
-                        ((addr>=0x0000E000)&&(addr<0x00010000)) |
-                        ((addr>=0x00016000)&&(addr<0x00018000)) |
-                        ((addr>=0x0001E000)&&(addr<0x00020000))) {
+                if((addr & 0x6000) == 0x6000) {
                     for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
                     tDSPCACHE.ObjDataCacheInvalid=1;
                     tDSPCACHE.CharCacheInvalid=1;
@@ -317,10 +301,10 @@ WORD mem_whword(WORD addr, WORD data) {
             } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
                 tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
             }
-        } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
-            (*V810_VIPCREG.wfunch)(addr,data);
+        } else if((addr & 0x7e000) == 0x5e000) {
+            vipcreg_whword(addr, data);
             // Mirror the Chr ram table to 078000-07FFFF
-        } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
+        } else if(addr >= 0x00078000) {
             if(addr < 0x0007A000) //CHR 0-511
                 ((HWORD *)(V810_DISPLAY_RAM.off + ((addr-0x00078000) + 0x00006000)))[0] = data;
             else if(addr < 0x0007C000) //CHR 512-1023
@@ -338,21 +322,19 @@ WORD mem_whword(WORD addr, WORD data) {
         return 1;
         break;
     case 0x1000000:
-        sound_write(addr & V810_SOUND_RAM.highaddr, data & 0xff);
+        sound_write(addr & 0x010007fe, data & 0xff);
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nWrite HWORD [%08x]:%04x  //VBRam",addr,data);
-        ((HWORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] = data;
+        ((HWORD *)(V810_VB_RAM.off + (addr & 0x0500fffe)))[0] = data;
         break;
     case 0x6000000:
         is_sram = 1;
         //~ dtprintf(0,ferr,"\nWrite HWORD PC:%08x [%08x]:%04x  //GameRam",PC,addr,data);
-        ((HWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] = data;
+        ((HWORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr & ~1)))[0] = data;
         break;
     case 0x2000000:
-        if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
-            return (*V810_HCREG.wfunch)(addr,data);
-        }
+        return hcreg_whword(addr & 0x3c, data);
         break;
     default:
         //~ dtprintf(0,ferr,"\nWrite HWORD [%08x]:%04x",addr,data);
@@ -363,7 +345,6 @@ WORD mem_whword(WORD addr, WORD data) {
 
 WORD mem_wword(WORD addr, WORD data) {
     int i = 0;
-    addr = addr & 0x07FFFFFC; // map to 24 bit address, mask first 2 bytes to zero
     uint64_t wait;
 
     //~ if(dbg_watchpt_en)
@@ -371,14 +352,12 @@ WORD mem_wword(WORD addr, WORD data) {
 
     switch((addr&0x7000000)) {
     case 0:
-        if((addr >= V810_DISPLAY_RAM.lowaddr)&&(addr <=V810_DISPLAY_RAM.highaddr)) {
+        addr &= 0x7fffc;
+        if(!(addr & 0x40000)) {
             ((WORD *)(V810_DISPLAY_RAM.off + addr))[0] = data;
             if(addr < BGMAP_OFFSET) { //Kill it if writes to Char Table
                 //Kill it if writes to Char Table
-                if(((addr>=0x00006000)&&(addr<0x00008000)) |
-                        ((addr>=0x0000E000)&&(addr<0x00010000)) |
-                        ((addr>=0x00016000)&&(addr<0x00018000)) |
-                        ((addr>=0x0001E000)&&(addr<0x00020000))) {
+                if((addr & 0x6000) == 0x6000) {
                     for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
                     tDSPCACHE.ObjDataCacheInvalid=1;
                     tDSPCACHE.CharCacheInvalid=1;
@@ -398,10 +377,10 @@ WORD mem_wword(WORD addr, WORD data) {
             } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
                 tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
             }
-        } else if((addr >= V810_VIPCREG.lowaddr)&&(addr <=V810_VIPCREG.highaddr)) {
-            (*V810_VIPCREG.wfuncw)(addr,data);
+        } else if((addr & 0x7e000) == 0x5e000) {
+            vipcreg_wword(addr, data);
             // Mirror the Chr ram table to 078000-07FFFF
-        } else  if((addr >= 0x00078000)&&(addr <= 0x0007FFFF)) {
+        } else if(addr >= 0x00078000) {
             if(addr < 0x0007A000)  //CHR 0-511
                 ((WORD *)(V810_DISPLAY_RAM.off + ((addr-0x00078000) + 0x00006000)))[0] = data;
             else if(addr < 0x0007C000) //CHR 512-1023
@@ -419,21 +398,19 @@ WORD mem_wword(WORD addr, WORD data) {
         return 2;
         break;
     case 0x1000000:
-        sound_write(addr & V810_SOUND_RAM.highaddr, data & 0xff);
+        sound_write(addr & 0x010007fc, data & 0xff);
         break;
     case 0x5000000:
         //~ dtprintf(0,ferr,"\nWrite WORD  [%08x]:%08x  //VBRam",addr,data);
-        ((WORD *)(V810_VB_RAM.off + (addr & V810_VB_RAM.highaddr)))[0] = data;
+        ((WORD *)(V810_VB_RAM.off + (addr & 0x0500fffc)))[0] = data;
         break;
     case 0x6000000:
         is_sram = 1;
         //~ dtprintf(0,ferr,"\nWrite WORD  PC:%08x [%08x]:%08x  //GameRam",PC,addr,data);
-        ((WORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr)))[0] = data;
+        ((WORD *)(V810_GAME_RAM.off + (addr & V810_GAME_RAM.highaddr & ~3)))[0] = data;
         break;
     case 0x2000000:
-        if((addr >= V810_HCREG.lowaddr)&&(addr <=V810_HCREG.highaddr)) {
-            return (*V810_HCREG.wfuncw)(addr,data) * 2;
-        }
+        return hcreg_wword(addr & 0x3c, data) * 2;
         break;
     default:
         //~ dtprintf(0,ferr,"\nWrite WORD  [%08x]:%08x",addr,data);
@@ -445,7 +422,7 @@ WORD mem_wword(WORD addr, WORD data) {
 //////////////////////////////////////////////////////////////////////////////
 // Hardware Controll Reg....
 SBYTE hcreg_rbyte(WORD addr) {
-    addr = (addr & 0x0200003C);
+    addr = addr | 0x02000000;
     switch(addr) {
     case 0x02000000:    //CCR
         //~ dtprintf(3,ferr,"\nRead  BYTE HREG CCR [%08x]",addr);
@@ -500,7 +477,7 @@ SBYTE hcreg_rbyte(WORD addr) {
 }
 
 WORD hcreg_wbyte(WORD addr, BYTE data) {
-    addr = (addr & 0x0200003C);
+    addr = addr | 0x02000000;
     switch(addr) {
     case 0x02000000:    //CCR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG CCR [%08x]:%02x ",addr,data);
