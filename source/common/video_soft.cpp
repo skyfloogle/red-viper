@@ -1,7 +1,7 @@
 #include "vb_dsp.h"
 #include "v810_mem.h"
 
-struct {
+static struct {
     // half-nibbles are colour indices
     union {
         uint16_t u16[8];
@@ -133,9 +133,11 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
     uint8_t gy_shift = ((gy - my) & 7) * 2;
     uint8_t my_shift = (my & 7) * 2;
 
-    for (int x = 0; x < w; x++) {
-        if (gx + x < 0) continue;
-        if (gx + x >= 384) break;
+    u16 *gplt = tVIPREG.GPLT;
+
+    for (int x = 0; likely(x < w); x++) {
+        if (unlikely(gx + x < 0)) continue;
+        if (unlikely(gx + x >= 384)) break;
         int bpx = (mx + x) & 7;
         int tx = (mx + x) >> 3;
         int mapx = tx >> 6;
@@ -149,8 +151,8 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
         uint16_t prev_out = 0;
         uint16_t prev_mask = 0xffff >> (16 - gy_shift);
 
-        for (int y = gy - (my & 7); y < gy + h; y += 8) {
-            if (y >= 224) break;
+        for (int y = gy - (my & 7); likely(y < gy + h); y += 8) {
+            if (unlikely(y >= 224)) break;
             bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
             uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
             if (++ty >= 64) {
@@ -158,12 +160,12 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
                 if ((++mapy & (scy - 1)) == 0 && !over) mapy = 0;
                 current_map = mapid + scx * mapy + mapx;
             }
-            if (y <= -8) continue;
+            if (unlikely(y <= -8)) continue;
             uint16_t tileid = tile & 0x07ff;
             if (!tileVisible[tileid] && (aligned || prev_mask == -1 >> (16 - gy_shift))) continue;
             int palette = tile >> 14;
             int px = tile & 0x2000 ? 7 - bpx : bpx;
-            int value = get_tile_column(tileid, tVIPREG.GPLT[palette], px, (tile & 0x1000) != 0);
+            int value = get_tile_column(tileid, gplt[palette], px, (tile & 0x1000) != 0);
             uint16_t mask = get_tile_mask(tileid, px, (tile & 0x1000) != 0);
             uint16_t current_out, current_mask;
             if (aligned) {
@@ -175,12 +177,12 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
                 current_mask = ((mask << gy_shift)) | prev_mask;
                 prev_out = (value) >> (16 - gy_shift);
                 prev_mask = (mask) >> (16 - gy_shift);
-                if (y < gy) {
+                if (unlikely(y < gy)) {
                     current_mask |= 0xffff >> ((gy & 7) * 2);
                     current_out &= ~current_mask;
                 }
             }
-            if (y < 0) continue;
+            if (unlikely(y < 0)) continue;
             uint16_t *out_word = &fb[((y) >> 3) + ((gx + x) * 256 / 8)];
             *out_word = (*out_word & current_mask) | current_out;
         }
@@ -214,6 +216,8 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
     u16 param_base = world->param;
     s16 *params = (s16 *)(V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
 
+    u16 *gplt = tVIPREG.GPLT;
+
     for (int eye = 0; eye < 2; eye++) {
         if (!(world->head & (0x8000 >> eye)))
             continue;
@@ -222,9 +226,9 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
 
         int mx = base_mx + (eye == 0 ? -mp : mp);
         int gx = base_gx + (eye == 0 ? -gp : gp);
-        for (int y = 0; y < h; y++) {
-            if (gy + y < 0) continue;
-            if (gy + y >= 224) break;
+        for (int y = 0; likely(y < h); y++) {
+            if (unlikely(gy + y < 0)) continue;
+            if (unlikely(gy + y >= 224)) break;
             int mx = params[y * 8 + 0] << 6;
             s16 mp = params[y * 8 + 1];
             int my = params[y * 8 + 2] << 6;
@@ -235,9 +239,9 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
 
             int shift = (((gy + y) & 3) * 2);
 
-            for (int x = gx; x < gx + w; x++) {
-                if (x >= 384) break;
-                if (x >= 0) {
+            for (int x = gx; likely(x < gx + w); x++) {
+                if (unlikely(x >= 384)) break;
+                if (likely(x >= 0)) {
                     int xmap = mx >> (9 + 9);
                     int ymap = my >> (9 + 9);
                     int tx = (mx >> (9 + 3)) & 63;
@@ -245,7 +249,7 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
                     int bpx = (mx >> 9) & 7;
                     int bpy = (my >> 9) & 7;
                     u16 tile;
-                    if (over && ((xmap & (scx - 1)) != xmap || (ymap & (scy - 1)) != ymap)) {
+                    if (over && unlikely((xmap & (scx - 1)) != xmap || (ymap & (scy - 1)) != ymap)) {
                         tile = tilemap[over_tile];
                     } else {
                         int this_map = mapid + (ymap & (scy - 1)) * scx + (xmap & (scx - 1));
@@ -258,7 +262,7 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
                     uint16_t tilecolumn = tileCache[tileid].indices.u16[px];
                     int pxindex = (tilecolumn >> (py*2)) & 3;
                     if (pxindex) {
-                        int pxvalue = (tVIPREG.GPLT[palette] >> (pxindex*2)) & 3;
+                        int pxvalue = (gplt[palette] >> (pxindex*2)) & 3;
                         uint8_t *out_word = &((uint8_t*)(&fb[x * 256 / 8]))[((gy + y) >> 2)];
                         *out_word = (*out_word & ~(3 << shift)) | (pxvalue << shift);
                     }
