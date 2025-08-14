@@ -133,7 +133,7 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
     uint8_t gy_shift = ((gy - my) & 7) * 2;
     uint8_t my_shift = (my & 7) * 2;
 
-    u16 *gplt = tVIPREG.GPLT;
+    u8 *gplt = tVIPREG.GPLT;
 
     for (int x = 0; likely(x < w); x++) {
         if (unlikely(gx + x < 0)) continue;
@@ -217,7 +217,7 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
     u16 param_base = world->param;
     s16 *params = (s16 *)(V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
 
-    u16 *gplt = tVIPREG.GPLT;
+    u8 *gplt = tVIPREG.GPLT;
 
     for (int eye = 0; eye < 2; eye++) {
         if (!(world->head & (0x8000 >> eye)))

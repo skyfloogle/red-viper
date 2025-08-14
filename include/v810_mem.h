@@ -21,8 +21,8 @@ typedef struct{
     HWORD tDisplayedFB;
     HWORD tFrame;
     HWORD SPT[4];
-    HWORD GPLT[4];
-    HWORD JPLT[4];
+    BYTE GPLT[4];
+    BYTE JPLT[4];
     HWORD BKCOL;
     int frametime;
     // timing

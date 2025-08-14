@@ -245,64 +245,111 @@ int emulation_lstate(int state) {
     //Load VIP registers
     V810_VIPREGDAT new_vipreg = {0};
     READ_VAR(size);
-    if (size == 64) {
-        // support <=0.9.6 savestates
-        READ_VAR(new_vipreg.INTPND);
-        READ_VAR(new_vipreg.INTENB);
-        READ_VAR(new_vipreg.INTCLR);
-        READ_VAR(new_vipreg.DPSTTS);
-        READ_VAR(new_vipreg.DPCTRL);
-        READ_VAR(new_vipreg.BRTA);
-        READ_VAR(new_vipreg.BRTB);
-        READ_VAR(new_vipreg.BRTC);
-        READ_VAR(new_vipreg.REST);
-        READ_VAR(new_vipreg.FRMCYC);
-        READ_VAR(new_vipreg.XPSTTS);
-        READ_VAR(new_vipreg.XPCTRL);
-        READ_VAR(new_vipreg.tDisplayedFB);
-        READ_VAR(new_vipreg.tFrame);
-        READ_VAR(new_vipreg.SPT);
-        READ_VAR(new_vipreg.GPLT);
-        READ_VAR(new_vipreg.JPLT);
-        READ_VAR(new_vipreg.BKCOL);
-        u16 padding;
-        READ_VAR(padding);
-        READ_VAR(new_vipreg.lastdisp);
-        READ_VAR(new_vipreg.rowcount);
-        READ_VAR(new_vipreg.displaying);
-        READ_VAR(new_vipreg.newframe);
-        u8 padding2;
-        READ_VAR(padding2);
-        new_vipreg.frametime = 137216;
-        new_vipreg.drawing = false;
-        new_vipreg.lastdraw = new_vipreg.lastdisp;
-    } else if (size == 68) {
-        // support <=0.9.8 savestates
-        READ_VAR(new_vipreg.INTPND);
-        READ_VAR(new_vipreg.INTENB);
-        READ_VAR(new_vipreg.INTCLR);
-        READ_VAR(new_vipreg.DPSTTS);
-        READ_VAR(new_vipreg.DPCTRL);
-        READ_VAR(new_vipreg.BRTA);
-        READ_VAR(new_vipreg.BRTB);
-        READ_VAR(new_vipreg.BRTC);
-        READ_VAR(new_vipreg.REST);
-        READ_VAR(new_vipreg.FRMCYC);
-        READ_VAR(new_vipreg.XPSTTS);
-        READ_VAR(new_vipreg.XPCTRL);
-        READ_VAR(new_vipreg.tDisplayedFB);
-        READ_VAR(new_vipreg.tFrame);
-        READ_VAR(new_vipreg.SPT);
-        READ_VAR(new_vipreg.GPLT);
-        READ_VAR(new_vipreg.JPLT);
-        READ_VAR(new_vipreg.BKCOL);
-        READ_VAR(new_vipreg.frametime);
-        READ_VAR(new_vipreg.lastdisp);
-        READ_VAR(new_vipreg.rowcount);
-        READ_VAR(new_vipreg.drawing);
-        READ_VAR(new_vipreg.displaying);
-        READ_VAR(new_vipreg.newframe);
-        new_vipreg.lastdraw = new_vipreg.lastdisp;
+    
+    if (ver < 2) {
+        if (size == 64) {
+            // support <=0.9.6 savestates
+            READ_VAR(new_vipreg.INTPND);
+            READ_VAR(new_vipreg.INTENB);
+            READ_VAR(new_vipreg.INTCLR);
+            READ_VAR(new_vipreg.DPSTTS);
+            READ_VAR(new_vipreg.DPCTRL);
+            READ_VAR(new_vipreg.BRTA);
+            READ_VAR(new_vipreg.BRTB);
+            READ_VAR(new_vipreg.BRTC);
+            READ_VAR(new_vipreg.REST);
+            READ_VAR(new_vipreg.FRMCYC);
+            READ_VAR(new_vipreg.XPSTTS);
+            READ_VAR(new_vipreg.XPCTRL);
+            READ_VAR(new_vipreg.tDisplayedFB);
+            READ_VAR(new_vipreg.tFrame);
+            READ_VAR(new_vipreg.SPT);
+            READ_VAR(new_vipreg.GPLT);
+            READ_VAR(new_vipreg.JPLT);
+            READ_VAR(new_vipreg.BKCOL);
+            u16 padding;
+            READ_VAR(padding);
+            READ_VAR(new_vipreg.lastdisp);
+            READ_VAR(new_vipreg.rowcount);
+            READ_VAR(new_vipreg.displaying);
+            READ_VAR(new_vipreg.newframe);
+            u8 padding2;
+            READ_VAR(padding2);
+            new_vipreg.frametime = 137216;
+            new_vipreg.drawing = false;
+            new_vipreg.lastdraw = new_vipreg.lastdisp;
+        } else if (size == 68) {
+            // support <=0.9.8 savestates
+            READ_VAR(new_vipreg.INTPND);
+            READ_VAR(new_vipreg.INTENB);
+            READ_VAR(new_vipreg.INTCLR);
+            READ_VAR(new_vipreg.DPSTTS);
+            READ_VAR(new_vipreg.DPCTRL);
+            READ_VAR(new_vipreg.BRTA);
+            READ_VAR(new_vipreg.BRTB);
+            READ_VAR(new_vipreg.BRTC);
+            READ_VAR(new_vipreg.REST);
+            READ_VAR(new_vipreg.FRMCYC);
+            READ_VAR(new_vipreg.XPSTTS);
+            READ_VAR(new_vipreg.XPCTRL);
+            READ_VAR(new_vipreg.tDisplayedFB);
+            READ_VAR(new_vipreg.tFrame);
+            READ_VAR(new_vipreg.SPT);
+            READ_VAR(new_vipreg.GPLT);
+            READ_VAR(new_vipreg.JPLT);
+            READ_VAR(new_vipreg.BKCOL);
+            READ_VAR(new_vipreg.frametime);
+            READ_VAR(new_vipreg.lastdisp);
+            READ_VAR(new_vipreg.rowcount);
+            READ_VAR(new_vipreg.drawing);
+            READ_VAR(new_vipreg.displaying);
+            READ_VAR(new_vipreg.newframe);
+            new_vipreg.lastdraw = new_vipreg.lastdisp;
+        } else if (size == 72) {
+            // support <=1.0.2 savestates
+            READ_VAR(new_vipreg.INTPND);
+            READ_VAR(new_vipreg.INTENB);
+            READ_VAR(new_vipreg.INTCLR);
+            READ_VAR(new_vipreg.DPSTTS);
+            READ_VAR(new_vipreg.DPCTRL);
+            READ_VAR(new_vipreg.BRTA);
+            READ_VAR(new_vipreg.BRTB);
+            READ_VAR(new_vipreg.BRTC);
+            READ_VAR(new_vipreg.REST);
+            READ_VAR(new_vipreg.FRMCYC);
+            READ_VAR(new_vipreg.XPSTTS);
+            READ_VAR(new_vipreg.XPCTRL);
+            READ_VAR(new_vipreg.tDisplayedFB);
+            READ_VAR(new_vipreg.tFrame);
+            READ_VAR(new_vipreg.SPT);
+            HWORD gplt[4];
+            READ_VAR(gplt);
+            for (int i = 0; i < 4; i++) {
+                new_vipreg.GPLT[i] = gplt[i];
+            }
+            HWORD jplt[4];
+            READ_VAR(jplt);
+            for (int i = 0; i < 4; i++) {
+                new_vipreg.JPLT[i] = jplt[i];
+            }
+            READ_VAR(new_vipreg.BKCOL);
+            READ_VAR(new_vipreg.frametime);
+            READ_VAR(new_vipreg.lastdisp);
+            READ_VAR(new_vipreg.lastdraw);
+            READ_VAR(new_vipreg.rowcount);
+            READ_VAR(new_vipreg.drawing);
+            READ_VAR(new_vipreg.displaying);
+            READ_VAR(new_vipreg.newframe);
+        }
+        new_vipreg.tDisplayedFB %= 2;
+        // in version 2, modifying tDisplayedFB was moved to end-of-frame instead of start-of-frame
+        // also, tFrame was inverted
+        if (new_vipreg.tFrame >= new_vipreg.FRMCYC && !new_vipreg.drawing && (new_vipreg.XPCTRL & XPEN)) {
+            new_vipreg.tDisplayedFB = !new_vipreg.tDisplayedFB;
+            new_vipreg.tFrame = 0;
+        } else {
+            new_vipreg.tFrame = new_vipreg.FRMCYC - new_vipreg.tFrame;
+        }
     } else if (size == sizeof(new_vipreg)) {
         READ_VAR(new_vipreg);
     } else {
@@ -313,17 +360,6 @@ int emulation_lstate(int state) {
         new_vipreg.rowcount > 0x21
     ) {
         goto bail;
-    }
-    new_vipreg.tDisplayedFB %= 2;
-    // in version 2, modifying tDisplayedFB was moved to end-of-frame instead of start-of-frame
-    // also, tFrame was inverted
-    if (ver < 2) {
-        if (new_vipreg.tFrame >= new_vipreg.FRMCYC && !new_vipreg.drawing && (new_vipreg.XPCTRL & XPEN)) {
-            new_vipreg.tDisplayedFB = !new_vipreg.tDisplayedFB;
-            new_vipreg.tFrame = 0;
-        } else {
-            new_vipreg.tFrame = new_vipreg.FRMCYC - new_vipreg.tFrame;
-        }
     }
 
     //Load hardware control registers
