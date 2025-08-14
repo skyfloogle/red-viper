@@ -140,7 +140,7 @@ int main(void) {
 
         // Display a frame, only after the right number of 'skips'
         // Also don't display if drawing is still ongoing
-        if(tVIPREG.tFrame >= tVIPREG.FRMCYC && !tVIPREG.drawing) {
+        if(tVIPREG.tFrame == 0 && !tVIPREG.drawing) {
             int displayed_fb = tVIPREG.tDisplayedFB;
             // pass C3D_FRAME_NONBLOCK to enable frameskip, 0 to disable
             // it's only needed for 1 second in the mario clash intro afaik

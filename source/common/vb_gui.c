@@ -316,8 +316,14 @@ int emulation_lstate(int state) {
     }
     new_vipreg.tDisplayedFB %= 2;
     // in version 2, modifying tDisplayedFB was moved to end-of-frame instead of start-of-frame
-    if (ver < 2 && new_vipreg.tFrame >= new_vipreg.FRMCYC && !new_vipreg.drawing && (new_vipreg.XPCTRL & XPEN)) {
-        new_vipreg.tDisplayedFB = !new_vipreg.tDisplayedFB;
+    // also, tFrame was inverted
+    if (ver < 2) {
+        if (new_vipreg.tFrame >= new_vipreg.FRMCYC && !new_vipreg.drawing && (new_vipreg.XPCTRL & XPEN)) {
+            new_vipreg.tDisplayedFB = !new_vipreg.tDisplayedFB;
+            new_vipreg.tFrame = 0;
+        } else {
+            new_vipreg.tFrame = new_vipreg.FRMCYC - new_vipreg.tFrame;
+        }
     }
 
     //Load hardware control registers

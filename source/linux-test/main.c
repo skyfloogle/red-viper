@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
     int lasttime = SDL_GetTicks();
 
     while (true) {
-        if(tVIPREG.tFrame >= tVIPREG.FRMCYC && !tVIPREG.drawing) {
+        if(tVIPREG.tFrame == 0 && !tVIPREG.drawing) {
             if (tVIPREG.XPCTRL & XPEN) {
                 if (tDSPCACHE.CharCacheInvalid) {
                     tDSPCACHE.CharCacheInvalid = false;

@@ -457,8 +457,8 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
             tVIPREG.lastdraw = tVIPREG.lastdisp;
         }
 
-        if (++tVIPREG.tFrame > tVIPREG.FRMCYC) {
-            tVIPREG.tFrame = 0;
+        if (tVIPREG.tFrame-- == 0) {
+            tVIPREG.tFrame = tVIPREG.FRMCYC;
             interrupts |= GAMESTART;
             if (tVIPREG.XPCTRL & XPEN) {
                 if (tVIPREG.drawing) {
@@ -545,7 +545,7 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
         tVIPREG.newframe = true;
         pending_int = 1;
 
-        if (tVIPREG.tFrame >= tVIPREG.FRMCYC && !tVIPREG.drawing && (tVIPREG.XPCTRL & XPEN)) {
+        if (tVIPREG.tFrame == 0 && !tVIPREG.drawing && (tVIPREG.XPCTRL & XPEN)) {
             tVIPREG.tDisplayedFB = !tVIPREG.tDisplayedFB;
             if (!tVBOpt.VIP_OVERCLOCK) {
                 tVIPREG.frametime = videoProcessingTime();
