@@ -100,13 +100,12 @@ static uint16_t get_tile_mask(int tileid, int x, bool yflip) {
     return value;
 }
 
-template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int eye, int drawn_fb) {
+template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *world, int eye, int drawn_fb) {
     uint8_t mapid = world->head & 0xf;
     uint8_t scx_pow = ((world->head >> 10) & 3);
     uint8_t scy_pow = ((world->head >> 8) & 3);
     uint8_t scx = 1 << scx_pow;
     uint8_t scy = 1 << scy_pow;
-    bool over = world->head & 0x80;
     int16_t base_gx = (s16)(world->gx << 6) >> 6;
     int16_t gp = (s16)(world->gp << 6) >> 6;
     int16_t gy = world->gy;
@@ -133,18 +132,6 @@ template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int 
 
     uint8_t gy_shift = ((gy - my) & 7) * 2;
     uint8_t my_shift = (my & 7) * 2;
-
-    for (int x = gx & ~7; x < gx + w && x < 384; x += 8) {
-        if (x < 0) continue;
-        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[drawn_fb][x / 8];
-        int min = gy / 8;
-        if (min < 0) min = 0;
-        if (column->min > min) column->min = min;
-        int max = (gy + h - 1) / 8;
-        if (max < 0) max = 0;
-        if (max > 31) max = 31;
-        if (column->max < max) column->max = max;
-    }
 
     for (int x = 0; x < w; x++) {
         if (gx + x < 0) continue;
@@ -206,6 +193,83 @@ template<bool aligned> void render_normal_world(uint16_t *fb, WORLD *world, int 
     }
 }
 
+template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
+    uint8_t mapid = world->head & 0xf;
+    uint8_t scx_pow = ((world->head >> 10) & 3);
+    uint8_t scy_pow = ((world->head >> 8) & 3);
+    uint8_t scx = 1 << scx_pow;
+    uint8_t scy = 1 << scy_pow;
+    int16_t base_gx = (s16)(world->gx << 6) >> 6;
+    int16_t gp = (s16)(world->gp << 6) >> 6;
+    int16_t gy = world->gy;
+    int16_t base_mx = (s16)(world->mx << 3) >> 3;
+    int16_t mp = (s16)(world->mp << 1) >> 1;
+    int16_t my = (s16)(world->my << 3) >> 3;
+    int16_t w = world->w + 1;
+    int16_t h = world->h + 1;
+    int16_t over_tile = world->over & 0x7ff;
+
+    u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.off + 0x20000);
+
+    u16 param_base = world->param;
+    s16 *params = (s16 *)(V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
+
+    for (int eye = 0; eye < 2; eye++) {
+        if (!(world->head & (0x8000 >> eye)))
+            continue;
+
+        uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
+
+        int mx = base_mx + (eye == 0 ? -mp : mp);
+        int gx = base_gx + (eye == 0 ? -gp : gp);
+        for (int y = 0; y < h; y++) {
+            if (gy + y < 0) continue;
+            if (gy + y >= 224) break;
+            int mx = params[y * 8 + 0] << 6;
+            s16 mp = params[y * 8 + 1];
+            int my = params[y * 8 + 2] << 6;
+            s32 dx = params[y * 8 + 3];
+            s32 dy = params[y * 8 + 4];
+            mx += (mp >= 0 ? mp * eye : -mp * !eye) * dx;
+            my += (mp >= 0 ? mp * eye : -mp * !eye) * dy;
+
+            int shift = (((gy + y) & 3) * 2);
+
+            for (int x = gx; x < gx + w; x++) {
+                if (x >= 384) break;
+                if (x >= 0) {
+                    int xmap = mx >> (9 + 9);
+                    int ymap = my >> (9 + 9);
+                    int tx = (mx >> (9 + 3)) & 63;
+                    int ty = (my >> (9 + 3)) & 63;
+                    int bpx = (mx >> 9) & 7;
+                    int bpy = (my >> 9) & 7;
+                    u16 tile;
+                    if (over && ((xmap & (scx - 1)) != xmap || (ymap & (scy - 1)) != ymap)) {
+                        tile = tilemap[over_tile];
+                    } else {
+                        int this_map = mapid + (ymap & (scy - 1)) * scx + (xmap & (scx - 1));
+                        tile = tilemap[this_map * 4096 + ty * 64 + tx];
+                    }
+                    u16 tileid = tile & 0x07ff;
+                    int palette = tile >> 14;
+                    int px = tile & 0x2000 ? 7 - bpx : bpx;
+                    int py = tile & 0x1000 ? 7 - bpy : bpy;
+                    uint16_t tilecolumn = tileCache[tileid].indices.u16[px];
+                    int pxindex = (tilecolumn >> (py*2)) & 3;
+                    if (pxindex) {
+                        int pxvalue = (tVIPREG.GPLT[palette] >> (pxindex*2)) & 3;
+                        uint8_t *out_word = &((uint8_t*)(&fb[x * 256 / 8]))[((gy + y) >> 2)];
+                        *out_word = (*out_word & ~(3 << shift)) | (pxvalue << shift);
+                    }
+                }
+                mx += dx;
+                my += dy;
+            }
+        }
+    }
+}
+
 void video_soft_render(int drawn_fb) {
     tDSPCACHE.DDSPDataState[drawn_fb] = CPU_WROTE;
     #ifdef __3DS__
@@ -224,46 +288,24 @@ void video_soft_render(int drawn_fb) {
             break;
         if (!(worlds[wrld].head & 0xc000))
             continue;
-        
-        if ((worlds[wrld].head & 0x3000) == 0) {
-            // normal world
-            for (int eye = 0; eye < 2; eye++) {
-                if (!(worlds[wrld].head & (0x8000 >> eye)))
-                    continue;
-                uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
-                int16_t gy = worlds[wrld].gy;
-                int16_t my = (s16)(worlds[wrld].my << 3) >> 3;
-                int16_t h = worlds[wrld].h + 1;
-                if ((gy & 7) || (my & 7) || (h & 7)) {
-                    render_normal_world<false>(fb, &worlds[wrld], eye, drawn_fb);
-                } else {
-                    render_normal_world<true>(fb, &worlds[wrld], eye, drawn_fb);
-                }
-            }
-        } else if ((worlds[wrld].head & 0x3000) != 0x3000) {
-            // h-bias or affine world
-            uint8_t mapid = worlds[wrld].head & 0xf;
-            uint8_t scx_pow = ((worlds[wrld].head >> 10) & 3);
-            uint8_t scy_pow = ((worlds[wrld].head >> 8) & 3);
-            uint8_t scx = 1 << scx_pow;
-            uint8_t scy = 1 << scy_pow;
-            bool over = worlds[wrld].head & 0x80;
+
+        // set softbuf modified area for background worlds
+        if ((worlds[wrld].head & 0x3000) != 0x3000) {
             int16_t base_gx = (s16)(worlds[wrld].gx << 6) >> 6;
             int16_t gp = (s16)(worlds[wrld].gp << 6) >> 6;
             int16_t gy = worlds[wrld].gy;
-            int16_t base_mx = (s16)(worlds[wrld].mx << 3) >> 3;
-            int16_t mp = (s16)(worlds[wrld].mp << 1) >> 1;
-            int16_t my = (s16)(worlds[wrld].my << 3) >> 3;
             int16_t w = worlds[wrld].w + 1;
             int16_t h = worlds[wrld].h + 1;
-            int16_t over_tile = worlds[wrld].over & 0x7ff;
-
-            u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.off + 0x20000);
-
-            u16 param_base = worlds[wrld].param;
-            s16 *params = (s16 *)(V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
-
-            for (int x = (base_gx - abs(gp)) & ~7; x < base_gx + abs(gp) + w && x < 384; x += 8) {
+            int left_gx = base_gx - gp;
+            int right_gx = base_gx + gp;
+            int min_gx, max_gx;
+            if ((worlds[wrld].head & 0xc000) == 0xc000) {
+                min_gx = left_gx < right_gx ? left_gx : right_gx;
+                max_gx = left_gx > right_gx ? left_gx : right_gx;
+            } else {
+                min_gx = max_gx = worlds[wrld].head & 0x8000 ? left_gx : right_gx;
+            }
+            for (int x = min_gx & ~7; x < max_gx + abs(gp) + w && x < 384; x += 8) {
                 if (x < 0) continue;
                 SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[drawn_fb][x / 8];
                 int min = gy / 8;
@@ -274,71 +316,43 @@ void video_soft_render(int drawn_fb) {
                 if (max > 31) max = 31;
                 if (column->max < max) column->max = max;
             }
-
+        }
+        
+        if ((worlds[wrld].head & 0x3000) == 0) {
+            // normal world
             for (int eye = 0; eye < 2; eye++) {
                 if (!(worlds[wrld].head & (0x8000 >> eye)))
                     continue;
-
                 uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
-
-                int mx = base_mx + (eye == 0 ? -mp : mp);
-                int gx = base_gx + (eye == 0 ? -gp : gp);
-
-                if ((worlds[wrld].head & 0x3000) == 0x1000) {
-                    // h-bias
-                    // TODO
+                int16_t gy = worlds[wrld].gy;
+                int16_t my = (s16)(worlds[wrld].my << 3) >> 3;
+                int16_t h = worlds[wrld].h + 1;
+                bool over = worlds[wrld].head & 0x80;
+                if ((gy & 7) || (my & 7) || (h & 7)) {
+                    if (over)
+                        render_normal_world<false, true>(fb, &worlds[wrld], eye, drawn_fb);
+                    else
+                        render_normal_world<false, false>(fb, &worlds[wrld], eye, drawn_fb);
                 } else {
-                    // affine
-                    for (int y = 0; y < h; y++) {
-                        if (gy + y < 0) continue;
-                        if (gy + y >= 224) break;
-                        int mx = params[y * 8 + 0] << 6;
-                        s16 mp = params[y * 8 + 1];
-                        int my = params[y * 8 + 2] << 6;
-                        s32 dx = params[y * 8 + 3];
-                        s32 dy = params[y * 8 + 4];
-                        mx += (mp >= 0 ? mp * eye : -mp * !eye) * dx;
-                        my += (mp >= 0 ? mp * eye : -mp * !eye) * dy;
-
-                        int shift = (((gy + y) & 3) * 2);
-
-                        for (int x = gx; x < gx + w; x++) {
-                            if (x >= 384) break;
-                            if (x >= 0) {
-                                int xmap = mx >> (9 + 9);
-                                int ymap = my >> (9 + 9);
-                                int tx = (mx >> (9 + 3)) & 63;
-                                int ty = (my >> (9 + 3)) & 63;
-                                int bpx = (mx >> 9) & 7;
-                                int bpy = (my >> 9) & 7;
-                                u16 tile;
-                                if (over && ((xmap & (scx - 1)) != xmap || (ymap & (scy - 1)) != ymap)) {
-                                    tile = tilemap[over_tile];
-                                } else {
-                                    int this_map = mapid + (ymap & (scy - 1)) * scx + (xmap & (scx - 1));
-                                    tile = tilemap[this_map * 4096 + ty * 64 + tx];
-                                }
-                                u16 tileid = tile & 0x07ff;
-                                int palette = tile >> 14;
-                                int px = tile & 0x2000 ? 7 - bpx : bpx;
-                                int py = tile & 0x1000 ? 7 - bpy : bpy;
-                                uint16_t tilecolumn = tileCache[tileid].indices.u16[px];
-                                int pxindex = (tilecolumn >> (py*2)) & 3;
-                                if (pxindex) {
-                                    int pxvalue = (tVIPREG.GPLT[palette] >> (pxindex*2)) & 3;
-                                    uint8_t *out_word = &((uint8_t*)(&fb[x * 256 / 8]))[((gy + y) >> 2)];
-                                    *out_word = (*out_word & ~(3 << shift)) | (pxvalue << shift);
-                                }
-                            }
-                            mx += dx;
-                            my += dy;
-                        }
-                    }
+                    if (over)
+                        render_normal_world<true, true>(fb, &worlds[wrld], eye, drawn_fb);
+                    else
+                        render_normal_world<true, false>(fb, &worlds[wrld], eye, drawn_fb);
                 }
+            }
+        } else if ((worlds[wrld].head & 0x3000) == 0x1000) {
+            // h-bias world
+            // TODO
+        } else if ((worlds[wrld].head & 0x3000) == 0x2000) {
+            // affine world
+            bool over = worlds[wrld].head & 0x80;
+            if (over) {
+                render_affine_world<true>(&worlds[wrld], drawn_fb);
+            } else {
+                render_affine_world<false>(&worlds[wrld], drawn_fb);
             }
         } else {
             // object world
-
             int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
             int end_index = tVIPREG.SPT[object_group_id] & 1023;
             for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
