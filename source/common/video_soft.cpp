@@ -201,6 +201,7 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
     uint8_t scy_pow = ((world->head >> 8) & 3);
     uint8_t scx = 1 << scx_pow;
     uint8_t scy = 1 << scy_pow;
+    int scx_scy_mask = (1 - scx) | ((1 - scy) << 16);
     int16_t base_gx = (s16)(world->gx << 6) >> 6;
     int16_t gp = (s16)(world->gp << 6) >> 6;
     int16_t gy = world->gy;
@@ -239,31 +240,48 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
 
             int shift = (((gy + y) & 3) * 2);
 
-            for (int x = gx; likely(x < gx + w); x++) {
-                if (unlikely(x >= 384)) break;
-                if (likely(x >= 0)) {
+            u8 *out_word = &((uint8_t*)(&fb[gx * 256 / 8]))[((gy + y) >> 2)];
+            u8 *end = out_word + w * 256 / 4;
+            if (gx < 0) {
+                mx += dx * -gx;
+                my += dy * -gx;
+                out_word += -gx * 256 / 4;
+            }
+            if (gx + w > 384) {
+                end = ((uint8_t*)fb) + 0x6000;
+            }
+
+            for (; likely(out_word < end); out_word += 256 / 4) {
+                if (true) {
+                    // storing xmap and ymap in one int here lets us mask/compare with scx/scy in one go,
+                    // which is slightly faster than storing them separately
                     int xmap = mx >> (9 + 9);
                     int ymap = my >> (9 + 9);
+                    int xmap_ymap = xmap | (ymap << 16);
+                    int xmap_ymap_masked = xmap_ymap & scx_scy_mask;
                     int tx = (mx >> (9 + 3)) & 63;
-                    int ty = (my >> (9 + 3)) & 63;
+                    // premultiplied by 64
+                    int ty_scaled = (my >> (9 + 3 - 6)) & (63 << 6);
+                    // note: not doubled because that doesn't help
                     int bpx = (mx >> 9) & 7;
-                    int bpy = (my >> 9) & 7;
-                    u16 tile;
-                    if (over && unlikely((xmap & (scx - 1)) != xmap || (ymap & (scy - 1)) != ymap)) {
-                        tile = tilemap[over_tile];
+                    // note: this is doubled because that does help
+                    int dbpy = (my >> 8) & (7 << 1);
+                    int tile_pos;
+                    if (over && unlikely(xmap_ymap != xmap_ymap_masked)) {
+                        tile_pos = over_tile;
                     } else {
-                        int this_map = mapid + (ymap & (scy - 1)) * scx + (xmap & (scx - 1));
-                        tile = tilemap[this_map * 4096 + ty * 64 + tx];
+                        int this_map = mapid + (xmap_ymap_masked >> 16) * scx + (xmap_ymap_masked & 0xffff);
+                        tile_pos = this_map * 4096 + ty_scaled + tx;
                     }
+                    u16 tile = tilemap[tile_pos];
                     u16 tileid = tile & 0x07ff;
                     int palette = tile >> 14;
                     int px = tile & 0x2000 ? 7 - bpx : bpx;
-                    int py = tile & 0x1000 ? 7 - bpy : bpy;
+                    int dpy = tile & 0x1000 ? (7 << 1) - dbpy : dbpy;
                     uint16_t tilecolumn = tileCache[tileid].indices.u16[px];
-                    int pxindex = (tilecolumn >> (py*2)) & 3;
+                    int pxindex = (tilecolumn >> dpy) & 3;
                     if (pxindex) {
-                        int pxvalue = (gplt[palette] >> (pxindex*2)) & 3;
-                        uint8_t *out_word = &((uint8_t*)(&fb[x * 256 / 8]))[((gy + y) >> 2)];
+                        int pxvalue = (gplt[palette] >> (pxindex * 2)) & 3;
                         *out_word = (*out_word & ~(3 << shift)) | (pxvalue << shift);
                     }
                 }
