@@ -399,6 +399,16 @@ int emulation_lstate(int state) {
     APPLY_MEMORY(V810_GAME_RAM);
     #undef APPLY_MEMORY
 
+    // frametime was moved to end-of-frame in version 2
+    if (ver < 2) {
+        if (!tVBOpt.VIP_OVERCLOCK) {
+            tVIPREG.frametime = videoProcessingTime();
+        } else {
+            // pre-0.9.7 behaviour
+            tVIPREG.frametime = 137216;
+        }
+    }
+
     clearCache();
     C3D_FrameBegin(0);
     video_render((tVIPREG.tDisplayedFB) % 2, false);

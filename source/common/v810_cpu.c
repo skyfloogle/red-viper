@@ -466,12 +466,6 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
                     interrupts |= TIMEERR;
                 } else {
                     tVIPREG.drawing = true;
-                    if (!tVBOpt.VIP_OVERCLOCK) {
-                        tVIPREG.frametime = videoProcessingTime();
-                    } else {
-                        // pre-0.9.7 behaviour
-                        tVIPREG.frametime = 137216;
-                    }
                     tVIPREG.XPSTTS = XPEN | ((!tVIPREG.tDisplayedFB+1)<<2) | SBOUT;
                 }
             }
@@ -553,6 +547,12 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
 
         if (tVIPREG.tFrame >= tVIPREG.FRMCYC && !tVIPREG.drawing && (tVIPREG.XPCTRL & XPEN)) {
             tVIPREG.tDisplayedFB = !tVIPREG.tDisplayedFB;
+            if (!tVBOpt.VIP_OVERCLOCK) {
+                tVIPREG.frametime = videoProcessingTime();
+            } else {
+                // pre-0.9.7 behaviour
+                tVIPREG.frametime = 137216;
+            }
         }
 
         sound_update(cycles);
