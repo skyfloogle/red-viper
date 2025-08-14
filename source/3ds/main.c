@@ -171,7 +171,7 @@ int main(void) {
                 }
 
                 // if we just had a lagframe on which drawing happened, don't draw
-                if ((tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {
+                if ((tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged || tVBOpt.RENDERMODE == 2)) {
                     video_render(displayed_fb, on_time);
                     on_time = true;
                 } else if (on_time) {
