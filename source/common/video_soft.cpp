@@ -144,6 +144,8 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
         tx &= 63;
         if (!over) mapx &= scx - 1;
 
+        uint16_t *column_out = &fb[(gx + x) * 256 / 8];
+
         int ty = tsy;
         int mapy = mapsy;
         int current_map = mapid + scx * mapy + mapx;
@@ -183,13 +185,13 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
                 }
             }
             if (unlikely(y < 0)) continue;
-            uint16_t *out_word = &fb[((y) >> 3) + ((gx + x) * 256 / 8)];
+            uint16_t *out_word = &column_out[y >> 3];
             *out_word = (*out_word & current_mask) | current_out;
         }
         if (((gy & 7) + h) >= 8 && ((gy + h) & 7) != 0) {
             uint16_t current_out = prev_out;
             uint16_t current_mask = (-1 << gy_shift) | prev_mask;
-            uint16_t *out_word = &fb[((gy - (my & 7) + h) >> 3) + ((gx + x) * 256 / 8)];
+            uint16_t *out_word = &column_out[(gy - (my & 7) + h) >> 3];
             *out_word = (*out_word & current_mask) | current_out;
         }
     }
