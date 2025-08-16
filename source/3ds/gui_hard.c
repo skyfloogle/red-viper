@@ -1734,7 +1734,6 @@ static void colour_filter(void) {
         case COLOUR_RED: // Red
             tVBOpt.TINT = 0x0000ff;
             tVBOpt.MODIFIED = true;
-            swkbd_colour(&tVBOpt.TINT);
             return colour_filter();
         case COLOUR_GRAY: // Gray
             tVBOpt.TINT = 0xffffff;
