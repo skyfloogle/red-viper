@@ -3,6 +3,7 @@
 #include "v810_mem.h"
 
 C3D_Tex screenTexSoft[2];
+static uint32_t *linearTex[2];
 
 void video_soft_init(void) {
 	C3D_TexInitParams params;
@@ -12,8 +13,10 @@ void video_soft_init(void) {
 	params.type = GPU_TEX_2D;
 	params.onVram = false;
 	params.maxLevel = 0;
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < 2; i++) {
         C3D_TexInitWithParams(&screenTexSoft[i], NULL, params);
+        linearTex[i] = (uint32_t*)linearAlloc(512 * 512 * 2);
+    }
 }
 
 // using a template to avoid checking a boolean in a hot loop
@@ -28,10 +31,9 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int displayed_fb) {
     // copy framebuffer
     int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
     for (int eye = start_eye; eye < start_eye + eye_count; eye++) {
-        for (int tx = 0; tx < 384 / 8; tx++) {
-            uint32_t *column_ptr = &out_fb[8 * 8 / 4 * 2 * (eye * 256 / 8 + 512 / 8 * (512 / 8 - 1 - tx))];
+        for (int x = 0; x < 384; x++) {
             int ymin, ymax;
-            SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[displayed_fb][tx];
+            SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[displayed_fb][x / 8];
             ymin = column->min;
             ymax = column->max;
             if (ymin > ymax) {
@@ -39,58 +41,27 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int displayed_fb) {
             }
             if (++ymax > 224 / 8) ymax = 224 / 8;
 
+            uint32_t *in_fb_ptr = (uint32_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * displayed_fb + x * (256 / 4));
+            uint32_t *in_alpha_ptr = &tDSPCACHE.OpaquePixels.u32[displayed_fb][eye][x * (256 / 4 / 4)];
+            uint16_t *out = (uint16_t*)&linearTex[displayed_fb][(256 * eye + x) * 512];
+
             for (int ty = ymin; ty < ymax; ty++) {
-                uint32_t *out_tile = &column_ptr[8 * 8 / 4 * 2 * (1 + ty)];
-                uint16_t *in_fb_ptr = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * displayed_fb + tx * (256 / 4 * 8) + ty * 2);
-                uint16_t *in_alpha_ptr = &tDSPCACHE.OpaquePixels.u16[displayed_fb][eye][tx * (256 / 4 * 8) / 2 + ty];
-
-                for (int i = 0; i <= 2; i += 2) {
-                    uint32_t slice1, slice2, slice1_alpha, slice2_alpha;
-                    slice2 = *in_fb_ptr;
-                    in_fb_ptr += 256 / 4 / 2;
-                    slice2 |= (*in_fb_ptr << 16);
-                    in_fb_ptr += 256 / 4 / 2;
-                    slice1 = *in_fb_ptr;
-                    in_fb_ptr += 256 / 4 / 2;
-                    slice1 |= (*in_fb_ptr << 16);
-                    in_fb_ptr += 256 / 4 / 2;
-
-                    if (copy_alpha) {
-                        slice2_alpha = *in_alpha_ptr;
-                        in_alpha_ptr += 256 / 4 / 2;
-                        slice2_alpha |= (*in_alpha_ptr << 16);
-                        in_alpha_ptr += 256 / 4 / 2;
-                        slice1_alpha = *in_alpha_ptr;
-                        in_alpha_ptr += 256 / 4 / 2;
-                        slice1_alpha |= (*in_alpha_ptr << 16);
-                        in_alpha_ptr += 256 / 4 / 2;
-                    }
-	
-                    // black, red, green, blue
-                    const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
-
-                    #define SQUARE(x, i) { \
-                        uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
-                        uint32_t right = x >> (2 + 4*i) & 0x00030003; \
-                        uint32_t left_alpha = copy_alpha ? x##_alpha >> (0 + 4*i) & 0x00030003 : 0; \
-                        uint32_t right_alpha = copy_alpha ? x##_alpha >> (2 + 4*i) & 0x00030003 : 0; \
-                        *--out_tile = colors[(uint16_t)left] | (0xf * !!(uint16_t)left_alpha) | (colors[(uint16_t)right] << 16) | (0xf0000 * !!(uint16_t)right_alpha); \
-                        *--out_tile = colors[left >> 16] | (0xf * !!(left_alpha >> 16)) | (colors[right >> 16] << 16) | (0xf0000 * !!(right_alpha >> 16)); \
-                    }
-
-                    SQUARE(slice2, 3);
-                    SQUARE(slice2, 2);
-                    SQUARE(slice1, 3);
-                    SQUARE(slice1, 2);
-                    SQUARE(slice2, 1);
-                    SQUARE(slice2, 0);
-                    SQUARE(slice1, 1);
-                    SQUARE(slice1, 0);
-
-                    #undef SQUARE
+                // black, red, green, blue
+                const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
+                uint32_t in_col = *in_fb_ptr;
+                uint32_t in_alpha = *in_alpha_ptr;
+                for (int i = 0; i < 8; i++) {
+                    *out++ = colors[in_col & 3] | (copy_alpha ? 0xf * !!(in_alpha & 3) : 0);
+                    in_col >>= 2;
+                    in_alpha >>= 2;
                 }
             }
         }
+        GX_DisplayTransfer(linearTex[displayed_fb], GX_BUFFER_DIM(512, 512), out_fb, GX_BUFFER_DIM(512, 512),
+             (GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) |
+            GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA4) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGBA4) |
+            GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
+        );
     }
     // reset column cache for any following writes
     for (int tx = 0; tx < 384 / 8; tx++) {
