@@ -3,7 +3,7 @@
 #include "v810_mem.h"
 
 C3D_Tex screenTexSoft[2];
-static uint32_t *linearTex[2];
+uint32_t *screenTexSoftLinear[2];
 
 void video_soft_init(void) {
 	C3D_TexInitParams params;
@@ -15,7 +15,7 @@ void video_soft_init(void) {
 	params.maxLevel = 0;
 	for (int i = 0; i < 2; i++) {
         C3D_TexInitWithParams(&screenTexSoft[i], NULL, params);
-        linearTex[i] = (uint32_t*)linearAlloc(512 * 512 * 2);
+        screenTexSoftLinear[i] = (uint32_t*)linearAlloc(512 * 512 * 2);
     }
 }
 
@@ -41,15 +41,15 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int displayed_fb) {
             }
             if (++ymax > 224 / 8) ymax = 224 / 8;
 
-            uint32_t *in_fb_ptr = (uint32_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * displayed_fb + x * (256 / 4));
-            uint32_t *in_alpha_ptr = &tDSPCACHE.OpaquePixels.u32[displayed_fb][eye][x * (256 / 4 / 4)];
-            uint16_t *out = (uint16_t*)&linearTex[displayed_fb][(256 * eye + x) * 512];
+            uint16_t *in_fb_ptr = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * displayed_fb + x * (256 / 4)) + ymin;
+            uint16_t *in_alpha_ptr = &tDSPCACHE.OpaquePixels.u16[displayed_fb][eye][x * (256 / 4 / 2)] + ymin;
+            uint16_t *out = (uint16_t*)&screenTexSoftLinear[displayed_fb][x * 256] + 256 * eye + ymin * 8;
 
             for (int ty = ymin; ty < ymax; ty++) {
                 // black, red, green, blue
                 const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
-                uint32_t in_col = *in_fb_ptr;
-                uint32_t in_alpha = *in_alpha_ptr;
+                uint32_t in_col = *in_fb_ptr++;
+                uint32_t in_alpha = *in_alpha_ptr++;
                 for (int i = 0; i < 8; i++) {
                     *out++ = colors[in_col & 3] | (copy_alpha ? 0xf * !!(in_alpha & 3) : 0);
                     in_col >>= 2;
@@ -57,8 +57,8 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int displayed_fb) {
                 }
             }
         }
-        GX_DisplayTransfer(linearTex[displayed_fb], GX_BUFFER_DIM(512, 512), out_fb, GX_BUFFER_DIM(512, 512),
-             (GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) |
+        GX_DisplayTransfer(screenTexSoftLinear[displayed_fb], GX_BUFFER_DIM(512, 512), out_fb, GX_BUFFER_DIM(512, 512),
+             (GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) |
             GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA4) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGBA4) |
             GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
         );

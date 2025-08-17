@@ -197,9 +197,7 @@ int main(void) {
                             tDSPCACHE.SoftBufWrote[!displayed_fb][i].max = 0;
                         }
                         memset(tDSPCACHE.OpaquePixels.u32[!displayed_fb], 0, sizeof(tDSPCACHE.OpaquePixels.u32[!displayed_fb]));
-                        uint32_t fb_size;
-                        uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[!displayed_fb], 0, &fb_size);
-                        memset(out_fb, 0, fb_size);
+                        memset(screenTexSoftLinear[!displayed_fb], 0, 512 * 512 * 2);
                         tDSPCACHE.DDSPDataState[!displayed_fb] = GPU_CLEAR;
                     }
                 }

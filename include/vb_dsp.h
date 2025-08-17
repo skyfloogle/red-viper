@@ -172,6 +172,7 @@ void update_texture_cache_hard(void);
 
 // video_soft
 extern C3D_Tex screenTexSoft[2];
+extern uint32_t *screenTexSoftLinear[2];
 void video_soft_init(void);
 void video_soft_to_texture(int displayed_fb);
 

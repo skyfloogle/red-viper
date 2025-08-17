@@ -297,11 +297,9 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
 void video_soft_render(int drawn_fb) {
     tDSPCACHE.DDSPDataState[drawn_fb] = CPU_WROTE;
     #ifdef __3DS__
-    uint32_t fb_size;
-    uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[drawn_fb], 0, &fb_size);
-    memset(out_fb, 0, fb_size);
+    memset(screenTexSoftLinear[drawn_fb], 0, 512 * 512 * 2);
     #endif
-	    uint8_t object_group_id = 3;
+    uint8_t object_group_id = 3;
     for (int eye = 0; eye < 2; eye++) {
         uint16_t *fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
         memset(fb, 0, 0x6000);
