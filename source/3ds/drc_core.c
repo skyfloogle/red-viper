@@ -754,8 +754,9 @@ static int drc_translateBlock(void) {
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
 
-        // The longest replacement sequence (bitstring) is 32 ARM instructions
-        if (inst_ptr - trans_cache >= MAX_ARM_INST - 32) break;
+        // As of this writing, the longest replacement sequence is bitstring at 43 instructions.
+        // However, let's keep some buffer, just in case.
+        if (inst_ptr - trans_cache >= MAX_ARM_INST - 64) break;
 
         inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
         inst_ptr_start = inst_ptr;
