@@ -324,8 +324,8 @@ void v810_reset(void) {
     // we don't reset load_sram so it will be non-null if there was sram to load
     replay_reset(is_sram || (bool)load_sram);
 
-    // Golf might set this to 2, so reset it here.
-    tVBOpt.RENDERMODE = 1;
+    // Golf might set this to RM_CPUONLY, so reset it here.
+    tVBOpt.RENDERMODE = RM_TOGPU;
 
     // Software rendering for Test Chamber, only on New 3DS.
     if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) {
@@ -333,7 +333,7 @@ void v810_reset(void) {
         #ifdef __3DS__
         APT_CheckNew3DS(&new_3ds);
         #endif
-        if (new_3ds) tVBOpt.RENDERMODE = 2;
+        if (new_3ds) tVBOpt.RENDERMODE = RM_CPUONLY;
     }
 
     tVBOpt.VIP_OVER_SOFT = (

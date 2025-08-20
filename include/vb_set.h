@@ -40,6 +40,12 @@ enum VB_KCFG {
     VB_KCFG_R,
 };
 
+typedef enum {
+    RM_GPUONLY, // VIP only.
+    RM_TOGPU, // Mix CPU and hardware VIP graphics on GPU.
+    RM_CPUONLY, // Software VIP.
+} RENDERMODE_t;
+
 // Global Options list
 typedef struct VB_OPT {
     int   MAXCYCLES; // Number of cycles before checking for interrupts
@@ -64,7 +70,7 @@ typedef struct VB_OPT {
     int   SOUND;
     int   FASTFORWARD;
     int   FF_TOGGLE; // 0 - hold, 1 - toggle
-    int   RENDERMODE; // 0 - hard only, 1 - hard + postproc, 2 - full soft
+    RENDERMODE_t RENDERMODE;
     int   SLIDERMODE; // 0 - 3ds (positive parallax), 1 - virtual boy (full parallax)
     int   DEFAULT_EYE; // 0 - left, 1 - right
     int   PAUSE_RIGHT; // right side of pause block on touch screen

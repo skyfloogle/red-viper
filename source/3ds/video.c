@@ -286,7 +286,7 @@ void video_render(int displayed_fb, bool on_time) {
 	g_displayed_fb = displayed_fb;
 	vip_displayed_fb = tVBOpt.DOUBLE_BUFFER ? displayed_fb : 0;
 
-	if (tVBOpt.RENDERMODE > 0) {
+	if (tVBOpt.RENDERMODE != RM_GPUONLY) {
 		// postproc (can be done early)
 		video_soft_to_texture(displayed_fb);
 	}
@@ -308,13 +308,13 @@ void video_render(int displayed_fb, bool on_time) {
 
 	if (tVIPREG.XPCTRL & XPEN) {
 		if (tDSPCACHE.CharCacheInvalid) {
-			if (tVBOpt.RENDERMODE < 2)
+			if (tVBOpt.RENDERMODE != RM_CPUONLY)
 				update_texture_cache_hard();
 			else
 				update_texture_cache_soft();
 		}
 
-		if (tVBOpt.RENDERMODE < 2) {
+		if (tVBOpt.RENDERMODE != RM_CPUONLY) {
 			video_hard_render(tVBOpt.DOUBLE_BUFFER ? !displayed_fb : 0);
 		} else {
 			C3D_RenderTargetClear(screenTargetHard[!vip_displayed_fb], C3D_CLEAR_ALL, 0, 0);

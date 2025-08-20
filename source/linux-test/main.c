@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
         if (ret == 100) break;
     }
 
-    tVBOpt.RENDERMODE = 2;
+    tVBOpt.RENDERMODE = RM_CPUONLY;
 
     clearCache();
 

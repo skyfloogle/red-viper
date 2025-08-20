@@ -99,7 +99,7 @@ void setDefaults(void) {
     tVBOpt.DSP2X    = 0;
     tVBOpt.FASTFORWARD = 0;
     tVBOpt.FF_TOGGLE = 0;
-    tVBOpt.RENDERMODE = 1;
+    tVBOpt.RENDERMODE = RM_TOGPU;
     tVBOpt.PAUSE_RIGHT = 160;
     tVBOpt.TOUCH_AX = 250;
     tVBOpt.TOUCH_AY = 64;

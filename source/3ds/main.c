@@ -162,14 +162,14 @@ int main(void) {
                         memcmp((uint8_t*)V810_DISPLAY_RAM.off + 0x3dbec, "\0\0\x80\x01\x1f\0\0\x80\0\0", 10) == 0
                     ) {
                         // looks like hills, do software rendering
-                        if (tVBOpt.RENDERMODE != 2) {
-                            tVBOpt.RENDERMODE = 2;
+                        if (tVBOpt.RENDERMODE != RM_CPUONLY) {
+                            tVBOpt.RENDERMODE = RM_CPUONLY;
                             clearCache();
                         }
                     } else {
                         // switch back to hardware rendering
-                        if (tVBOpt.RENDERMODE != 1) {
-                            tVBOpt.RENDERMODE = 1;
+                        if (tVBOpt.RENDERMODE != RM_TOGPU) {
+                            tVBOpt.RENDERMODE = RM_TOGPU;
                             for (int i = 0; i < 3; i++) {
                                 memset((uint8_t*)V810_DISPLAY_RAM.off + (0x8000 * i), 0, 0x6000);
                             }
@@ -187,7 +187,7 @@ int main(void) {
                 }
                 C3D_FrameEnd(0);
             }
-            if (tVBOpt.RENDERMODE < 2) {
+            if (tVBOpt.RENDERMODE != RM_CPUONLY) {
                 if (tVIPREG.XPCTRL & 0x0002) {
                     if (tDSPCACHE.DDSPDataState[!displayed_fb] != GPU_CLEAR) {
                         memset((uint8_t*)V810_DISPLAY_RAM.off + 0x8000 * !displayed_fb, 0, 0x6000);
