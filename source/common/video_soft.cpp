@@ -173,7 +173,7 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
             if (aligned) {
                 current_out = value;
                 current_mask = mask;
-                if (mask == -1) continue;
+                if (mask == 0xffff) continue;
             } else {
                 current_out = ((value << gy_shift)) | prev_out;
                 current_mask = ((mask << gy_shift)) | prev_mask;
@@ -425,7 +425,7 @@ void video_soft_render(int drawn_fb) {
                         int px = cw3 & 0x2000 ? 7 - bpx : bpx;
                         int value = get_tile_column(tileid, tVIPREG.JPLT[palette], px, (cw3 & 0x1000) != 0);
                         uint16_t mask = get_tile_mask(tileid, px, (cw3 & 0x1000) != 0);
-                        if (mask == -1) continue;
+                        if (mask == 0xffff) continue;
                         
                         uint16_t *out_word = &fb[((y) >> 3) + ((x + bpx) * 256 / 8)];
                         if (y >= 0) {
