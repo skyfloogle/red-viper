@@ -42,7 +42,7 @@ typedef struct {
 	short umin, umax, vmin, vmax;
 	short lumin, lumax, lvmin, lvmax;
 	u16 tiles[64 * 64];
-	u16 GPLT[4];
+	u8 GPLT[4];
 	bool visible;
 	bool used;
 } AffineCacheEntry;
