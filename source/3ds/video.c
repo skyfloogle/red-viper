@@ -33,6 +33,8 @@ static inline u8 clamp255(int x) {
 #define BRIGHTNESS_FACTOR 1.75
 #define GAMMA 0.9
 
+#define USE_SOFT_FLUSH true
+
 // some stuff copied from vb_dsp.c
 
 VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
@@ -277,7 +279,7 @@ void video_render(int displayed_fb, bool on_time) {
 	g_displayed_fb = displayed_fb;
 	vip_displayed_fb = tVBOpt.DOUBLE_BUFFER ? displayed_fb : 0;
 
-	if (tVBOpt.RENDERMODE != RM_GPUONLY) {
+	if (tVBOpt.RENDERMODE == RM_TOGPU || (tVBOpt.RENDERMODE == RM_CPUONLY && !USE_SOFT_FLUSH)) {
 		// postproc (can be done early)
 		video_soft_to_texture(displayed_fb);
 	}
@@ -347,11 +349,9 @@ float getDepthOffset(bool default_for_both, int eye, bool full_parallax) {
     }
 }
 
-void video_flush(bool default_for_both) {
-	static int orig_eye = 0;
-	if (!default_for_both) orig_eye = tVBOpt.DEFAULT_EYE;
-	if (eye_count == 2) default_for_both = false;
+static int orig_eye = 0;
 
+static void video_flush_hard(bool default_for_both) {
 	if (tDSPCACHE.ColumnTableInvalid || (minRepeat != maxRepeat && tDSPCACHE.BrtPALMod))
 		processColumnTable();
 
@@ -495,6 +495,74 @@ void video_flush(bool default_for_both) {
 	// cleanup
 	tDSPCACHE.ColumnTableInvalid = false;
 	tDSPCACHE.BrtPALMod = false;
+}
+
+static void video_flush_soft(bool default_for_both) {
+	u32 *inbuf[2] = {
+		(u32*)(vb_state->V810_DISPLAY_RAM.off + 0x8000 * g_displayed_fb),
+		(u32*)(vb_state->V810_DISPLAY_RAM.off + 0x8000 * g_displayed_fb + 0x10000),
+	};
+	u32 *outbuf[2] = {
+		(u32*)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL),
+		(u32*)gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL),
+	};
+
+	// TODO column table
+	u32 colors[4] = {
+		__builtin_bswap32(get_colour(0, 0)),
+		__builtin_bswap32(get_colour(1, vb_state->tVIPREG.BRTA)),
+		__builtin_bswap32(get_colour(2, vb_state->tVIPREG.BRTB)),
+		__builtin_bswap32(get_colour(3, vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC)),
+	};
+	
+	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
+	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
+
+	size_t columnJump = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT);
+
+	for (int dst_eye = 0; dst_eye < (default_for_both ? 1 : eye_count); dst_eye++) {
+		int src_eye = default_for_both ? orig_eye : !tVBOpt.ANAGLYPH && CONFIG_3D_SLIDERSTATE == 0 ? tVBOpt.DEFAULT_EYE : dst_eye;
+		int depth_offset = (int)-getDepthOffset(default_for_both, dst_eye, tVBOpt.SLIDERMODE);
+		memset(outbuf[dst_eye], 0, (viewportX + depth_offset) * 240 * 4);
+		u32 *outbuf_end = outbuf[dst_eye] + (400 * 240);
+		outbuf[dst_eye] += (viewportX + depth_offset) * (240);
+		outbuf[dst_eye] += viewportY;
+		
+		// we step the column backwards, so skip to end
+		outbuf[dst_eye] += 224;
+
+		for (int x = 0; x < 384; x++) {
+			for (int ty = 0; ty < 224 / 16; ty++) {
+				u32 intile = *inbuf[src_eye]++;
+				for (int p = 0; p < 16; p++) {
+					*--outbuf[dst_eye] = colors[intile & 3];
+					intile >>= 2;
+				}
+			}
+			// inbuf is 256 tall = 32 extra pixels
+			inbuf[src_eye] += 2;
+			// skip from start of one to end of next
+			outbuf[dst_eye] += (TOP_SCREEN_HEIGHT + VIEWPORT_HEIGHT);
+		}
+
+		outbuf[dst_eye] -= VIEWPORT_HEIGHT;
+		if (outbuf[dst_eye] < outbuf_end) {
+			memset(outbuf[dst_eye], 0, (outbuf_end - outbuf[dst_eye]) * 4);
+		}
+	}
+
+	gfxScreenSwapBuffers(GFX_TOP, !default_for_both && eye_count == 2);
+}
+
+void video_flush(bool default_for_both) {
+	if (!default_for_both) orig_eye = tVBOpt.DEFAULT_EYE;
+	if (eye_count == 2) default_for_both = false;
+
+	// note: soft flush is also incompatible with antiflicker
+	if (!USE_SOFT_FLUSH || tVBOpt.RENDERMODE != RM_CPUONLY || tVBOpt.ANAGLYPH || minRepeat != maxRepeat)
+		video_flush_hard(default_for_both);
+	else
+		video_flush_soft(default_for_both);
 }
 
 void video_quit(void) {
