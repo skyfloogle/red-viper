@@ -85,13 +85,14 @@ int main(int argc, char* argv[]) {
         if(tVIPREG.tFrame == 0 && !tVIPREG.drawing) {
             if (tVIPREG.XPCTRL & XPEN) {
                 if (tDSPCACHE.CharCacheInvalid) {
-                    tDSPCACHE.CharCacheInvalid = false;
                     update_texture_cache_soft();
                 }
 
                 video_soft_render(!tVIPREG.tDisplayedFB);
 
-                // we need to have this cache during rendering
+		        // we need to have these caches during rendering
+                tDSPCACHE.CharCacheInvalid = false;
+		        memset(tDSPCACHE.BGCacheInvalid, 0, sizeof(tDSPCACHE.BGCacheInvalid));
                 memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
             }
 

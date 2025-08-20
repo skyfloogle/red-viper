@@ -308,7 +308,6 @@ void video_render(int displayed_fb, bool on_time) {
 
 	if (tVIPREG.XPCTRL & XPEN) {
 		if (tDSPCACHE.CharCacheInvalid) {
-			tDSPCACHE.CharCacheInvalid = false;
 			if (tVBOpt.RENDERMODE < 2)
 				update_texture_cache_hard();
 			else
@@ -322,7 +321,9 @@ void video_render(int displayed_fb, bool on_time) {
 			video_soft_render(!displayed_fb);
 		}
 
-		// we need to have this cache during rendering
+		// we need to have these caches during rendering
+		tDSPCACHE.CharCacheInvalid = false;
+		memset(tDSPCACHE.BGCacheInvalid, 0, sizeof(tDSPCACHE.BGCacheInvalid));
 		memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
 	}
 
