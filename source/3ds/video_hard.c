@@ -254,17 +254,22 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 	bool uwrap = uumin > uumax;
 	bool vwrap = vvmin > vvmax;
 
+	int xstart = uwrap ? 0 : uumin;
+	int ystart = vwrap ? 0 : vvmin;
+	int xend = uwrap ? 511 : uumax;
+	int yend = vwrap ? 511 : vvmax;
+
 	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.off + 0x20000 + 8192 * (mapid));
-	for (int y = vwrap ? 0 : vvmin; y <= (vwrap ? 511 : vvmax); y += 8) {
+	for (int y = ystart; y <= yend; y += 8) {
 		if (vwrap && !(y >= vvmin || y <= vvmax)) continue;
-		bool new_row = force_redraw || (old_vmax - old_vmin < 512 && (y < old_vmin || y > old_vmax));
-		for (int x = uwrap ? 0 : uumin; x <= (uwrap ? 511 : uumax); x += 8) {
+		bool new_row = force_redraw || (old_vmax - old_vmin < 512 && (y < (old_vmin & ~7) || y > old_vmax));
+		for (int x = xstart; x <= xend; x += 8) {
 			if (uwrap && !(x >= uumin || x <= uumax)) continue;
 			uint16_t tile = tilemap[(y << 3) + (x >> 3)];
 			uint16_t tileid = tile & 0x07ff;
 			tile |= 0x800; // flag to indicate that tile was drawn since last clear
 
-			if (!(new_row || (old_umax - old_umin < 512 && (x < old_umin || x > old_umax))
+			if (!(new_row || (old_umax - old_umin < 512 && (x < (old_umin & ~7) || x > old_umax))
 				|| cache->tiles[(y << 3) + (x >> 3)] != tile
 				|| tDSPCACHE.CharacterCache[tileid]
 				|| cache->GPLT[tile >> 14] != tVIPREG.GPLT[tile >> 14]
