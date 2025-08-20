@@ -138,6 +138,13 @@ int main(void) {
         // frameskip causes visual glitches
         if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) just_lagged = false;
 
+        // forcefully disable antiflicker if software rendering is in use
+        // because we can't easily delay the fb update until afterwards
+        // and it's not likely that software rendering games will flicker at 50fps anyway
+        if (tDSPCACHE.DDSPDataState[tVIPREG.tDisplayedFB] == CPU_WROTE) {
+            on_time = false;
+        }
+
         // Display a frame, only after the right number of 'skips'
         // Also don't display if drawing is still ongoing
         if(tVIPREG.tFrame == 0 && !tVIPREG.drawing) {
@@ -171,7 +178,7 @@ int main(void) {
                 }
 
                 // if we just had a lagframe on which drawing happened, don't draw
-                if ((tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged || tVBOpt.RENDERMODE == 2)) {
+                if ((tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {
                     video_render(displayed_fb, on_time);
                     on_time = true;
                 } else if (on_time) {
