@@ -25,7 +25,7 @@ static int get_read_cycles(WORD addr) {
         }
     } else if (((addr >> 24) & 7) == 7) {
         // ROM
-        return (2 - (tHReg.WCR & 1)) * 2;
+        return (2 - (vb_state->tHReg.WCR & 1)) * 2;
     } else {
         return 1;
     }
@@ -152,10 +152,10 @@ bool ins_sch0bsu (WORD src, WORD skipped, WORD len, WORD offs) {
         }
     }
     #undef FLIP
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = skipped;
-    v810_state->P_REG[28] = len;
-    v810_state->P_REG[27] = offs;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = skipped;
+    vb_state->v810_state.P_REG[28] = len;
+    vb_state->v810_state.P_REG[27] = offs;
     return !searching;
 }
 
@@ -241,10 +241,10 @@ bool ins_sch0bsd (WORD src, WORD skipped, WORD len, WORD offs) {
         }
     }
     #undef FLIP
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = skipped;
-    v810_state->P_REG[28] = len;
-    v810_state->P_REG[27] = offs;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = skipped;
+    vb_state->v810_state.P_REG[28] = len;
+    vb_state->v810_state.P_REG[27] = offs;
     return !searching;
 }
 
@@ -317,10 +317,10 @@ bool ins_sch1bsu (WORD src, WORD skipped, WORD len, WORD offs) {
         }
     }
     #undef FLIP
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = skipped;
-    v810_state->P_REG[28] = len;
-    v810_state->P_REG[27] = offs;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = skipped;
+    vb_state->v810_state.P_REG[28] = len;
+    vb_state->v810_state.P_REG[27] = offs;
     return !searching;
 }
 
@@ -406,10 +406,10 @@ bool ins_sch1bsd (WORD src, WORD skipped, WORD len, WORD offs) {
         }
     }
     #undef FLIP
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = skipped;
-    v810_state->P_REG[28] = len;
-    v810_state->P_REG[27] = offs;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = skipped;
+    vb_state->v810_state.P_REG[28] = len;
+    vb_state->v810_state.P_REG[27] = offs;
     return !searching;
 }
 
@@ -429,10 +429,10 @@ bool ins_sch1bsd (WORD src, WORD skipped, WORD len, WORD offs) {
     if (src == dst) { \
         /* niko-chan battle speedhack */ \
         if (dst == 0x78800 && len == 0x3c000) { \
-            memset((u8*)V810_DISPLAY_RAM.off + 0x06800, 0, 0x1800); \
-            memset((u8*)V810_DISPLAY_RAM.off + 0x0e000, 0, 0x2000); \
-            memset((u8*)V810_DISPLAY_RAM.off + 0x16000, 0, 0x2000); \
-            memset((u8*)V810_DISPLAY_RAM.off + 0x1e000, 0, 0x2000); \
+            memset((u8*)vb_state->V810_DISPLAY_RAM.off + 0x06800, 0, 0x1800); \
+            memset((u8*)vb_state->V810_DISPLAY_RAM.off + 0x0e000, 0, 0x2000); \
+            memset((u8*)vb_state->V810_DISPLAY_RAM.off + 0x16000, 0, 0x2000); \
+            memset((u8*)vb_state->V810_DISPLAY_RAM.off + 0x1e000, 0, 0x2000); \
             memset(tDSPCACHE.CharacterCache + 0x80, 1, 0x780); \
             src += 0x7800; \
             dst += 0x7800; \
@@ -458,11 +458,11 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
     bool optimized = false;
 
     if (len == 0) { // type 6
-        v810_state->P_REG[30] = src;
-        v810_state->P_REG[29] = dst;
-        v810_state->P_REG[28] = len;
-        v810_state->P_REG[27] = srcoff;
-        v810_state->P_REG[26] = dstoff;
+        vb_state->v810_state.P_REG[30] = src;
+        vb_state->v810_state.P_REG[29] = dst;
+        vb_state->v810_state.P_REG[28] = len;
+        vb_state->v810_state.P_REG[27] = srcoff;
+        vb_state->v810_state.P_REG[26] = dstoff;
         return 20;
     }
 
@@ -535,14 +535,14 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
     bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
     bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
     if (is_golf_us || is_golf_jp) {
-        if (v810_state->P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
-            v810_state->P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
-            v810_state->P_REG[31] == (is_golf_us ? 0x070058c8 : 0x070055c0)
+        if (vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
+            vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
+            vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x070058c8 : 0x070055c0)
         ) {
             cycles *= 2;
         } else if (
-            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07006e80 : 0x07006b78) && v810_state->P_REG[31] <= (is_golf_us ? 0x070071d0 : 0x07006ec8)) &&
-            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07005f34 : 0x07006026) && v810_state->P_REG[31] <= (is_golf_us ? 0x07006026 : 0x07005d1e))
+            !(vb_state->v810_state.P_REG[31] >= (is_golf_us ? 0x07006e80 : 0x07006b78) && vb_state->v810_state.P_REG[31] <= (is_golf_us ? 0x070071d0 : 0x07006ec8)) &&
+            !(vb_state->v810_state.P_REG[31] >= (is_golf_us ? 0x07005f34 : 0x07006026) && vb_state->v810_state.P_REG[31] <= (is_golf_us ? 0x07006026 : 0x07005d1e))
         ) {
             len += len_remain;
             len_remain = 0;
@@ -660,11 +660,11 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
     #undef CLEARDST
     #undef FILTER
     #undef OPTIMIZE
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len_remain;
-    v810_state->P_REG[27] = srcoff;
-    v810_state->P_REG[26] = dstoff;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = dst;
+    vb_state->v810_state.P_REG[28] = len_remain;
+    vb_state->v810_state.P_REG[27] = srcoff;
+    vb_state->v810_state.P_REG[26] = dstoff;
 
     return cycles;
 }
@@ -679,11 +679,11 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     bool optimized = false;
 
     if (len == 0) { // type 6
-        v810_state->P_REG[30] = src;
-        v810_state->P_REG[29] = dst;
-        v810_state->P_REG[28] = len;
-        v810_state->P_REG[27] = srcoff;
-        v810_state->P_REG[26] = dstoff;
+        vb_state->v810_state.P_REG[30] = src;
+        vb_state->v810_state.P_REG[29] = dst;
+        vb_state->v810_state.P_REG[28] = len;
+        vb_state->v810_state.P_REG[27] = srcoff;
+        vb_state->v810_state.P_REG[26] = dstoff;
         return 20;
     }
 
@@ -756,14 +756,14 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
     bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
     if (is_golf_us || is_golf_jp) {
-        if (v810_state->P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
-            v810_state->P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
-            v810_state->P_REG[31] == (is_golf_us ? 0x070058c8 : 0x070055c0)
+        if (vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
+            vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
+            vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x070058c8 : 0x070055c0)
         ) {
             cycles *= 2;
         } else if (
-            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07006e80 : 0x07006b78) && v810_state->P_REG[31] <= (is_golf_us ? 0x070071d0 : 0x07006ec8)) &&
-            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07005f34 : 0x07006026) && v810_state->P_REG[31] <= (is_golf_us ? 0x07006026 : 0x07005d1e))
+            !(vb_state->v810_state.P_REG[31] >= (is_golf_us ? 0x07006e80 : 0x07006b78) && vb_state->v810_state.P_REG[31] <= (is_golf_us ? 0x070071d0 : 0x07006ec8)) &&
+            !(vb_state->v810_state.P_REG[31] >= (is_golf_us ? 0x07005f34 : 0x07006026) && vb_state->v810_state.P_REG[31] <= (is_golf_us ? 0x07006026 : 0x07005d1e))
         ) {
             len += len_remain;
             len_remain = 0;
@@ -881,11 +881,11 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #undef CLEARDST
     #undef FILTER
     #undef OPTIMIZE
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len_remain;
-    v810_state->P_REG[27] = srcoff;
-    v810_state->P_REG[26] = dstoff;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = dst;
+    vb_state->v810_state.P_REG[28] = len_remain;
+    vb_state->v810_state.P_REG[27] = srcoff;
+    vb_state->v810_state.P_REG[26] = dstoff;
 
     return cycles;
 }
@@ -900,11 +900,11 @@ int ins_xorbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     bool optimized = false;
     
     if (len == 0) { // type 6
-        v810_state->P_REG[30] = src;
-        v810_state->P_REG[29] = dst;
-        v810_state->P_REG[28] = len;
-        v810_state->P_REG[27] = srcoff;
-        v810_state->P_REG[26] = dstoff;
+        vb_state->v810_state.P_REG[30] = src;
+        vb_state->v810_state.P_REG[29] = dst;
+        vb_state->v810_state.P_REG[28] = len;
+        vb_state->v810_state.P_REG[27] = srcoff;
+        vb_state->v810_state.P_REG[26] = dstoff;
         return 20;
     }
 
@@ -1083,11 +1083,11 @@ int ins_xorbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #undef CLEARDST
     #undef FILTER
     #undef OPTIMIZE
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len_remain;
-    v810_state->P_REG[27] = srcoff;
-    v810_state->P_REG[26] = dstoff;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = dst;
+    vb_state->v810_state.P_REG[28] = len_remain;
+    vb_state->v810_state.P_REG[27] = srcoff;
+    vb_state->v810_state.P_REG[26] = dstoff;
 
     return cycles;
 }
@@ -1103,11 +1103,11 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     bool optimized = false;
     
     if (len == 0) { // type 6
-        v810_state->P_REG[30] = src;
-        v810_state->P_REG[29] = dst;
-        v810_state->P_REG[28] = len;
-        v810_state->P_REG[27] = srcoff;
-        v810_state->P_REG[26] = dstoff;
+        vb_state->v810_state.P_REG[30] = src;
+        vb_state->v810_state.P_REG[29] = dst;
+        vb_state->v810_state.P_REG[28] = len;
+        vb_state->v810_state.P_REG[27] = srcoff;
+        vb_state->v810_state.P_REG[26] = dstoff;
         return 20;
     }
 
@@ -1180,14 +1180,14 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
     bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
     if (is_golf_us || is_golf_jp) {
-        if (v810_state->P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
-            v810_state->P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
-            v810_state->P_REG[31] == (is_golf_us ? 0x070058c8 : 0x070055c0)
+        if (vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
+            vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
+            vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x070058c8 : 0x070055c0)
         ) {
             cycles *= 2;
         } else if (
-            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07006e80 : 0x07006b78) && v810_state->P_REG[31] <= (is_golf_us ? 0x070071d0 : 0x07006ec8)) &&
-            !(v810_state->P_REG[31] >= (is_golf_us ? 0x07005f34 : 0x07006026) && v810_state->P_REG[31] <= (is_golf_us ? 0x07006026 : 0x07005d1e))
+            !(vb_state->v810_state.P_REG[31] >= (is_golf_us ? 0x07006e80 : 0x07006b78) && vb_state->v810_state.P_REG[31] <= (is_golf_us ? 0x070071d0 : 0x07006ec8)) &&
+            !(vb_state->v810_state.P_REG[31] >= (is_golf_us ? 0x07005f34 : 0x07006026) && vb_state->v810_state.P_REG[31] <= (is_golf_us ? 0x07006026 : 0x07005d1e))
         ) {
             len += len_remain;
             len_remain = 0;
@@ -1310,11 +1310,11 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #undef CLEARDST
     #undef FILTER
     #undef OPTIMIZE
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len_remain;
-    v810_state->P_REG[27] = srcoff;
-    v810_state->P_REG[26] = dstoff;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = dst;
+    vb_state->v810_state.P_REG[28] = len_remain;
+    vb_state->v810_state.P_REG[27] = srcoff;
+    vb_state->v810_state.P_REG[26] = dstoff;
 
     return cycles;
 }
@@ -1329,11 +1329,11 @@ int ins_ornbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     bool optimized = false;
     
     if (len == 0) { // type 6
-        v810_state->P_REG[30] = src;
-        v810_state->P_REG[29] = dst;
-        v810_state->P_REG[28] = len;
-        v810_state->P_REG[27] = srcoff;
-        v810_state->P_REG[26] = dstoff;
+        vb_state->v810_state.P_REG[30] = src;
+        vb_state->v810_state.P_REG[29] = dst;
+        vb_state->v810_state.P_REG[28] = len;
+        vb_state->v810_state.P_REG[27] = srcoff;
+        vb_state->v810_state.P_REG[26] = dstoff;
         return 20;
     }
 
@@ -1512,11 +1512,11 @@ int ins_ornbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #undef CLEARDST
     #undef FILTER
     #undef OPTIMIZE
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len_remain;
-    v810_state->P_REG[27] = srcoff;
-    v810_state->P_REG[26] = dstoff;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = dst;
+    vb_state->v810_state.P_REG[28] = len_remain;
+    vb_state->v810_state.P_REG[27] = srcoff;
+    vb_state->v810_state.P_REG[26] = dstoff;
 
     return cycles;
 }
@@ -1531,11 +1531,11 @@ int ins_andnbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     bool optimized = false;
     
     if (len == 0) { // type 6
-        v810_state->P_REG[30] = src;
-        v810_state->P_REG[29] = dst;
-        v810_state->P_REG[28] = len;
-        v810_state->P_REG[27] = srcoff;
-        v810_state->P_REG[26] = dstoff;
+        vb_state->v810_state.P_REG[30] = src;
+        vb_state->v810_state.P_REG[29] = dst;
+        vb_state->v810_state.P_REG[28] = len;
+        vb_state->v810_state.P_REG[27] = srcoff;
+        vb_state->v810_state.P_REG[26] = dstoff;
         return 20;
     }
 
@@ -1714,11 +1714,11 @@ int ins_andnbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     #undef CLEARDST
     #undef FILTER
     #undef OPTIMIZE
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len_remain;
-    v810_state->P_REG[27] = srcoff;
-    v810_state->P_REG[26] = dstoff;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = dst;
+    vb_state->v810_state.P_REG[28] = len_remain;
+    vb_state->v810_state.P_REG[27] = srcoff;
+    vb_state->v810_state.P_REG[26] = dstoff;
 
     return cycles;
 }
@@ -1733,11 +1733,11 @@ int ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     bool optimized = false;
     
     if (len == 0) { // type 6
-        v810_state->P_REG[30] = src;
-        v810_state->P_REG[29] = dst;
-        v810_state->P_REG[28] = len;
-        v810_state->P_REG[27] = srcoff;
-        v810_state->P_REG[26] = dstoff;
+        vb_state->v810_state.P_REG[30] = src;
+        vb_state->v810_state.P_REG[29] = dst;
+        vb_state->v810_state.P_REG[28] = len;
+        vb_state->v810_state.P_REG[27] = srcoff;
+        vb_state->v810_state.P_REG[26] = dstoff;
         return 20;
     }
 
@@ -1916,11 +1916,11 @@ int ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     #undef CLEARDST
     #undef FILTER
     #undef OPTIMIZE
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len_remain;
-    v810_state->P_REG[27] = srcoff;
-    v810_state->P_REG[26] = dstoff;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = dst;
+    vb_state->v810_state.P_REG[28] = len_remain;
+    vb_state->v810_state.P_REG[27] = srcoff;
+    vb_state->v810_state.P_REG[26] = dstoff;
 
     return cycles;
 }
@@ -1936,11 +1936,11 @@ int ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     bool optimized = false;
     
     if (len == 0) { // type 6
-        v810_state->P_REG[30] = src;
-        v810_state->P_REG[29] = dst;
-        v810_state->P_REG[28] = len;
-        v810_state->P_REG[27] = srcoff;
-        v810_state->P_REG[26] = dstoff;
+        vb_state->v810_state.P_REG[30] = src;
+        vb_state->v810_state.P_REG[29] = dst;
+        vb_state->v810_state.P_REG[28] = len;
+        vb_state->v810_state.P_REG[27] = srcoff;
+        vb_state->v810_state.P_REG[26] = dstoff;
         return 20;
     }
 
@@ -2119,11 +2119,11 @@ int ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     #undef CLEARDST
     #undef FILTER
     #undef OPTIMIZE
-    v810_state->P_REG[30] = src;
-    v810_state->P_REG[29] = dst;
-    v810_state->P_REG[28] = len_remain;
-    v810_state->P_REG[27] = srcoff;
-    v810_state->P_REG[26] = dstoff;
+    vb_state->v810_state.P_REG[30] = src;
+    vb_state->v810_state.P_REG[29] = dst;
+    vb_state->v810_state.P_REG[28] = len_remain;
+    vb_state->v810_state.P_REG[27] = srcoff;
+    vb_state->v810_state.P_REG[26] = dstoff;
 
     return cycles;
 }

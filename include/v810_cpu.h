@@ -94,8 +94,6 @@ typedef struct {
     BYTE ret;
 } cpu_state;
 
-extern cpu_state* v810_state;
-
 ///////////////////////////////////////////////////////////////////
 // Define CPU Globals
 extern const BYTE opcycle[0x50]; //clock cycles

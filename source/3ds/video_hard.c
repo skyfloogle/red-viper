@@ -259,7 +259,7 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 	int xend = uwrap ? 511 : uumax;
 	int yend = vwrap ? 511 : vvmax;
 
-	u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.off + 0x20000 + 8192 * (mapid));
+	u16 *tilemap = (u16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000 + 8192 * (mapid));
 	for (int y = ystart; y <= yend; y += 8) {
 		if (vwrap && !(y >= vvmin || y <= vvmax)) continue;
 		bool new_row = force_redraw || (old_vmax - old_vmin < 512 && (y < (old_vmin & ~7) || y > old_vmax));
@@ -272,7 +272,7 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 			if (!(new_row || (old_umax - old_umin < 512 && (x < (old_umin & ~7) || x > old_umax))
 				|| cache->tiles[(y << 3) + (x >> 3)] != tile
 				|| tDSPCACHE.CharacterCache[tileid]
-				|| cache->GPLT[tile >> 14] != tVIPREG.GPLT[tile >> 14]
+				|| cache->GPLT[tile >> 14] != vb_state->tVIPREG.GPLT[tile >> 14]
 			)) continue;
 			cache->tiles[(y << 3) + (x >> 3)] = tile;
 
@@ -395,7 +395,7 @@ void video_hard_render(int drawn_fb) {
 	C3D_TexEnvInit(env);
 	// black, red, green, blue
 	const static u32 colors[4] = {0, 0xff0000ff, 0xff00ff00, 0xffff0000};
-	C3D_TexEnvColor(env, colors[tVIPREG.BKCOL]);
+	C3D_TexEnvColor(env, colors[vb_state->tVIPREG.BKCOL]);
 	C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
 	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 
@@ -420,11 +420,11 @@ void video_hard_render(int drawn_fb) {
 
 	for (int i = 0; i < 4; i++) {
 		const C3D_FVec cols[4] = {{}, {.x = 1}, {.y = 1}, {.z = 1}};
-		HWORD pal = tVIPREG.GPLT[i];
+		HWORD pal = vb_state->tVIPREG.GPLT[i];
 		pal1tex[i].x = (((pal >> 1) & 0b110) + 1) / 8.0;
 		pal2tex[i].x = (((pal >> 3) & 0b110) + 1) / 8.0;
 		memcpy(&pal3col[i], &cols[(pal >> 6) & 3], sizeof(C3D_FVec));
-		pal = tVIPREG.JPLT[i];
+		pal = vb_state->tVIPREG.JPLT[i];
 		pal1tex[i + 4].x = (((pal >> 1) & 0b110) + 1) / 8.0;
 		pal2tex[i + 4].x = (((pal >> 3) & 0b110) + 1) / 8.0;
 		memcpy(&pal3col[i + 4], &cols[(pal >> 6) & 3], sizeof(C3D_FVec));
@@ -444,7 +444,7 @@ void video_hard_render(int drawn_fb) {
 
 	C3D_CullFace(GPU_CULL_NONE);
 
-	u16 *windows = (u16 *)(V810_DISPLAY_RAM.off + 0x3d800);
+	u16 *windows = (u16 *)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
 
 	uint8_t object_group_id = 3;
 
@@ -477,7 +477,7 @@ void video_hard_render(int drawn_fb) {
 			int16_t h = windows[wnd * 16 + 8] + 1;
 			int16_t over_tile = windows[wnd * 16 + 10] & 0x7ff;
 
-			u16 *tilemap = (u16 *)(V810_DISPLAY_RAM.off + 0x20000);
+			u16 *tilemap = (u16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000);
 
 			if (h == 0) continue;
 
@@ -579,7 +579,7 @@ void video_hard_render(int drawn_fb) {
 			} else {
 				// hbias or affine world
 				u16 param_base = windows[wnd * 16 + 9];
-				s16 *params = (s16 *)(V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
+				s16 *params = (s16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
 
 				int full_w = 512 * scx;
 				int full_h = 512 * scy;
@@ -801,10 +801,10 @@ void video_hard_render(int drawn_fb) {
 		} else {
 			// object world
 			C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
-			int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
-			int end_index = tVIPREG.SPT[object_group_id] & 1023;
+			int start_index = object_group_id == 0 ? 1023 : (vb_state->tVIPREG.SPT[object_group_id - 1]) & 1023;
+			int end_index = vb_state->tVIPREG.SPT[object_group_id] & 1023;
 			for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
-				u16 *obj_ptr = (u16 *)(V810_DISPLAY_RAM.off + 0x0003E000 + 8 * i);
+				u16 *obj_ptr = (u16 *)(vb_state->V810_DISPLAY_RAM.off + 0x0003E000 + 8 * i);
 
 				u16 cw3 = obj_ptr[3];
 				u16 tileid = cw3 & 0x07ff;
@@ -856,7 +856,7 @@ void video_hard_render(int drawn_fb) {
 	// invalidate any unused bgmaps
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		if (!tileMapCache[i].used) tileMapCache[i].bg = -1;
-		memcpy(tileMapCache[i].GPLT, tVIPREG.GPLT, sizeof(tVIPREG.GPLT));
+		memcpy(tileMapCache[i].GPLT, vb_state->tVIPREG.GPLT, sizeof(vb_state->tVIPREG.GPLT));
 	}
 }
 
@@ -871,7 +871,7 @@ void update_texture_cache_hard(void) {
 			continue;
 		}
 
-		uint32_t *tile = (uint32_t*)(V810_DISPLAY_RAM.off + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
+		uint32_t *tile = (uint32_t*)(vb_state->V810_DISPLAY_RAM.off + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
 
 		int y = 63 - t / 32;
 		int x = t % 32;

@@ -603,10 +603,10 @@ static Button forwarder_error_buttons[] = {
 static int last_savestate = 0;
 
 static void draw_logo(void) {
-    tVIPREG.BRTA = 49;
-    tVIPREG.BRTB = 73;
-    tVIPREG.BRTC = 145 - tVIPREG.BRTA - tVIPREG.BRTB;
-	memset((u8*)V810_DISPLAY_RAM.off + 0x3dc00, 0, 0x400);
+    vb_state->tVIPREG.BRTA = 49;
+    vb_state->tVIPREG.BRTB = 73;
+    vb_state->tVIPREG.BRTC = 145 - vb_state->tVIPREG.BRTA - vb_state->tVIPREG.BRTB;
+	memset((u8*)vb_state->V810_DISPLAY_RAM.off + 0x3dc00, 0, 0x400);
     tDSPCACHE.ColumnTableInvalid = true;
     
     for (int i = 0; i < 2; i++) {
@@ -2863,7 +2863,7 @@ void showError(int code) {
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     C2D_TextBufClear(dynamic_textbuf);
     char buf[100];
-    sprintf(buf, "DRC error #%d\nPC=0x%08lx\nDumping debug info...", code, v810_state->PC);
+    sprintf(buf, "DRC error #%d\nPC=0x%08lx\nDumping debug info...", code, vb_state->v810_state.PC);
     C2D_Text text;
     C2D_TextParse(&text, dynamic_textbuf, buf);
     C2D_TextOptimize(&text);

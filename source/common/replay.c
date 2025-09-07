@@ -23,15 +23,15 @@ static ReplayEntry *replay_buf = NULL, *replay_cursor;
 static bool overflowed = false;
 
 void replay_init(void) {
-    initial_sram = malloc(V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr);
+    initial_sram = malloc(vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr);
     replay_buf = malloc(sizeof(ReplayEntry) * REPLAY_COUNT);
 }
 
 void replay_reset(bool with_sram) {
     has_initial_sram = with_sram;
     if (with_sram) {
-        initial_sram_size = V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr;
-        memcpy(initial_sram, V810_GAME_RAM.pmemory, initial_sram_size);
+        initial_sram_size = vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr;
+        memcpy(initial_sram, vb_state->V810_GAME_RAM.pmemory, initial_sram_size);
     } else {
         initial_sram_size = 0;
     }
@@ -92,8 +92,8 @@ void replay_load(char *fn) {
     fread(&buf, 4, 1, current_replay);
     if (buf != tVBOpt.CRC32) goto err;
     fread(&buf, 4, 1, current_replay);
-    if (buf > V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr) goto err;
-    fread(V810_GAME_RAM.pmemory, 1, buf, current_replay);
+    if (buf > vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr) goto err;
+    fread(vb_state->V810_GAME_RAM.pmemory, 1, buf, current_replay);
     return;
     err:
     fclose(current_replay);

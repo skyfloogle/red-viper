@@ -7,7 +7,7 @@ int blankTile;
 
 int videoProcessingTime(void) {
 	int time = 54688;
-	WORLD *worlds = (WORLD*)(V810_DISPLAY_RAM.off + 0x3d800);
+	WORLD *worlds = (WORLD*)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
 	int object_group_id = 3;
 	for (int wrld = 31; wrld >= 0; wrld--) {
 		if (worlds[wrld].head & 0x40) {
@@ -71,7 +71,7 @@ int videoProcessingTime(void) {
 				}
 				case 0x1000: {
 					// h-bias world
-					s16 *params = (s16 *)(V810_DISPLAY_RAM.off + 0x20000 + worlds[wrld].param * 2);
+					s16 *params = (s16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000 + worlds[wrld].param * 2);
 					time += 880;
 					for (int y = 0; y < 224; y += 8) {
 						if (gy + h + 1 <= y) break;
@@ -144,10 +144,10 @@ int videoProcessingTime(void) {
 				object_group_id = 3;
 				time += 28896;
 			}
-			int start_index = object_group_id == 0 ? 1023 : (tVIPREG.SPT[object_group_id - 1]) & 1023;
-			int i = tVIPREG.SPT[object_group_id] & 1023;
+			int start_index = object_group_id == 0 ? 1023 : (vb_state->tVIPREG.SPT[object_group_id - 1]) & 1023;
+			int i = vb_state->tVIPREG.SPT[object_group_id] & 1023;
 			do {
-				u8 *obj_y_ptr = (u8 *)(V810_DISPLAY_RAM.off + 0x0003E004 + 8 * i);
+				u8 *obj_y_ptr = (u8 *)(vb_state->V810_DISPLAY_RAM.off + 0x0003E004 + 8 * i);
 				int y = *obj_y_ptr;
 				if (y > 0xf0) time += 27 + 43 + 5 + 2 * ((y + 8) & 0xff);
 				else if (y >= 0xe0) time += 28;

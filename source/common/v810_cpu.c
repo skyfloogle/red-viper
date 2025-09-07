@@ -31,7 +31,7 @@
 #define NEG(n) ((n) >> 31)
 #define POS(n) ((~(n)) >> 31)
 
-cpu_state* v810_state;
+VB_STATE* vb_state;
 
 ////////////////////////////////////////////////////////////
 // Globals
@@ -48,55 +48,55 @@ void v810_init(void) {
     char ram_name[32];
     unsigned int ram_size = 0;
 
-    V810_ROM1.pmemory = malloc(MAX_ROM_SIZE);
+    vb_state = calloc(1, sizeof(*vb_state));
+
+    vb_state->V810_ROM1.pmemory = malloc(MAX_ROM_SIZE);
     // no backup because rom isn't volatile
 
     // Initialize our rom tables.... (USA)
-    V810_ROM1.lowaddr  = 0x07000000;
-    V810_ROM1.off = (size_t)V810_ROM1.pmemory - V810_ROM1.lowaddr;
+    vb_state->V810_ROM1.lowaddr  = 0x07000000;
+    vb_state->V810_ROM1.off = (size_t)vb_state->V810_ROM1.pmemory - vb_state->V810_ROM1.lowaddr;
     // Offset + Lowaddr = pmemory
 
     // Initialize our ram1 tables....
-    V810_DISPLAY_RAM.lowaddr  = 0x00000000;
-    V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
-    V810_DISPLAY_RAM.size     = 0x00040000;
+    vb_state->V810_DISPLAY_RAM.lowaddr  = 0x00000000;
+    vb_state->V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
+    vb_state->V810_DISPLAY_RAM.size     = 0x00040000;
     // Alocate space for it in memory
-    V810_DISPLAY_RAM.pmemory = (unsigned char *)calloc(V810_DISPLAY_RAM.size, sizeof(BYTE));
-    V810_DISPLAY_RAM.pbackup = (unsigned char *)calloc(V810_DISPLAY_RAM.size, sizeof(BYTE));
+    vb_state->V810_DISPLAY_RAM.pmemory = (unsigned char *)calloc(vb_state->V810_DISPLAY_RAM.size, sizeof(BYTE));
+    vb_state->V810_DISPLAY_RAM.pbackup = (unsigned char *)calloc(vb_state->V810_DISPLAY_RAM.size, sizeof(BYTE));
     // Offset + Lowaddr = pmemory
-    V810_DISPLAY_RAM.off = (size_t)V810_DISPLAY_RAM.pmemory - V810_DISPLAY_RAM.lowaddr;
+    vb_state->V810_DISPLAY_RAM.off = (size_t)vb_state->V810_DISPLAY_RAM.pmemory - vb_state->V810_DISPLAY_RAM.lowaddr;
 
     // Initialize our SoundRam tables....
-    V810_SOUND_RAM.lowaddr  = 0x01000000;
-    V810_SOUND_RAM.highaddr = 0x010007FF; //0x010002FF
-    V810_SOUND_RAM.size     = 0x00000800;
+    vb_state->V810_SOUND_RAM.lowaddr  = 0x01000000;
+    vb_state->V810_SOUND_RAM.highaddr = 0x010007FF; //0x010002FF
+    vb_state->V810_SOUND_RAM.size     = 0x00000800;
     // Alocate space for it in memory
-    V810_SOUND_RAM.pmemory = (unsigned char *)calloc(V810_SOUND_RAM.size, sizeof(BYTE));
-    V810_SOUND_RAM.pbackup = (unsigned char *)calloc(V810_SOUND_RAM.size, sizeof(BYTE));
+    vb_state->V810_SOUND_RAM.pmemory = (unsigned char *)calloc(vb_state->V810_SOUND_RAM.size, sizeof(BYTE));
+    vb_state->V810_SOUND_RAM.pbackup = (unsigned char *)calloc(vb_state->V810_SOUND_RAM.size, sizeof(BYTE));
     // Offset + Lowaddr = pmemory
-    V810_SOUND_RAM.off = (size_t)V810_SOUND_RAM.pmemory - V810_SOUND_RAM.lowaddr;
+    vb_state->V810_SOUND_RAM.off = (size_t)vb_state->V810_SOUND_RAM.pmemory - vb_state->V810_SOUND_RAM.lowaddr;
 
     // Initialize our VBRam tables....
-    V810_VB_RAM.lowaddr  = 0x05000000;
-    V810_VB_RAM.highaddr = 0x0500FFFF;
-    V810_VB_RAM.size     = 0x00010000;
+    vb_state->V810_VB_RAM.lowaddr  = 0x05000000;
+    vb_state->V810_VB_RAM.highaddr = 0x0500FFFF;
+    vb_state->V810_VB_RAM.size     = 0x00010000;
     // Alocate space for it in memory
-    V810_VB_RAM.pmemory = (unsigned char *)calloc(V810_VB_RAM.size, sizeof(BYTE));
-    V810_VB_RAM.pbackup = (unsigned char *)calloc(V810_VB_RAM.size, sizeof(BYTE));
+    vb_state->V810_VB_RAM.pmemory = (unsigned char *)calloc(vb_state->V810_VB_RAM.size, sizeof(BYTE));
+    vb_state->V810_VB_RAM.pbackup = (unsigned char *)calloc(vb_state->V810_VB_RAM.size, sizeof(BYTE));
     // Offset + Lowaddr = pmemory
-    V810_VB_RAM.off = (size_t)V810_VB_RAM.pmemory - V810_VB_RAM.lowaddr;
+    vb_state->V810_VB_RAM.off = (size_t)vb_state->V810_VB_RAM.pmemory - vb_state->V810_VB_RAM.lowaddr;
 
     // Initialize our GameRam tables.... (Cartrige Ram)
-    V810_GAME_RAM.lowaddr  = 0x06000000;
-    V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
-    V810_GAME_RAM.size     = 0x00004000;
+    vb_state->V810_GAME_RAM.lowaddr  = 0x06000000;
+    vb_state->V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
+    vb_state->V810_GAME_RAM.size     = 0x00004000;
     // Alocate space for it in memory
-    V810_GAME_RAM.pmemory = (unsigned char *)calloc(V810_GAME_RAM.size, sizeof(BYTE));
-    V810_GAME_RAM.pbackup = (unsigned char *)calloc(V810_GAME_RAM.size, sizeof(BYTE));
+    vb_state->V810_GAME_RAM.pmemory = (unsigned char *)calloc(vb_state->V810_GAME_RAM.size, sizeof(BYTE));
+    vb_state->V810_GAME_RAM.pbackup = (unsigned char *)calloc(vb_state->V810_GAME_RAM.size, sizeof(BYTE));
     // Offset + Lowaddr = pmemory
-    V810_GAME_RAM.off = (size_t)V810_GAME_RAM.pmemory - V810_GAME_RAM.lowaddr;
-
-    v810_state = calloc(1, sizeof(cpu_state));
+    vb_state->V810_GAME_RAM.off = (size_t)vb_state->V810_GAME_RAM.pmemory - vb_state->V810_GAME_RAM.lowaddr;
 }
 
 static bool load_is_zip;
@@ -163,15 +163,15 @@ int v810_load_init(void) {
         }
     }
     ok:
-    V810_ROM1.size = rom_size;
-    V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
+    vb_state->V810_ROM1.size = rom_size;
+    vb_state->V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
 
     load_sram = fopen(tVBOpt.RAM_PATH, "rb");
     if (load_sram) {
         struct stat mystat;
         fstat(fileno(load_sram), &mystat);
         load_sram_size = mystat.st_size;
-        int max_sram_size = V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr;
+        int max_sram_size = vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr;
         if (load_sram_size > max_sram_size)
             load_sram_size = max_sram_size;
     } else {
@@ -184,14 +184,14 @@ int v810_load_init(void) {
 
 int v810_load_step(void) {
     int chunk_size = 0x10000;
-    int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
+    int rom_size = vb_state->V810_ROM1.highaddr + 1 - vb_state->V810_ROM1.lowaddr;
     int ram_size = load_sram_size;
     int all_size = rom_size + ram_size;
     if (load_pos < rom_size) {
         if (chunk_size > rom_size - load_pos)
             chunk_size = rom_size - load_pos;
         if (load_is_zip) {
-            int ret = unzReadCurrentFile(load_unz, V810_ROM1.pmemory + load_pos, chunk_size);
+            int ret = unzReadCurrentFile(load_unz, vb_state->V810_ROM1.pmemory + load_pos, chunk_size);
             if (ret < 0) {
                 unzCloseCurrentFile(load_unz);
                 unzClose(load_unz);
@@ -201,7 +201,7 @@ int v810_load_step(void) {
             load_pos += ret;
         } else {
             size_t bytes_read;
-            if (!(bytes_read = fread(V810_ROM1.pmemory + load_pos, 1, chunk_size, load_file))) {
+            if (!(bytes_read = fread(vb_state->V810_ROM1.pmemory + load_pos, 1, chunk_size, load_file))) {
                 fclose(load_file);
                 if (load_sram) fclose(load_sram);
                 return -ENOSPC;
@@ -223,7 +223,7 @@ int v810_load_step(void) {
         // load ram
         if (chunk_size > all_size - load_pos)
             chunk_size = all_size - load_pos;
-        size_t bytes_read = fread(V810_GAME_RAM.pmemory + load_pos - rom_size, 1, chunk_size, load_sram);
+        size_t bytes_read = fread(vb_state->V810_GAME_RAM.pmemory + load_pos - rom_size, 1, chunk_size, load_sram);
         if (bytes_read == 0 && !feof(load_sram)) {
             fclose(load_sram);
             return -ENETDOWN;
@@ -242,7 +242,7 @@ int v810_load_step(void) {
         // CRC32 Calculations
         gen_table();
         tVBOpt.CRC32 = get_crc(rom_size);
-        memcpy(tVBOpt.GAME_ID, (char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
+        memcpy(tVBOpt.GAME_ID, (char*)(vb_state->V810_ROM1.off + (vb_state->V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
 
         // Apply game patches
         apply_patches();
@@ -256,7 +256,7 @@ int v810_load_step(void) {
 
 void v810_load_cancel(void) {
     is_sram = false;
-    int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
+    int rom_size = vb_state->V810_ROM1.highaddr + 1 - vb_state->V810_ROM1.lowaddr;
     int all_size = rom_size + load_sram_size;
     if (load_pos < rom_size) {
         if (load_is_zip) {
@@ -271,55 +271,55 @@ void v810_load_cancel(void) {
 }
 
 void v810_exit(void) {
-    free(v810_state);
-    free(V810_ROM1.pmemory);
-    free(V810_DISPLAY_RAM.pmemory);
-    free(V810_SOUND_RAM.pmemory);
-    free(V810_VB_RAM.pmemory);
-    free(V810_GAME_RAM.pmemory);
+    free(vb_state->V810_ROM1.pmemory);
+    free(vb_state->V810_DISPLAY_RAM.pmemory);
+    free(vb_state->V810_SOUND_RAM.pmemory);
+    free(vb_state->V810_VB_RAM.pmemory);
+    free(vb_state->V810_GAME_RAM.pmemory);
+    free(vb_state);
 }
 
 // Reinitialize the defaults in the CPU
 void v810_reset(void) {
-    memset(v810_state, 0, sizeof(cpu_state));
-    memset(&tVIPREG, 0, sizeof(tVIPREG));
-    memset(&tHReg, 0, sizeof(tHReg));
+    memset(&vb_state->v810_state, 0, sizeof(vb_state->v810_state));
+    memset(&vb_state->tVIPREG, 0, sizeof(vb_state->tVIPREG));
+    memset(&vb_state->tHReg, 0, sizeof(vb_state->tHReg));
 
-    tVIPREG.newframe = true;
+    vb_state->tVIPREG.newframe = true;
 
-    v810_state->irq_handler = &drc_handleInterrupts;
-    v810_state->reloc_table = &drc_relocTable;
+    vb_state->v810_state.irq_handler = &drc_handleInterrupts;
+    vb_state->v810_state.reloc_table = &drc_relocTable;
 
-    v810_state->P_REG[0]    =  0x00000000;
-    v810_state->PC          =  0xFFFFFFF0;
-    v810_state->S_REG[ECR]  =  0x0000FFF0;
-    v810_state->S_REG[PSW]  =  0x00008000;
-    v810_state->S_REG[PIR]  =  0x00005346;
-    v810_state->S_REG[TKCW] =  0x000000E0;
+    vb_state->v810_state.P_REG[0]    =  0x00000000;
+    vb_state->v810_state.PC          =  0xFFFFFFF0;
+    vb_state->v810_state.S_REG[ECR]  =  0x0000FFF0;
+    vb_state->v810_state.S_REG[PSW]  =  0x00008000;
+    vb_state->v810_state.S_REG[PIR]  =  0x00005346;
+    vb_state->v810_state.S_REG[TKCW] =  0x000000E0;
 
-    tHReg.SCR = 0;
-    tHReg.TCR = 0;
-    tHReg.WCR = 0;
-    tVIPREG.INTENB = 0;
-    tVIPREG.XPSTTS &= ~2;
+    vb_state->tHReg.SCR = 0;
+    vb_state->tHReg.TCR = 0;
+    vb_state->tHReg.WCR = 0;
+    vb_state->tVIPREG.INTENB = 0;
+    vb_state->tVIPREG.XPSTTS &= ~2;
 
     mem_whword(0x0005F840, 0x0004); //XPSTTS
 
-    tHReg.SCR	= 0x4C;
-    tHReg.WCR	= 0xFC;
-    tHReg.TCR	= 0xE4;
-    tHReg.THB	= 0xFF;
-    tHReg.TLB	= 0xFF;
-    tHReg.SHB	= 0x00;
-    tHReg.SLB	= 0x00;
-    tHReg.CDRR	= 0x00;
-    tHReg.CDTR	= 0x00;
-    tHReg.CCSR	= 0xFF;
-    tHReg.CCR	= 0x6D;
+    vb_state->tHReg.SCR	= 0x4C;
+    vb_state->tHReg.WCR	= 0xFC;
+    vb_state->tHReg.TCR	= 0xE4;
+    vb_state->tHReg.THB	= 0xFF;
+    vb_state->tHReg.TLB	= 0xFF;
+    vb_state->tHReg.SHB	= 0x00;
+    vb_state->tHReg.SLB	= 0x00;
+    vb_state->tHReg.CDRR	= 0x00;
+    vb_state->tHReg.CDTR	= 0x00;
+    vb_state->tHReg.CCSR	= 0xFF;
+    vb_state->tHReg.CCR	= 0x6D;
 
-    tHReg.tCount = 0xFFFF;
+    vb_state->tHReg.tCount = 0xFFFF;
 
-    tHReg.hwRead = 0;
+    vb_state->tHReg.hwRead = 0;
 
     // we don't reset load_sram so it will be non-null if there was sram to load
     replay_reset(is_sram || (bool)load_sram);
@@ -351,34 +351,34 @@ void v810_reset(void) {
 
 void predictEvent(bool increment) {
     if (increment) {
-        v810_state->cycles += v810_state->cycles_until_event_full - v810_state->cycles_until_event_partial;
+        vb_state->v810_state.cycles += vb_state->v810_state.cycles_until_event_full - vb_state->v810_state.cycles_until_event_partial;
     }
 
-    WORD cycles = v810_state->cycles;
-    int disptime = cycles - tVIPREG.lastdisp;
+    WORD cycles = vb_state->v810_state.cycles;
+    int disptime = cycles - vb_state->tVIPREG.lastdisp;
     int next_event = 400000 - disptime;
-    if (tVIPREG.displaying) {
+    if (vb_state->tVIPREG.displaying) {
         if (disptime < 60000) next_event = 60000 - disptime;
         else if (disptime < 160000) next_event = 160000 - disptime;
         else if (disptime < 200000) next_event = 200000 - disptime;
         else if (disptime < 260000) next_event = 260000 - disptime;
         else if (disptime < 360000) next_event = 360000 - disptime;
     }
-    if (tHReg.TCR & 0x01) {
-        int ticks = tHReg.tCount ? tHReg.tCount : tHReg.tTHW;
-        if (!(tHReg.TCR & 0x10)) ticks = ticks * 5 - tHReg.ticks;
-        int next_timer = ticks * 400 - (cycles - tHReg.lasttime);
+    if (vb_state->tHReg.TCR & 0x01) {
+        int ticks = vb_state->tHReg.tCount ? vb_state->tHReg.tCount : vb_state->tHReg.tTHW;
+        if (!(vb_state->tHReg.TCR & 0x10)) ticks = ticks * 5 - vb_state->tHReg.ticks;
+        int next_timer = ticks * 400 - (cycles - vb_state->tHReg.lasttime);
         if (next_event > next_timer) next_event = next_timer;
     }
-    if (tHReg.SCR & 2) {
-        int next_input = tHReg.hwRead - (cycles - tHReg.lastinput);
+    if (vb_state->tHReg.SCR & 2) {
+        int next_input = vb_state->tHReg.hwRead - (cycles - vb_state->tHReg.lastinput);
         if (next_event > next_input) next_event = next_input;
     }
-    if (tVIPREG.drawing) {
-        int drawtime = cycles - tVIPREG.lastdraw;
-        int sboff = (tVIPREG.rowcount) * tVIPREG.frametime / 28 + 1120;
+    if (vb_state->tVIPREG.drawing) {
+        int drawtime = cycles - vb_state->tVIPREG.lastdraw;
+        int sboff = (vb_state->tVIPREG.rowcount) * vb_state->tVIPREG.frametime / 28 + 1120;
         // the maths in serviceDisplayInt is slightly different, so add 1 to compensate
-        int nextrow = (tVIPREG.rowcount + 1) * tVIPREG.frametime / 28 + 1;
+        int nextrow = (vb_state->tVIPREG.rowcount + 1) * vb_state->tVIPREG.frametime / 28 + 1;
         int next_draw;
         if (drawtime < sboff) next_draw = sboff - drawtime;
         else next_draw = nextrow - drawtime;
@@ -387,7 +387,7 @@ void predictEvent(bool increment) {
 
     if (next_event < 0) next_event = 0;
 
-    v810_state->cycles_until_event_full = v810_state->cycles_until_event_partial = next_event;
+    vb_state->v810_state.cycles_until_event_full = vb_state->v810_state.cycles_until_event_partial = next_event;
 }
 
 static int serviceDisplayInt(unsigned int cycles, WORD PC);
@@ -397,40 +397,40 @@ int serviceInt(unsigned int cycles, WORD PC) {
     bool pending_int = false;
 
     // hardware read timing
-    if (tHReg.SCR & 2) {
-        int next_input = tHReg.hwRead - (cycles - tHReg.lastinput);
-        tHReg.hwRead = next_input;
+    if (vb_state->tHReg.SCR & 2) {
+        int next_input = vb_state->tHReg.hwRead - (cycles - vb_state->tHReg.lastinput);
+        vb_state->tHReg.hwRead = next_input;
         if (next_input <= 0) {
-            tHReg.SCR &= ~2;
+            vb_state->tHReg.SCR &= ~2;
             pending_int = true;
         }
     }
-    tHReg.lastinput = cycles;
+    vb_state->tHReg.lastinput = cycles;
 
     // timer
-    if ((cycles-tHReg.lasttime) >= 400) {
-        int new_ticks = (cycles - tHReg.lasttime) / 400;
-        tHReg.lasttime += 400 * new_ticks;
-        int steps = (tHReg.TCR & 0x10) ? new_ticks : (tHReg.ticks + new_ticks) / 5;
-        tHReg.ticks = (tHReg.ticks + new_ticks) % 5;
-        if (tHReg.TCR & 0x01) { // Timer Enabled
-            tHReg.tCount -= steps;
-            if (tHReg.tCount <= 0 && tHReg.tCount + steps > 0) {
-                tHReg.TCR |= 0x02;
-                if ((tHReg.TCR & 0x09) == 0x09) tHReg.tInt = true;
+    if ((cycles-vb_state->tHReg.lasttime) >= 400) {
+        int new_ticks = (cycles - vb_state->tHReg.lasttime) / 400;
+        vb_state->tHReg.lasttime += 400 * new_ticks;
+        int steps = (vb_state->tHReg.TCR & 0x10) ? new_ticks : (vb_state->tHReg.ticks + new_ticks) / 5;
+        vb_state->tHReg.ticks = (vb_state->tHReg.ticks + new_ticks) % 5;
+        if (vb_state->tHReg.TCR & 0x01) { // Timer Enabled
+            vb_state->tHReg.tCount -= steps;
+            if (vb_state->tHReg.tCount <= 0 && vb_state->tHReg.tCount + steps > 0) {
+                vb_state->tHReg.TCR |= 0x02;
+                if ((vb_state->tHReg.TCR & 0x09) == 0x09) vb_state->tHReg.tInt = true;
             }
-            while (tHReg.tCount < 0) {
-                tHReg.tCount += tHReg.tTHW + 1; //reset counter
+            while (vb_state->tHReg.tCount < 0) {
+                vb_state->tHReg.tCount += vb_state->tHReg.tTHW + 1; //reset counter
             }
-            tHReg.TLB = (tHReg.tCount&0xFF);
-            tHReg.THB = ((tHReg.tCount>>8)&0xFF);
+            vb_state->tHReg.TLB = (vb_state->tHReg.tCount&0xFF);
+            vb_state->tHReg.THB = ((vb_state->tHReg.tCount>>8)&0xFF);
         }
     }
 
     // graphics has higher priority, so try that first
     pending_int = serviceDisplayInt(cycles, PC) || pending_int;
 
-    if (tHReg.tInt) {
+    if (vb_state->tHReg.tInt) {
         // zero & interrupt enabled
         pending_int = v810_int(1, PC) || pending_int;
     }
@@ -442,123 +442,123 @@ int serviceInt(unsigned int cycles, WORD PC) {
 
 static int serviceDisplayInt(unsigned int cycles, WORD PC) {
     int gamestart;
-    unsigned int disptime = (cycles - tVIPREG.lastdisp);
+    unsigned int disptime = (cycles - vb_state->tVIPREG.lastdisp);
     bool pending_int = 0;
 
-    if (unlikely(tVIPREG.newframe)) {
+    if (unlikely(vb_state->tVIPREG.newframe)) {
         // new frame
-        tVIPREG.newframe = false;
-        tVIPREG.displaying = (tVIPREG.DPCTRL & SYNCE) != 0;
-        tVIPREG.DPSTTS = (tVIPREG.DPCTRL & (DISP|RE|SYNCE)) | SCANRDY | FCLK;
+        vb_state->tVIPREG.newframe = false;
+        vb_state->tVIPREG.displaying = (vb_state->tVIPREG.DPCTRL & SYNCE) != 0;
+        vb_state->tVIPREG.DPSTTS = (vb_state->tVIPREG.DPCTRL & (DISP|RE|SYNCE)) | SCANRDY | FCLK;
 
         int interrupts = FRAMESTART;
 
-        if (!tVIPREG.drawing) {
-            tVIPREG.lastdraw = tVIPREG.lastdisp;
+        if (!vb_state->tVIPREG.drawing) {
+            vb_state->tVIPREG.lastdraw = vb_state->tVIPREG.lastdisp;
         }
 
-        if (tVIPREG.tFrame-- == 0) {
-            tVIPREG.tFrame = tVIPREG.FRMCYC;
+        if (vb_state->tVIPREG.tFrame-- == 0) {
+            vb_state->tVIPREG.tFrame = vb_state->tVIPREG.FRMCYC;
             interrupts |= GAMESTART;
-            if (tVIPREG.XPCTRL & XPEN) {
-                if (tVIPREG.drawing) {
-                    tVIPREG.XPSTTS |= OVERTIME;
+            if (vb_state->tVIPREG.XPCTRL & XPEN) {
+                if (vb_state->tVIPREG.drawing) {
+                    vb_state->tVIPREG.XPSTTS |= OVERTIME;
                     interrupts |= TIMEERR;
                 } else {
-                    tVIPREG.drawing = true;
-                    tVIPREG.XPSTTS = XPEN | ((!tVIPREG.tDisplayedFB+1)<<2) | SBOUT;
+                    vb_state->tVIPREG.drawing = true;
+                    vb_state->tVIPREG.XPSTTS = XPEN | ((!vb_state->tVIPREG.tDisplayedFB+1)<<2) | SBOUT;
                 }
             }
         }
 
-        tVIPREG.INTPND |= interrupts;
+        vb_state->tVIPREG.INTPND |= interrupts;
         pending_int = 1;
     }
 
     // DPSTTS management
     {
-        int dpstts_old = tVIPREG.DPSTTS;
+        int dpstts_old = vb_state->tVIPREG.DPSTTS;
         int dpstts_new = dpstts_old;
         if (disptime >= 200000) {
             // FCLK low (high was handled already)
             dpstts_new &= ~FCLK;
         }
-        if (likely(tVIPREG.displaying)) {
+        if (likely(vb_state->tVIPREG.displaying)) {
             if (disptime < 60000) {
             } else if (disptime < 160000) {
                 // LxBSY high
-                dpstts_new |= tVIPREG.tDisplayedFB & 1 ? L1BSY : L0BSY;
+                dpstts_new |= vb_state->tVIPREG.tDisplayedFB & 1 ? L1BSY : L0BSY;
             } else if (disptime < 260000) {
                 // LxBSY low
                 dpstts_new &= ~DPBSY;
             } else if (disptime < 360000) {
                 // RxBSY high
-                dpstts_new |= tVIPREG.tDisplayedFB & 1 ? R1BSY : R0BSY;
+                dpstts_new |= vb_state->tVIPREG.tDisplayedFB & 1 ? R1BSY : R0BSY;
             } else {
                 // RxBSY low
                 dpstts_new &= ~DPBSY;
             }
         }
         if (unlikely(dpstts_new != dpstts_old)) {
-            tVIPREG.DPSTTS = dpstts_new;
+            vb_state->tVIPREG.DPSTTS = dpstts_new;
             pending_int = 1;
             if (dpstts_old & DPBSY) {
                 // old status had DPBSY, which necessarily means new one doesn't
-                tVIPREG.INTPND |= (dpstts_old & (L0BSY | L1BSY)) ? LFBEND : RFBEND;
+                vb_state->tVIPREG.INTPND |= (dpstts_old & (L0BSY | L1BSY)) ? LFBEND : RFBEND;
             }
         }
     }
 
-    unsigned int drawtime = (cycles-tVIPREG.lastdraw);
+    unsigned int drawtime = (cycles-vb_state->tVIPREG.lastdraw);
 
     // XPSTTS management
-    if (likely(tVIPREG.drawing)) {
-        int rowcount = drawtime * 28 / tVIPREG.frametime;
-        if (unlikely(rowcount > tVIPREG.rowcount)) {
+    if (likely(vb_state->tVIPREG.drawing)) {
+        int rowcount = drawtime * 28 / vb_state->tVIPREG.frametime;
+        if (unlikely(rowcount > vb_state->tVIPREG.rowcount)) {
             pending_int = 1;
             if (rowcount < 28) {
                 // new row mid-frame
-                tVIPREG.rowcount = rowcount;
-                tVIPREG.XPSTTS = (tVIPREG.XPSTTS & 0xff) | (rowcount << 8) | SBOUT;
+                vb_state->tVIPREG.rowcount = rowcount;
+                vb_state->tVIPREG.XPSTTS = (vb_state->tVIPREG.XPSTTS & 0xff) | (rowcount << 8) | SBOUT;
                 // SBCMP comparison
-                if (rowcount == ((tVIPREG.XPCTRL >> 8) & 0x1f)) {
-                    tVIPREG.INTPND |= SBHIT;
+                if (rowcount == ((vb_state->tVIPREG.XPCTRL >> 8) & 0x1f)) {
+                    vb_state->tVIPREG.INTPND |= SBHIT;
                 }
             } else {
                 // finished drawing
-                tVIPREG.drawing = false;
-                tVIPREG.XPSTTS = 0x1b00 | (tVIPREG.XPCTRL & XPEN);
-                tVIPREG.INTPND |= XPEND;
+                vb_state->tVIPREG.drawing = false;
+                vb_state->tVIPREG.XPSTTS = 0x1b00 | (vb_state->tVIPREG.XPCTRL & XPEN);
+                vb_state->tVIPREG.INTPND |= XPEND;
             }
-        } else if (unlikely(rowcount < 28 && drawtime - rowcount * tVIPREG.frametime / 28 >= 1120)) {
+        } else if (unlikely(rowcount < 28 && drawtime - rowcount * vb_state->tVIPREG.frametime / 28 >= 1120)) {
             // it's been roughly 56 microseconds, so clear SBOUT
-            if (tVIPREG.XPSTTS | SBOUT) pending_int = 1;
-            tVIPREG.XPSTTS &= ~SBOUT;
+            if (vb_state->tVIPREG.XPSTTS | SBOUT) pending_int = 1;
+            vb_state->tVIPREG.XPSTTS &= ~SBOUT;
         }
     }
 
     if (unlikely(disptime >= 400000)) {
         // frame end
-        tVIPREG.rowcount = 0;
-        v810_state->ret = 1;
-        tVIPREG.lastdisp += 400000;
-        tVIPREG.newframe = true;
+        vb_state->tVIPREG.rowcount = 0;
+        vb_state->v810_state.ret = 1;
+        vb_state->tVIPREG.lastdisp += 400000;
+        vb_state->tVIPREG.newframe = true;
         pending_int = 1;
 
-        if (tVIPREG.tFrame == 0 && !tVIPREG.drawing && (tVIPREG.XPCTRL & XPEN)) {
-            tVIPREG.tDisplayedFB = !tVIPREG.tDisplayedFB;
+        if (vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing && (vb_state->tVIPREG.XPCTRL & XPEN)) {
+            vb_state->tVIPREG.tDisplayedFB = !vb_state->tVIPREG.tDisplayedFB;
             if (!tVBOpt.VIP_OVERCLOCK) {
-                tVIPREG.frametime = videoProcessingTime();
+                vb_state->tVIPREG.frametime = videoProcessingTime();
             } else {
                 // pre-0.9.7 behaviour
-                tVIPREG.frametime = 137216;
+                vb_state->tVIPREG.frametime = 137216;
             }
         }
 
         sound_update(cycles);
     }
 
-    if (unlikely(tVIPREG.INTENB & tVIPREG.INTPND)) {
+    if (unlikely(vb_state->tVIPREG.INTENB & vb_state->tVIPREG.INTPND)) {
         v810_int(4, PC);
         pending_int = 1;
     }
@@ -571,10 +571,10 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
 // Generate Interupt #n
 bool v810_int(WORD iNum, WORD PC) {
     if (iNum > 0x0F) return false;  // Invalid Interupt number...
-    if((v810_state->S_REG[PSW] & PSW_NP)) return false;
-    if((v810_state->S_REG[PSW] & PSW_EP)) return false; // Exception pending?
-    if((v810_state->S_REG[PSW] & PSW_ID)) return false; // Interupt disabled
-    if(iNum < ((v810_state->S_REG[PSW] & PSW_IA)>>16)) return false; // Interupt to low on the chain
+    if((vb_state->v810_state.S_REG[PSW] & PSW_NP)) return false;
+    if((vb_state->v810_state.S_REG[PSW] & PSW_EP)) return false; // Exception pending?
+    if((vb_state->v810_state.S_REG[PSW] & PSW_ID)) return false; // Interupt disabled
+    if(iNum < ((vb_state->v810_state.S_REG[PSW] & PSW_IA)>>16)) return false; // Interupt to low on the chain
 
     // if an interrupt happened, skip a HALT instruction if we're on one
     if (((HWORD)mem_rhword(PC) >> 10) == V810_OP_HALT) {
@@ -582,18 +582,18 @@ bool v810_int(WORD iNum, WORD PC) {
     }
 
     //Ready to Generate the Interupts
-    v810_state->S_REG[EIPC]  = PC;
-    v810_state->S_REG[EIPSW] = v810_state->S_REG[PSW];
-    v810_state->except_flags = v810_state->flags;
+    vb_state->v810_state.S_REG[EIPC]  = PC;
+    vb_state->v810_state.S_REG[EIPSW] = vb_state->v810_state.S_REG[PSW];
+    vb_state->v810_state.except_flags = vb_state->v810_state.flags;
 
-    v810_state->PC = 0xFFFFFE00 | (iNum << 4);
+    vb_state->v810_state.PC = 0xFFFFFE00 | (iNum << 4);
 
-    v810_state->S_REG[ECR] = 0xFE00 | (iNum << 4);
-    v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_EP;
-    v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_ID;
+    vb_state->v810_state.S_REG[ECR] = 0xFE00 | (iNum << 4);
+    vb_state->v810_state.S_REG[PSW] = vb_state->v810_state.S_REG[PSW] | PSW_EP;
+    vb_state->v810_state.S_REG[PSW] = vb_state->v810_state.S_REG[PSW] | PSW_ID;
     if((iNum+=1) > 0x0F)
         (iNum = 0x0F);
-    v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | (iNum << 16); //Set the Interupt
+    vb_state->v810_state.S_REG[PSW] = vb_state->v810_state.S_REG[PSW] | (iNum << 16); //Set the Interupt
     return true;
 }
 
@@ -604,41 +604,41 @@ void v810_exp(WORD iNum, WORD eCode) {
 
     //if(!S_REG[PSW]&PSW_ID) return;
     //if(iNum < ((S_REG[PSW] & PSW_IA)>>16)) return; // Interupt to low on the mask level....
-    if ((v810_state->S_REG[PSW] & PSW_IA)>>16) return; //Interrupt Pending
+    if ((vb_state->v810_state.S_REG[PSW] & PSW_IA)>>16) return; //Interrupt Pending
 
     eCode &= 0xFFFF;
 
-    if(v810_state->S_REG[PSW]&PSW_EP) { //Double Exception
-        v810_state->S_REG[FEPC] = v810_state->PC;
-        v810_state->S_REG[FEPSW] = v810_state->S_REG[PSW];
-        v810_state->S_REG[ECR] = (eCode << 16); //Exception Code, dont get it???
-        v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_NP;
-        v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_ID;
+    if(vb_state->v810_state.S_REG[PSW]&PSW_EP) { //Double Exception
+        vb_state->v810_state.S_REG[FEPC] = vb_state->v810_state.PC;
+        vb_state->v810_state.S_REG[FEPSW] = vb_state->v810_state.S_REG[PSW];
+        vb_state->v810_state.S_REG[ECR] = (eCode << 16); //Exception Code, dont get it???
+        vb_state->v810_state.S_REG[PSW] = vb_state->v810_state.S_REG[PSW] | PSW_NP;
+        vb_state->v810_state.S_REG[PSW] = vb_state->v810_state.S_REG[PSW] | PSW_ID;
         //S_REG[PSW] = S_REG[PSW] | (((iNum+1) & 0x0f) << 16); //Set the Interupt status
 
-        v810_state->PC = 0xFFFFFFD0;
+        vb_state->v810_state.PC = 0xFFFFFFD0;
         return;
     } else { // Regular Exception
-        v810_state->S_REG[EIPC] = v810_state->PC;
-        v810_state->S_REG[EIPSW] = v810_state->S_REG[PSW];
-        v810_state->except_flags = v810_state->flags;
-        v810_state->S_REG[ECR] = eCode; //Exception Code, dont get it???
-        v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_EP;
-        v810_state->S_REG[PSW] = v810_state->S_REG[PSW] | PSW_ID;
+        vb_state->v810_state.S_REG[EIPC] = vb_state->v810_state.PC;
+        vb_state->v810_state.S_REG[EIPSW] = vb_state->v810_state.S_REG[PSW];
+        vb_state->v810_state.except_flags = vb_state->v810_state.flags;
+        vb_state->v810_state.S_REG[ECR] = eCode; //Exception Code, dont get it???
+        vb_state->v810_state.S_REG[PSW] = vb_state->v810_state.S_REG[PSW] | PSW_EP;
+        vb_state->v810_state.S_REG[PSW] = vb_state->v810_state.S_REG[PSW] | PSW_ID;
         //S_REG[PSW] = S_REG[PSW] | (((iNum+1) & 0x0f) << 16); //Set the Interupt status
 
-        v810_state->PC = 0xFFFFFF00 | (iNum << 4);
+        vb_state->v810_state.PC = 0xFFFFFF00 | (iNum << 4);
         return;
     }
 }
 
 int v810_run(void) {
-    v810_state->ret = false;
+    vb_state->v810_state.ret = false;
 
     while (true) {
         int ret = 0;
         #if DRC_AVAILABLE
-        if (likely((v810_state->PC & 0x07000000) == 0x07000000)) {
+        if (likely((vb_state->v810_state.PC & 0x07000000) == 0x07000000)) {
             ret = drc_run();
         } else
         #endif
@@ -646,8 +646,8 @@ int v810_run(void) {
             ret = interpreter_run();
         }
         if (ret != 0) return ret;
-        if (v810_state->ret) {
-            v810_state->ret = false;
+        if (vb_state->v810_state.ret) {
+            vb_state->v810_state.ret = false;
             break;
         }
     }

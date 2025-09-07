@@ -55,14 +55,19 @@ typedef struct {
     HWORD hwRead;   //Hardware input read timer
 } V810_HREGDAT;
 
-//Export some data structs...
-extern V810_MEMORYFETCH V810_ROM1; // US Games
-extern V810_MEMORYFETCH V810_DISPLAY_RAM;
-extern V810_MEMORYFETCH V810_SOUND_RAM;
-extern V810_MEMORYFETCH V810_VB_RAM;
-extern V810_MEMORYFETCH V810_GAME_RAM;
-extern V810_VIPREGDAT   tVIPREG;
-extern V810_HREGDAT     tHReg;
+// VB state
+typedef struct {
+    cpu_state v810_state;
+    V810_MEMORYFETCH V810_ROM1;
+    V810_MEMORYFETCH V810_DISPLAY_RAM;
+    V810_MEMORYFETCH V810_SOUND_RAM;
+    V810_MEMORYFETCH V810_VB_RAM;
+    V810_MEMORYFETCH V810_GAME_RAM;
+    V810_VIPREGDAT   tVIPREG;
+    V810_HREGDAT     tHReg;
+} VB_STATE;
+
+extern VB_STATE *vb_state;
 
 extern int is_sram; //Flag if writes to sram...
 

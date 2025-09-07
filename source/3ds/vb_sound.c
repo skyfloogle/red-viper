@@ -25,7 +25,7 @@ static const int noise_bits[8] = {14, 10, 13, 4, 8, 6, 9, 11};
 
 static short dc_offset = 0;
 
-#define SNDMEM(x) (V810_SOUND_RAM.pmemory[(x) & 0xFFF])
+#define SNDMEM(x) (vb_state->V810_SOUND_RAM.pmemory[(x) & 0xFFF])
 #define GET_FREQ(ch) ((SNDMEM(S1FQL + 0x40 * ch) | (SNDMEM(S1FQH + 0x40 * ch) << 8)) & 0x7ff)
 #define GET_FREQ_TIME(ch) ( \
     (2048 - (ch != 4 ? GET_FREQ(ch) : sound_state.sweep_frequency)) \
@@ -247,7 +247,7 @@ void sound_write(int addr, uint16_t data) {
             changed_sample[(addr >> 7) & 7] = true;
         }
     } else if ((addr & 0x7ff) <= 0x580) {
-        sound_update(v810_state->cycles);
+        sound_update(vb_state->v810_state.cycles);
     }
     bool was_silent = false;
     if ((addr & 0x3f) == (S1INT & 0x3f)) {

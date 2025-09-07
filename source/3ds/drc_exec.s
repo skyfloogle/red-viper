@@ -35,12 +35,12 @@ block_reg_map:
 
 .data
 
-.extern v810_state, serviceInt, serviceint, tVBOpt
+.extern vb_state, serviceInt, serviceint, tVBOpt
 
 .text
 
 .macro ldRegs
-    ldr     r11, =v810_state
+    ldr     r11, =vb_state
     ldr     r11, [r11]
 
     @ Load the CPSR
@@ -67,7 +67,7 @@ block_reg_map:
 .endm
 
 .macro stRegs
-    ldr     r11, =v810_state
+    ldr     r11, =vb_state
     ldr     r11, [r11]
 
     @ Save the CPSR

@@ -70,14 +70,14 @@ int main(int argc, char* argv[]) {
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
             err = drc_run();
             if (err) {
-                dprintf(0, "[DRC]: error #%d @ PC=0x%08X\n", err, v810_state->PC);
+                dprintf(0, "[DRC]: error #%d @ PC=0x%08X\n", err, vb_state->v810_state.PC);
                 printf("\nDumping debug info...\n");
                 drc_dumpDebugInfo();
                 goto exit;
             }
 
             // Display a frame, only after the right number of 'skips'
-            if((tVIPREG.FRMCYC & 0x00FF) < skip) {
+            if((vb_state->tVIPREG.FRMCYC & 0x00FF) < skip) {
                 skip = 0;
                 Left ^= 1;
             }
@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Display
-        if (tVIPREG.DPCTRL & 0x0002) {
+        if (vb_state->tVIPREG.DPCTRL & 0x0002) {
             V810_Dsp_Frame(Left); //Temporary...
         }
     }

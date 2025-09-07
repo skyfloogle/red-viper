@@ -58,7 +58,7 @@ static void save_sram_thread(void *sram) {
         printf("\nError opening sram.bin");
         return;
     }
-    fwrite(sram, 1, V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr, nvramf);
+    fwrite(sram, 1, vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr, nvramf);
     fclose(nvramf);
 
     free(sram);
@@ -71,8 +71,8 @@ void save_sram(void) {
     if (!is_sram) return;
     // Don't save if we're already saving
     if (save_thread) return;
-    void *sram_copy = malloc(V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr);
-    memcpy(sram_copy, V810_GAME_RAM.pmemory, V810_GAME_RAM.highaddr + 1 - V810_GAME_RAM.lowaddr);
+    void *sram_copy = malloc(vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr);
+    memcpy(sram_copy, vb_state->V810_GAME_RAM.pmemory, vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr);
 #ifdef __3DS__
     // Saving on the same thread is slow, but saving in another thread happens instantly
     save_thread = threadCreate(save_sram_thread, sram_copy, 4000, 0x18, 1, true);
@@ -162,21 +162,21 @@ int emulation_sstate(int state) {
     WRITE_VAR(tVBOpt.CRC32); // CRC32
 
     // Write registers
-    WRITE_VAR(v810_state->P_REG);
-    WRITE_VAR(v810_state->S_REG);
-    WRITE_VAR(v810_state->PC);
-    WRITE_VAR(v810_state->cycles);
-    WRITE_VAR(v810_state->except_flags);
+    WRITE_VAR(vb_state->v810_state.P_REG);
+    WRITE_VAR(vb_state->v810_state.S_REG);
+    WRITE_VAR(vb_state->v810_state.PC);
+    WRITE_VAR(vb_state->v810_state.cycles);
+    WRITE_VAR(vb_state->v810_state.except_flags);
 
     // Write VIP registers
-    size = sizeof(tVIPREG);
+    size = sizeof(vb_state->tVIPREG);
     WRITE_VAR(size);
-    WRITE_VAR(tVIPREG);
+    WRITE_VAR(vb_state->tVIPREG);
 
     // Write hardware control registers
-    size = sizeof(tHReg);
+    size = sizeof(vb_state->tHReg);
     WRITE_VAR(size);
-    WRITE_VAR(tHReg);
+    WRITE_VAR(vb_state->tHReg);
 
     // Write audio registers
     size = sizeof(sound_state);
@@ -185,9 +185,9 @@ int emulation_sstate(int state) {
 
     // Write RAM
     #define WRITE_MEMORY(area) \
-        size = area.highaddr + 1 - area.lowaddr; \
+        size = vb_state->area.highaddr + 1 - vb_state->area.lowaddr; \
         WRITE_VAR(size); \
-        FWRITE(area.pmemory, 1, size, state_file);
+        FWRITE(vb_state->area.pmemory, 1, size, state_file);
     WRITE_MEMORY(V810_DISPLAY_RAM);
     WRITE_MEMORY(V810_SOUND_RAM);
     WRITE_MEMORY(V810_VB_RAM);
@@ -234,7 +234,7 @@ int emulation_lstate(int state) {
     }
 
     //Load registers
-    cpu_state new_state = *v810_state;
+    cpu_state new_state = vb_state->v810_state;
     #define READ_VAR(V) FREAD(&V, 1, sizeof(V), state_file)
     READ_VAR(new_state.P_REG);
     READ_VAR(new_state.S_REG);
@@ -410,8 +410,8 @@ int emulation_lstate(int state) {
     //Load the RAM
     #define READ_MEMORY(area) \
         FREAD(&size, 4, 1, state_file); \
-        if (size != area.highaddr + 1 - area.lowaddr) goto bail; \
-        FREAD(area.pbackup, 1, size, state_file);
+        if (size != vb_state->area.highaddr + 1 - vb_state->area.lowaddr) goto bail; \
+        FREAD(vb_state->area.pbackup, 1, size, state_file);
     READ_MEMORY(V810_DISPLAY_RAM);
     READ_MEMORY(V810_SOUND_RAM);
     READ_MEMORY(V810_VB_RAM);
@@ -425,16 +425,16 @@ int emulation_lstate(int state) {
     fclose(state_file);
 
     // Everything was loaded safely, now apply
-    memcpy(v810_state, &new_state, sizeof(new_state));
-    memcpy(&tVIPREG, &new_vipreg, sizeof(new_vipreg));
-    memcpy(&tHReg, &new_hreg, sizeof(new_hreg));
+    memcpy(&vb_state->v810_state, &new_state, sizeof(new_state));
+    memcpy(&vb_state->tVIPREG, &new_vipreg, sizeof(new_vipreg));
+    memcpy(&vb_state->tHReg, &new_hreg, sizeof(new_hreg));
     memcpy(&sound_state, &new_soundstate, sizeof(new_soundstate));
     BYTE *tmp;
     #define APPLY_MEMORY(area) \
-        tmp = area.pmemory; \
-        area.pmemory = area.pbackup; \
-        area.pbackup = tmp; \
-        area.off = (size_t)area.pmemory - area.lowaddr;
+        tmp = vb_state->area.pmemory; \
+        vb_state->area.pmemory = vb_state->area.pbackup; \
+        vb_state->area.pbackup = tmp; \
+        vb_state->area.off = (size_t)vb_state->area.pmemory - vb_state->area.lowaddr;
     APPLY_MEMORY(V810_DISPLAY_RAM);
     APPLY_MEMORY(V810_SOUND_RAM);
     APPLY_MEMORY(V810_VB_RAM);
@@ -444,16 +444,16 @@ int emulation_lstate(int state) {
     // frametime was moved to end-of-frame in version 2
     if (ver < 2) {
         if (!tVBOpt.VIP_OVERCLOCK) {
-            tVIPREG.frametime = videoProcessingTime();
+            vb_state->tVIPREG.frametime = videoProcessingTime();
         } else {
             // pre-0.9.7 behaviour
-            tVIPREG.frametime = 137216;
+            vb_state->tVIPREG.frametime = 137216;
         }
     }
 
     clearCache();
     C3D_FrameBegin(0);
-    video_render((tVIPREG.tDisplayedFB) % 2, false);
+    video_render((vb_state->tVIPREG.tDisplayedFB) % 2, false);
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     C3D_FrameEnd(0);
 

@@ -121,8 +121,8 @@ int main(void) {
                 drc_reset();
                 clearCache();
                 frame = 0;
-                tVIPREG.tFrame = 0;
-                tVIPREG.tDisplayedFB = 0;
+                vb_state->tVIPREG.tFrame = 0;
+                vb_state->tVIPREG.tDisplayedFB = 0;
             }
             if (guiop & AKILL) {
                 clearCache();
@@ -141,14 +141,14 @@ int main(void) {
         // forcefully disable antiflicker if software rendering is in use
         // because we can't easily delay the fb update until afterwards
         // and it's not likely that software rendering games will flicker at 50fps anyway
-        if (tDSPCACHE.DDSPDataState[tVIPREG.tDisplayedFB] == CPU_WROTE) {
+        if (tDSPCACHE.DDSPDataState[vb_state->tVIPREG.tDisplayedFB] == CPU_WROTE) {
             on_time = false;
         }
 
         // Display a frame, only after the right number of 'skips'
         // Also don't display if drawing is still ongoing
-        if(tVIPREG.tFrame == 0 && !tVIPREG.drawing) {
-            int displayed_fb = tVIPREG.tDisplayedFB;
+        if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing) {
+            int displayed_fb = vb_state->tVIPREG.tDisplayedFB;
             // pass C3D_FRAME_NONBLOCK to enable frameskip, 0 to disable
             // it's only needed for 1 second in the mario clash intro afaik
             // so just bite the bullet and do the frameskip, rather that than slowdown
@@ -157,9 +157,9 @@ int main(void) {
 
                 // Golf hack: switch to software rendering during gameplay.
                 if (is_golf) {
-                    if (*(uint8_t*)(V810_DISPLAY_RAM.off + 0x3dbc0) == 0x40 &&
-                        *(uint16_t*)(V810_DISPLAY_RAM.off + 0x3dbe6) == 0x48 &&
-                        memcmp((uint8_t*)V810_DISPLAY_RAM.off + 0x3dbec, "\0\0\x80\x01\x1f\0\0\x80\0\0", 10) == 0
+                    if (*(uint8_t*)(vb_state->V810_DISPLAY_RAM.off + 0x3dbc0) == 0x40 &&
+                        *(uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x3dbe6) == 0x48 &&
+                        memcmp((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x3dbec, "\0\0\x80\x01\x1f\0\0\x80\0\0", 10) == 0
                     ) {
                         // looks like hills, do software rendering
                         if (tVBOpt.RENDERMODE != RM_CPUONLY) {
@@ -171,14 +171,14 @@ int main(void) {
                         if (tVBOpt.RENDERMODE != RM_TOGPU) {
                             tVBOpt.RENDERMODE = RM_TOGPU;
                             for (int i = 0; i < 3; i++) {
-                                memset((uint8_t*)V810_DISPLAY_RAM.off + (0x8000 * i), 0, 0x6000);
+                                memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + (0x8000 * i), 0, 0x6000);
                             }
                         }
                     }
                 }
 
                 // if we just had a lagframe on which drawing happened, don't draw
-                if ((tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {
+                if ((vb_state->tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {
                     video_render(displayed_fb, on_time);
                     on_time = true;
                 } else if (on_time) {
@@ -188,10 +188,10 @@ int main(void) {
                 C3D_FrameEnd(0);
             }
             if (tVBOpt.RENDERMODE != RM_CPUONLY) {
-                if (tVIPREG.XPCTRL & 0x0002) {
+                if (vb_state->tVIPREG.XPCTRL & 0x0002) {
                     if (tDSPCACHE.DDSPDataState[!displayed_fb] != GPU_CLEAR) {
-                        memset((uint8_t*)V810_DISPLAY_RAM.off + 0x8000 * !displayed_fb, 0, 0x6000);
-                        memset((uint8_t*)V810_DISPLAY_RAM.off + 0x10000 + 0x8000 * !displayed_fb, 0, 0x6000);
+                        memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x8000 * !displayed_fb, 0, 0x6000);
+                        memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x10000 + 0x8000 * !displayed_fb, 0, 0x6000);
                         for (int i = 0; i < 64; i++) {
                             tDSPCACHE.SoftBufWrote[!displayed_fb][i].min = 0xff;
                             tDSPCACHE.SoftBufWrote[!displayed_fb][i].max = 0;
@@ -220,8 +220,8 @@ int main(void) {
 
         // read inputs once per frame
         HWORD inputs = V810_RControll(false);
-        tHReg.SLB =(BYTE)(inputs&0xFF);
-        tHReg.SHB =(BYTE)((inputs>>8)&0xFF);
+        vb_state->tHReg.SLB =(BYTE)(inputs&0xFF);
+        vb_state->tHReg.SHB =(BYTE)((inputs>>8)&0xFF);
 
         replay_update(inputs);
 
@@ -261,10 +261,10 @@ int main(void) {
         printf("\x1b[1J\x1b[0;0HFrame: %i\nTotal CPU: %5.2fms\tDRC: %5.2fms\nGFX-CPU: %5.2fms\tGFX-GPU: %5.2fms\nPC: 0x%lx\tDRC cache: %5.2f%%",
             frame, osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter),
             C3D_GetProcessingTime(), C3D_GetDrawingTime(),
-            v810_state->PC, (cache_pos-cache_start)*4*100./CACHE_SIZE);
+            vb_state->v810_state.PC, (cache_pos-cache_start)*4*100./CACHE_SIZE);
         */
 #else
-        printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) v810_state->PC);
+        printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) vb_state->v810_state.PC);
 #endif
     }
 

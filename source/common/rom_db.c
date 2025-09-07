@@ -99,7 +99,7 @@ unsigned long get_crc(int romSize)    /* calculate the crc value */
 
     crc = 0xFFFFFFFF;
     while (i<romSize) {
-        val = V810_ROM1.pmemory[i];
+        val = vb_state->V810_ROM1.pmemory[i];
         crc = ((crc>>8) & 0x00FFFFFF) ^ crc_table[ (crc^val) & 0xFF ];
         i++;
     }

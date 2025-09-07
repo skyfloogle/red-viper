@@ -25,9 +25,9 @@ SDL_Surface *game_surface, *window_surface;
 
 void sdl_flush(bool displayed_fb) {
     SDL_LockSurface(game_surface);
-    uint16_t *vb_fb = (uint16_t*)(V810_DISPLAY_RAM.off + 0x8000 * displayed_fb);
+    uint16_t *vb_fb = (uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x8000 * displayed_fb);
     uint32_t *out_fb = (uint32_t*)game_surface->pixels;
-    uint32_t brightnesses[4] = {0, tVIPREG.BRTA, tVIPREG.BRTB, tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC};
+    uint32_t brightnesses[4] = {0, vb_state->tVIPREG.BRTA, vb_state->tVIPREG.BRTB, vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC};
     for (int x = 0; x < 384; x++) {
         for (int y = 0; y < 224; y += 8) {
             uint64_t vb_word = vb_fb[x * 32 + (y / 8)];
@@ -82,13 +82,13 @@ int main(int argc, char* argv[]) {
     int lasttime = SDL_GetTicks();
 
     while (true) {
-        if(tVIPREG.tFrame == 0 && !tVIPREG.drawing) {
-            if (tVIPREG.XPCTRL & XPEN) {
+        if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing) {
+            if (vb_state->tVIPREG.XPCTRL & XPEN) {
                 if (tDSPCACHE.CharCacheInvalid) {
                     update_texture_cache_soft();
                 }
 
-                video_soft_render(!tVIPREG.tDisplayedFB);
+                video_soft_render(!vb_state->tVIPREG.tDisplayedFB);
 
 		        // we need to have these caches during rendering
                 tDSPCACHE.CharCacheInvalid = false;
@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
                 memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
             }
 
-            sdl_flush(tVIPREG.tDisplayedFB);
+            sdl_flush(vb_state->tVIPREG.tDisplayedFB);
         }
 
         err = v810_run();
@@ -139,11 +139,11 @@ int main(int argc, char* argv[]) {
                     default: flag = 0; break;
                 }
                 if (e.type == SDL_KEYDOWN) {
-                    tHReg.SLB |= flag & 0xff;
-                    tHReg.SHB |= flag >> 8;
+                    vb_state->tHReg.SLB |= flag & 0xff;
+                    vb_state->tHReg.SHB |= flag >> 8;
                 } else {
-                    tHReg.SLB &= ~(flag & 0xff);
-                    tHReg.SHB &= ~(flag >> 8);
+                    vb_state->tHReg.SLB &= ~(flag & 0xff);
+                    vb_state->tHReg.SHB &= ~(flag >> 8);
                 }
             }
         }

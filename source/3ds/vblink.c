@@ -165,7 +165,7 @@ static void vblink_thread(void*) {
         int ret;
         if ((ret = inflateInit(&strm)) != Z_OK) {vblink_error = ret; goto conn_abort;};
         inflate_running = true;
-        uint8_t *out = V810_ROM1.pmemory;
+        uint8_t *out = vb_state->V810_ROM1.pmemory;
         strm.next_out = out;
         strm.avail_out = 0x1000000;
 
@@ -244,12 +244,12 @@ static void vblink_thread(void*) {
             strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
         }
 
-        V810_ROM1.size = size;
-        V810_ROM1.highaddr = 0x7000000 + size - 1;
+        vb_state->V810_ROM1.size = size;
+        vb_state->V810_ROM1.highaddr = 0x7000000 + size - 1;
         is_sram = false;
         gen_table();
         tVBOpt.CRC32 = get_crc(size);
-        memcpy(tVBOpt.GAME_ID, (char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
+        memcpy(tVBOpt.GAME_ID, (char*)(vb_state->V810_ROM1.off + (vb_state->V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
         apply_patches();
         v810_reset();
 

@@ -240,7 +240,7 @@ void video_init(void) {
 }
 
 void processColumnTable(void) {
-	u8 *table = (u8*)V810_DISPLAY_RAM.off + 0x3dc01;
+	u8 *table = (u8*)vb_state->V810_DISPLAY_RAM.off + 0x3dc01;
 	uint8_t newMaxRepeat, newMinRepeat;
 	newMinRepeat = newMaxRepeat = table[160];
 	for (int t = 0; t < 2; t++) {
@@ -258,9 +258,9 @@ void processColumnTable(void) {
 		uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture, 0, NULL);
 		for (int t = 0; t < 2; t++) {
 			for (int i = 0; i < 96; i++) {
-				int col_a = get_colour(1, tVIPREG.BRTA * (1 + table[t * 512 + (255 - i) * 2]));
-				int col_b = get_colour(2, tVIPREG.BRTB * (1 + table[t * 512 + (255 - i) * 2]));
-				int col_c = get_colour(3, (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]));
+				int col_a = get_colour(1, vb_state->tVIPREG.BRTA * (1 + table[t * 512 + (255 - i) * 2]));
+				int col_b = get_colour(2, vb_state->tVIPREG.BRTB * (1 + table[t * 512 + (255 - i) * 2]));
+				int col_c = get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]));
 
 				u8 *px = &tex[(128*8*t+((((i+1) & ~0xf) << 3) | (((i+1) & 8) << 3) | (((i+1) & 4) << 2) | (((i+1) & 2) << 1) | ((i+1) & 1))) * 3];
 				px[2] = (col_a) & 0xff;
@@ -306,7 +306,7 @@ void video_render(int displayed_fb, bool on_time) {
 
 	eye_count = tVBOpt.ANAGLYPH || CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
 
-	if (tVIPREG.XPCTRL & XPEN) {
+	if (vb_state->tVIPREG.XPCTRL & XPEN) {
 		if (tDSPCACHE.CharCacheInvalid) {
 			if (tVBOpt.RENDERMODE != RM_CPUONLY)
 				update_texture_cache_hard();
@@ -417,7 +417,7 @@ void video_flush(bool default_for_both) {
 	env = C3D_GetTexEnv(3);
 	C3D_TexEnvInit(env);
 	if (minRepeat == maxRepeat)
-		C3D_TexEnvColor(env, get_colour(1, tVIPREG.BRTA * maxRepeat));
+		C3D_TexEnvColor(env, get_colour(1, vb_state->tVIPREG.BRTA * maxRepeat));
 	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_TEXTURE2, GPU_PREVIOUS_BUFFER, GPU_PREVIOUS);
 	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_R);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
@@ -425,7 +425,7 @@ void video_flush(bool default_for_both) {
 	env = C3D_GetTexEnv(4);
 	C3D_TexEnvInit(env);
 	if (minRepeat == maxRepeat)
-		C3D_TexEnvColor(env, get_colour(2, tVIPREG.BRTB * maxRepeat));
+		C3D_TexEnvColor(env, get_colour(2, vb_state->tVIPREG.BRTB * maxRepeat));
 	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_TEXTURE3, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER);
 	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_G);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
@@ -433,7 +433,7 @@ void video_flush(bool default_for_both) {
 	env = C3D_GetTexEnv(5);
 	C3D_TexEnvInit(env);
 	if (minRepeat == maxRepeat)
-		C3D_TexEnvColor(env, get_colour(3, (tVIPREG.BRTA + tVIPREG.BRTB + tVIPREG.BRTC) * maxRepeat));
+		C3D_TexEnvColor(env, get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * maxRepeat));
 	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_PRIMARY_COLOR, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER);
 	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_B);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
