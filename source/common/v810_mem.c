@@ -350,7 +350,7 @@ uint64_t mem_rom_rword(WORD addr) {
 }
 
 // Memory read functions
-uint64_t mem_rbyte(WORD addr) {
+uint64_t __attribute__((weak)) mem_rbyte(WORD addr) {
     switch((addr&0x7000000)) {// switch on address
     case 0x7000000:
         return mem_rom_rbyte(addr);
@@ -367,7 +367,7 @@ uint64_t mem_rbyte(WORD addr) {
     }// End switch on address
 }
 
-uint64_t mem_rhword(WORD addr) {
+uint64_t __attribute__((weak)) mem_rhword(WORD addr) {
     addr &= ~1;
     switch((addr&0x7000000)) {// switch on address
     case 0x7000000:
@@ -385,7 +385,7 @@ uint64_t mem_rhword(WORD addr) {
     }// End switch on address
 }
 
-uint64_t mem_rword(WORD addr) {
+uint64_t __attribute__((weak)) mem_rword(WORD addr) {
     addr &= ~3;
     switch((addr&0x7000000)) {// switch on address
     case 0x7000000:
@@ -405,7 +405,7 @@ uint64_t mem_rword(WORD addr) {
 
 /////////////////////////////////////////////////////////////////////////////
 //Memory Write Func
-WORD mem_wbyte(WORD addr, WORD data) {
+WORD __attribute__((weak)) mem_wbyte(WORD addr, WORD data) {
     switch((addr&0x7000000)) {
     case 0:
         return mem_vip_wbyte(addr, data);
@@ -422,7 +422,7 @@ WORD mem_wbyte(WORD addr, WORD data) {
     }
 }
 
-WORD mem_whword(WORD addr, WORD data) {
+WORD __attribute__((weak)) mem_whword(WORD addr, WORD data) {
     addr &= ~1;
     switch((addr&0x7000000)) {
     case 0:
@@ -440,7 +440,7 @@ WORD mem_whword(WORD addr, WORD data) {
     }
 }
 
-WORD mem_wword(WORD addr, WORD data) {
+WORD __attribute__((weak)) mem_wword(WORD addr, WORD data) {
     addr &= ~3;
     switch((addr&0x7000000)) {
     case 0:
