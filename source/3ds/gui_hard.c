@@ -621,35 +621,40 @@ static void draw_logo(void) {
 }
 
 static void first_menu(int initial_button) {
-    FILE *filename_txt = fopen("romfs:/filename.txt", "r");
-    if (!filename_txt) goto no_forwarder;
-    char forwarded_path[300] = {0};
-    strcpy(forwarded_path, "romfs:/");
-    char *filename = forwarded_path + strlen(forwarded_path);
-    fread(filename, 1, sizeof(forwarded_path) - 7, filename_txt);
-    fclose(filename_txt);
-    {
-        // trim any newline characters
-        char *cr = strchr(filename, '\r');
-        if (cr) *cr = 0;
-        char *lf = strchr(filename, '\n');
-        if (lf) *lf = 0;
+    static bool attempted_forwarder = false;
+    if (!attempted_forwarder) {
+        attempted_forwarder = true;
+
+        FILE *filename_txt = fopen("romfs:/filename.txt", "r");
+        if (!filename_txt) goto no_forwarder;
+        char forwarded_path[300] = {0};
+        strcpy(forwarded_path, "romfs:/");
+        char *filename = forwarded_path + strlen(forwarded_path);
+        fread(filename, 1, sizeof(forwarded_path) - 7, filename_txt);
+        fclose(filename_txt);
+        {
+            // trim any newline characters
+            char *cr = strchr(filename, '\r');
+            if (cr) *cr = 0;
+            char *lf = strchr(filename, '\n');
+            if (lf) *lf = 0;
+        }
+        // we have our filename, bail if it doesn't exist
+        if (access(forwarded_path, F_OK)) goto no_forwarder;
+
+        strcpy(tVBOpt.ROM_PATH, forwarded_path);
+        if (access(tVBOpt.HOME_PATH, F_OK)) mkdir(tVBOpt.HOME_PATH, 0777);
+        snprintf(tVBOpt.RAM_PATH, sizeof(tVBOpt.RAM_PATH), "%s/saves/", tVBOpt.HOME_PATH);
+        if (access(tVBOpt.RAM_PATH, F_OK)) mkdir(tVBOpt.RAM_PATH, 0777);
+        strncat(tVBOpt.RAM_PATH, filename, sizeof(tVBOpt.RAM_PATH) - 1);
+        char *extension = strrchr(tVBOpt.RAM_PATH, '.');
+        if (!extension) goto no_forwarder;
+        strcpy(extension, ".ram");
+
+        // at this point we know we're a forwarder, so just load the rom
+        tVBOpt.FORWARDER = true;
+        return load_rom();
     }
-    // we have our filename, bail if it doesn't exist
-    if (access(forwarded_path, F_OK)) goto no_forwarder;
-
-    strcpy(tVBOpt.ROM_PATH, forwarded_path);
-    if (access(tVBOpt.HOME_PATH, F_OK)) mkdir(tVBOpt.HOME_PATH, 0777);
-    snprintf(tVBOpt.RAM_PATH, sizeof(tVBOpt.RAM_PATH), "%s/saves/", tVBOpt.HOME_PATH);
-    if (access(tVBOpt.RAM_PATH, F_OK)) mkdir(tVBOpt.RAM_PATH, 0777);
-    strncat(tVBOpt.RAM_PATH, filename, sizeof(tVBOpt.RAM_PATH) - 1);
-    char *extension = strrchr(tVBOpt.RAM_PATH, '.');
-    if (!extension) goto no_forwarder;
-    strcpy(extension, ".ram");
-
-    // at this point we know we're a forwarder, so just load the rom
-    tVBOpt.FORWARDER = true;
-    return load_rom();
 
     no_forwarder:
     LOOP_BEGIN(first_menu_buttons, initial_button);
