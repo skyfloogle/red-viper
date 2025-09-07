@@ -195,26 +195,28 @@ WORD mem_wbyte(WORD addr, WORD data) {
         if(!(addr & 0x40000)) {
             ((BYTE *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] = data;
 
-            if(addr < BGMAP_OFFSET) {
-                //Kill it if writes to Char Table
-                if((addr & 0x6000) == 0x6000) {
-                    for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+            if (emulating_self) {
+                if(addr < BGMAP_OFFSET) {
+                    //Kill it if writes to Char Table
+                    if((addr & 0x6000) == 0x6000) {
+                        for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+                        tDSPCACHE.ObjDataCacheInvalid=1;
+                        tDSPCACHE.CharCacheInvalid=1;
+                        tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
+                    } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
+                        tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
+                        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
+                        int y = (addr>>1) & 31;
+                        if (y < column->min) column->min = y;
+                        if (y > column->max) column->max = y;
+                    }
+                } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
+                    tDSPCACHE.ColumnTableInvalid=1;
+                }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
                     tDSPCACHE.ObjDataCacheInvalid=1;
-                    tDSPCACHE.CharCacheInvalid=1;
-                    tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
-                } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
-                    tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
-                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
-                    int y = (addr>>1) & 31;
-                    if (y < column->min) column->min = y;
-                    if (y > column->max) column->max = y;
+                } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
+                    tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
                 }
-            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
-                tDSPCACHE.ColumnTableInvalid=1;
-            }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
-                tDSPCACHE.ObjDataCacheInvalid=1;
-            } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
-                tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
             }
         } else if((addr & 0x7e000) == 0x5e000) {
             vipcreg_wbyte(addr, data);
@@ -228,11 +230,13 @@ WORD mem_wbyte(WORD addr, WORD data) {
                 ((BYTE *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007C000) + 0x00016000)))[0] = data;
             else //CHR 1536-2047
                 ((BYTE *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007E000) + 0x0001E000)))[0] = data;
-            //Invalidate, writes to Char table
-            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
-            tDSPCACHE.ObjDataCacheInvalid=1;
-            tDSPCACHE.CharCacheInvalid=1;
-            tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
+            if (emulating_self) {
+                //Invalidate, writes to Char table
+                for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+                tDSPCACHE.ObjDataCacheInvalid=1;
+                tDSPCACHE.CharCacheInvalid=1;
+                tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
+            }
         }
         return 1;
         break;
@@ -270,26 +274,28 @@ WORD mem_whword(WORD addr, WORD data) {
         addr &= 0x7fffe;
         if(!(addr & 0x40000)) {
             ((HWORD *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] = data;
-            if(addr < BGMAP_OFFSET) { //Kill it if writes to Char Table
-                //Kill it if writes to Char Table
-                if((addr & 0x6000) == 0x6000) {
-                    for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+            if (emulating_self) {
+                if(addr < BGMAP_OFFSET) { //Kill it if writes to Char Table
+                    //Kill it if writes to Char Table
+                    if((addr & 0x6000) == 0x6000) {
+                        for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+                        tDSPCACHE.ObjDataCacheInvalid=1;
+                        tDSPCACHE.CharCacheInvalid=1;
+                        tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
+                    } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
+                        tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
+                        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
+                        int y = (addr>>1) & 31;
+                        if (y < column->min) column->min = y;
+                        if (y > column->max) column->max = y;
+                    }
+                } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
+                    tDSPCACHE.ColumnTableInvalid=1;
+                }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
                     tDSPCACHE.ObjDataCacheInvalid=1;
-                    tDSPCACHE.CharCacheInvalid=1;
-                    tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
-                } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
-                    tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
-                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
-                    int y = (addr>>1) & 31;
-                    if (y < column->min) column->min = y;
-                    if (y > column->max) column->max = y;
+                } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
+                    tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
                 }
-            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
-                tDSPCACHE.ColumnTableInvalid=1;
-            }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
-                tDSPCACHE.ObjDataCacheInvalid=1;
-            } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
-                tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
             }
         } else if((addr & 0x7e000) == 0x5e000) {
             vipcreg_whword(addr, data);
@@ -303,11 +309,13 @@ WORD mem_whword(WORD addr, WORD data) {
                 ((HWORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007C000) + 0x00016000)))[0] = data;
             else //CHR 1536-2047
                 ((HWORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007E000) + 0x0001E000)))[0] = data;
-            //Invalidate, writes to Char table
-            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
-            tDSPCACHE.ObjDataCacheInvalid=1;
-            tDSPCACHE.CharCacheInvalid=1;
-            tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
+            if (emulating_self) {
+                //Invalidate, writes to Char table
+                for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+                tDSPCACHE.ObjDataCacheInvalid=1;
+                tDSPCACHE.CharCacheInvalid=1;
+                tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
+            }
         }
         return 1;
         break;
@@ -345,27 +353,29 @@ WORD mem_wword(WORD addr, WORD data) {
         addr &= 0x7fffc;
         if(!(addr & 0x40000)) {
             ((WORD *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] = data;
-            if(addr < BGMAP_OFFSET) { //Kill it if writes to Char Table
-                //Kill it if writes to Char Table
-                if((addr & 0x6000) == 0x6000) {
-                    for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+            if (emulating_self) {
+                if(addr < BGMAP_OFFSET) { //Kill it if writes to Char Table
+                    //Kill it if writes to Char Table
+                    if((addr & 0x6000) == 0x6000) {
+                        for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+                        tDSPCACHE.ObjDataCacheInvalid=1;
+                        tDSPCACHE.CharCacheInvalid=1;
+                        tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
+                    } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
+                        tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
+                        SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
+                        int y = (addr>>1) & 31;
+                        if (y < column->min) column->min = y;
+                        y++; // 32-bit write covers two tiles, so add 1 for the max calc
+                        if (y > column->max) column->max = y;
+                    }
+                } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
+                    tDSPCACHE.ColumnTableInvalid=1;
+                }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
                     tDSPCACHE.ObjDataCacheInvalid=1;
-                    tDSPCACHE.CharCacheInvalid=1;
-                    tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
-                } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
-                    tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
-                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
-                    int y = (addr>>1) & 31;
-                    if (y < column->min) column->min = y;
-                    y++; // 32-bit write covers two tiles, so add 1 for the max calc
-                    if (y > column->max) column->max = y;
+                } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
+                    tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
                 }
-            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
-                tDSPCACHE.ColumnTableInvalid=1;
-            }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
-                tDSPCACHE.ObjDataCacheInvalid=1;
-            } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
-                tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
             }
         } else if((addr & 0x7e000) == 0x5e000) {
             vipcreg_wword(addr, data);
@@ -379,11 +389,13 @@ WORD mem_wword(WORD addr, WORD data) {
                 ((WORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007C000) + 0x00016000)))[0] = data;
             else      //CHR 1536-2047
                 ((WORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007E000) + 0x0001E000)))[0] = data;
-            //Invalidate, writes to Char table
-            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
-            tDSPCACHE.ObjDataCacheInvalid=1;
-            tDSPCACHE.CharCacheInvalid=1;
-            tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
+            if (emulating_self) {
+                //Invalidate, writes to Char table
+                for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+                tDSPCACHE.ObjDataCacheInvalid=1;
+                tDSPCACHE.CharCacheInvalid=1;
+                tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
+            }
         }
         return 2;
         break;
@@ -765,7 +777,7 @@ WORD vipcreg_whword(WORD addr, HWORD data) {
         //if (debuglog) dbg_addtrc("\nWrite  HWORD VIP BRTA [%08x]:%04x ",addr,data);
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP BRTA [%08x]:%04x ",addr,data);
         if ((data & 0xFF) != vb_state->tVIPREG.BRTA) {
-            tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
+            if (emulating_self) tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
             vb_state->tVIPREG.BRTA = data & 0xFF;
         }
         break;
@@ -773,7 +785,7 @@ WORD vipcreg_whword(WORD addr, HWORD data) {
         //if (debuglog) dbg_addtrc("\nWrite  HWORD VIP BRTB [%08x]:%04x ",addr,data);
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP BRTB [%08x]:%04x ",addr,data);
         if ((data & 0xFF) != vb_state->tVIPREG.BRTB) {
-            tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
+            if (emulating_self) tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
             vb_state->tVIPREG.BRTB = data & 0xFF;
         }
         break;
@@ -781,7 +793,7 @@ WORD vipcreg_whword(WORD addr, HWORD data) {
         //if (debuglog) dbg_addtrc("\nWrite  HWORD VIP BRTC [%08x]:%04x ",addr,data);
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP BRTC [%08x]:%04x ",addr,data);
         if ((data & 0xFF) != vb_state->tVIPREG.BRTC) {
-            tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
+            if (emulating_self) tDSPCACHE.BrtPALMod = 1;  //Invalidate Brigtness Pallet Cache
             vb_state->tVIPREG.BRTC = data & 0xFF;
         }
         break;
@@ -815,76 +827,94 @@ WORD vipcreg_whword(WORD addr, HWORD data) {
         break;
     case 0x0005F848:    //SPT0   // Pointers to the 4 OBJ groupes in OBJ Mem
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP SPT0 [%08x]:%04x ",addr,data);
-        tDSPCACHE.ObjDataCacheInvalid=1;  //Invalidate Char Cache
+        if (emulating_self) tDSPCACHE.ObjDataCacheInvalid=1;  //Invalidate Char Cache
         vb_state->tVIPREG.SPT[0] = data;
         break;
     case 0x0005F84A:    //SPT1
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP SPT1 [%08x]:%04x ",addr,data);
-        tDSPCACHE.ObjDataCacheInvalid=1;  //Invalidate Char Cache
+        if (emulating_self) tDSPCACHE.ObjDataCacheInvalid=1;  //Invalidate Char Cache
         vb_state->tVIPREG.SPT[1] = data;
         break;
     case 0x0005F84C:    //SPT2
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP SPT2 [%08x]:%04x ",addr,data);
-        tDSPCACHE.ObjDataCacheInvalid=1;  //Invalidate Char Cache
+        if (emulating_self) tDSPCACHE.ObjDataCacheInvalid=1;  //Invalidate Char Cache
         vb_state->tVIPREG.SPT[2] = data;
         break;
     case 0x0005F84E:    //SPT3
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP SPT3 [%08x]:%04x ",addr,data);
-        tDSPCACHE.ObjDataCacheInvalid=1;  //Invalidate Char Cache
+        if (emulating_self) tDSPCACHE.ObjDataCacheInvalid=1;  //Invalidate Char Cache
         vb_state->tVIPREG.SPT[3] = data;
         break;
     case 0x0005F860:    //GPLT0  //Set the current color palet for the BGMap's
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP GPLT0 [%08x]:%04x ",addr,data);
-        tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
-        for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+        if (emulating_self) {
+            tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
+            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+        }
         vb_state->tVIPREG.GPLT[0] = data;
         break;
     case 0x0005F862:    //GPLT1
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP GPLT1 [%08x]:%04x ",addr,data);
-        tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
-        for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+        if (emulating_self) {
+            tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
+            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+        }
         vb_state->tVIPREG.GPLT[1] = data;
         break;
     case 0x0005F864:    //GPLT2
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP GPLT2 [%08x]:%04x ",addr,data);
-        tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
-        for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+        if (emulating_self) {
+            tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
+            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+        }
         vb_state->tVIPREG.GPLT[2] = data;
         break;
     case 0x0005F866:    //GPLT3
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP GPLT3 [%08x]:%04x ",addr,data);
-        tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
-        for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+        if (emulating_self) {
+            tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
+            for(i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+        }
         vb_state->tVIPREG.GPLT[3] = data;
         break;
     case 0x0005F868:    //JPLT0  //Set the current color palet for the OBJ's
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP JPLT0 [%08x]:%04x ",addr,data);
-        tDSPCACHE.ObjPALMod = 1;  //Invalidate Pallet Cache
-        tDSPCACHE.ObjDataCacheInvalid=1;
+        if (emulating_self) {
+            tDSPCACHE.ObjPALMod = 1;  //Invalidate Pallet Cache
+            tDSPCACHE.ObjDataCacheInvalid=1;
+        }
         vb_state->tVIPREG.JPLT[0] = data;
         break;
     case 0x0005F86A:    //JPLT1
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP JPLT1 [%08x]:%04x ",addr,data);
-        tDSPCACHE.ObjPALMod = 1;  //Invalidate Pallet Cache
-        tDSPCACHE.ObjDataCacheInvalid=1;
+        if (emulating_self) {
+            tDSPCACHE.ObjPALMod = 1;  //Invalidate Pallet Cache
+            tDSPCACHE.ObjDataCacheInvalid=1;
+        }
         vb_state->tVIPREG.JPLT[1] = data;
         break;
     case 0x0005F86C:    //JPLT2
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP JPLT2 [%08x]:%04x ",addr,data);
-        tDSPCACHE.ObjPALMod = 1;  //Invalidate Pallet Cache
-        tDSPCACHE.ObjDataCacheInvalid=1;
+        if (emulating_self) {
+            tDSPCACHE.ObjPALMod = 1;  //Invalidate Pallet Cache
+            tDSPCACHE.ObjDataCacheInvalid=1;
+        }
         vb_state->tVIPREG.JPLT[2] = data;
         break;
     case 0x0005F86E:    //JPLT3
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP JPLT3 [%08x]:%04x ",addr,data);
-        tDSPCACHE.ObjPALMod = 1;  //Invalidate Pallet Cache
-        tDSPCACHE.ObjDataCacheInvalid=1;
+        if (emulating_self) {
+            tDSPCACHE.ObjPALMod = 1;  //Invalidate Pallet Cache
+            tDSPCACHE.ObjDataCacheInvalid=1;
+        }
         vb_state->tVIPREG.JPLT[3] = data;
         break;
     case 0x0005F870:    //BKCOL
         //~ dtprintf(1,ferr,"\nWrite  HWORD VIP BKCOL [%08x]:%04x ",addr,data);
-        tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
-        tDSPCACHE.ObjPALMod = 1;
+        if (emulating_self) {
+            tDSPCACHE.BgmPALMod = 1;  //Invalidate Pallet Cache
+            tDSPCACHE.ObjPALMod = 1;
+        }
         vb_state->tVIPREG.BKCOL = data & 3;
         break;
     default:

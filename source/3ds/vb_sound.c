@@ -230,6 +230,7 @@ void sound_update(uint32_t cycles) {
 
 // technically always u8 but gotta pass u16 because otherwise optimizations break everything
 void sound_write(int addr, uint16_t data) {
+    if (!emulating_self) return;
     if (addr & 1) return;
     addr &= ~2;
     sound_state.modulation_lock = 0;

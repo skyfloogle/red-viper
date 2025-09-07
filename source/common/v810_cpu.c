@@ -32,6 +32,12 @@
 #define POS(n) ((~(n)) >> 31)
 
 VB_STATE* vb_state;
+VB_STATE vb_players[2];
+
+bool is_multiplayer = false;
+bool emulating_self = true;
+int my_player_id = 0;
+int emulated_player_id = 0;
 
 V810_MEMORYFETCH V810_ROM1;
 
@@ -50,7 +56,8 @@ void v810_init(void) {
     char ram_name[32];
     unsigned int ram_size = 0;
 
-    vb_state = calloc(1, sizeof(*vb_state));
+    vb_state = &vb_players[0];
+    memset(vb_state, 0, sizeof(*vb_state));
 
     V810_ROM1.pmemory = malloc(MAX_ROM_SIZE);
     // no backup because rom isn't volatile
@@ -60,45 +67,44 @@ void v810_init(void) {
     V810_ROM1.off = (size_t)V810_ROM1.pmemory - V810_ROM1.lowaddr;
     // Offset + Lowaddr = pmemory
 
-    // Initialize our ram1 tables....
-    vb_state->V810_DISPLAY_RAM.lowaddr  = 0x00000000;
-    vb_state->V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
-    vb_state->V810_DISPLAY_RAM.size     = 0x00040000;
-    // Alocate space for it in memory
-    vb_state->V810_DISPLAY_RAM.pmemory = (unsigned char *)calloc(vb_state->V810_DISPLAY_RAM.size, sizeof(BYTE));
-    vb_state->V810_DISPLAY_RAM.pbackup = (unsigned char *)calloc(vb_state->V810_DISPLAY_RAM.size, sizeof(BYTE));
-    // Offset + Lowaddr = pmemory
-    vb_state->V810_DISPLAY_RAM.off = (size_t)vb_state->V810_DISPLAY_RAM.pmemory - vb_state->V810_DISPLAY_RAM.lowaddr;
+    for (int i = 0; i < 2; i++) {
+        // Initialize our ram1 tables....
+        vb_players[i].V810_DISPLAY_RAM.lowaddr  = 0x00000000;
+        vb_players[i].V810_DISPLAY_RAM.highaddr = 0x0003FFFF; //0x0005FFFF; //97FFF
+        vb_players[i].V810_DISPLAY_RAM.size     = 0x00040000;
+        // Alocate space for it in memory
+        vb_players[i].V810_DISPLAY_RAM.pmemory = (unsigned char *)calloc(vb_players[i].V810_DISPLAY_RAM.size, sizeof(BYTE));
+        // Offset + Lowaddr = pmemory
+        vb_players[i].V810_DISPLAY_RAM.off = (size_t)vb_players[i].V810_DISPLAY_RAM.pmemory - vb_players[i].V810_DISPLAY_RAM.lowaddr;
 
-    // Initialize our SoundRam tables....
-    vb_state->V810_SOUND_RAM.lowaddr  = 0x01000000;
-    vb_state->V810_SOUND_RAM.highaddr = 0x010007FF; //0x010002FF
-    vb_state->V810_SOUND_RAM.size     = 0x00000800;
-    // Alocate space for it in memory
-    vb_state->V810_SOUND_RAM.pmemory = (unsigned char *)calloc(vb_state->V810_SOUND_RAM.size, sizeof(BYTE));
-    vb_state->V810_SOUND_RAM.pbackup = (unsigned char *)calloc(vb_state->V810_SOUND_RAM.size, sizeof(BYTE));
-    // Offset + Lowaddr = pmemory
-    vb_state->V810_SOUND_RAM.off = (size_t)vb_state->V810_SOUND_RAM.pmemory - vb_state->V810_SOUND_RAM.lowaddr;
 
-    // Initialize our VBRam tables....
-    vb_state->V810_VB_RAM.lowaddr  = 0x05000000;
-    vb_state->V810_VB_RAM.highaddr = 0x0500FFFF;
-    vb_state->V810_VB_RAM.size     = 0x00010000;
-    // Alocate space for it in memory
-    vb_state->V810_VB_RAM.pmemory = (unsigned char *)calloc(vb_state->V810_VB_RAM.size, sizeof(BYTE));
-    vb_state->V810_VB_RAM.pbackup = (unsigned char *)calloc(vb_state->V810_VB_RAM.size, sizeof(BYTE));
-    // Offset + Lowaddr = pmemory
-    vb_state->V810_VB_RAM.off = (size_t)vb_state->V810_VB_RAM.pmemory - vb_state->V810_VB_RAM.lowaddr;
+        // Initialize our SoundRam tables....
+        vb_players[i].V810_SOUND_RAM.lowaddr  = 0x01000000;
+        vb_players[i].V810_SOUND_RAM.highaddr = 0x010007FF; //0x010002FF
+        vb_players[i].V810_SOUND_RAM.size     = 0x00000800;
+        // Alocate space for it in memory
+        vb_players[i].V810_SOUND_RAM.pmemory = (unsigned char *)calloc(vb_players[i].V810_SOUND_RAM.size, sizeof(BYTE));
+        // Offset + Lowaddr = pmemory
+        vb_players[i].V810_SOUND_RAM.off = (size_t)vb_players[i].V810_SOUND_RAM.pmemory - vb_players[i].V810_SOUND_RAM.lowaddr;
 
-    // Initialize our GameRam tables.... (Cartrige Ram)
-    vb_state->V810_GAME_RAM.lowaddr  = 0x06000000;
-    vb_state->V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
-    vb_state->V810_GAME_RAM.size     = 0x00004000;
-    // Alocate space for it in memory
-    vb_state->V810_GAME_RAM.pmemory = (unsigned char *)calloc(vb_state->V810_GAME_RAM.size, sizeof(BYTE));
-    vb_state->V810_GAME_RAM.pbackup = (unsigned char *)calloc(vb_state->V810_GAME_RAM.size, sizeof(BYTE));
-    // Offset + Lowaddr = pmemory
-    vb_state->V810_GAME_RAM.off = (size_t)vb_state->V810_GAME_RAM.pmemory - vb_state->V810_GAME_RAM.lowaddr;
+        // Initialize our VBRam tables....
+        vb_players[i].V810_VB_RAM.lowaddr  = 0x05000000;
+        vb_players[i].V810_VB_RAM.highaddr = 0x0500FFFF;
+        vb_players[i].V810_VB_RAM.size     = 0x00010000;
+        // Alocate space for it in memory
+        vb_players[i].V810_VB_RAM.pmemory = (unsigned char *)calloc(vb_players[i].V810_VB_RAM.size, sizeof(BYTE));
+        // Offset + Lowaddr = pmemory
+        vb_players[i].V810_VB_RAM.off = (size_t)vb_players[i].V810_VB_RAM.pmemory - vb_players[i].V810_VB_RAM.lowaddr;
+
+        // Initialize our GameRam tables.... (Cartrige Ram)
+        vb_players[i].V810_GAME_RAM.lowaddr  = 0x06000000;
+        vb_players[i].V810_GAME_RAM.highaddr = 0x06003FFF; //0x06007FFF; //(8K, not 64k!)
+        vb_players[i].V810_GAME_RAM.size     = 0x00004000;
+        // Alocate space for it in memory
+        vb_players[i].V810_GAME_RAM.pmemory = (unsigned char *)calloc(vb_players[i].V810_GAME_RAM.size, sizeof(BYTE));
+        // Offset + Lowaddr = pmemory
+        vb_players[i].V810_GAME_RAM.off = (size_t)vb_players[i].V810_GAME_RAM.pmemory - vb_players[i].V810_GAME_RAM.lowaddr;
+    }
 }
 
 static bool load_is_zip;
@@ -274,11 +280,12 @@ void v810_load_cancel(void) {
 
 void v810_exit(void) {
     free(V810_ROM1.pmemory);
-    free(vb_state->V810_DISPLAY_RAM.pmemory);
-    free(vb_state->V810_SOUND_RAM.pmemory);
-    free(vb_state->V810_VB_RAM.pmemory);
-    free(vb_state->V810_GAME_RAM.pmemory);
-    free(vb_state);
+    for (int i = 0; i < 2; i++) {
+        free(vb_players[i].V810_DISPLAY_RAM.pmemory);
+        free(vb_players[i].V810_SOUND_RAM.pmemory);
+        free(vb_players[i].V810_VB_RAM.pmemory);
+        free(vb_players[i].V810_GAME_RAM.pmemory);
+    }
 }
 
 // Reinitialize the defaults in the CPU

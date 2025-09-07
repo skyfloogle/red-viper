@@ -407,11 +407,11 @@ int emulation_lstate(int state) {
         if (new_soundstate.channels[i].sample_pos >= 32) goto bail;
     }
 
-    //Load the RAM
+    //Load the RAM (into player 2 at first)
     #define READ_MEMORY(area) \
         FREAD(&size, 4, 1, state_file); \
         if (size != vb_state->area.highaddr + 1 - vb_state->area.lowaddr) goto bail; \
-        FREAD(vb_state->area.pbackup, 1, size, state_file);
+        FREAD(vb_players[1].area.pmemory, 1, size, state_file);
     READ_MEMORY(V810_DISPLAY_RAM);
     READ_MEMORY(V810_SOUND_RAM);
     READ_MEMORY(V810_VB_RAM);
@@ -424,16 +424,16 @@ int emulation_lstate(int state) {
 
     fclose(state_file);
 
-    // Everything was loaded safely, now apply
+    // Everything was loaded safely, now apply (player 2 to player 1)
     memcpy(&vb_state->v810_state, &new_state, sizeof(new_state));
     memcpy(&vb_state->tVIPREG, &new_vipreg, sizeof(new_vipreg));
     memcpy(&vb_state->tHReg, &new_hreg, sizeof(new_hreg));
     memcpy(&sound_state, &new_soundstate, sizeof(new_soundstate));
     BYTE *tmp;
     #define APPLY_MEMORY(area) \
-        tmp = vb_state->area.pmemory; \
-        vb_state->area.pmemory = vb_state->area.pbackup; \
-        vb_state->area.pbackup = tmp; \
+        tmp = vb_players[0].area.pmemory; \
+        vb_players[0].area.pmemory = vb_players[1].area.pmemory; \
+        vb_players[1].area.pmemory = tmp; \
         vb_state->area.off = (size_t)vb_state->area.pmemory - vb_state->area.lowaddr;
     APPLY_MEMORY(V810_DISPLAY_RAM);
     APPLY_MEMORY(V810_SOUND_RAM);

@@ -68,6 +68,12 @@ typedef struct {
 
 extern VB_STATE *vb_state;
 
+extern VB_STATE vb_players[2];
+extern bool is_multiplayer;
+extern bool emulating_self;
+extern int my_player_id;
+extern int emulated_player_id;
+
 extern V810_MEMORYFETCH V810_ROM1;
 
 extern int is_sram; //Flag if writes to sram...
