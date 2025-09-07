@@ -138,12 +138,14 @@ int main(int argc, char* argv[]) {
                     case SDL_SCANCODE_ESCAPE: return 0;
                     default: flag = 0; break;
                 }
-                if (e.type == SDL_KEYDOWN) {
-                    vb_state->tHReg.SLB |= flag & 0xff;
-                    vb_state->tHReg.SHB |= flag >> 8;
-                } else {
-                    vb_state->tHReg.SLB &= ~(flag & 0xff);
-                    vb_state->tHReg.SHB &= ~(flag >> 8);
+                for (int i = 0; i < 2; i++) {
+                    if (e.type == SDL_KEYDOWN) {
+                        vb_players[i].tHReg.SLB |= flag & 0xff;
+                        vb_players[i].tHReg.SHB |= flag >> 8;
+                    } else {
+                        vb_players[i].tHReg.SLB &= ~(flag & 0xff);
+                        vb_players[i].tHReg.SHB &= ~(flag >> 8);
+                    }
                 }
             }
         }

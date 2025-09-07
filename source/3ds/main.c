@@ -121,8 +121,6 @@ int main(void) {
                 drc_reset();
                 clearCache();
                 frame = 0;
-                vb_state->tVIPREG.tFrame = 0;
-                vb_state->tVIPREG.tDisplayedFB = 0;
             }
             if (guiop & AKILL) {
                 clearCache();
@@ -220,8 +218,11 @@ int main(void) {
 
         // read inputs once per frame
         HWORD inputs = V810_RControll(false);
-        vb_state->tHReg.SLB =(BYTE)(inputs&0xFF);
-        vb_state->tHReg.SHB =(BYTE)((inputs>>8)&0xFF);
+        // TODO don't just duplicate
+        for (int i = 0; i < 2; i++) {
+            vb_players[i].tHReg.SLB = inputs;
+            vb_players[i].tHReg.SHB = inputs >> 8;
+        }
 
         replay_update(inputs);
 
