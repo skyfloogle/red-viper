@@ -58,7 +58,6 @@ typedef struct {
 // VB state
 typedef struct {
     cpu_state v810_state;
-    V810_MEMORYFETCH V810_ROM1;
     V810_MEMORYFETCH V810_DISPLAY_RAM;
     V810_MEMORYFETCH V810_SOUND_RAM;
     V810_MEMORYFETCH V810_VB_RAM;
@@ -68,6 +67,8 @@ typedef struct {
 } VB_STATE;
 
 extern VB_STATE *vb_state;
+
+extern V810_MEMORYFETCH V810_ROM1;
 
 extern int is_sram; //Flag if writes to sram...
 

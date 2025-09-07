@@ -13,7 +13,7 @@ uint64_t mem_rbyte(WORD addr) {
     switch((addr&0x7000000)) {// switch on address
     case 0x7000000:
         wait = (uint64_t)(2 - (vb_state->tHReg.WCR & 1)) << 32;
-        return (WORD)((SBYTE *)(vb_state->V810_ROM1.off + (addr & vb_state->V810_ROM1.highaddr)))[0] | wait;
+        return (WORD)((SBYTE *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
         break;
     case 0:
         addr &= 0x7ffff;
@@ -72,7 +72,7 @@ uint64_t mem_rhword(WORD addr) {
     switch((addr&0x7000000)) {
     case 0x7000000:
         wait = (uint64_t)(2 - (vb_state->tHReg.WCR & 1)) << 32;
-        return (WORD)((SHWORD *)(vb_state->V810_ROM1.off + (addr & vb_state->V810_ROM1.highaddr)))[0] | wait;
+        return (WORD)((SHWORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
         break;
     case 0:
         addr &= 0x7fffe;
@@ -131,7 +131,7 @@ uint64_t mem_rword(WORD addr) {
     switch((addr&0x7000000)) {
     case 0x7000000:
         wait = (uint64_t)(2LL - (vb_state->tHReg.WCR & 1)) << 33;
-        return ((WORD *)(vb_state->V810_ROM1.off + (addr & vb_state->V810_ROM1.highaddr)))[0] | wait;
+        return ((WORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
         break;
     case 0:
         addr &= 0x7fffc;

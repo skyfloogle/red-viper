@@ -33,6 +33,8 @@
 
 VB_STATE* vb_state;
 
+V810_MEMORYFETCH V810_ROM1;
+
 ////////////////////////////////////////////////////////////
 // Globals
 
@@ -50,12 +52,12 @@ void v810_init(void) {
 
     vb_state = calloc(1, sizeof(*vb_state));
 
-    vb_state->V810_ROM1.pmemory = malloc(MAX_ROM_SIZE);
+    V810_ROM1.pmemory = malloc(MAX_ROM_SIZE);
     // no backup because rom isn't volatile
 
     // Initialize our rom tables.... (USA)
-    vb_state->V810_ROM1.lowaddr  = 0x07000000;
-    vb_state->V810_ROM1.off = (size_t)vb_state->V810_ROM1.pmemory - vb_state->V810_ROM1.lowaddr;
+    V810_ROM1.lowaddr  = 0x07000000;
+    V810_ROM1.off = (size_t)V810_ROM1.pmemory - V810_ROM1.lowaddr;
     // Offset + Lowaddr = pmemory
 
     // Initialize our ram1 tables....
@@ -163,8 +165,8 @@ int v810_load_init(void) {
         }
     }
     ok:
-    vb_state->V810_ROM1.size = rom_size;
-    vb_state->V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
+    V810_ROM1.size = rom_size;
+    V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
 
     load_sram = fopen(tVBOpt.RAM_PATH, "rb");
     if (load_sram) {
@@ -184,14 +186,14 @@ int v810_load_init(void) {
 
 int v810_load_step(void) {
     int chunk_size = 0x10000;
-    int rom_size = vb_state->V810_ROM1.highaddr + 1 - vb_state->V810_ROM1.lowaddr;
+    int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
     int ram_size = load_sram_size;
     int all_size = rom_size + ram_size;
     if (load_pos < rom_size) {
         if (chunk_size > rom_size - load_pos)
             chunk_size = rom_size - load_pos;
         if (load_is_zip) {
-            int ret = unzReadCurrentFile(load_unz, vb_state->V810_ROM1.pmemory + load_pos, chunk_size);
+            int ret = unzReadCurrentFile(load_unz, V810_ROM1.pmemory + load_pos, chunk_size);
             if (ret < 0) {
                 unzCloseCurrentFile(load_unz);
                 unzClose(load_unz);
@@ -201,7 +203,7 @@ int v810_load_step(void) {
             load_pos += ret;
         } else {
             size_t bytes_read;
-            if (!(bytes_read = fread(vb_state->V810_ROM1.pmemory + load_pos, 1, chunk_size, load_file))) {
+            if (!(bytes_read = fread(V810_ROM1.pmemory + load_pos, 1, chunk_size, load_file))) {
                 fclose(load_file);
                 if (load_sram) fclose(load_sram);
                 return -ENOSPC;
@@ -242,7 +244,7 @@ int v810_load_step(void) {
         // CRC32 Calculations
         gen_table();
         tVBOpt.CRC32 = get_crc(rom_size);
-        memcpy(tVBOpt.GAME_ID, (char*)(vb_state->V810_ROM1.off + (vb_state->V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
+        memcpy(tVBOpt.GAME_ID, (char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
 
         // Apply game patches
         apply_patches();
@@ -256,7 +258,7 @@ int v810_load_step(void) {
 
 void v810_load_cancel(void) {
     is_sram = false;
-    int rom_size = vb_state->V810_ROM1.highaddr + 1 - vb_state->V810_ROM1.lowaddr;
+    int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
     int all_size = rom_size + load_sram_size;
     if (load_pos < rom_size) {
         if (load_is_zip) {
@@ -271,7 +273,7 @@ void v810_load_cancel(void) {
 }
 
 void v810_exit(void) {
-    free(vb_state->V810_ROM1.pmemory);
+    free(V810_ROM1.pmemory);
     free(vb_state->V810_DISPLAY_RAM.pmemory);
     free(vb_state->V810_SOUND_RAM.pmemory);
     free(vb_state->V810_VB_RAM.pmemory);

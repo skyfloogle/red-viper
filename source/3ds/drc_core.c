@@ -112,7 +112,7 @@ static bool is_byte_getter(WORD start_PC) {
         0x46, 0xc1, 0x00, 0x00, // ld.b [r6], r10
         0x1f, 0x18,             // jmp  [lp] 
     };
-    BYTE* dest = (BYTE*)vb_state->V810_ROM1.off + start_PC;
+    BYTE* dest = (BYTE*)V810_ROM1.off + start_PC;
     return !memcmp(dest, byte_getter_func, sizeof(byte_getter_func));
 }
 
@@ -126,28 +126,28 @@ static bool is_hword_getter(WORD start_PC) {
         0x00, 0xa8, 0x04, 0x00, // jr   +4
         0x1f, 0x18,             // jmp  [lp]
     };
-    BYTE* dest = (BYTE*)vb_state->V810_ROM1.off + start_PC;
+    BYTE* dest = (BYTE*)V810_ROM1.off + start_PC;
     return !memcmp(dest, hword_getter_func, sizeof(hword_getter_func))
         || !memcmp(dest, hword_getter_jr_func, sizeof(hword_getter_jr_func));
 }
 
 static void drc_markCode(WORD PC) {
-    rom_data_code_map[(((PC & vb_state->V810_ROM1.highaddr) >> 1) & (BLOCK_MAP_COUNT - 1)) >> 3] |= 1 << ((PC >> 1) & 7);
+    rom_data_code_map[(((PC & V810_ROM1.highaddr) >> 1) & (BLOCK_MAP_COUNT - 1)) >> 3] |= 1 << ((PC >> 1) & 7);
 }
 
 static void drc_markData(WORD PC) {
-    rom_data_code_map[(((PC & vb_state->V810_ROM1.highaddr) >> 1) & (BLOCK_MAP_COUNT - 1)) >> 3] &= ~(1 << ((PC >> 1) & 7));
+    rom_data_code_map[(((PC & V810_ROM1.highaddr) >> 1) & (BLOCK_MAP_COUNT - 1)) >> 3] &= ~(1 << ((PC >> 1) & 7));
 }
 
 static bool drc_isCode(WORD PC) {
-    return !!(rom_data_code_map[(((PC & vb_state->V810_ROM1.highaddr) >> 1) & (BLOCK_MAP_COUNT - 1)) >> 3] & (1 << ((PC >> 1) & 7)));
+    return !!(rom_data_code_map[(((PC & V810_ROM1.highaddr) >> 1) & (BLOCK_MAP_COUNT - 1)) >> 3] & (1 << ((PC >> 1) & 7)));
 }
 
 // Finds the starting and ending address of a V810 code block. It stops after a
 // jmp, jal, reti or a long jr unless it branches further.
 // All code accessible from the entry point is accounted for.
 static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
-    WORD start_PC = *p_start_PC & vb_state->V810_ROM1.highaddr;
+    WORD start_PC = *p_start_PC & V810_ROM1.highaddr;
     WORD end_PC = start_PC;
     WORD cur_PC;
     WORD branch_addr;
@@ -180,11 +180,11 @@ static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
         if (cur_PC > end_PC)
             end_PC = cur_PC;
 
-        cur_PC = (cur_PC & vb_state->V810_ROM1.highaddr);
-        lowB   = ((BYTE *)(vb_state->V810_ROM1.off + cur_PC))[0];
-        highB  = ((BYTE *)(vb_state->V810_ROM1.off + cur_PC))[1];
-        lowB2  = ((BYTE *)(vb_state->V810_ROM1.off + cur_PC))[2];
-        highB2 = ((BYTE *)(vb_state->V810_ROM1.off + cur_PC))[3];
+        cur_PC = (cur_PC & V810_ROM1.highaddr);
+        lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
+        highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
+        lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
+        highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
 
         if ((highB & 0xE0) == 0x80)
             opcode = highB>>1;
@@ -446,11 +446,11 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
     WORD entry_PC = vb_state->v810_state.PC;
 
     for (; (i < MAX_V810_INST) && (cur_PC <= end_PC); i++) {
-        cur_PC = (cur_PC & vb_state->V810_ROM1.highaddr);
-        lowB   = ((BYTE *)(vb_state->V810_ROM1.off + cur_PC))[0];
-        highB  = ((BYTE *)(vb_state->V810_ROM1.off + cur_PC))[1];
-        lowB2  = ((BYTE *)(vb_state->V810_ROM1.off + cur_PC))[2];
-        highB2 = ((BYTE *)(vb_state->V810_ROM1.off + cur_PC))[3];
+        cur_PC = (cur_PC & V810_ROM1.highaddr);
+        lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
+        highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
+        lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
+        highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
 
         inst_cache[i].PC = cur_PC;
         inst_cache[i].save_flags = false;
@@ -2054,7 +2054,7 @@ static int drc_translateBlock(void) {
             } else if (cycles != 0 && (inst_cache[i + 1].is_branch_target || inst_cache[i + 1].opcode == V810_OP_BSTR)) {
                 // branch target or bitstring instruction coming up
                 ADDCYCLES();
-            } else if (inst_cache[i + 1].PC > (0xfffffe00 & vb_state->V810_ROM1.highaddr) && !(inst_cache[i + 1].PC & 0xf)) {
+            } else if (inst_cache[i + 1].PC > (0xfffffe00 & V810_ROM1.highaddr) && !(inst_cache[i + 1].PC & 0xf)) {
                 // potential interrupt handler coming up
                 ADDCYCLES();
             }
@@ -2150,7 +2150,7 @@ static WORD* drc_getEntry(WORD loc, exec_block **p_block) {
     unsigned int map_pos;
     exec_block *block;
 
-    map_pos = ((loc&vb_state->V810_ROM1.highaddr)>>1)&(BLOCK_MAP_COUNT-1);
+    map_pos = ((loc&V810_ROM1.highaddr)>>1)&(BLOCK_MAP_COUNT-1);
     block = block_ptr_start + rom_block_map[map_pos];
     if (block == block_ptr_start || block->free) return cache_start;
     if (p_block)
@@ -2161,7 +2161,7 @@ static WORD* drc_getEntry(WORD loc, exec_block **p_block) {
 // Sets a new entrypoint for the V810 instruction in location loc and the
 // corresponding block
 void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
-    unsigned int map_pos = ((loc&vb_state->V810_ROM1.highaddr)>>1)&(BLOCK_MAP_COUNT-1);
+    unsigned int map_pos = ((loc&V810_ROM1.highaddr)>>1)&(BLOCK_MAP_COUNT-1);
     rom_block_map[map_pos] = block - block_ptr_start;
     rom_entry_map[map_pos] = entry - block->phys_offset;
 }
@@ -2223,7 +2223,7 @@ int drc_run(void) {
     WORD* entrypoint;
     WORD entry_PC;
 
-    vb_state->v810_state.PC &= vb_state->V810_ROM1.highaddr;
+    vb_state->v810_state.PC &= V810_ROM1.highaddr;
 
     // set up arm flags
     {
@@ -2275,10 +2275,10 @@ int drc_run(void) {
 
         drc_executeBlock(entrypoint, cur_block);
 
-        vb_state->v810_state.PC &= vb_state->V810_ROM1.highaddr;
+        vb_state->v810_state.PC &= V810_ROM1.highaddr;
 
         dprintf(4, "[DRC]: end - 0x%lx\n", vb_state->v810_state.PC);
-        if (unlikely(vb_state->v810_state.PC - vb_state->V810_ROM1.lowaddr >= vb_state->V810_ROM1.size)) {
+        if (unlikely(vb_state->v810_state.PC - V810_ROM1.lowaddr >= V810_ROM1.size)) {
             dprintf(0, "Last entry: 0x%lx\n", entry_PC);
             //return DRC_ERR_BAD_PC;
             break;
