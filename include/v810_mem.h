@@ -83,44 +83,47 @@ extern V810_MEMORYFETCH V810_ROM1;
 
 extern int is_sram; //Flag if writes to sram...
 
+// Memory functions
+uint64_t mem_nop(void);
+
+uint64_t mem_vip_rbyte(WORD addr);
+uint64_t mem_vip_rhword(WORD addr);
+uint64_t mem_vip_rword(WORD addr);
+WORD mem_vip_wbyte(WORD addr, WORD data);
+WORD mem_vip_whword(WORD addr, WORD data);
+WORD mem_vip_wword(WORD addr, WORD data);
+
+WORD mem_vsu_write(WORD addr, WORD data);
+
+uint64_t mem_hw_read(WORD addr);
+WORD mem_hw_write(WORD addr, WORD data);
+
+uint64_t mem_wram_rbyte(WORD addr);
+uint64_t mem_wram_rhword(WORD addr);
+uint64_t mem_wram_rword(WORD addr);
+WORD mem_wram_wbyte(WORD addr, WORD data);
+WORD mem_wram_whword(WORD addr, WORD data);
+WORD mem_wram_wword(WORD addr, WORD data);
+
+uint64_t mem_sram_rbyte(WORD addr);
+uint64_t mem_sram_rhword(WORD addr);
+uint64_t mem_sram_rword(WORD addr);
+WORD mem_sram_wbyte(WORD addr, WORD data);
+WORD mem_sram_whword(WORD addr, WORD data);
+WORD mem_sram_wword(WORD addr, WORD data);
+
+uint64_t mem_rom_rbyte(WORD addr);
+uint64_t mem_rom_rhword(WORD addr);
+uint64_t mem_rom_rword(WORD addr);
+
 // Memory read functions
-uint64_t  mem_rbyte(WORD addr);
+uint64_t mem_rbyte(WORD addr);
 uint64_t mem_rhword(WORD addr);
-uint64_t   mem_rword(WORD addr);
+uint64_t mem_rword(WORD addr);
 
 // Memory write functions
 WORD mem_wbyte(WORD addr, WORD data);
 WORD mem_whword(WORD addr, WORD data);
 WORD mem_wword(WORD addr, WORD data);
-
-// Hardware control register read functions
-SBYTE hcreg_rbyte(WORD addr);
-HWORD hcreg_rhword(WORD addr);
-WORD  hcreg_rword(WORD addr);
-
-// Hardware control register write functions
-WORD hcreg_wbyte(WORD addr, BYTE data);
-WORD hcreg_whword(WORD addr, HWORD data);
-WORD hcreg_wword(WORD addr, WORD data);
-
-// Port read functions
-BYTE  port_rbyte(WORD addr);
-HWORD port_rhword(WORD addr);
-WORD  port_rword(WORD addr);
-
-// Port write functions
-void port_wbyte(WORD addr, BYTE data);
-void port_whword(WORD addr, HWORD data);
-void port_wword(WORD addr, WORD data);
-
-// Register I/O read functions
-SBYTE vipcreg_rbyte(WORD addr);
-HWORD vipcreg_rhword(WORD addr);
-WORD  vipcreg_rword(WORD addr);
-
-// Register I/O write functions
-WORD vipcreg_wbyte(WORD addr, BYTE data);
-WORD vipcreg_whword(WORD addr, HWORD data);
-WORD vipcreg_wword(WORD addr, WORD data);
 
 #endif
