@@ -28,9 +28,9 @@ int interpreter_run(void) {
     WORD last_PC = PC;
     WORD cycles = v810_state->cycles;
     BYTE last_opcode = 0;
-    WORD target = 0;
+    WORD target = cycles;
     do {
-        if (cycles >= target) {
+        if ((SWORD)(target - cycles) <= 0) {
             v810_state->PC = PC;
             if (serviceInt(cycles, PC) && PC != v810_state->PC) {
                 // interrupt triggered, so we exit
