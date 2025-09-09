@@ -371,12 +371,18 @@ static void drc_findLastConditionalInst(int pos) {
     int i;
     for (i = pos - 1; i >= 0; i--) {
         switch (inst_cache[i].opcode) {
+            case V810_OP_LD_W:
+            case V810_OP_IN_W:
+                inst_cache[i].save_flags = save_flags;
+                // if a register is loading itself, it might not be a busywait
+                if (inst_cache[i].reg1 == inst_cache[i].reg2) {
+                    busywait = false;
+                }
+                break;
             case V810_OP_LD_B:
             case V810_OP_LD_H:
-            case V810_OP_LD_W:
             case V810_OP_IN_B:
             case V810_OP_IN_H:
-            case V810_OP_IN_W:
             case V810_OP_ST_B:
             case V810_OP_ST_H:
             case V810_OP_ST_W:
