@@ -34,7 +34,7 @@
 VB_STATE* vb_state;
 VB_STATE vb_players[2];
 
-bool is_multiplayer = false;
+bool is_multiplayer = true;
 bool emulating_self = true;
 int my_player_id = 0;
 int emulated_player_id = 0;
@@ -290,45 +290,53 @@ void v810_exit(void) {
 
 // Reinitialize the defaults in the CPU
 void v810_reset(void) {
-    memset(&vb_state->v810_state, 0, sizeof(vb_state->v810_state));
-    memset(&vb_state->tVIPREG, 0, sizeof(vb_state->tVIPREG));
-    memset(&vb_state->tHReg, 0, sizeof(vb_state->tHReg));
+    for (int i = 0; i < 2; i++) {
+        vb_state = &vb_players[i];
 
-    vb_state->tVIPREG.newframe = true;
+        memset(&vb_state->v810_state, 0, sizeof(vb_state->v810_state));
+        memset(&vb_state->tVIPREG, 0, sizeof(vb_state->tVIPREG));
+        memset(&vb_state->tHReg, 0, sizeof(vb_state->tHReg));
 
-    vb_state->v810_state.irq_handler = &drc_handleInterrupts;
-    vb_state->v810_state.reloc_table = &drc_relocTable;
+        vb_state->tVIPREG.newframe = true;
 
-    vb_state->v810_state.P_REG[0]    =  0x00000000;
-    vb_state->v810_state.PC          =  0xFFFFFFF0;
-    vb_state->v810_state.S_REG[ECR]  =  0x0000FFF0;
-    vb_state->v810_state.S_REG[PSW]  =  0x00008000;
-    vb_state->v810_state.S_REG[PIR]  =  0x00005346;
-    vb_state->v810_state.S_REG[TKCW] =  0x000000E0;
+        vb_state->v810_state.irq_handler = &drc_handleInterrupts;
+        vb_state->v810_state.reloc_table = &drc_relocTable;
 
-    vb_state->tHReg.SCR = 0;
-    vb_state->tHReg.TCR = 0;
-    vb_state->tHReg.WCR = 0;
-    vb_state->tVIPREG.INTENB = 0;
-    vb_state->tVIPREG.XPSTTS &= ~2;
+        vb_state->v810_state.P_REG[0]    =  0x00000000;
+        vb_state->v810_state.PC          =  0xFFFFFFF0;
+        vb_state->v810_state.S_REG[ECR]  =  0x0000FFF0;
+        vb_state->v810_state.S_REG[PSW]  =  0x00008000;
+        vb_state->v810_state.S_REG[PIR]  =  0x00005346;
+        vb_state->v810_state.S_REG[TKCW] =  0x000000E0;
 
-    mem_whword(0x0005F840, 0x0004); //XPSTTS
+        vb_state->tHReg.SCR = 0;
+        vb_state->tHReg.TCR = 0;
+        vb_state->tHReg.WCR = 0;
+        vb_state->tVIPREG.INTENB = 0;
+        vb_state->tVIPREG.XPSTTS &= ~2;
 
-    vb_state->tHReg.SCR	= 0x4C;
-    vb_state->tHReg.WCR	= 0xFC;
-    vb_state->tHReg.TCR	= 0xE4;
-    vb_state->tHReg.THB	= 0xFF;
-    vb_state->tHReg.TLB	= 0xFF;
-    vb_state->tHReg.SHB	= 0x00;
-    vb_state->tHReg.SLB	= 0x00;
-    vb_state->tHReg.CDRR	= 0x00;
-    vb_state->tHReg.CDTR	= 0x00;
-    vb_state->tHReg.CCSR	= 0xFF;
-    vb_state->tHReg.CCR	= 0x6D;
+        mem_whword(0x0005F840, 0x0004); //XPSTTS
 
-    vb_state->tHReg.tCount = 0xFFFF;
+        vb_state->tHReg.SCR	= 0x4C;
+        vb_state->tHReg.WCR	= 0xFC;
+        vb_state->tHReg.TCR	= 0xE4;
+        vb_state->tHReg.THB	= 0xFF;
+        vb_state->tHReg.TLB	= 0xFF;
+        vb_state->tHReg.SHB	= 0x00;
+        vb_state->tHReg.SLB	= 0x00;
+        vb_state->tHReg.CDRR	= 0x00;
+        vb_state->tHReg.CDTR	= 0x00;
+        vb_state->tHReg.CCSR	= 0xFF;
+        vb_state->tHReg.CCR	= 0x69;
 
-    vb_state->tHReg.hwRead = 0;
+        vb_state->tHReg.tCount = 0xFFFF;
+
+        vb_state->tHReg.hwRead = 0;
+    }
+    
+    emulated_player_id = 0;
+    emulating_self = emulated_player_id == my_player_id;
+    vb_state = &vb_players[emulated_player_id];
 
     // we don't reset load_sram so it will be non-null if there was sram to load
     replay_reset(is_sram || (bool)load_sram);
@@ -393,6 +401,15 @@ void predictEvent(bool increment) {
         else next_draw = nextrow - drawtime;
         if (next_event > next_draw) next_event = next_draw;
     }
+    if (is_multiplayer) {
+        int next_sync = vb_state->tHReg.lastsync + 3200 - cycles;
+        if (next_event > next_sync) next_event = next_sync;
+        if (vb_state->tHReg.CCR & 0x04) {
+            // communication underway
+            int next_comm = vb_state->tHReg.nextcomm - cycles;
+            if (next_event > next_comm) next_event = next_comm;
+        }
+    }
 
     if (next_event < 0) next_event = 0;
 
@@ -438,6 +455,32 @@ int serviceInt(unsigned int cycles, WORD PC) {
 
     // graphics has higher priority, so try that first
     pending_int = serviceDisplayInt(cycles, PC) || pending_int;
+
+    // multiplayer stuff
+    if (is_multiplayer) {
+        if (cycles - vb_state->tHReg.lastsync >= 3200) {
+            vb_state->tHReg.lastsync += 3200;
+            vb_state->v810_state.ret = true;
+            pending_int = true;
+        }
+
+        if (vb_state->tHReg.CCR & 0x04) {
+            // communication underway
+            if ((SWORD)(vb_state->tHReg.nextcomm - cycles) <= 0) {
+                // communication complete
+                vb_state->tHReg.CCR &= ~0x06;
+                if (!(vb_state->tHReg.CCR & 0x80)) vb_state->tHReg.cInt = true;
+                vb_state->tHReg.CCSR = (vb_state->tHReg.CCSR & ~0x04) | (((vb_players[0].tHReg.CCSR & 0x0A) == 0x0A && (vb_players[1].tHReg.CCSR & 0x0A) == 0x0A) << 2);
+                if (!(vb_state->tHReg.CCSR & 0x80) && ((vb_state->tHReg.CCSR & 0x14) == 0x14 || (vb_state->tHReg.CCSR & 0x14) == 0)) {
+                    vb_state->tHReg.ccInt = true;
+                }
+            }
+        }
+
+        if (vb_state->tHReg.cInt || vb_state->tHReg.ccInt) {
+            pending_int = v810_int(3, PC) || pending_int;
+        }
+    }
 
     if (vb_state->tHReg.tInt) {
         // zero & interrupt enabled
@@ -657,7 +700,33 @@ int v810_run(void) {
         if (ret != 0) return ret;
         if (vb_state->v810_state.ret) {
             vb_state->v810_state.ret = false;
-            break;
+            if (is_multiplayer) {
+                emulated_player_id ^= 1;
+                vb_state = &vb_players[emulated_player_id];
+                emulating_self = emulated_player_id == my_player_id;
+
+                if(emulated_player_id == 0) {
+                    // sync things
+                    for (int i = 0; i < 2; i++) {
+                        // am i in communication using an external clock?
+                        if ((vb_players[i].tHReg.CCR & 0x14) == 0x14) {
+                            // is the other one in communication using its internal clock?
+                            if ((vb_players[!i].tHReg.CCR & 0x14) == 0x04) {
+                                // communication happening, swap the data
+                                vb_players[i].tHReg.nextcomm = vb_players[!i].tHReg.nextcomm;
+                                vb_players[i].tHReg.CDRR = vb_players[!i].tHReg.CDTR;
+                                vb_players[!i].tHReg.CDRR = vb_players[i].tHReg.CDTR;
+                            } else {
+                                // waiting on nothing, so delay until after the next sync
+                                vb_players[i].tHReg.nextcomm = vb_players[i].v810_state.cycles + 8000;
+                            }
+                        }
+                    }
+                }
+            }
+            if (emulated_player_id == 0 && vb_state->tVIPREG.newframe) {
+                break;
+            }
         }
     }
 

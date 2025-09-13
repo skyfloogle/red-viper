@@ -428,11 +428,11 @@ SBYTE hcreg_rbyte(WORD addr) {
     switch(addr) {
     case 0x02000000:    //CCR
         //~ dtprintf(3,ferr,"\nRead  BYTE HREG CCR [%08x]",addr);
-        return (vb_state->tHReg.CCR|0x04); //Mask the Write Only Bit...
+        return (vb_state->tHReg.CCR|0x04|((vb_state->tHReg.CCR&0x04)>>1)); //Mask the Write Only Bit...
         break;
     case 0x02000004:    //CCSR
         //~ dtprintf(3,ferr,"\nRead  BYTE HREG CCSR [%08x]",addr);
-        return (vb_state->tHReg.CCSR|0x04);
+        return vb_state->tHReg.CCSR | ((vb_players[0].tHReg.CCSR & 2) && (vb_players[1].tHReg.CCSR & 2));
         break;
     case 0x02000008:    //CDTR
         //~ dtprintf(3,ferr,"\nRead  BYTE HREG CDTR [%08x]",addr);
@@ -483,11 +483,30 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
     switch(addr) {
     case 0x02000000:    //CCR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG CCR [%08x]:%02x ",addr,data);
+        data |= vb_state->tHReg.CCR & 0x04;
+        if (data & 0x04) {
+            if (
+                // begin communication
+                !(vb_state->tHReg.CCR & 0x04) ||
+                // remote -> host
+                ((vb_state->tHReg.CCR & 0x10) && !(data & 0x10))
+            ) {
+            vb_state->tHReg.nextcomm = vb_state->v810_state.cycles + 3200;
+            }
+        }
         vb_state->tHReg.CCR = ((data|0x69)&0xFD);
+        if (data & 0x80) {
+            // acknowledge interrupt
+            vb_state->tHReg.cInt = false;
+        }
         break;
     case 0x02000004:    //CCSR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG CCSR [%08x]:%02x ",addr,data);
-        vb_state->tHReg.CCSR = ((data|0x60)&0xFA);
+        vb_state->tHReg.CCSR = ((data|0x60)&0xFA) | (vb_state->tHReg.CCSR & 0x04);
+        if (data & 0x80) {
+            // acknowledge interrupt
+            vb_state->tHReg.ccInt = false;
+        }
         break;
     case 0x02000008:    //CDTR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG CDTR [%08x]:%02x ",addr,data);

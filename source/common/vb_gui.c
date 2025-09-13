@@ -386,8 +386,10 @@ int emulation_lstate(int state) {
         READ_VAR(new_hreg.CCSR);
         READ_VAR(new_hreg.CCR);
         READ_VAR(new_hreg.hwRead);
+    } else if (size == 32) {
+        FREAD(&new_hreg, 1, 32, state_file);
     } else if (size == sizeof(new_hreg)) {
-        static_assert(sizeof(new_hreg) == 32, "HReg changed size");
+        static_assert(sizeof(new_hreg) == 40, "HReg changed size");
         READ_VAR(new_hreg);
     } else {
         goto bail;

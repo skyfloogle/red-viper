@@ -53,6 +53,10 @@ typedef struct {
     BYTE CCSR;      //Com Cnt Stat Reg,     0x02000004
     BYTE CCR;       //Com Controll Reg,     0x02000000
     HWORD hwRead;   //Hardware input read timer
+    bool cInt;      //Communication interrupt
+    bool ccInt;     //Signal interrupt
+    WORD lastsync;  //Multiplayer emulator sync
+    WORD nextcomm;  //Next communication event
 } V810_HREGDAT;
 
 // VB state

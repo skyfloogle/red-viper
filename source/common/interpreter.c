@@ -32,9 +32,9 @@ int interpreter_run(void) {
     do {
         if ((SWORD)(target - cycles) <= 0) {
             vb_state->v810_state.PC = PC;
-            if (serviceInt(cycles, PC) && PC != vb_state->v810_state.PC) {
+            if (serviceInt(cycles, PC) && (PC != vb_state->v810_state.PC || vb_state->v810_state.ret)) {
                 // interrupt triggered, so we exit
-                // PC was modified so don't reset it
+                // PC may have been modified so don't reset it
                 vb_state->v810_state.cycles = cycles;
                 return 0;
             }
@@ -273,8 +273,11 @@ int interpreter_run(void) {
                         vb_state->v810_state.cycles_until_event_partial = vb_state->v810_state.cycles_until_event_full = 0;
                         vb_state->v810_state.cycles = cycles;
                         serviceInt(cycles, PC);
-
                     } while (!vb_state->v810_state.ret && vb_state->v810_state.PC == PC);
+                    if (vb_state->v810_state.PC == PC) {
+                        // no interrupt triggered, so repeat the halt
+                        vb_state->v810_state.PC = last_PC;
+                    }
                     // PC was modified so don't reset it
                     return 0;
                 }

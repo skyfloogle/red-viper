@@ -24,23 +24,26 @@ SDL_Window *window;
 SDL_Surface *game_surface, *window_surface;
 
 void sdl_flush(bool displayed_fb) {
-    SDL_LockSurface(game_surface);
-    uint16_t *vb_fb = (uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x8000 * displayed_fb);
-    uint32_t *out_fb = (uint32_t*)game_surface->pixels;
-    uint32_t brightnesses[4] = {0, vb_state->tVIPREG.BRTA, vb_state->tVIPREG.BRTB, vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC};
-    for (int x = 0; x < 384; x++) {
-        for (int y = 0; y < 224; y += 8) {
-            uint64_t vb_word = vb_fb[x * 32 + (y / 8)];
-            for (int i = 0; i < 8; i++) {
-                uint32_t brt = brightnesses[vb_word & 3] * 2;
-                if (brt > 255) brt = 255;
-                out_fb[(y + i) * 384 + x] = brt;
-                vb_word = vb_word >> 2;
+    for (int i = 0; i < 2; i++) {
+        SDL_LockSurface(game_surface);
+        uint16_t *vb_fb = (uint16_t*)(vb_players[i].V810_DISPLAY_RAM.off + 0x8000 * displayed_fb);
+        uint32_t *out_fb = (uint32_t*)game_surface->pixels;
+        uint32_t brightnesses[4] = {0, vb_players[i].tVIPREG.BRTA, vb_players[i].tVIPREG.BRTB, vb_players[i].tVIPREG.BRTA + vb_players[i].tVIPREG.BRTB + vb_players[i].tVIPREG.BRTC};
+        for (int x = 0; x < 384; x++) {
+            for (int y = 0; y < 224; y += 8) {
+                uint64_t vb_word = vb_fb[x * 32 + (y / 8)];
+                for (int i = 0; i < 8; i++) {
+                    uint32_t brt = brightnesses[vb_word & 3] * 2;
+                    if (brt > 255) brt = 255;
+                    out_fb[(y + i) * 384 + x] = brt;
+                    vb_word = vb_word >> 2;
+                }
             }
         }
+        SDL_UnlockSurface(game_surface);
+        SDL_Rect rect = {.x = 0, .y = 224*2 * i, .w = 384*2, .h = 224*2};
+        SDL_BlitScaled(game_surface, NULL, window_surface, &rect);
     }
-    SDL_UnlockSurface(game_surface);
-    SDL_BlitScaled(game_surface, NULL, window_surface, NULL);
     SDL_UpdateWindowSurface(window);
 }
 
@@ -75,29 +78,34 @@ int main(int argc, char* argv[]) {
     clearCache();
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-    window = SDL_CreateWindow("Red Viper", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 384*2, 224*2, 0);
+    window = SDL_CreateWindow("Red Viper", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 384*2, 224*2*2, 0);
     window_surface = SDL_GetWindowSurface(window);
     game_surface = SDL_CreateRGBSurfaceWithFormat(0, 384, 224, 32, SDL_PIXELFORMAT_XBGR8888);
 
     int lasttime = SDL_GetTicks();
 
     while (true) {
-        if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing) {
-            if (vb_state->tVIPREG.XPCTRL & XPEN) {
-                if (tDSPCACHE.CharCacheInvalid) {
-                    update_texture_cache_soft();
+        for (int i = 0; i < 2; i++) {
+            vb_state = &vb_players[i];
+            clearCache();
+            if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing) {
+                if (vb_state->tVIPREG.XPCTRL & XPEN) {
+                    if (tDSPCACHE.CharCacheInvalid) {
+                        update_texture_cache_soft();
+                    }
+
+                    video_soft_render(!vb_state->tVIPREG.tDisplayedFB);
+
+                    // we need to have these caches during rendering
+                    tDSPCACHE.CharCacheInvalid = false;
+                    memset(tDSPCACHE.BGCacheInvalid, 0, sizeof(tDSPCACHE.BGCacheInvalid));
+                    memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
                 }
 
-                video_soft_render(!vb_state->tVIPREG.tDisplayedFB);
-
-		        // we need to have these caches during rendering
-                tDSPCACHE.CharCacheInvalid = false;
-		        memset(tDSPCACHE.BGCacheInvalid, 0, sizeof(tDSPCACHE.BGCacheInvalid));
-                memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
+                sdl_flush(vb_state->tVIPREG.tDisplayedFB);
             }
-
-            sdl_flush(vb_state->tVIPREG.tDisplayedFB);
         }
+        vb_state = &vb_players[0];
 
         err = v810_run();
         if (err) {
@@ -138,14 +146,15 @@ int main(int argc, char* argv[]) {
                     case SDL_SCANCODE_ESCAPE: return 0;
                     default: flag = 0; break;
                 }
-                for (int i = 0; i < 2; i++) {
-                    if (e.type == SDL_KEYDOWN) {
-                        vb_players[i].tHReg.SLB |= flag & 0xff;
-                        vb_players[i].tHReg.SHB |= flag >> 8;
-                    } else {
-                        vb_players[i].tHReg.SLB &= ~(flag & 0xff);
-                        vb_players[i].tHReg.SHB &= ~(flag >> 8);
-                    }
+                int mouse_y;
+                SDL_GetMouseState(NULL, &mouse_y);
+                int player_id = mouse_y >= 224*2;
+                if (e.type == SDL_KEYDOWN) {
+                    vb_players[player_id].tHReg.SLB |= flag & 0xff;
+                    vb_players[player_id].tHReg.SHB |= flag >> 8;
+                } else {
+                    vb_players[player_id].tHReg.SLB &= ~(flag & 0xff);
+                    vb_players[player_id].tHReg.SHB &= ~(flag >> 8);
                 }
             }
         }
