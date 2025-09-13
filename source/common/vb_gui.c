@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <assert.h>
 
 #ifdef __3DS__
 #include <3ds.h>
@@ -351,6 +352,7 @@ int emulation_lstate(int state) {
             new_vipreg.tFrame = new_vipreg.FRMCYC - new_vipreg.tFrame;
         }
     } else if (size == sizeof(new_vipreg)) {
+        static_assert(sizeof(new_vipreg) == 64, "VIPREG changed size");
         READ_VAR(new_vipreg);
     } else {
         goto bail;
@@ -385,6 +387,7 @@ int emulation_lstate(int state) {
         READ_VAR(new_hreg.CCR);
         READ_VAR(new_hreg.hwRead);
     } else if (size == sizeof(new_hreg)) {
+        static_assert(sizeof(new_hreg) == 32, "HReg changed size");
         READ_VAR(new_hreg);
     } else {
         goto bail;
@@ -400,6 +403,7 @@ int emulation_lstate(int state) {
     if (size != sizeof(new_soundstate)) {
         goto bail;
     }
+    static_assert(sizeof(new_soundstate) == 64, "Sound state changed size");
     READ_VAR(new_soundstate);
     //Validity checks
     if (new_soundstate.modulation_counter > 32) goto bail;
