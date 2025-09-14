@@ -662,6 +662,8 @@ static int drc_translateBlock(void) {
     bool is_space_invaders = memcmp(tVBOpt.GAME_ID, "C0VSPJ", 6) == 0;
     bool is_jack_bros = memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0;
     bool chcw_load_seen = (vb_state->v810_state.S_REG[CHCW] & 2) != 0;
+    bool is_marios_tennis_multiplayer = memcmp(tVBOpt.GAME_ID, "01VMTJ", 6) == 0 &&
+        memcmp((u8*)V810_ROM1.pmemory + (0x1FFDB0 & V810_ROM1.highaddr), "MULTIPLAYER HACK V0.1 BY MARTIN KUJACZYNSKI ", 44) == 0;
 
     // Virtual Bowling and Niko-Chan Battle need their interrupts to run a little slower
     // in order for the samples to play at the right speed.
@@ -2052,6 +2054,13 @@ static int drc_translateBlock(void) {
                 BLX(ARM_COND_AL, 2);
                 MSR(0);
                 cycles = 0;
+            } else if (is_marios_tennis_multiplayer && inst_cache[i + 1].PC == 0x07010442) {
+                // Mario's Tennis multiplayer hack:
+                // Some setup code flips CC-Wr off, flips it on, then loops if CC-Rd is on.
+                // Getting out of this loop requires the two systems to be desynced:
+                // one system has to check CC-Rd while the other has CC-Wr off.
+                // To allow them to desync, we place an interrupt check between the writes.
+                HANDLEINT(inst_cache[i + 1].PC);
             } else if (cycles >= 200) {
                 HANDLEINT(inst_cache[i + 1].PC);
             } else if (cycles != 0 && (inst_cache[i + 1].is_branch_target || inst_cache[i + 1].opcode == V810_OP_BSTR)) {
