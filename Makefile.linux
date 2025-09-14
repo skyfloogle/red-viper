@@ -5,8 +5,16 @@ BUILD		:=	build
 SOURCES		:=	source/common source/linux-test source/common/inih
 INCLUDES	:=	include source/common/inih
 
+# on 32-bit arm
 ifneq (,$(findstring armv,$(shell uname -m)))
-    SOURCES += source/arm
+	SOURCES += source/arm
+endif
+
+# on 64-bit arm with 32-bit userland
+ifeq ($(shell uname -m),aarch64)
+	ifeq ($(shell getconf LONG_BIT),32)
+		SOURCES += source/arm
+	endif
 endif
 
 CFLAGS	:=	-Wall -Wno-unused \
