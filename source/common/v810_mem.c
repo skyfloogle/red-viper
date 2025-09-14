@@ -537,7 +537,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
         if (vb_state->tHReg.TCR & 0x01) predictEvent(true);
         //vb_state->tHReg.tTHW = (vb_state->tHReg.TLB | (vb_state->tHReg.THB << 8)); //Reset internal count
         break;
-    case 0x02000020:    //TCR
+    case 0x02000020: {  //TCR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG TCR [%08x]:%02x ",addr,data);
         BYTE zstat = vb_state->tHReg.TCR & 0x02;
         if ((data & 0x04) // Z-Stat-Clr
@@ -570,6 +570,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
         predictEvent(true);
 
         break;
+    }
     case 0x02000024:    //WCR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG WCR [%08x]:%02x ",addr,data);
         vb_state->tHReg.WCR = (data|0xFC); // Mask

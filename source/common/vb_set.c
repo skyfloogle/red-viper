@@ -19,7 +19,7 @@ int     vbkey[32] = {0};
 #ifndef __3DS__
 bool buttons_on_screen;
 void setCustomControls() {}
-void setPresetControls(bool) {}
+void setPresetControls(bool buttons) {}
 #endif
 
 void setCustomMappingDefaults(void) {
