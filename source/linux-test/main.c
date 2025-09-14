@@ -28,28 +28,29 @@ void drc_relocTable(void) {}
 SDL_Window *window;
 SDL_Surface *game_surface, *window_surface;
 
-void sdl_flush(bool displayed_fb) {
-    for (int i = 0; i < 2; i++) {
-        SDL_LockSurface(game_surface);
-        uint16_t *vb_fb = (uint16_t*)(vb_players[i].V810_DISPLAY_RAM.off + 0x8000 * displayed_fb);
-        uint32_t *out_fb = (uint32_t*)game_surface->pixels;
-        uint32_t brightnesses[4] = {0, vb_players[i].tVIPREG.BRTA, vb_players[i].tVIPREG.BRTB, vb_players[i].tVIPREG.BRTA + vb_players[i].tVIPREG.BRTB + vb_players[i].tVIPREG.BRTC};
-        for (int x = 0; x < 384; x++) {
-            for (int y = 0; y < 224; y += 8) {
-                uint64_t vb_word = vb_fb[x * 32 + (y / 8)];
-                for (int i = 0; i < 8; i++) {
-                    uint32_t brt = brightnesses[vb_word & 3] * 2;
-                    if (brt > 255) brt = 255;
-                    out_fb[(y + i) * 384 + x] = brt;
-                    vb_word = vb_word >> 2;
-                }
+void sdl_flush(bool displayed_fb, int player) {
+    SDL_LockSurface(game_surface);
+    uint16_t *vb_fb = (uint16_t*)(vb_players[player].V810_DISPLAY_RAM.off + 0x8000 * displayed_fb);
+    uint32_t *out_fb = (uint32_t*)game_surface->pixels;
+    uint32_t brightnesses[4] = {
+        0,
+        vb_players[player].tVIPREG.BRTA,
+        vb_players[player].tVIPREG.BRTB,
+        vb_players[player].tVIPREG.BRTA + vb_players[player].tVIPREG.BRTB + vb_players[player].tVIPREG.BRTC};
+    for (int x = 0; x < 384; x++) {
+        for (int y = 0; y < 224; y += 8) {
+            uint64_t vb_word = vb_fb[x * 32 + (y / 8)];
+            for (int i = 0; i < 8; i++) {
+                uint32_t brt = brightnesses[vb_word & 3] * 2;
+                if (brt > 255) brt = 255;
+                out_fb[(y + i) * 384 + x] = brt;
+                vb_word = vb_word >> 2;
             }
         }
-        SDL_UnlockSurface(game_surface);
-        SDL_Rect rect = {.x = 0, .y = 224*2 * i, .w = 384*2, .h = 224*2};
-        SDL_BlitScaled(game_surface, NULL, window_surface, &rect);
     }
-    SDL_UpdateWindowSurface(window);
+    SDL_UnlockSurface(game_surface);
+    SDL_Rect rect = {.x = 0, .y = 224*2 * player, .w = 384*2, .h = 224*2};
+    SDL_BlitScaled(game_surface, NULL, window_surface, &rect);
 }
 
 int main(int argc, char* argv[]) {
@@ -87,7 +88,7 @@ int main(int argc, char* argv[]) {
     clearCache();
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-    window = SDL_CreateWindow("Red Viper", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 384*2, 224*2*2, 0);
+    window = SDL_CreateWindow("Red Viper", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 384*2, 224*2*(1+is_multiplayer), 0);
     window_surface = SDL_GetWindowSurface(window);
     game_surface = SDL_CreateRGBSurfaceWithFormat(0, 384, 224, 32, SDL_PIXELFORMAT_XBGR8888);
 
@@ -111,9 +112,11 @@ int main(int argc, char* argv[]) {
                     memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
                 }
 
-                sdl_flush(vb_state->tVIPREG.tDisplayedFB);
+                sdl_flush(vb_state->tVIPREG.tDisplayedFB, i);
             }
         }
+        SDL_UpdateWindowSurface(window);
+
         vb_state = &vb_players[0];
 
         err = v810_run();
@@ -157,7 +160,7 @@ int main(int argc, char* argv[]) {
                 }
                 int mouse_y;
                 SDL_GetMouseState(NULL, &mouse_y);
-                int player_id = mouse_y >= 224*2;
+                int player_id = is_multiplayer ? mouse_y >= 224*2 : 0;
                 if (e.type == SDL_KEYDOWN) {
                     vb_players[player_id].tHReg.SLB |= flag & 0xff;
                     vb_players[player_id].tHReg.SHB |= flag >> 8;
