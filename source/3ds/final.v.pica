@@ -2,6 +2,10 @@
 .out outtex dummy
 .out outcol dummy
 
+; workaround libctru#535
+; issue has been fixed, but workaround is retained for compat
+.constf const1(0.0, 0.0, 0.0, 0.0)
+
 ; basic passthrough, no transforming at all
 
 .entry vmain
