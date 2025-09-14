@@ -491,7 +491,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
                 // remote -> host
                 ((vb_state->tHReg.CCR & 0x10) && !(data & 0x10))
             ) {
-                vb_state->tHReg.nextcomm = vb_state->v810_state.cycles + 3200;
+                vb_state->tHReg.nextcomm = vb_state->v810_state.cycles + vb_state->v810_state.cycles_until_event_full - vb_state->v810_state.cycles_until_event_partial + 3200;
             }
         }
         vb_state->tHReg.CCR = ((data|0x69)&0xFD);
@@ -585,7 +585,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
             if(!(data&0x01)) { //Hardware Read Disabled
                 vb_state->tHReg.SCR |= 2;
                 vb_state->tHReg.hwRead = 10240;
-                vb_state->tHReg.lastinput = vb_state->v810_state.cycles;
+                vb_state->tHReg.lastinput = vb_state->v810_state.cycles + vb_state->v810_state.cycles_until_event_full - vb_state->v810_state.cycles_until_event_partial;
                 predictEvent(true);
             }
         } else if(data & 0x20) { //Software Read, same for now....
