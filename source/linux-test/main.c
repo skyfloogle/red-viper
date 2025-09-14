@@ -7,6 +7,7 @@
 #include "replay.h"
 #include "v810_mem.h"
 #include "vb_dsp.h"
+#include "drc_core.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
@@ -17,8 +18,12 @@
 VB_DSPCACHE tDSPCACHE;
 void sound_update(uint32_t cycles) {}
 void sound_write(int addr, uint16_t val) {}
+
+#if DRC_AVAILABLE
+#else
 int drc_handleInterrupts(WORD cpsr, WORD* PC) { return 0; }
 void drc_relocTable(void) {}
+#endif
 
 SDL_Window *window;
 SDL_Surface *game_surface, *window_surface;
@@ -63,6 +68,10 @@ int main(int argc, char* argv[]) {
     setDefaults();
     v810_init();
     replay_init();
+
+    #if DRC_AVAILABLE
+    drc_init();
+    #endif
 
     strncpy(tVBOpt.ROM_PATH, argv[1], sizeof(tVBOpt.ROM_PATH));
 

@@ -5,6 +5,10 @@ BUILD		:=	build
 SOURCES		:=	source/common source/linux-test source/common/inih
 INCLUDES	:=	include source/common/inih
 
+ifneq (,$(findstring armv,$(shell uname -m)))
+    SOURCES += source/arm
+endif
+
 CFLAGS	:=	-Wall -Wno-unused \
 			-fomit-frame-pointer -ffast-math \
 			$(ARCH)

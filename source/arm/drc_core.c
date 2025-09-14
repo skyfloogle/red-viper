@@ -357,11 +357,13 @@ static void drc_findWaterworldBusywait(int size) {
 
 void drc_clearScreenForGolf(void) {
     if (!emulating_self) return;
+#ifdef __3DS__
     C3D_FrameBegin(0);
     for (int i = 0; i < 2; i++) {
         C3D_RenderTargetClear(screenTargetHard[i], C3D_CLEAR_COLOR, 0, 0);
     }
     C3D_FrameEnd(0);
+#endif
 }
 
 // Workaround for an issue where the CPSR is modified outside of the block

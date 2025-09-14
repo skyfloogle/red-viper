@@ -4,7 +4,7 @@
 #include "vb_types.h"
 #include "arm_emit.h"
 
-#if __ARM_ARCH == 6
+#if __ARM_ARCH >= 6 && __arm__
 #define DRC_AVAILABLE true
 #else
 #define DRC_AVAILABLE false
