@@ -491,7 +491,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
                 // remote -> host
                 ((vb_state->tHReg.CCR & 0x10) && !(data & 0x10))
             ) {
-            vb_state->tHReg.nextcomm = vb_state->v810_state.cycles + 3200;
+                vb_state->tHReg.nextcomm = vb_state->v810_state.cycles + 3200;
             }
         }
         vb_state->tHReg.CCR = ((data|0x69)&0xFD);

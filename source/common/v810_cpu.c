@@ -34,6 +34,7 @@
 VB_STATE* vb_state;
 VB_STATE vb_players[2];
 
+#define MULTIPLAYER_SYNC_CYCLES 1600
 bool is_multiplayer = true;
 bool emulating_self = true;
 int my_player_id = 0;
@@ -402,7 +403,7 @@ void predictEvent(bool increment) {
         if (next_event > next_draw) next_event = next_draw;
     }
     if (is_multiplayer) {
-        int next_sync = vb_state->tHReg.lastsync + 3200 - cycles;
+        int next_sync = vb_state->tHReg.lastsync + MULTIPLAYER_SYNC_CYCLES - cycles;
         if (next_event > next_sync) next_event = next_sync;
         if (vb_state->tHReg.CCR & 0x04) {
             // communication underway
@@ -458,8 +459,8 @@ int serviceInt(unsigned int cycles, WORD PC) {
 
     // multiplayer stuff
     if (is_multiplayer) {
-        if (cycles - vb_state->tHReg.lastsync >= 3200) {
-            vb_state->tHReg.lastsync += 3200;
+        if ((SWORD)(cycles - vb_state->tHReg.lastsync) >= MULTIPLAYER_SYNC_CYCLES) {
+            vb_state->tHReg.lastsync += MULTIPLAYER_SYNC_CYCLES;
             vb_state->v810_state.ret = true;
             pending_int = true;
         }
