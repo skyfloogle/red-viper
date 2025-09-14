@@ -96,6 +96,7 @@ block_reg_map:
 @ void drc_executeBlock(WORD* entrypoint, exec_block* block);
 
 .globl drc_executeBlock
+.type drc_executeBlock, %function
 drc_executeBlock:
     push    {r4-r11, ip, lr}
     push    {r1}
@@ -126,6 +127,7 @@ postexec:
 
 @ Checks for pending interrupts and exits the block if necessary
 .globl drc_handleInterrupts
+.type drc_executeBlock, %function
 drc_handleInterrupts:
     push    {r4, r5, lr}
 
