@@ -76,6 +76,13 @@ int main(int argc, char* argv[]) {
 
     strncpy(tVBOpt.ROM_PATH, argv[1], sizeof(tVBOpt.ROM_PATH));
 
+    // -m for multiplayer
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "-m") == 0) {
+            is_multiplayer = true;
+        }
+    }
+
     v810_load_init();
     while (true) {
         int ret = v810_load_step();

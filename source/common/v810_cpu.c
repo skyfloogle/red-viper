@@ -35,7 +35,7 @@ VB_STATE* vb_state;
 VB_STATE vb_players[2];
 
 #define MULTIPLAYER_SYNC_CYCLES 1600
-bool is_multiplayer = true;
+bool is_multiplayer = false;
 bool emulating_self = true;
 int my_player_id = 0;
 int emulated_player_id = 0;
