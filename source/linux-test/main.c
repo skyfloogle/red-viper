@@ -56,7 +56,7 @@ void sdl_flush(bool displayed_fb, int player) {
 int main(int argc, char* argv[]) {
     int err;
 
-    if (argc != 2) {
+    if (argc < 2) {
         puts("Pass a ROM please");
         return 1;
     }
