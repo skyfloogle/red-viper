@@ -432,7 +432,7 @@ SBYTE hcreg_rbyte(WORD addr) {
         break;
     case 0x02000004:    //CCSR
         //~ dtprintf(3,ferr,"\nRead  BYTE HREG CCSR [%08x]",addr);
-        return vb_state->tHReg.CCSR | ((vb_players[0].tHReg.CCSR & 2) && (vb_players[1].tHReg.CCSR & 2));
+        return vb_state->tHReg.CCSR | (!is_multiplayer || ((vb_players[0].tHReg.CCSR & 2) && (vb_players[1].tHReg.CCSR & 2)));
         break;
     case 0x02000008:    //CDTR
         //~ dtprintf(3,ferr,"\nRead  BYTE HREG CDTR [%08x]",addr);
