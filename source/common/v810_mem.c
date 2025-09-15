@@ -72,7 +72,7 @@ uint64_t mem_rhword(WORD addr) {
     switch((addr&0x7000000)) {
     case 0x7000000:
         wait = (uint64_t)(2 - (vb_state->tHReg.WCR & 1)) << 32;
-        return (WORD)((SHWORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
+        return (WORD)((SHWORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr & ~1)))[0] | wait;
         break;
     case 0:
         addr &= 0x7fffe;
@@ -131,7 +131,7 @@ uint64_t mem_rword(WORD addr) {
     switch((addr&0x7000000)) {
     case 0x7000000:
         wait = (uint64_t)(2LL - (vb_state->tHReg.WCR & 1)) << 33;
-        return ((WORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
+        return ((WORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr & ~3)))[0] | wait;
         break;
     case 0:
         addr &= 0x7fffc;
