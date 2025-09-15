@@ -902,7 +902,7 @@ static void rom_loader(void) {
             top_pos -= 8;
         } else {
             if (scroll_speed < 0) scroll_speed = 0;
-            top_pos = scroll_pos < scroll_top ? scroll_pos + 0.25 : scroll_top;
+            top_pos = scroll_pos < scroll_top ? scroll_pos + 1 : scroll_top;
         }
         int bottom_pos = scroll_bottom;
         if (dragging) {
@@ -911,15 +911,15 @@ static void rom_loader(void) {
             bottom_pos += 8;
         } else {
             if (scroll_speed > 0) scroll_speed = 0;
-            bottom_pos = scroll_pos > scroll_bottom ? scroll_pos - 0.25 : scroll_bottom;
+            bottom_pos = scroll_pos > scroll_bottom ? scroll_pos - 1 : scroll_bottom;
         }
         scroll_pos += scroll_speed;
         scroll_pos = C2D_Clamp(scroll_pos, top_pos, bottom_pos);
 
         // keep cursor on screen
-        while ((cursor - 1) * entry_height - scroll_pos < 0)
+        while ((cursor - 1) * entry_height - scroll_pos < 0 && cursor < entry_count - 1)
             cursor++;
-        while ((cursor + 1) * entry_height - scroll_pos > 240)
+        while ((cursor + 1) * entry_height - scroll_pos > 240 && cursor > 0)
             cursor--;
 
         // control with buttons
