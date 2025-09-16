@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
+#include <inttypes.h>
 
 #ifdef __3DS__
 #include <3ds.h>
@@ -2349,14 +2350,14 @@ void drc_dumpDebugInfo(int code) {
     FILE* f = fopen("debug_info.txt", "w");
 
     fprintf(f, "Error code: %d\n", code);
-    fprintf(f, "PC: 0x%08lx\n", vb_state->v810_state.PC);
+    fprintf(f, "PC: 0x%08" PRIx32 "\n", vb_state->v810_state.PC);
     for (i = 0; i < 32; i++)
-        fprintf(f, "r%d: 0x%08lx\n", i, vb_state->v810_state.P_REG[i]);
+        fprintf(f, "r%d: 0x%08" PRIx32 "\n", i, vb_state->v810_state.P_REG[i]);
 
     for (i = 0; i < 32; i++)
-        fprintf(f, "s%d: 0x%08lx\n", i, vb_state->v810_state.S_REG[i]);
+        fprintf(f, "s%d: 0x%08" PRIx32 "\n", i, vb_state->v810_state.S_REG[i]);
 
-    fprintf(f, "Cycles: %ld\n", vb_state->v810_state.cycles);
+    fprintf(f, "Cycles: %" PRIu32 "\n", vb_state->v810_state.cycles);
     fprintf(f, "Cache start: %p\n", cache_start);
     fprintf(f, "Cache pos: %p\n", cache_pos);
 
