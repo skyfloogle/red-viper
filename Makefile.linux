@@ -17,6 +17,12 @@ ifeq ($(shell uname -m),aarch64)
 	endif
 endif
 
+# targeting 32-bit arm
+ifneq (,$(findstring arm,$(CC)))
+	SOURCES += source/arm
+	LIBDIRS += /usr/lib/arm-linux-gnueabihf
+endif
+
 CFLAGS	:=	-Wall -Wno-unused \
 			-fomit-frame-pointer -ffast-math \
 			$(ARCH)

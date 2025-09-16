@@ -1,0 +1,19 @@
+on: [push]
+
+name: Test Red Viper (Linux dynarec)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: debian
+
+    steps:
+      - name: Install dependencies
+        run: dpkg --add-architecture armhf && apt update && apt install zlib1g-dev:armhf libminizip-dev:armhf libsdl2-dev:armhf -y
+      - name: Install ARM toolchain
+        run: apt install git make gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf -y
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: build Red Viper
+        run: git config --global --add safe.directory $PWD && make -f Makefile.linux CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++

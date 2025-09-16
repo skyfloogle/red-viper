@@ -1,6 +1,6 @@
 on: [push]
 
-name: Build Red Viper
+name: Build Red Viper (3DS)
 
 jobs:
   build:

@@ -1,0 +1,16 @@
+on: [push]
+
+name: Test Red Viper (Linux interpreter)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install dependencies
+        run: sudo apt install libminizip-dev libsdl2-dev -y
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: build Red Viper
+        run: git config --global --add safe.directory $PWD && make -f Makefile.linux
