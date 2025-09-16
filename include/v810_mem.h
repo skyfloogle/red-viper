@@ -52,6 +52,7 @@ typedef struct {
     BYTE CDTR;      //Com Trans Data Reg,   0x02000008
     BYTE CCSR;      //Com Cnt Stat Reg,     0x02000004
     BYTE CCR;       //Com Controll Reg,     0x02000000
+    bool cLock;     //Lock next communication event
     HWORD hwRead;   //Hardware input read timer
     bool cInt;      //Communication interrupt
     bool ccInt;     //Signal interrupt

@@ -470,6 +470,7 @@ int serviceInt(unsigned int cycles, WORD PC) {
         // communication underway
         if ((SWORD)(vb_state->tHReg.nextcomm - cycles) <= 0) {
             // communication complete
+            vb_state->tHReg.cLock = false;
             vb_state->tHReg.CCR &= ~0x06;
             if (!(vb_state->tHReg.CCR & 0x80)) vb_state->tHReg.cInt = true;
             if (is_multiplayer) {
@@ -721,7 +722,9 @@ int v810_run(void) {
                                 vb_players[i].tHReg.nextcomm = vb_players[!i].tHReg.nextcomm;
                                 vb_players[i].tHReg.CDRR = vb_players[!i].tHReg.CDTR;
                                 vb_players[!i].tHReg.CDRR = vb_players[i].tHReg.CDTR;
-                            } else {
+                                vb_players[i].tHReg.cLock = true;
+                                vb_players[!i].tHReg.cLock = true;
+                            } else if (!vb_players[i].tHReg.cLock) {
                                 // waiting on nothing, so delay until after the next sync
                                 vb_players[i].tHReg.nextcomm = vb_players[i].v810_state.cycles + 8000;
                             }
