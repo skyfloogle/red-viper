@@ -23,7 +23,7 @@ ifneq (,$(findstring arm,$(CC)))
 	LIBDIRS += /usr/lib/arm-linux-gnueabihf
 endif
 
-CFLAGS	:=	-Wall -Wno-unused \
+CFLAGS	:=	-Wall -Werror -Wno-unused-variable -Wno-format-truncation \
 			-fomit-frame-pointer -ffast-math \
 			$(ARCH)
 
