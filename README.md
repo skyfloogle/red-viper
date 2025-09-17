@@ -66,6 +66,7 @@ additional dependencies:
 
 After cloning the repository, fetch the last dependencies:
 ```bash
+> git submodule init
 > git submodule update
 ```
 
