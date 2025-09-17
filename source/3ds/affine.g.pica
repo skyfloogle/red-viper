@@ -15,8 +15,8 @@
 .out outtc1 texcoord1
 .out outtc2 texcoord2
 
-.entry gmain
-.proc gmain
+.entry gmain_affine
+.proc gmain_affine
     ; r0: position
     ; r1: texcoord intermediate
     ; r2: texcoord final

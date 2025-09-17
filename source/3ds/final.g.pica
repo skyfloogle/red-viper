@@ -19,8 +19,8 @@
 .out coltc texcoord2
 .out vcol color
 
-.entry gmain
-.proc gmain
+.entry gmain_final
+.proc gmain_final
     ; z=-1 and w=1 are necessary for position output
     mov r0, const1
     mul r4, rad255, v2

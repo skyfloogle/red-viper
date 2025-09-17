@@ -38,9 +38,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/common source/arm source/3ds source/common/inih
+SOURCES		:=	source/common source/arm source/3ds source/common/inih source/3ds/yattlib-3d/src
 DATA		:=	data
-INCLUDES	:=	include source/common/inih
+INCLUDES	:=	include source/common/inih source/3ds/yattlib-3d/include
 GRAPHICS	:=	gfx gfx/maps
 GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs

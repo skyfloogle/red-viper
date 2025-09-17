@@ -1,3 +1,6 @@
 [submodule "source/common/inih"]
 	path = source/common/inih
 	url = https://github.com/benhoyt/inih.git
+[submodule "source/3ds/yattlib-3d"]
+	path = source/3ds/yattlib-3d
+	url = https://github.com/Wyatt-James/yattlib-3d

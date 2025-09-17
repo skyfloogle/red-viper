@@ -161,7 +161,6 @@ extern bool tileVisible[2048];
 extern int blankTile;
 
 #ifdef __3DS__
-extern shaderProgram_s sFinal;
 
 // video_hard
 extern C3D_Tex screenTexHard[2];

@@ -8,8 +8,8 @@
 
 ; basic passthrough, no transforming at all
 
-.entry vmain
-.proc vmain
+.entry vmain_final
+.proc vmain_final
     mov outpos, v0
     mov outtex, v1
     mov outcol, v2

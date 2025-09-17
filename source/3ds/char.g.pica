@@ -17,8 +17,8 @@
 .out outtc2 texcoord2
 .out outcol color
 
-.entry gmain
-.proc gmain
+.entry gmain_char
+.proc gmain_char
     ; load palette index
     mova a0.x, v1.z
 

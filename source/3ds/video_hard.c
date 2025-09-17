@@ -8,9 +8,7 @@
 #include "v810_mem.h"
 #include "vb_set.h"
 
-#include "char_shbin.h"
-#include "final_shbin.h"
-#include "affine_shbin.h"
+#include "n3ds_shaders.h"
 
 #include <tex3ds.h>
 #include "palette_mask_t3x.h"
@@ -51,18 +49,9 @@ AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
 static C3D_Tex affine_masks[4][4];
 static C3D_Tex palette_mask;
 
-static DVLB_s *char_dvlb;
-static shaderProgram_s sChar;
-static s8 uLoc_posscale;
-static s8 uLoc_pal1tex, uLoc_pal2tex, uLoc_pal3col;
 static C3D_FVec pal1tex[8] = {0}, pal2tex[8] = {0}, pal3col[8] = {0};
-static s8 uLoc_offset;
 static C3D_FVec char_offset;
-static s8 uLoc_bgmap_offsets;
 static C3D_FVec bgmap_offsets[2];
-
-static DVLB_s *sAffine_dvlb;
-static shaderProgram_s sAffine;
 
 typedef struct {
 	short x, y;
@@ -81,24 +70,6 @@ static vertex *vbuf, *vcur;
 static avertex *avbuf, *avcur;
 
 void video_hard_init(void) {
-	char_dvlb = DVLB_ParseFile((u32 *)char_shbin, char_shbin_size);
-	shaderProgramInit(&sChar);
-	shaderProgramSetVsh(&sChar, &char_dvlb->DVLE[0]);
-	shaderProgramSetGsh(&sChar, &char_dvlb->DVLE[1], 0);
-
-	uLoc_posscale = shaderInstanceGetUniformLocation(sChar.vertexShader, "posscale");
-	uLoc_offset = shaderInstanceGetUniformLocation(sChar.vertexShader, "offset");
-	uLoc_pal1tex = shaderInstanceGetUniformLocation(sChar.geometryShader, "pal1tex");
-	uLoc_pal2tex = shaderInstanceGetUniformLocation(sChar.geometryShader, "pal2tex");
-	uLoc_pal3col = shaderInstanceGetUniformLocation(sChar.geometryShader, "pal3col");
-
-	sAffine_dvlb = DVLB_ParseFile((u32 *)affine_shbin, affine_shbin_size);
-	shaderProgramInit(&sAffine);
-	shaderProgramSetVsh(&sAffine, &sAffine_dvlb->DVLE[0]);
-	shaderProgramSetGsh(&sAffine, &sAffine_dvlb->DVLE[1], 3);
-
-	uLoc_bgmap_offsets = shaderInstanceGetUniformLocation(sAffine.geometryShader, "bgmap_offsets");
-
 	C3D_TexInitParams params;
 	params.width = 256;
 	params.height = 512;
@@ -192,10 +163,10 @@ static void setRegularDrawing(void) {
 	C3D_TexBind(1, &palette_mask);
 	C3D_TexBind(2, &palette_mask);
 
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
-	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc_pal1tex, 8), pal1tex, sizeof(pal1tex));
-	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc_pal2tex, 8), pal2tex, sizeof(pal2tex));
-	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc_pal3col, 8), pal3col, sizeof(pal3col));
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
+	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal1tex, 8), pal1tex, sizeof(pal1tex));
+	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal2tex, 8), pal2tex, sizeof(pal2tex));
+	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal3col, 8), pal3col, sizeof(pal3col));
 }
 
 // returns vertex count
@@ -303,8 +274,8 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 
 	// set up cache texture
 	C3D_FrameDrawOn(cache->target);
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_offset, 0, 0, 0, 0);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset, 0, 0, 0, 0);
 	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 
 	C3D_AlphaTest(false, GPU_GREATER, 0);
@@ -344,7 +315,7 @@ static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures
 		}
 	}
 
-	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc_bgmap_offsets, 2), bgmap_offsets, sizeof(bgmap_offsets));
+	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.bgmap_offsets, 2), bgmap_offsets, sizeof(bgmap_offsets));
 
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
@@ -565,7 +536,7 @@ void video_hard_render(int drawn_fb) {
 
 						int offset_x = gx - mx + (left_mx & ~7);
 
-						C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_offset,
+						C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset,
 							offset_x / 256.0,
 							eye, 0, 0);
 
@@ -573,7 +544,7 @@ void video_hard_render(int drawn_fb) {
 
 						C3D_DrawArrays(GPU_GEOMETRY_PRIM, vstart - vbuf, vcount);
 
-						C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc_offset, 0, 0, 0, 0);
+						C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset, 0, 0, 0, 0);
 					}
 				}
 			} else {
