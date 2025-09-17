@@ -18,8 +18,8 @@
 .out outtc0 dummy
 .out outpos2 dummy
 
-.entry vmain
-.proc vmain
+.entry vmain_char
+.proc vmain_char
     ; flips
     mova a0.x, v1.w
     ; position: 0..size -> -1..1

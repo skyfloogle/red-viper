@@ -17,7 +17,7 @@
 #include "periodic.h"
 #include "cpp.h"
 
-#include "final_shbin.h"
+#include "n3ds_shaders.h"
 
 #define TOP_SCREEN_WIDTH  400
 #define TOP_SCREEN_HEIGHT 240
@@ -126,11 +126,6 @@ u8 brightness_lut[256];
 
 int eye_count = 2;
 
-DVLB_s *sFinal_dvlb;
-shaderProgram_s sFinal;
-
-int uLoc_shading_offset;
-
 static int get_colour(int id, int brt_reg) {
 	if (id == 0) {
 		return tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.MTINT[tVBOpt.MULTIID][0] : 0;
@@ -165,12 +160,7 @@ void video_init(void) {
 
     gfxSet3D(true);
 
-	sFinal_dvlb = DVLB_ParseFile((u32 *)final_shbin, final_shbin_size);
-	shaderProgramInit(&sFinal);
-	shaderProgramSetVsh(&sFinal, &sFinal_dvlb->DVLE[0]);
-	shaderProgramSetGsh(&sFinal, &sFinal_dvlb->DVLE[1], 3);
-
-	uLoc_shading_offset = shaderInstanceGetUniformLocation(sFinal.geometryShader, "shading_offset");
+	n3ds_shaders_init();
 
 	coltable_vbuf = linearAlloc(4 * 96 * 2);
 	final_vbuf = linearAlloc(sizeof(float) * 4 * 2 * 96 * 2);
@@ -465,7 +455,7 @@ void video_flush(bool default_for_both) {
 		C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
 		C3D_FrameDrawOn(target);
 		C3D_SetViewport(viewportY, viewportX+depthOffset, VIEWPORT_HEIGHT, VIEWPORT_WIDTH);
-		C3D_FVUnifSet(GPU_GEOMETRY_SHADER, uLoc_shading_offset, (src_eye ? 0.5 : 0) + 1/256.0, 0, 0, 0);
+		C3D_FVUnifSet(GPU_GEOMETRY_SHADER, uLoc.shading_offset, (src_eye ? 0.5 : 0) + 1/256.0, 0, 0, 0);
 		C3D_DrawArrays(GPU_GEOMETRY_PRIM, src_eye*96, 96);
 	}
 	

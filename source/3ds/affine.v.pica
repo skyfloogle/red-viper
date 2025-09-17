@@ -8,8 +8,8 @@
 .out outtc0 dummy ; uv's twice
 .out outmat dummy
 
-.entry vmain
-.proc vmain
+.entry vmain_affine
+.proc vmain_affine
     ; position: 0..size -> -1..1
     mov r0, const1.xyxy
     mad r0.xyzw, r0.xyxy, v0.xyzw, const1.wwww
