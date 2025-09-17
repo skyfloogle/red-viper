@@ -327,7 +327,7 @@ void v810_reset(void) {
         vb_state->tHReg.SLB	= 0x00;
         vb_state->tHReg.CDRR	= 0x00;
         vb_state->tHReg.CDTR	= 0x00;
-        vb_state->tHReg.CCSR	= 0xFF;
+        vb_state->tHReg.CCSR	= 0xFA;
         vb_state->tHReg.CCR	= 0x69;
 
         vb_state->tHReg.tCount = 0xFFFF;
