@@ -49,9 +49,6 @@ void n3ds_shaders_init(void)
         return;
 
     initialized = true;
-
-    yatt_shaders_enable_printing(true);
-    yatt_shaders_enable_printing(stderr);
     
     if (yatt_init_shader_binaries(&shader_binary, 1) != YATT_OK)
         svcBreak(USERBREAK_PANIC);
@@ -61,6 +58,4 @@ void n3ds_shaders_init(void)
     
     if (yatt_parse_shader_uniforms(uniforms, shader_programs, ARRAY_COUNT(uniforms), ARRAY_COUNT(shader_programs)) != YATT_OK)
         svcBreak(USERBREAK_PANIC);
-
-    yatt_print_shader_uniforms(uniforms, ARRAY_COUNT(uniforms));
 }
