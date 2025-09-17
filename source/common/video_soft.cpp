@@ -203,7 +203,7 @@ template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
     uint8_t scy_pow = ((world->head >> 8) & 3);
     uint8_t scx = 1 << scx_pow;
     uint8_t scy = 1 << scy_pow;
-    int scx_scy_mask = (1 - scx) | ((1 - scy) << 16);
+    int scx_scy_mask = (scx - 1) | ((scy - 1) << 16);
     int16_t base_gx = (s16)(world->gx << 6) >> 6;
     int16_t gp = (s16)(world->gp << 6) >> 6;
     int16_t gy = world->gy;
