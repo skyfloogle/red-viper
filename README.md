@@ -14,7 +14,7 @@ hardware-accelerated renderer to achieve high performance on the 3DS's limited h
 * Virtual right D-Pad or A/B buttons on the touch screen
 * Configurable color palettes
 
-## Usage
+## Installation
 
 [A modded 3DS](https://3ds.hacks.guide/) is needed. Once that's sorted, you can install it using [Universal Updater](https://universal-team.net/projects/universal-updater.html).
 
@@ -24,9 +24,15 @@ hardware-accelerated renderer to achieve high performance on the 3DS's limited h
 ![image](https://github.com/skyfloogle/red-viper/assets/18466542/31fc852b-c701-4710-b849-fbf1d7dc29b8)
 </details>
 
-Alternatively, the latest release can be manually downloaded [here](https://github.com/skyfloogle/red-viper/releases),
+Alternatively, the latest release can be manually downloaded [here](https://github.com/skyfloogle/red-viper/releases/latest),
 provided as a 3DSX (can be loaded with Homebrew Launcher) and as a CIA (can be installed to the HOME Menu with FBI).
 ROMs can be placed in any desired location on your SD card. The emulator will remember the location of the last ROM you loaded.
+
+## Usage
+
+ROM files need the .vb file extension to be listed. 
+
+II menu on lower left screen pauses emulation and displays main menu.
 
 ## FAQ
 
