@@ -30,9 +30,11 @@ ROMs can be placed in any desired location on your SD card. The emulator will re
 
 ## Usage
 
-ROM files need the .vb file extension to be listed. 
+ROM files must use the .vb extension to be recognized. They may be archived in .zip files.
 
-II menu on lower left screen pauses emulation and displays main menu.
+ROM files may be placed anywhere on the SD card - the emulator has a file browser, and remembers the most recently used directory.
+
+If you're looking for games, check out [Planet Virtual Boy's homebrew section](https://www.virtual-boy.com/homebrew/)!
 
 ## FAQ
 
