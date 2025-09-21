@@ -464,6 +464,9 @@ int serviceInt(unsigned int cycles, WORD PC) {
             vb_state->v810_state.ret = true;
             pending_int = true;
         }
+    } else if ((vb_state->tHReg.CCR & 0x14) == 0x14) {
+        // single player remote comm should never finish
+        vb_state->tHReg.nextcomm = cycles + 3200;
     }
 
     if (vb_state->tHReg.CCR & 0x04) {
