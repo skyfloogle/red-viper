@@ -367,7 +367,7 @@ void video_flush(bool default_for_both) {
 
 	C3D_TexEnv *env;
 	// If drawing VIP on top of softbuf, create a mask of the VIP graphics by adding all 3 channels.
-	if ((tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR && tVBOpt.VIP_OVER_SOFT)) {
+	if (tVBOpt.RENDERMODE != RM_CPUONLY && (tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR && tVBOpt.VIP_OVER_SOFT)) {
 		env = C3D_GetTexEnv(0);
 		C3D_TexEnvInit(env);
 		C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, 0);
@@ -391,13 +391,18 @@ void video_flush(bool default_for_both) {
 	// Draw the softbuf onto the VIP, or vice versa.
 	env = C3D_GetTexEnv(2);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_TEXTURE1, GPU_TEXTURE1);
-	if (tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR) {
-		if (tVBOpt.VIP_OVER_SOFT) {
-			C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE1, GPU_PREVIOUS, GPU_TEXTURE0);
+	if (tVBOpt.RENDERMODE != RM_CPUONLY) {
+		C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_TEXTURE1, GPU_TEXTURE1);
+		if (tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR) {
+			if (tVBOpt.VIP_OVER_SOFT) {
+				C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE1, GPU_PREVIOUS, GPU_TEXTURE0);
+			}
+			C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_RGB_SRC_COLOR);
+			C3D_TexEnvFunc(env, C3D_RGB, GPU_MULTIPLY_ADD);
 		}
-		C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_RGB_SRC_COLOR);
-		C3D_TexEnvFunc(env, C3D_RGB, GPU_MULTIPLY_ADD);
+	} else {
+		C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE1, 0, 0);
+		C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
 	}
 	C3D_TexEnvColor(env, -1);
 	C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
