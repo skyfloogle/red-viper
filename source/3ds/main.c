@@ -283,6 +283,7 @@ exit:
     v810_exit();
 
     if (tVBOpt.CPP_ENABLED) cppExit();
+    udsExit();
     ptmuExit();
     romfsExit();
     fsExit();

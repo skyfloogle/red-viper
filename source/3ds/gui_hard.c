@@ -25,6 +25,7 @@
 #include "vblink.h"
 #include "cpp.h"
 #include "extrapad.h"
+#include "multiplayer.h"
 
 #define COLOR_R(COLOR) ( ((COLOR) & 0x000000FF) )
 #define COLOR_G(COLOR) ( ((COLOR) & 0x0000FF00) >> 8)
@@ -190,7 +191,7 @@ static inline int handle_buttons(Button buttons[], int count);
 static void first_menu(int initial_button);
 static Button first_menu_buttons[] = {
     {.str="Load ROM", .x=16, .y=16, .w=288, .h=144},
-    {.str="About", .x=0, .y=176, .w=80, .h=64},
+    {.str="Multi\nplayer", .x=0, .y=176, .w=80, .h=64},
     {.str="Options", .x=240, .y=176, .w=80, .h=64},
     {.str="Quit", .x=112, .y=192, .w=96, .h=48},
 };
@@ -199,8 +200,8 @@ static void game_menu(int initial_button);
 static Button game_menu_buttons[] = {
     #define MAIN_MENU_LOAD_ROM 0
     {.str="Load ROM", .x=232 - 16, .y=64, .w=80 + 16, .h=80},
-    #define MAIN_MENU_ABOUT 1
-    {.str="About", .x=0, .y=176, .w=80, .h=64},
+    #define MAIN_MENU_MULTI 1
+    {.str="Multi\nplayer", .x=0, .y=176, .w=80, .h=64},
     #define MAIN_MENU_OPTIONS 2
     {.str="Options", .x=240, .y=176, .w=80, .h=64},
     #define MAIN_MENU_QUIT 3
@@ -219,6 +220,35 @@ static Button rom_loader_buttons[] = {
     {.str="Up", .x=0, .y=0, .w=32, .h=32},
     #define ROM_LOADER_BACK 1
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+static void multiplayer_main(int initial_button);
+static Button multiplayer_main_buttons[] = {
+    #define MULTI_MAIN_HOST 0
+    {.str="Host", .x=16, .y=16, .w=288, .h=48},
+    #define MULTI_MAIN_JOIN 1
+    {.str="Join", .x=16, .y=80, .w=288, .h=48},
+    #define MULTI_MAIN_BACK 2
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+static void multiplayer_join(void);
+static Button multiplayer_join_buttons[] = {
+    {.str="", .x=72, .y=16+56*0, .w=176, .h=48},
+    {.str="", .x=72, .y=16+56*1, .w=176, .h=48},
+    {.str="", .x=72, .y=16+56*2, .w=176, .h=48},
+    {.str="", .x=72, .y=16+56*3, .w=176, .h=48},
+    #define MULTI_JOIN_COUNT 4
+    #define MULTI_JOIN_REFRESH 4
+    {.str="Refresh", .x=0, .y=0, .w=68, .h=32},
+    #define MULTI_JOIN_BACK 5
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
+};
+
+static void multiplayer_room(int initial_button);
+static Button multiplayer_room_buttons[] = {
+    #define MULTI_ROOM_LEAVE 0
+    {.str="Leave", .x=0, .y=208, .w=56, .h=32},
 };
 
 static void controls(int initial_button);
@@ -368,26 +398,28 @@ static Button touchscreen_settings_buttons[] = {
 static void options(int initial_button);
 static Button options_buttons[] = {
     #define OPTIONS_VIDEO 0
-    {.str="Video settings", .x=16, .y=16, .w=128, .h=48},
+    {.str="Video\nsettings", .x=16, .y=16, .w=96-8, .h=48},
     #define OPTIONS_CONTROLS 1
-    {.str="Controls", .x=176, .y=16, .w=128, .h=48},
+    {.str="Controls", .x=112-2, .y=16, .w=96+4, .h=48},
     #define OPTIONS_SOUND 2
-    {.str="Sound", .x=16, .y=80, .w=96-8, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
-    #define OPTIONS_FF 3
+    {.str="Sound", .x=208+8, .y=16, .w=96-8, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define OPTIONS_PERF 3
+    {.str="Perf.\nsettings", .x=16, .y=80, .w=96-8, .h=48},
+    #define OPTIONS_FF 4
     {.str="Fastforward", .x=112-2, .y=80, .w=96+4, .h=48, .show_toggle=true, .toggle_text_on=&text_toggle, .toggle_text_off=&text_hold},
-    #define OPTIONS_PERF 4
-    {.str="Perf.\nsettings", .x=208+8, .y=80, .w=96-8, .h=48},
-    #define OPTIONS_SAVE_GLOBAL 5
+    #define OPTIONS_ABOUT 5
+    {.str="About", .x=208+8, .y=80, .w=96-8, .h=48},
+    #define OPTIONS_SAVE_GLOBAL 6
     {.str="Save\n(Global)", .x=16, .y=144, .w=96-8, .h=48},
-    #define OPTIONS_SAVE_GAME 6
+    #define OPTIONS_SAVE_GAME 7
     {.str="Save\n(Game)", .x=112-2, .y=144, .w=96+4, .h=48},
-    #define OPTIONS_DISCARD 7
+    #define OPTIONS_DISCARD 8
     {.str="Discard", .x=208+8, .y=144, .w=96-8, .h=48},
-    #define OPTIONS_RESET_TO_GLOBAL 8
+    #define OPTIONS_RESET_TO_GLOBAL 9
     {.str="Restore\nGlobal", .y=144, .h=48},
-    #define OPTIONS_BACK  9
+    #define OPTIONS_BACK  10
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
-    #define OPTIONS_DEBUG 10
+    #define OPTIONS_DEBUG 11
     {.str="Save debug info", .x=170, .y=208, .w=150, .h=32},
 };
 
@@ -578,6 +610,9 @@ static Button forwarder_error_buttons[] = {
     SETUP_BUTTONS(first_menu_buttons); \
     SETUP_BUTTONS(game_menu_buttons); \
     SETUP_BUTTONS(rom_loader_buttons); \
+    SETUP_BUTTONS(multiplayer_main_buttons); \
+    SETUP_BUTTONS(multiplayer_join_buttons); \
+    SETUP_BUTTONS(multiplayer_room_buttons); \
     SETUP_BUTTONS(controls_buttons); \
     SETUP_BUTTONS(cpp_options_buttons); \
     SETUP_BUTTONS(preset_controls_buttons); \
@@ -666,11 +701,11 @@ static void first_menu(int initial_button) {
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
             [[gnu::musttail]] return rom_loader();
-        case MAIN_MENU_ABOUT:
-            [[gnu::musttail]] return about();
+        case MAIN_MENU_MULTI:
+            [[gnu::musttail]] return multiplayer_main(0);
         case MAIN_MENU_OPTIONS:
             [[gnu::musttail]] return options(0);
-        case MAIN_MENU_QUIT: // Quit
+        case MAIN_MENU_QUIT:
             if (areyousure(&text_areyousure_exit)) {
             guiop = GUIEXIT;
             return;
@@ -691,25 +726,25 @@ static void game_menu(int initial_button) {
     LOOP_END(game_menu_buttons);
     if (!tVBOpt.FORWARDER && (hidKeysDown() & KEY_Y)) [[gnu::musttail]] return vblink();
     switch (button) {
-        case MAIN_MENU_LOAD_ROM: // Load ROM
+        case MAIN_MENU_LOAD_ROM:
             guiop = AKILL | VBRESET;
             [[gnu::musttail]] return rom_loader();
-        case MAIN_MENU_ABOUT: // Controls
-            [[gnu::musttail]] return about();
-        case MAIN_MENU_OPTIONS: // Options
+        case MAIN_MENU_MULTI:
+            [[gnu::musttail]] return multiplayer_main(0);
+        case MAIN_MENU_OPTIONS:
             [[gnu::musttail]] return options(0);
-        case MAIN_MENU_QUIT: // Quit
+        case MAIN_MENU_QUIT:
             if (areyousure(&text_areyousure_exit)) {
                 guiop = AKILL | GUIEXIT;
                 return;
             } else [[gnu::musttail]] return game_menu(MAIN_MENU_QUIT);
-        case MAIN_MENU_RESUME: // Resume
+        case MAIN_MENU_RESUME:
             // curly braces to avoid compiler error
             {
                 guiop = 0;
                 return;
             }
-        case MAIN_MENU_RESET: // Reset
+        case MAIN_MENU_RESET:
             if (areyousure(&text_areyousure_reset)) {
                 // clear screen buffer
                 for (int i = 0; i < 2; i++) {
@@ -1079,6 +1114,93 @@ static void rom_loader(void) {
         saveFileOptions();
         [[gnu::musttail]] return load_rom();
     }
+}
+
+static void multiplayer_main(int initial_button) {
+    Result res;
+    static bool uds_initialized = false;
+    if (!uds_initialized) {
+        uds_initialized = true;
+        res = udsInit(0x3000, NULL);
+        if (R_FAILED(res)) {
+            // TODO error message
+            [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
+        }
+    }
+    LOOP_BEGIN(multiplayer_main_buttons, initial_button);
+    LOOP_END(multiplayer_main_buttons);
+    switch (button) {
+        case MULTI_MAIN_HOST:
+            res = create_network();
+            if (R_FAILED(res)) {
+                // TODO error message
+                [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
+            } else {
+                [[gnu::musttail]] return multiplayer_room(0);
+            }
+        case MULTI_MAIN_JOIN:
+            [[gnu::musttail]] return multiplayer_join();
+        case MULTI_MAIN_BACK:
+            [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
+    }
+}
+
+static void multiplayer_join() {
+    udsNetworkScanInfo *networks;
+    size_t total_networks;
+    scan_beacons(&networks, &total_networks);
+
+    C2D_TextBufClear(dynamic_textbuf);
+
+    for (int i = 0; i < MULTI_JOIN_COUNT; i++) {
+        multiplayer_join_buttons[i].hidden = i >= total_networks;
+        if (!multiplayer_join_buttons[i].hidden) {
+            char text[11] = {0};
+            udsGetNodeInfoUsername(&networks[i].nodes[0], text);
+            C2D_TextParse(&multiplayer_join_buttons[i].text, dynamic_textbuf, text);
+            C2D_TextOptimize(&multiplayer_join_buttons[i].text);
+        }
+    }
+
+    LOOP_BEGIN(multiplayer_join_buttons, 0);
+    LOOP_END(multiplayer_join_buttons);
+    if (button < MULTI_JOIN_COUNT) {
+        Result res = connect_to_network(&networks[button].network);
+        if (R_FAILED(res)) {
+            // TODO error
+            [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_JOIN);
+        } else {
+            [[gnu::musttail]] return multiplayer_room(0);
+        }
+    } else if (button == MULTI_JOIN_REFRESH) {
+        [[gnu::musttail]] return multiplayer_join();
+    } else if (button == MULTI_JOIN_BACK) {
+        [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_JOIN);
+    }
+}
+
+static void multiplayer_room(int initial_button) {
+    static udsConnectionStatus status;
+    static char chars[16] = "";
+    static C2D_Text text;
+
+    // udsGetConnectionStatus(&status);
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_TextParse(&text, dynamic_textbuf, chars);
+    C2D_TextOptimize(&text);
+    LOOP_BEGIN(multiplayer_room_buttons, initial_button);
+        if (udsWaitConnectionStatusEvent(false, false)) {
+            udsGetConnectionStatus(&status);
+            snprintf(chars, sizeof(chars), "%d/%d", status.cur_NetworkNodeID, status.total_nodes);
+            C2D_TextParse(&text, dynamic_textbuf, chars);
+            C2D_TextOptimize(&text);
+        }
+        C2D_DrawText(&text, C2D_WithColor, 20, 20, 0, 1.0, 1.0, TINT_100);
+    LOOP_END(multiplayer_room_buttons);
+    if (button == MULTI_ROOM_LEAVE) {
+        local_disconnect();
+    }
+    [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_HOST);
 }
 
 static void controls(int initial_button) {
@@ -2082,8 +2204,10 @@ static void options(int initial_button) {
             [[gnu::musttail]] return options(OPTIONS_SOUND);
         case OPTIONS_PERF: // Developer settings
             [[gnu::musttail]] return dev_options(0);
-        case OPTIONS_CONTROLS: // About
+        case OPTIONS_CONTROLS: // Controls
             [[gnu::musttail]] return controls(0);
+        case OPTIONS_ABOUT: // About
+            return about();
         case OPTIONS_BACK: // Back
             [[gnu::musttail]] return main_menu(MAIN_MENU_OPTIONS);
         case OPTIONS_DEBUG: // Save debug info
@@ -2346,7 +2470,7 @@ static void about(void) {
         C2D_DrawSpriteTinted(&logo_sprite, &tint);
         C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(about_buttons);
-    [[gnu::musttail]] return main_menu(MAIN_MENU_ABOUT);
+    [[gnu::musttail]] return options(OPTIONS_ABOUT);
 }
 
 static void load_error(int err, bool unloaded) {
