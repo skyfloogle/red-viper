@@ -671,9 +671,6 @@ static int drc_translateBlock(void) {
     bool is_virtual_bowling = memcmp(tVBOpt.GAME_ID, "E7VVBJ", 6) == 0;
     bool is_niko_chan = memcmp(tVBOpt.GAME_ID, "8BVTRJ", 6) == 0;
     bool slow_memory = is_virtual_bowling || is_niko_chan ||
-        // Jack Bros. occasionally flashes during level transitions if it runs too fast.
-        // Might no longer be necessary once display/render time is fixed?
-        is_jack_bros ||
         // If memory is too fast, Blox 2's intro jingle doesn't finish.
         memcmp(tVBOpt.GAME_ID, "CRVB2M", 6) == 0;
 
