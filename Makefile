@@ -66,7 +66,7 @@ ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 GIT_HASH := $(shell git log -1 --pretty=format:"%h")
 FULL_VERSION := "$(VERSION) - $(GIT_HASH)"
 
-CFLAGS	:=	-g -Wall -Wno-format-truncation -Werror -O2 -mword-relocations \
+CFLAGS	:=	-g -Wall -Wno-format-truncation -Werror -O2 -mword-relocations -Wswitch \
 			-Wno-unused-variable \
 			-ffunction-sections \
 			-DVERSION=\"$(FULL_VERSION)\" \
