@@ -653,7 +653,7 @@ static void first_menu(int initial_button) {
 
         // at this point we know we're a forwarder, so just load the rom
         tVBOpt.FORWARDER = true;
-        return load_rom();
+        [[gnu::musttail]] return load_rom();
     }
 
     no_forwarder:
@@ -661,20 +661,20 @@ static void first_menu(int initial_button) {
         draw_logo();
         if (hidKeysDown() & KEY_Y) loop = false;
     LOOP_END(first_menu_buttons);
-    if (hidKeysDown() & KEY_Y) return vblink();
+    if (hidKeysDown() & KEY_Y) [[gnu::musttail]] return vblink();
     guiop = 0;
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
-            return rom_loader();
+            [[gnu::musttail]] return rom_loader();
         case MAIN_MENU_ABOUT:
-            return about();
+            [[gnu::musttail]] return about();
         case MAIN_MENU_OPTIONS:
-            return options(0);
+            [[gnu::musttail]] return options(0);
         case MAIN_MENU_QUIT: // Quit
             if (areyousure(&text_areyousure_exit)) {
             guiop = GUIEXIT;
             return;
-            } else return first_menu(MAIN_MENU_QUIT);
+            } else [[gnu::musttail]] return first_menu(MAIN_MENU_QUIT);
     }
 }
 
@@ -689,23 +689,26 @@ static void game_menu(int initial_button) {
     LOOP_BEGIN(game_menu_buttons, initial_button);
         if (!tVBOpt.FORWARDER && (hidKeysDown() & KEY_Y)) loop = false;
     LOOP_END(game_menu_buttons);
-    if (!tVBOpt.FORWARDER && (hidKeysDown() & KEY_Y)) return vblink();
+    if (!tVBOpt.FORWARDER && (hidKeysDown() & KEY_Y)) [[gnu::musttail]] return vblink();
     switch (button) {
         case MAIN_MENU_LOAD_ROM: // Load ROM
             guiop = AKILL | VBRESET;
-            return rom_loader();
+            [[gnu::musttail]] return rom_loader();
         case MAIN_MENU_ABOUT: // Controls
-            return about();
+            [[gnu::musttail]] return about();
         case MAIN_MENU_OPTIONS: // Options
-            return options(0);
+            [[gnu::musttail]] return options(0);
         case MAIN_MENU_QUIT: // Quit
             if (areyousure(&text_areyousure_exit)) {
                 guiop = AKILL | GUIEXIT;
                 return;
-            } else return game_menu(MAIN_MENU_QUIT);
+            } else [[gnu::musttail]] return game_menu(MAIN_MENU_QUIT);
         case MAIN_MENU_RESUME: // Resume
-            guiop = 0;
-            return;
+            // curly braces to avoid compiler error
+            {
+                guiop = 0;
+                return;
+            }
         case MAIN_MENU_RESET: // Reset
             if (areyousure(&text_areyousure_reset)) {
                 // clear screen buffer
@@ -717,9 +720,9 @@ static void game_menu(int initial_button) {
                 C3D_FrameEnd(0);
                 guiop = AKILL | VBRESET;
                 return;
-            } else return game_menu(MAIN_MENU_RESET);
+            } else [[gnu::musttail]] return game_menu(MAIN_MENU_RESET);
         case MAIN_MENU_SAVESTATES:
-            return savestate_menu(0, last_savestate);
+            [[gnu::musttail]] return savestate_menu(0, last_savestate);
     }
 }
 
@@ -1044,11 +1047,11 @@ static void rom_loader(void) {
                     // so we can just get rid of the slash at the end
                     path[len - 1] = 0;
                 }
-                return rom_loader();
-            case ROM_LOADER_BACK: return main_menu(MAIN_MENU_LOAD_ROM);
+                [[gnu::musttail]] return rom_loader();
+            case ROM_LOADER_BACK: [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
         }
     } else if (clicked_entry < dirCount) {
-        return rom_loader();
+        [[gnu::musttail]] return rom_loader();
     } else {
         // clear screen buffer
         for (int i = 0; i < 2; i++) {
@@ -1074,7 +1077,7 @@ static void rom_loader(void) {
         // we know there's a dot
         strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
         saveFileOptions();
-        return load_rom();
+        [[gnu::musttail]] return load_rom();
     }
 }
 
@@ -1091,20 +1094,24 @@ static void controls(int initial_button) {
         case CONTROLS_CONTROL_SCHEME:
             tVBOpt.CUSTOM_CONTROLS = !tVBOpt.CUSTOM_CONTROLS;
             tVBOpt.MODIFIED = true;
-            return controls(CONTROLS_CONTROL_SCHEME);
+            [[gnu::musttail]] return controls(CONTROLS_CONTROL_SCHEME);
         case CONTROLS_CONFIGURE_SCHEME:
-            return tVBOpt.CUSTOM_CONTROLS ? custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_BACK) : preset_controls(0);
+            if (tVBOpt.CUSTOM_CONTROLS) {
+                [[gnu::musttail]] return custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_BACK);
+            } else {
+                [[gnu::musttail]] return preset_controls(0);
+            }
         case CONTROLS_TOUCHSCREEN:
-            return touchscreen_settings();
+            [[gnu::musttail]] return touchscreen_settings();
         case CONTROLS_DISPLAY:
             tVBOpt.INPUTS = !tVBOpt.INPUTS;
             tVBOpt.MODIFIED = true;
-            return controls(CONTROLS_DISPLAY);
+            [[gnu::musttail]] return controls(CONTROLS_DISPLAY);
         case CONTROLS_CPP:
-            return cpp_options(0);
+            [[gnu::musttail]] return cpp_options(0);
         case CONTROLS_BACK:
             tVBOpt.CUSTOM_CONTROLS ? setCustomControls() : setPresetControls(buttons_on_screen);
-            return options(OPTIONS_CONTROLS);
+            [[gnu::musttail]] return options(OPTIONS_CONTROLS);
     }
 }
 
@@ -1122,7 +1129,7 @@ static void cpp_options(int initial_button) {
             } else {
                 cppExit();
             }
-            return cpp_options(button);
+            [[gnu::musttail]] return cpp_options(button);
         case CPP_CALIBRATE:
             toggleVsync(false);
             if (tVBOpt.CPP_ENABLED) cppExit();
@@ -1131,9 +1138,9 @@ static void cpp_options(int initial_button) {
             extraPadLaunch(&conf);
             if (tVBOpt.CPP_ENABLED) cppInit();
             toggleVsync(tVBOpt.VSYNC);
-            return cpp_options(button);
+            [[gnu::musttail]] return cpp_options(button);
         case CPP_BACK:
-            return controls(CONTROLS_CPP);
+            [[gnu::musttail]] return controls(CONTROLS_CPP);
     }
 }
 
@@ -1224,14 +1231,14 @@ static void custom_3ds_mappings(int initial_button) {
             current_custom_mapping_3ds_button_text = &text_custom_3ds_button_##CUSTOM_3DS_BUTTON; \
             current_custom_mapping_vb_option = &tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON; \
             current_custom_mapping_mod = &tVBOpt.CUSTOM_MOD[__builtin_ctz(KEY_##CUSTOM_3DS_BUTTON)]; \
-            return custom_vb_mappings(vb_button_code_to_vb_ui_button_index(tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON));
+            [[gnu::musttail]] return custom_vb_mappings(vb_button_code_to_vb_ui_button_index(tVBOpt.CUSTOM_MAPPING_##CUSTOM_3DS_BUTTON));
         PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_CASE)
         case CUSTOM_3DS_MAPPINGS_BACK:
-            return controls(CONTROLS_CONFIGURE_SCHEME);
+            [[gnu::musttail]] return controls(CONTROLS_CONFIGURE_SCHEME);
         case CUSTOM_3DS_MAPPINGS_RESET:
             setCustomMappingDefaults();
             tVBOpt.MODIFIED = true;
-            return custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_RESET);
+            [[gnu::musttail]] return custom_3ds_mappings(CUSTOM_3DS_MAPPINGS_RESET);
     }
 }
 
@@ -1260,14 +1267,14 @@ static void custom_vb_mappings(int initial_button) {
         case CUSTOM_VB_MAPPINGS_##CUSTOM_VB_BUTTON: \
             *current_custom_mapping_vb_option = VB_##CUSTOM_VB_BUTTON; \
             tVBOpt.MODIFIED = true; \
-            return custom_3ds_mappings(current_custom_mapping_3ds_button);
+            [[gnu::musttail]] return custom_3ds_mappings(current_custom_mapping_3ds_button);
         PERFORM_FOR_EACH_VB_BUTTON(CUSTOM_VB_CASE)
         case CUSTOM_VB_MAPPINGS_MOD:
             *current_custom_mapping_mod = (*current_custom_mapping_mod + 1) % 3;
             tVBOpt.MODIFIED = true;
-            return custom_vb_mappings(button);
+            [[gnu::musttail]] return custom_vb_mappings(button);
         case CUSTOM_VB_MAPPINGS_BACK:
-            return custom_3ds_mappings(current_custom_mapping_3ds_button);
+            [[gnu::musttail]] return custom_3ds_mappings(current_custom_mapping_3ds_button);
     }
 }
 
@@ -1333,18 +1340,18 @@ static void preset_controls(int initial_button) {
         case PRESET_CONTROLS_FACE:
             tVBOpt.ABXY_MODE = (tVBOpt.ABXY_MODE + 1) % 6;
             tVBOpt.MODIFIED = true;
-            return preset_controls(PRESET_CONTROLS_FACE);
+            [[gnu::musttail]] return preset_controls(PRESET_CONTROLS_FACE);
         case PRESET_CONTROLS_SHOULDER:
             tVBOpt.ZLZR_MODE = (tVBOpt.ZLZR_MODE + 1) % 4;
             tVBOpt.MODIFIED = true;
-            return preset_controls(PRESET_CONTROLS_SHOULDER);
+            [[gnu::musttail]] return preset_controls(PRESET_CONTROLS_SHOULDER);
         case PRESET_CONTROLS_DPAD_MODE:
             tVBOpt.DPAD_MODE = (tVBOpt.DPAD_MODE + 1) % 3;
             tVBOpt.MODIFIED = true;
-            return preset_controls(PRESET_CONTROLS_DPAD_MODE);
+            [[gnu::musttail]] return preset_controls(PRESET_CONTROLS_DPAD_MODE);
         case PRESET_CONTROLS_BACK:
             setPresetControls(buttons_on_screen);
-            return controls(CONTROLS_CONFIGURE_SCHEME);
+            [[gnu::musttail]] return controls(CONTROLS_CONFIGURE_SCHEME);
     }
 }
 
@@ -1491,7 +1498,7 @@ static void touchscreen_settings() {
     buttonLock = false;
     switch (button) {
         case TOUCHSCREEN_BACK: // Back
-            return controls(CONTROLS_TOUCHSCREEN);
+            [[gnu::musttail]] return controls(CONTROLS_TOUCHSCREEN);
         case TOUCHSCREEN_RESET: // Reset
             tVBOpt.MODIFIED = true;
             tVBOpt.PAUSE_RIGHT = 160;
@@ -1501,15 +1508,15 @@ static void touchscreen_settings() {
             tVBOpt.TOUCH_BY = 160;
             tVBOpt.TOUCH_PADX = 240;
             tVBOpt.TOUCH_PADY = 128;
-            return touchscreen_settings();
+            [[gnu::musttail]] return touchscreen_settings();
         case TOUCHSCREEN_SWITCH:
             tVBOpt.MODIFIED = true;
             tVBOpt.TOUCH_SWITCH = !tVBOpt.TOUCH_SWITCH;
-            return touchscreen_settings();
+            [[gnu::musttail]] return touchscreen_settings();
         case TOUCHSCREEN_DEFAULT:
             tVBOpt.MODIFIED = true;
             tVBOpt.TOUCH_BUTTONS = buttons_on_screen;
-            return touchscreen_settings();
+            [[gnu::musttail]] return touchscreen_settings();
     }
 }
 
@@ -1735,15 +1742,15 @@ static void colour_filter(void) {
 
     switch (button) {
         case COLOUR_BACK: // Back
-            return barrier_settings(BARRIER_SETTINGS);
+            [[gnu::musttail]] return barrier_settings(BARRIER_SETTINGS);
         case COLOUR_RED: // Red
             tVBOpt.TINT = 0x0000ff;
             tVBOpt.MODIFIED = true;
-            return colour_filter();
+            [[gnu::musttail]] return colour_filter();
         case COLOUR_GRAY: // Gray
             tVBOpt.TINT = 0xffffff;
             tVBOpt.MODIFIED = true;
-            return colour_filter();
+            [[gnu::musttail]] return colour_filter();
     }
 }
 
@@ -1805,13 +1812,13 @@ static void multicolour_wheel(int palette_id, int colour_id) {
 
     switch (button) {
         case MULTIWHEEL_BACK:
-            return multicolour_settings(palette_id, colour_id);
+            [[gnu::musttail]] return multicolour_settings(palette_id, colour_id);
         case MULTIWHEEL_HEX:
             if (swkbd_colour(&tVBOpt.MTINT[palette_id][colour_id])) tVBOpt.MODIFIED = true;
-            return multicolour_wheel(palette_id, colour_id);
+            [[gnu::musttail]] return multicolour_wheel(palette_id, colour_id);
         case MULTIWHEEL_SCALE:
             if (swkbd_scale(&tVBOpt.STINT[palette_id][colour_id - 1])) tVBOpt.MODIFIED = true;
-            return multicolour_wheel(palette_id, colour_id);
+            [[gnu::musttail]] return multicolour_wheel(palette_id, colour_id);
     }
 }
 
@@ -1819,14 +1826,14 @@ static void multicolour_picker(int initial_button) {
     LOOP_BEGIN(multicolour_picker_buttons, initial_button);
     LOOP_END(multicolour_picker_buttons);
     if (button == MULTIPICKER_BACK) {
-        return barrier_settings(BARRIER_SETTINGS);
+        [[gnu::musttail]] return barrier_settings(BARRIER_SETTINGS);
     } else {
         if (tVBOpt.MULTIID != button / 2) {
             tVBOpt.MODIFIED = true;
             tVBOpt.MULTIID = button / 2;
         }
-        if (button % 2) return multicolour_settings(button / 2, 0);
-        else return multicolour_picker(button);
+        if (button % 2) [[gnu::musttail]] return multicolour_settings(button / 2, 0);
+        else [[gnu::musttail]] return multicolour_picker(button);
     }
 }
 
@@ -1881,9 +1888,9 @@ static void multicolour_settings(int palette_id, int initial_button) {
         C2D_DrawText(&lightest_scale, C2D_WithColor | C2D_AlignRight, 316, 48 * 3 + 36, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(multicolour_settings_buttons);
     if (button == MULTI_BACK) {
-        return multicolour_picker(palette_id * 2 + 1);
+        [[gnu::musttail]] return multicolour_picker(palette_id * 2 + 1);
     } else {
-        return multicolour_wheel(palette_id, button);
+        [[gnu::musttail]] return multicolour_wheel(palette_id, button);
     }
 }
 
@@ -1961,10 +1968,10 @@ static void vblink(void) {
         if (success) {
             // success
             return;
-        } else return vblink();
+        } else [[gnu::musttail]] return vblink();
     } else {
         vblink_close();
-        return main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
+        [[gnu::musttail]] return main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
     }
 }
 
@@ -1981,18 +1988,18 @@ static void dev_options(int initial_button) {
         case PERF_BAR:
             tVBOpt.PERF_INFO = !tVBOpt.PERF_INFO;
             tVBOpt.MODIFIED = true;
-            return dev_options(PERF_BAR);
+            [[gnu::musttail]] return dev_options(PERF_BAR);
         case PERF_VIP:
             tVBOpt.VIP_OVERCLOCK = !tVBOpt.VIP_OVERCLOCK;
             tVBOpt.MODIFIED = true;
-            return dev_options(PERF_VIP);
+            [[gnu::musttail]] return dev_options(PERF_VIP);
         case PERF_N3DS:
             tVBOpt.N3DS_SPEEDUP = !tVBOpt.N3DS_SPEEDUP;
             tVBOpt.MODIFIED = true;
             osSetSpeedupEnable(tVBOpt.N3DS_SPEEDUP);
-            return dev_options(PERF_N3DS);
+            [[gnu::musttail]] return dev_options(PERF_N3DS);
         case PERF_BACK:
-            return options(OPTIONS_PERF);
+            [[gnu::musttail]] return options(OPTIONS_PERF);
     }
 }
 
@@ -2065,37 +2072,37 @@ static void options(int initial_button) {
     LOOP_END(options_buttons);
     switch (button) {
         case OPTIONS_VIDEO: // Video settings
-            return video_settings(0);
+            [[gnu::musttail]] return video_settings(0);
         case OPTIONS_FF: // Fast forward
             tVBOpt.FF_TOGGLE = !tVBOpt.FF_TOGGLE;
             tVBOpt.MODIFIED = true;
-            return options(OPTIONS_FF);
+            [[gnu::musttail]] return options(OPTIONS_FF);
         case OPTIONS_SOUND: // Sound
             tVBOpt.SOUND = !tVBOpt.SOUND;
-            return options(OPTIONS_SOUND);
+            [[gnu::musttail]] return options(OPTIONS_SOUND);
         case OPTIONS_PERF: // Developer settings
-            return dev_options(0);
+            [[gnu::musttail]] return dev_options(0);
         case OPTIONS_CONTROLS: // About
-            return controls(0);
+            [[gnu::musttail]] return controls(0);
         case OPTIONS_BACK: // Back
-            return main_menu(MAIN_MENU_OPTIONS);
+            [[gnu::musttail]] return main_menu(MAIN_MENU_OPTIONS);
         case OPTIONS_DEBUG: // Save debug info
-            return save_debug_info();
+            [[gnu::musttail]] return save_debug_info();
         case OPTIONS_SAVE_GLOBAL:
             if (tVBOpt.GAME_SETTINGS) deleteGameOptions();
             saveFileOptions();
-            return options(OPTIONS_BACK);
+            [[gnu::musttail]] return options(OPTIONS_BACK);
         case OPTIONS_RESET_TO_GLOBAL:
             if (tVBOpt.GAME_SETTINGS) deleteGameOptions();
             loadFileOptions();
-            return options(OPTIONS_BACK);
+            [[gnu::musttail]] return options(OPTIONS_BACK);
         case OPTIONS_SAVE_GAME:
             saveGameOptions();
-            return options(OPTIONS_BACK);
+            [[gnu::musttail]] return options(OPTIONS_BACK);
         case OPTIONS_DISCARD:
             loadFileOptions();
             if (game_running) loadGameOptions();
-            return options(OPTIONS_BACK);
+            [[gnu::musttail]] return options(OPTIONS_BACK);
     }
 }
 
@@ -2111,19 +2118,23 @@ static void video_settings(int initial_button) {
         case VIDEO_MODE:
             toggleAnaglyph(!tVBOpt.ANAGLYPH, true);
             tVBOpt.MODIFIED = true;
-            return video_settings(button);
+            [[gnu::musttail]] return video_settings(button);
         case VIDEO_SETTINGS:
-            return tVBOpt.ANAGLYPH ? anaglyph_settings(0) : barrier_settings(0);
+            if (tVBOpt.ANAGLYPH) {
+                [[gnu::musttail]] return anaglyph_settings(0);
+            } else {
+                [[gnu::musttail]] return barrier_settings(0);
+            }
         case VIDEO_SLIDER:
             tVBOpt.SLIDERMODE = !tVBOpt.SLIDERMODE;
             tVBOpt.MODIFIED = true;
-            return video_settings(button);
+            [[gnu::musttail]] return video_settings(button);
         case VIDEO_ANTIFLICKER:
             tVBOpt.ANTIFLICKER = !tVBOpt.ANTIFLICKER;
             tVBOpt.MODIFIED = true;
-            return video_settings(button);
+            [[gnu::musttail]] return video_settings(button);
         case VIDEO_BACK:
-            return options(OPTIONS_VIDEO);
+            [[gnu::musttail]] return options(OPTIONS_VIDEO);
     }
 }
 
@@ -2136,15 +2147,19 @@ static void barrier_settings(int initial_button) {
         case BARRIER_MODE:
             tVBOpt.MULTICOL = !tVBOpt.MULTICOL;
             tVBOpt.MODIFIED = true;
-            return barrier_settings(button);
+            [[gnu::musttail]] return barrier_settings(button);
         case BARRIER_SETTINGS: // Colour filter
-            return tVBOpt.MULTICOL ? multicolour_picker(0) : colour_filter();
+            if (tVBOpt.MULTICOL) {
+                [[gnu::musttail]] return multicolour_picker(0);
+            } else {
+                [[gnu::musttail]] return colour_filter();
+            }
         case BARRIER_DEFAULT_EYE: // Default eye
             tVBOpt.DEFAULT_EYE = !tVBOpt.DEFAULT_EYE;
             tVBOpt.MODIFIED = true;
-            return barrier_settings(button);
+            [[gnu::musttail]] return barrier_settings(button);
         case BARRIER_BACK: // Back
-            return video_settings(VIDEO_SETTINGS);
+            [[gnu::musttail]] return video_settings(VIDEO_SETTINGS);
     }
 }
 
@@ -2215,13 +2230,13 @@ static void anaglyph_settings(int initial_button) {
     LOOP_END(anaglyph_settings_buttons);
     if (button < 8) {
         tVBOpt.ANAGLYPH_LEFT = button;
-        return anaglyph_settings(button);
+        [[gnu::musttail]] return anaglyph_settings(button);
     } else if (button < 16) {
         tVBOpt.ANAGLYPH_RIGHT = button;
-        return anaglyph_settings(button);
+        [[gnu::musttail]] return anaglyph_settings(button);
     } else switch (button) {
         case ANAGLYPH_BACK:
-            return video_settings(VIDEO_SETTINGS);
+            [[gnu::musttail]] return video_settings(VIDEO_SETTINGS);
     }
 }
 
@@ -2251,7 +2266,7 @@ static void savestate_error(char *message, int last_button, int selected_state) 
     LOOP_BEGIN(about_buttons, 0);
         C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(about_buttons);
-    return savestate_menu(last_button, selected_state);
+    [[gnu::musttail]] return savestate_menu(last_button, selected_state);
 }
 
 static void savestate_confirm(char *message, int last_button, int selected_state) {
@@ -2262,7 +2277,7 @@ static void savestate_confirm(char *message, int last_button, int selected_state
     LOOP_BEGIN(savestate_confirm_buttons, 0);
         C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(savestate_confirm_buttons);
-    if (button) return savestate_menu(last_button, selected_state);
+    if (button) [[gnu::musttail]] return savestate_menu(last_button, selected_state);
     else return;
 }
 
@@ -2297,23 +2312,29 @@ static void savestate_menu(int initial_button, int selected_state) {
     
     switch(button) {
         case SAVESTATE_BACK:
-            return main_menu(MAIN_MENU_SAVESTATES);
+            [[gnu::musttail]] return main_menu(MAIN_MENU_SAVESTATES);
         case SAVE_SAVESTATE:
-            return emulation_sstate(selected_state) != 0 ?
-                savestate_error("Could not save state", SAVE_SAVESTATE, selected_state) :
-                savestate_confirm("Save complete!", SAVE_SAVESTATE, selected_state);
+            if (emulation_sstate(selected_state) != 0) {
+                [[gnu::musttail]] return savestate_error("Could not save state", SAVE_SAVESTATE, selected_state);
+            } else {
+                [[gnu::musttail]] return savestate_confirm("Save complete!", SAVE_SAVESTATE, selected_state);
+            }
         case LOAD_SAVESTATE:
-            return emulation_lstate(selected_state) != 0 ?
-                savestate_error("Could not load state", LOAD_SAVESTATE, selected_state) :
-                savestate_confirm("Load complete!", LOAD_SAVESTATE, selected_state);
+            if (emulation_lstate(selected_state) != 0) {
+                [[gnu::musttail]] return savestate_error("Could not load state", LOAD_SAVESTATE, selected_state);
+            } else {
+                [[gnu::musttail]] return savestate_confirm("Load complete!", LOAD_SAVESTATE, selected_state);
+            }
         case DELETE_SAVESTATE:
-            return emulation_rmstate(selected_state) != 0 ?
-                savestate_error("Could not delete state", DELETE_SAVESTATE, selected_state) :
-                savestate_menu(SAVE_SAVESTATE, selected_state);
+            if (emulation_rmstate(selected_state) != 0) {
+                [[gnu::musttail]] return savestate_error("Could not delete state", DELETE_SAVESTATE, selected_state);
+            } else {
+                [[gnu::musttail]] return savestate_menu(SAVE_SAVESTATE, selected_state);
+            }
         case PREV_SAVESTATE:
-            return savestate_menu(PREV_SAVESTATE, selected_state == 0 ? 9 : selected_state - 1);
+            [[gnu::musttail]] return savestate_menu(PREV_SAVESTATE, selected_state == 0 ? 9 : selected_state - 1);
         case NEXT_SAVESTATE:
-            return savestate_menu(NEXT_SAVESTATE, selected_state == 9 ? 0 : selected_state + 1);
+            [[gnu::musttail]] return savestate_menu(NEXT_SAVESTATE, selected_state == 9 ? 0 : selected_state + 1);
     }
 }
 
@@ -2325,7 +2346,7 @@ static void about(void) {
         C2D_DrawSpriteTinted(&logo_sprite, &tint);
         C2D_DrawText(&text_about, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(about_buttons);
-    return main_menu(MAIN_MENU_ABOUT);
+    [[gnu::musttail]] return main_menu(MAIN_MENU_ABOUT);
 }
 
 static void load_error(int err, bool unloaded) {
@@ -2341,7 +2362,7 @@ static void load_error(int err, bool unloaded) {
             C2D_DrawText(&text_unloaded, C2D_AlignCenter | C2D_WithColor, 320 / 2, 160, 0, 0.5, 0.5, TINT_COLOR);
         }
     LOOP_END(about_buttons);
-    return rom_loader();
+    [[gnu::musttail]] return rom_loader();
 }
 
 static void forwarder_error(int err) {
@@ -2363,7 +2384,11 @@ static void load_rom(void) {
     int ret;
     if ((ret = v810_load_init())) {
         // instant fail
-        return tVBOpt.FORWARDER ? forwarder_error(ret) : load_error(ret, false);
+        if (tVBOpt.FORWARDER) {
+            [[gnu::musttail]] return forwarder_error(ret);
+        } else {
+            [[gnu::musttail]] return load_error(ret, false);
+        }
     }
     C2D_Text text;
     C2D_TextBufClear(dynamic_textbuf);
@@ -2406,11 +2431,15 @@ static void load_rom(void) {
         C3D_FrameEnd(0);
         if (ret < 0) {
             // error
-            return tVBOpt.FORWARDER ? forwarder_error(ret) : load_error(ret, true);
+            if (tVBOpt.FORWARDER) {
+                [[gnu::musttail]] return forwarder_error(ret);
+            } else {
+                [[gnu::musttail]] return load_error(ret, true);
+            }
         } else {
             // cancelled
             v810_load_cancel();
-            return rom_loader();
+            [[gnu::musttail]] return rom_loader();
         }
     }
 }
@@ -2852,7 +2881,7 @@ static void save_debug_info(void) {
     LOOP_BEGIN(about_buttons, 0);
         C2D_DrawText(&text_debug_filenames, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(about_buttons);
-    return options(OPTIONS_DEBUG);
+    [[gnu::musttail]] return options(OPTIONS_DEBUG);
 }
 
 void showError(int code) {
