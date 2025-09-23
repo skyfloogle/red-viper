@@ -265,8 +265,16 @@ int emulation_lstate(int state) {
             READ_VAR(new_vipreg.tDisplayedFB);
             READ_VAR(new_vipreg.tFrame);
             READ_VAR(new_vipreg.SPT);
-            READ_VAR(new_vipreg.GPLT);
-            READ_VAR(new_vipreg.JPLT);
+            HWORD gplt[4];
+            READ_VAR(gplt);
+            for (int i = 0; i < 4; i++) {
+                new_vipreg.GPLT[i] = gplt[i];
+            }
+            HWORD jplt[4];
+            READ_VAR(jplt);
+            for (int i = 0; i < 4; i++) {
+                new_vipreg.JPLT[i] = jplt[i];
+            }
             READ_VAR(new_vipreg.BKCOL);
             u16 padding;
             READ_VAR(padding);
@@ -296,9 +304,19 @@ int emulation_lstate(int state) {
             READ_VAR(new_vipreg.tDisplayedFB);
             READ_VAR(new_vipreg.tFrame);
             READ_VAR(new_vipreg.SPT);
-            READ_VAR(new_vipreg.GPLT);
-            READ_VAR(new_vipreg.JPLT);
+            HWORD gplt[4];
+            READ_VAR(gplt);
+            for (int i = 0; i < 4; i++) {
+                new_vipreg.GPLT[i] = gplt[i];
+            }
+            HWORD jplt[4];
+            READ_VAR(jplt);
+            for (int i = 0; i < 4; i++) {
+                new_vipreg.JPLT[i] = jplt[i];
+            }
             READ_VAR(new_vipreg.BKCOL);
+            u16 padding;
+            READ_VAR(padding);
             READ_VAR(new_vipreg.frametime);
             READ_VAR(new_vipreg.lastdisp);
             READ_VAR(new_vipreg.rowcount);
@@ -334,6 +352,8 @@ int emulation_lstate(int state) {
                 new_vipreg.JPLT[i] = jplt[i];
             }
             READ_VAR(new_vipreg.BKCOL);
+            u16 padding;
+            READ_VAR(padding);
             READ_VAR(new_vipreg.frametime);
             READ_VAR(new_vipreg.lastdisp);
             READ_VAR(new_vipreg.lastdraw);
