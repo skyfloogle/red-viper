@@ -1,7 +1,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <malloc.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <zlib.h>
@@ -23,7 +22,7 @@ static Thread thread;
 static void vblink_thread(void*);
 
 void vblink_init(void) {
-    socInit(memalign(0x1000, 0x40000), 0x40000);
+    socInit(aligned_alloc(0x1000, 0x40000), 0x40000);
     svcCreateEvent(&vblink_event, RESET_STICKY);
 }
 

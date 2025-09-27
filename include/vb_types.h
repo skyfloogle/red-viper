@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #define WORD  uint32_t    //Full 32bit
 #define HWORD uint16_t   //16bit
@@ -46,7 +46,7 @@ typedef s32 Result;
 
 #define linearAlloc malloc
 #define linearFree free
-#define linearMemAlign(size, align) memalign(align, size)
+#define linearMemAlign(size, align) aligned_alloc(align, size)
 #define RGB565(r,g,b)  (((b)&0x1f)|(((g)&0x3f)<<5)|(((r)&0x1f)<<11))
 #define GFX_LEFT 0
 #define GFX_RIGHT 1

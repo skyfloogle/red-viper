@@ -7,8 +7,8 @@
 #include <3ds/srv.h>
 #include <3ds/ipc.h>
 #include <3ds/synchronization.h>
-#include <malloc.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "cpp.h"
 #include "3ds/services/apt.h"
@@ -165,7 +165,7 @@ Result cppInit(void)
     iruserBaudRate = baud_rate;
     iruserPacketId = 0;
 
-    iruserSharedMemAddr = memalign(0x1000, iruserSharedMemSize);
+    iruserSharedMemAddr = aligned_alloc(0x1000, iruserSharedMemSize);
     if (iruserSharedMemAddr == NULL)
     {
         ret = -1;
