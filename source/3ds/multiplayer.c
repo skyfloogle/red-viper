@@ -17,12 +17,14 @@ static const char passphrase[] = "Red Viper " VERSION;
 static udsNetworkScanInfo *beacons;
 #define RECV_HEAP_COUNT 8
 static Packet recv_heap[RECV_HEAP_COUNT] = {0};
-static u8 recv_id = 0; // TODO initialize somewhere
-static u8 recv_ack_id = UINT8_MAX;
+static volatile u8 recv_id = 0; // TODO initialize somewhere
+static volatile u8 recv_ack_id = UINT8_MAX;
 #define SEND_QUEUE_COUNT 8
 static Packet send_queue[SEND_QUEUE_COUNT] = {0};
-static u8 sent_id = 0;
-static u8 shippable_packet = UINT8_MAX;
+static volatile u8 sent_id = 0;
+static volatile u8 shippable_packet = UINT8_MAX;
+
+static Handle end_event;
 
 FILE *logfile;
 #ifdef NET_LOGGING
@@ -30,6 +32,27 @@ FILE *logfile;
 #else
 #define NET_LOG(...)
 #endif
+
+static Result handle_receiving(void);
+
+static void recv_thread(void *args) {
+    Handle handles[2] = {end_event, bindctx.event};
+    s32 event_id;
+    while (true) {
+        Result res = svcWaitSynchronizationN(&event_id, handles, 2, false, U64_MAX);
+        if (R_SUCCEEDED(res)) {
+            NET_LOG("event %ld triggered\n", event_id);
+            if (event_id == 0) {
+                break;
+            }
+            svcClearEvent(bindctx.event);
+            handle_receiving();
+        } else {
+            NET_LOG("wait error %lx\n", res);
+        }
+    }
+    NET_LOG("recv thread ending\n");
+}
 
 static void init_ids(void) {
     recv_id = 0;
@@ -43,6 +66,9 @@ static void init_ids(void) {
         send_queue[i].packet_type = PACKET_NULL;
         recv_heap[i].packet_id = UINT8_MAX;
     }
+    svcCreateEvent(&end_event, RESET_STICKY);
+    svcClearEvent(end_event);
+    threadCreate(recv_thread, NULL, 4000, 0x19, 1, true);
 }
 
 Result create_network(void) {
@@ -50,9 +76,12 @@ Result create_network(void) {
     logfile = fopen("sdmc:/uds.log", "w");
     #endif
     NET_LOG("creating network\n");
-    init_ids();
     udsGenerateDefaultNetworkStruct(&network, wlancommID, net_id, 2);
-    return udsCreateNetwork(&network, passphrase, sizeof(passphrase), &bindctx, data_channel, UDS_DEFAULT_RECVBUFSIZE);
+    Result res = udsCreateNetwork(&network, passphrase, sizeof(passphrase), &bindctx, data_channel, UDS_DEFAULT_RECVBUFSIZE);
+    if (R_SUCCEEDED(res)) {
+        init_ids();
+    }
+    return res;
 }
 
 Result scan_beacons(udsNetworkScanInfo **networks, size_t *total_networks) {
@@ -65,12 +94,16 @@ Result connect_to_network(const udsNetworkStruct *network) {
     logfile = fopen("sdmc:/uds.log", "w");
     #endif
     NET_LOG("connecting\n");
-    init_ids();
-    return udsConnectNetwork(network, passphrase, sizeof(passphrase), &bindctx, UDS_BROADCAST_NETWORKNODEID, UDSCONTYPE_Client, data_channel, UDS_DEFAULT_RECVBUFSIZE);
+    Result res = udsConnectNetwork(network, passphrase, sizeof(passphrase), &bindctx, UDS_BROADCAST_NETWORKNODEID, UDSCONTYPE_Client, data_channel, UDS_DEFAULT_RECVBUFSIZE);
+    if (R_SUCCEEDED(res)) {
+        init_ids();
+    }
+    return res;
 }
 
 void local_disconnect(void) {
     static udsConnectionStatus status;
+    svcSignalEvent(end_event);
     udsGetConnectionStatus(&status);
     if (status.cur_NetworkNodeID == UDS_HOST_NETWORKNODEID) {
         udsDestroyNetwork();
@@ -111,7 +144,7 @@ static Result handle_receiving(void) {
     u8 seen_ids[RECV_HEAP_COUNT];
     while (packet < recv_heap + RECV_HEAP_COUNT) {
         seen_ids[packet - recv_heap] = packet->packet_id;
-        if (packet->packet_type != PACKET_NULL && (s8)(packet->packet_id - recv_id) > 0) {
+        if (packet->packet_type != PACKET_NULL && (s8)(packet->packet_id - recv_id) >= 0) {
             bool duplicate = false;
             for (int i = 0; i < packet - recv_heap; i++) {
                 if (packet->packet_id == seen_ids[i]) {
@@ -119,11 +152,14 @@ static Result handle_receiving(void) {
                 }
             }
             if (!duplicate) {
-                NET_LOG("unrecvd packet %d in buffer\n", packet->packet_id);
+                NET_LOG("unrecvd packet %d in buffer (next %d)\n", packet->packet_id, recv_id);
                 packet++;
                 continue;
+            } else {
+                NET_LOG("boutta overwrite duplicate packet %d\n", packet->packet_id);
             }
         }
+        NET_LOG("overwriting packet %d\n", packet->packet_id);
         size_t actual_size;
         res = udsPullPacket(&bindctx, packet, sizeof(*packet), &actual_size, NULL);
         if (R_FAILED(res)) {
@@ -195,18 +231,19 @@ static void handle_sending(void) {
 }
 
 Result handle_packets(void) {
-    Result res = handle_receiving();
+    // Result res = handle_receiving();
     handle_sending();
-    return res;
+    return 0;
 }
 
 Packet *read_next_packet(void) {
     Packet *out = NULL;
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
-        if (recv_heap[i].packet_id == recv_id - 1) {
-            recv_heap[i].packet_type = PACKET_NULL;
-        } else if (recv_heap[i].packet_type != PACKET_NULL && recv_heap[i].packet_id == recv_id) {
+        if (recv_heap[i].packet_type != PACKET_NULL && recv_heap[i].packet_id == recv_id) {
             out = &recv_heap[i];
+            break;
+        } else if (recv_heap[i].packet_type != PACKET_NULL) {
+            NET_LOG("packet %d not next, awaiting %d (equality %d)\n", recv_heap[i].packet_type, recv_id, recv_heap[i].packet_id == recv_id);
         }
     }
     if (out) {
