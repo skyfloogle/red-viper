@@ -1208,7 +1208,6 @@ static void multiplayer_room(int initial_button) {
             }
             ship_packet(send_packet);
         }
-        handle_packets();
         Packet *recv_packet;
         while ((recv_packet = read_next_packet())) {
             if (recv_packet->packet_type == PACKET_INPUTS) {

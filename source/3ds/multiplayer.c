@@ -24,7 +24,7 @@ static Packet send_queue[SEND_QUEUE_COUNT] = {0};
 static volatile u8 sent_id = 0;
 static volatile u8 shippable_packet = UINT8_MAX;
 
-static Handle end_event;
+static Handle end_event, send_event;
 
 FILE *logfile;
 #ifdef NET_LOGGING
@@ -34,6 +34,7 @@ FILE *logfile;
 #endif
 
 static Result handle_receiving(void);
+static void handle_sending(void);
 
 static void recv_thread(void *args) {
     Handle handles[2] = {end_event, bindctx.event};
@@ -41,17 +42,32 @@ static void recv_thread(void *args) {
     while (true) {
         Result res = svcWaitSynchronizationN(&event_id, handles, 2, false, U64_MAX);
         if (R_SUCCEEDED(res)) {
-            NET_LOG("event %ld triggered\n", event_id);
+            NET_LOG("recv event %ld triggered\n", event_id);
             if (event_id == 0) {
                 break;
             }
             svcClearEvent(bindctx.event);
             handle_receiving();
         } else {
-            NET_LOG("wait error %lx\n", res);
+            NET_LOG("recv wait error %lx\n", res);
         }
     }
     NET_LOG("recv thread ending\n");
+}
+
+static void send_thread(void *args) {
+    Handle handles[2] = {end_event, send_event};
+    s32 event_id;
+    while (true) {
+        Result res = svcWaitSynchronizationN(&event_id, handles, 2, false, 10000000);
+        if (R_SUCCEEDED(res)) {
+            if (event_id == 0) {
+                break;
+            }
+            svcClearEvent(send_event);
+            handle_sending();
+        }
+    }
 }
 
 static void init_ids(void) {
@@ -68,7 +84,9 @@ static void init_ids(void) {
     }
     svcCreateEvent(&end_event, RESET_STICKY);
     svcClearEvent(end_event);
+    svcCreateEvent(&send_event, RESET_STICKY);
     threadCreate(recv_thread, NULL, 4000, 0x19, 1, true);
+    threadCreate(send_thread, NULL, 4000, 0x19, 1, true);
 }
 
 Result create_network(void) {
@@ -230,12 +248,6 @@ static void handle_sending(void) {
     }
 }
 
-Result handle_packets(void) {
-    // Result res = handle_receiving();
-    handle_sending();
-    return 0;
-}
-
 Packet *read_next_packet(void) {
     Packet *out = NULL;
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
@@ -268,6 +280,7 @@ Packet *new_packet_to_send(void) {
     packet->packet_type = PACKET_NOP;
     packet->packet_id = shippable_packet + 1;
     NET_LOG("attempting to send %d (sent_id %d)\n", packet->packet_id, sent_id);
+    svcSignalEvent(send_event);
     return packet;
 }
 
