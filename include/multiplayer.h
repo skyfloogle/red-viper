@@ -40,5 +40,6 @@ Result connect_to_network(const udsNetworkStruct *network);
 void local_disconnect(void);
 Result handle_packets(void);
 Packet *read_next_packet(void);
+Packet *new_packet_to_send(void);
 
 #endif

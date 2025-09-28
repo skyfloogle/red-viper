@@ -1183,6 +1183,7 @@ static void multiplayer_room(int initial_button) {
     static udsConnectionStatus status;
     static char chars[16] = "";
     static C2D_Text text;
+    int other_x, other_y;
 
     // udsGetConnectionStatus(&status);
     C2D_TextBufClear(dynamic_textbuf);
@@ -1196,6 +1197,23 @@ static void multiplayer_room(int initial_button) {
             C2D_TextOptimize(&text);
         }
         C2D_DrawText(&text, C2D_WithColor, 20, 20, 0, 1.0, 1.0, TINT_100);
+        if (status.total_nodes == 2) {
+            touchPosition touchPos;
+            hidTouchRead(&touchPos);
+            Packet *send_packet = new_packet_to_send();
+            if (send_packet && (hidKeysHeld() & KEY_TOUCH)) {
+                send_packet->packet_type = PACKET_INPUTS;
+                send_packet->inputs.shb = touchPos.px;
+                send_packet->inputs.slb = touchPos.py;
+            }
+            handle_packets();
+            Packet *recv_packet;
+            while ((recv_packet = read_next_packet())) {
+                if (recv_packet->packet_type == PACKET_INPUTS) {
+                    C2D_DrawCircle(recv_packet->inputs.shb, recv_packet->inputs.slb, 0, 5, TINT_COLOR, TINT_COLOR, TINT_COLOR, TINT_COLOR);
+                }
+            }
+        }
     LOOP_END(multiplayer_room_buttons);
     if (button == MULTI_ROOM_LEAVE) {
         local_disconnect();
