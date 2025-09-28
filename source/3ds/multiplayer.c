@@ -6,6 +6,8 @@
 
 #include "crc8.h"
 
+// #define NET_LOGGING
+
 static udsNetworkStruct network;
 static udsBindContext bindctx;
 static const u32 wlancommID = 0x2d23bfdb;
@@ -20,6 +22,7 @@ static u8 recv_ack_id = UINT8_MAX;
 #define SEND_QUEUE_COUNT 8
 static Packet send_queue[SEND_QUEUE_COUNT] = {0};
 static u8 sent_id = 0;
+static u8 shippable_packet = UINT8_MAX;
 
 FILE *logfile;
 #ifdef NET_LOGGING
@@ -34,9 +37,11 @@ static void init_ids(void) {
     sent_id = 0;
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
         recv_heap[i].packet_type = PACKET_NULL;
+        recv_heap[i].packet_id = UINT8_MAX;
     }
     for (int i = 0; i < SEND_QUEUE_COUNT; i++) {
         send_queue[i].packet_type = PACKET_NULL;
+        recv_heap[i].packet_id = UINT8_MAX;
     }
 }
 
@@ -74,6 +79,7 @@ void local_disconnect(void) {
     }
     udsUnbind(&bindctx);
     #ifdef NET_LOGGING
+    NET_LOG("closed\n");
     fclose(logfile);
     #endif
 }
@@ -99,7 +105,7 @@ static u8 packet_crc(const Packet *packet) {
     return crc8(((u8*)packet) + 1, packet_size(packet) - 1);
 }
 
-Result handle_packets(void) {
+static Result handle_receiving(void) {
     Packet *packet = recv_heap;
     Result res = 0;
     u8 seen_ids[RECV_HEAP_COUNT];
@@ -121,7 +127,7 @@ Result handle_packets(void) {
         size_t actual_size;
         res = udsPullPacket(&bindctx, packet, sizeof(*packet), &actual_size, NULL);
         if (R_FAILED(res)) {
-            NET_LOG("recv errored\n");
+            NET_LOG("recv error %ld\n", res);
             packet->packet_type = PACKET_NULL;
             break;
         }
@@ -166,10 +172,19 @@ Result handle_packets(void) {
         // leave in heap and continue
         packet++;
     }
+    return res;
+}
+
+static void handle_sending(void) {
+    Packet *packet;
     for (int i = sent_id; i < sent_id + 8; i++) {
         packet = &send_queue[i % SEND_QUEUE_COUNT];
         if (packet->packet_type == PACKET_NULL || (s8)(packet->packet_id - sent_id) < 0) {
             NET_LOG("send breaking on type %d id %d sent_id %d\n", packet->packet_type, packet->packet_id, sent_id);
+            break;
+        }
+        if ((s8)(packet->packet_id - shippable_packet) > 0) {
+            NET_LOG("packet %d not ready for shipping (shippable %d, diff %d)\n", packet->packet_id, shippable_packet, (s8)(packet->packet_id - shippable_packet));
             break;
         }
         packet->ack_id = recv_ack_id;
@@ -177,6 +192,11 @@ Result handle_packets(void) {
         NET_LOG("sending packet %d with type %d size %d content %d,%d (acking %d)\n", packet->packet_id, packet->packet_type, packet_size(packet), packet->inputs.shb, packet->inputs.slb, packet->ack_id);
         udsSendTo(UDS_BROADCAST_NETWORKNODEID, data_channel, UDS_SENDFLAG_Default, packet, packet_size(packet));
     }
+}
+
+Result handle_packets(void) {
+    Result res = handle_receiving();
+    handle_sending();
     return res;
 }
 
@@ -203,15 +223,19 @@ Packet *read_next_packet(void) {
 }
 
 Packet *new_packet_to_send(void) {
-    for (int i = sent_id; i < sent_id + 8; i++) {
-        Packet *packet = &send_queue[i % SEND_QUEUE_COUNT];
-        if (packet->packet_type == PACKET_NULL || (s8)(sent_id - packet->packet_id) > 0) {
-            packet->packet_type = PACKET_NOP;
-            packet->packet_id = i;
-            NET_LOG("attempting to send %d (sent_id %d)\n", i, sent_id);
-            return packet;
-        }
+    Packet *packet = &send_queue[(shippable_packet + 1) % SEND_QUEUE_COUNT];
+    if (packet->packet_type != PACKET_NULL && (s8)(sent_id - packet->packet_id) <= 0) {
+        NET_LOG("send buffer full (new id %d sent_id %d packet %d)\n", shippable_packet + 1, sent_id, packet->packet_id);
+        return NULL;
     }
-    NET_LOG("send buffer full\n");
-    return NULL;
+    packet->packet_type = PACKET_NOP;
+    packet->packet_id = shippable_packet + 1;
+    NET_LOG("attempting to send %d (sent_id %d)\n", packet->packet_id, sent_id);
+    return packet;
+}
+
+void ship_packet(Packet *packet) {
+    if (packet == NULL) return;
+    shippable_packet = packet->packet_id;
+    NET_LOG("shipping packet %d\n", shippable_packet);
 }

@@ -1206,12 +1206,13 @@ static void multiplayer_room(int initial_button) {
                 send_packet->inputs.shb = touchPos.px;
                 send_packet->inputs.slb = touchPos.py;
             }
-            handle_packets();
-            Packet *recv_packet;
-            while ((recv_packet = read_next_packet())) {
-                if (recv_packet->packet_type == PACKET_INPUTS) {
-                    C2D_DrawCircle(recv_packet->inputs.shb, recv_packet->inputs.slb, 0, 5, TINT_COLOR, TINT_COLOR, TINT_COLOR, TINT_COLOR);
-                }
+            ship_packet(send_packet);
+        }
+        handle_packets();
+        Packet *recv_packet;
+        while ((recv_packet = read_next_packet())) {
+            if (recv_packet->packet_type == PACKET_INPUTS) {
+                C2D_DrawCircle(recv_packet->inputs.shb, recv_packet->inputs.slb, 0, 5, TINT_COLOR, TINT_COLOR, TINT_COLOR, TINT_COLOR);
             }
         }
     LOOP_END(multiplayer_room_buttons);
