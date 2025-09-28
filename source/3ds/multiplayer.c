@@ -248,15 +248,21 @@ static void handle_sending(void) {
     }
 }
 
-Packet *read_next_packet(void) {
-    Packet *out = NULL;
+static Packet *try_find_next_packet(void) {
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
         if (recv_heap[i].packet_type != PACKET_NULL && recv_heap[i].packet_id == recv_id) {
-            out = &recv_heap[i];
+            return &recv_heap[i];
             break;
-        } else if (recv_heap[i].packet_type != PACKET_NULL) {
-            NET_LOG("packet %d not next, awaiting %d (equality %d)\n", recv_heap[i].packet_type, recv_id, recv_heap[i].packet_id == recv_id);
         }
+    }
+    return NULL;
+}
+
+Packet *read_next_packet(void) {
+    Packet *out = try_find_next_packet();
+    if (out == NULL) {
+        svcSleepThread(0);
+        out = try_find_next_packet();
     }
     if (out) {
         recv_id++;
