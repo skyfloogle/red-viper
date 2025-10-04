@@ -159,23 +159,11 @@ static u8 packet_crc(const Packet *packet) {
 static Result handle_receiving(void) {
     Packet *packet = recv_heap;
     Result res = 0;
-    u8 seen_ids[RECV_HEAP_COUNT];
     while (packet < recv_heap + RECV_HEAP_COUNT) {
-        seen_ids[packet - recv_heap] = packet->packet_id;
         if (packet->packet_type != PACKET_NULL && (s8)(packet->packet_id - recv_id) >= 0) {
-            bool duplicate = false;
-            for (int i = 0; i < packet - recv_heap; i++) {
-                if (packet->packet_id == seen_ids[i]) {
-                    duplicate = true;
-                }
-            }
-            if (!duplicate) {
-                NET_LOG("unrecvd packet %d in buffer (next %d)\n", packet->packet_id, recv_id);
-                packet++;
-                continue;
-            } else {
-                NET_LOG("boutta overwrite duplicate packet %d\n", packet->packet_id);
-            }
+            NET_LOG("unrecvd packet %d in buffer (next %d)\n", packet->packet_id, recv_id);
+            packet++;
+            continue;
         }
         NET_LOG("overwriting packet %d\n", packet->packet_id);
         size_t actual_size;
@@ -207,8 +195,9 @@ static Result handle_receiving(void) {
         }
         // check for duplicates
         for (int i = 0; i < RECV_HEAP_COUNT; i++) {
-            if (&recv_heap[i] != packet && recv_heap[i].packet_id == packet->packet_id) {
+            if (&recv_heap[i] != packet && recv_heap[i].packet_type != PACKET_NULL && recv_heap[i].packet_id == packet->packet_id) {
                 NET_LOG("recv'd a duplicate %d\n", packet->packet_id);
+                packet->packet_type = PACKET_NULL;
                 continue;
             }
         }
