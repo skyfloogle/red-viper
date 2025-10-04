@@ -104,7 +104,8 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink, text_preset, text_custom,
                 text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo,
                 text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off,
-                text_monochrome, text_multicolor, text_brighten, text_brightness_disclaimer;
+                text_monochrome, text_multicolor, text_brighten, text_brightness_disclaimer,
+                text_multi_init_error, text_multi_disconnect;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -249,6 +250,11 @@ static void multiplayer_room(int initial_button);
 static Button multiplayer_room_buttons[] = {
     #define MULTI_ROOM_LEAVE 0
     {.str="Leave", .x=0, .y=208, .w=56, .h=32},
+};
+
+static void multiplayer_error(int err, C2D_Text *messsage);
+static Button multiplayer_error_buttons[] = {
+    {.str = "Exit", .x=160-48, .y=180, .w=48*2, .h=48},
 };
 
 static void controls(int initial_button);
@@ -613,6 +619,7 @@ static Button forwarder_error_buttons[] = {
     SETUP_BUTTONS(multiplayer_main_buttons); \
     SETUP_BUTTONS(multiplayer_join_buttons); \
     SETUP_BUTTONS(multiplayer_room_buttons); \
+    SETUP_BUTTONS(multiplayer_error_buttons); \
     SETUP_BUTTONS(controls_buttons); \
     SETUP_BUTTONS(cpp_options_buttons); \
     SETUP_BUTTONS(preset_controls_buttons); \
@@ -1117,15 +1124,9 @@ static void rom_loader(void) {
 }
 
 static void multiplayer_main(int initial_button) {
-    Result res;
-    static bool uds_initialized = false;
-    if (!uds_initialized) {
-        uds_initialized = true;
-        res = udsInit(0x3000, NULL);
-        if (R_FAILED(res)) {
-            // TODO error message
-            [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
-        }
+    Result res = udsInit(0x3000, NULL);
+    if (R_FAILED(res)) {
+        return multiplayer_error(res, &text_multi_init_error);
     }
     LOOP_BEGIN(multiplayer_main_buttons, initial_button);
     LOOP_END(multiplayer_main_buttons);
@@ -1133,14 +1134,15 @@ static void multiplayer_main(int initial_button) {
         case MULTI_MAIN_HOST:
             res = create_network();
             if (R_FAILED(res)) {
-                // TODO error message
-                [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error);
             } else {
                 [[gnu::musttail]] return multiplayer_room(0);
             }
         case MULTI_MAIN_JOIN:
             [[gnu::musttail]] return multiplayer_join();
         case MULTI_MAIN_BACK:
+            udsExit();
             [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
     }
 }
@@ -1167,8 +1169,8 @@ static void multiplayer_join() {
     if (button < MULTI_JOIN_COUNT) {
         Result res = connect_to_network(&networks[button].network);
         if (R_FAILED(res)) {
-            // TODO error
-            [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_JOIN);
+            udsExit();
+            [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error);
         } else {
             [[gnu::musttail]] return multiplayer_room(0);
         }
@@ -1192,6 +1194,12 @@ static void multiplayer_room(int initial_button) {
     LOOP_BEGIN(multiplayer_room_buttons, initial_button);
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsGetConnectionStatus(&status);
+            if (status.total_nodes == 0) {
+                C3D_FrameEnd(0);
+                local_disconnect();
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect);
+            }
             snprintf(chars, sizeof(chars), "%d/%d", status.cur_NetworkNodeID, status.total_nodes);
             C2D_TextParse(&text, dynamic_textbuf, chars);
             C2D_TextOptimize(&text);
@@ -1219,6 +1227,19 @@ static void multiplayer_room(int initial_button) {
         local_disconnect();
     }
     [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_HOST);
+}
+
+static void multiplayer_error(int err, C2D_Text *message) {
+    C2D_Text text;
+    char code_message[32];
+    snprintf(code_message, sizeof(code_message), "Error code: %d", err);
+    C2D_TextParse(&text, dynamic_textbuf, code_message);
+    C2D_TextOptimize(&text);
+    LOOP_BEGIN(multiplayer_error_buttons, 0);
+        C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
+        if (err != 0) C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
+    LOOP_END(multiplayer_error_buttons);
+    [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
 }
 
 static void controls(int initial_button) {
@@ -2903,6 +2924,8 @@ void guiInit(void) {
     STATIC_TEXT(&text_multicolor, "Multicolor")
     STATIC_TEXT(&text_brighten, "Brighten")
     STATIC_TEXT(&text_brightness_disclaimer, "Actual brightness may vary by game.")
+    STATIC_TEXT(&text_multi_init_error, "Could not start wireless.\nIs wireless enabled?")
+    STATIC_TEXT(&text_multi_disconnect, "Peer disconnected.")
 }
 
 static bool shouldRedrawMenu = true;
