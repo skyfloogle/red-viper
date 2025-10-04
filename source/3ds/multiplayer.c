@@ -17,14 +17,16 @@ static const char passphrase[] = "Red Viper " VERSION;
 static udsNetworkScanInfo *beacons;
 #define RECV_HEAP_COUNT 8
 static Packet recv_heap[RECV_HEAP_COUNT] = {0};
-static volatile u8 recv_id = 0; // TODO initialize somewhere
-static volatile u8 recv_ack_id = UINT8_MAX;
+static volatile u8 recv_id;
+static volatile u8 recv_ack_id;
 #define SEND_QUEUE_COUNT 8
 static Packet send_queue[SEND_QUEUE_COUNT] = {0};
-static volatile u8 sent_id = 0;
-static volatile u8 shippable_packet = UINT8_MAX;
+static volatile u8 sent_id;
+static volatile u8 shippable_packet;
 
+static bool events_created = false;
 static Handle end_event, send_event;
+static Thread send_thread_handle, recv_thread_handle;
 
 FILE *logfile;
 #ifdef NET_LOGGING
@@ -74,6 +76,7 @@ static void init_ids(void) {
     recv_id = 0;
     recv_ack_id = UINT8_MAX;
     sent_id = 0;
+    shippable_packet = UINT8_MAX;
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
         recv_heap[i].packet_type = PACKET_NULL;
         recv_heap[i].packet_id = UINT8_MAX;
@@ -82,11 +85,14 @@ static void init_ids(void) {
         send_queue[i].packet_type = PACKET_NULL;
         recv_heap[i].packet_id = UINT8_MAX;
     }
-    svcCreateEvent(&end_event, RESET_STICKY);
+    if (!events_created) {
+        svcCreateEvent(&end_event, RESET_STICKY);
+        svcCreateEvent(&send_event, RESET_STICKY);
+    }
     svcClearEvent(end_event);
-    svcCreateEvent(&send_event, RESET_STICKY);
-    threadCreate(recv_thread, NULL, 4000, 0x19, 1, true);
-    threadCreate(send_thread, NULL, 4000, 0x19, 1, true);
+    svcClearEvent(send_event);
+    recv_thread_handle = threadCreate(recv_thread, NULL, 4000, 0x19, 1, true);
+    send_thread_handle = threadCreate(send_thread, NULL, 4000, 0x19, 1, true);
 }
 
 Result create_network(void) {
@@ -123,6 +129,8 @@ void local_disconnect(void) {
     static udsConnectionStatus status;
     svcSignalEvent(end_event);
     udsGetConnectionStatus(&status);
+    threadJoin(send_thread_handle, 100000000);
+    threadJoin(recv_thread_handle, 100000000);
     if (status.cur_NetworkNodeID == UDS_HOST_NETWORKNODEID) {
         udsDestroyNetwork();
     } else {
