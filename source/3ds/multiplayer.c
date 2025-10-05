@@ -201,6 +201,13 @@ static Result handle_receiving(void) {
             packet->packet_type = PACKET_NULL;
             continue;
         }
+        NET_LOG("recv valid packet with id %d type %d size %d content %d,%d (acking %d)\n", packet->packet_id, packet->packet_type, actual_size, packet->inputs.shb, packet->inputs.slb, packet->ack_id);
+        // valid packet
+        // ack the ack
+        if ((s8)(packet->ack_id - sent_id) >= 0 && send_queue[packet->ack_id % SEND_QUEUE_COUNT].packet_id == packet->ack_id) {
+            send_queue[packet->ack_id % SEND_QUEUE_COUNT].packet_type = PACKET_NULL;
+            sent_id = packet->ack_id + 1;
+        }
         // check for duplicates
         for (int i = 0; i < RECV_HEAP_COUNT; i++) {
             if (&recv_heap[i] != packet && recv_heap[i].packet_type != PACKET_NULL && recv_heap[i].packet_id == packet->packet_id) {
@@ -208,13 +215,6 @@ static Result handle_receiving(void) {
                 packet->packet_type = PACKET_NULL;
                 continue;
             }
-        }
-        NET_LOG("recv valid packet with id %d type %d size %d content %d,%d (acking %d)\n", packet->packet_id, packet->packet_type, actual_size, packet->inputs.shb, packet->inputs.slb, packet->ack_id);
-        // valid packet
-        // ack the ack
-        if ((s8)(packet->ack_id - sent_id) >= 0 && send_queue[packet->ack_id % SEND_QUEUE_COUNT].packet_id == packet->ack_id) {
-            send_queue[packet->ack_id % SEND_QUEUE_COUNT].packet_type = PACKET_NULL;
-            sent_id = packet->ack_id + 1;
         }
         // if it happens to be the next packet we're looking for, ack it
         if ((u8)(recv_ack_id + 1) == packet->packet_id) {
