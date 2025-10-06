@@ -232,7 +232,7 @@ int v810_load_step(void) {
         // load ram
         if (chunk_size > all_size - load_pos)
             chunk_size = all_size - load_pos;
-        size_t bytes_read = fread(vb_state->V810_GAME_RAM.pmemory + load_pos - rom_size, 1, chunk_size, load_sram);
+        size_t bytes_read = fread(vb_players[0].V810_GAME_RAM.pmemory + load_pos - rom_size, 1, chunk_size, load_sram);
         if (bytes_read == 0 && !feof(load_sram)) {
             fclose(load_sram);
             return -ENETDOWN;
@@ -244,6 +244,9 @@ int v810_load_step(void) {
     }
     if (load_pos >= all_size) {
         // final setup
+
+        // Copy SRAM to Player 2
+        memcpy(vb_players[1].V810_GAME_RAM.pmemory, vb_players[0].V810_GAME_RAM.pmemory, vb_players[0].V810_GAME_RAM.size);
 
         // If we need to save, we'll find out later
         is_sram = false;

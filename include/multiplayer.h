@@ -29,7 +29,7 @@ typedef struct {
             u32 sram_size;
         } loaded;
         struct {
-            u8 data[0x1000];
+            u8 data[0x400];
         } data;
     };
 } Packet;

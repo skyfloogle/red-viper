@@ -59,7 +59,7 @@ static void save_sram_thread(void *sram) {
         printf("\nError opening sram.bin");
         return;
     }
-    fwrite(sram, 1, vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr, nvramf);
+    fwrite(sram, 1, vb_players[my_player_id].V810_GAME_RAM.size, nvramf);
     fclose(nvramf);
 
     free(sram);
@@ -72,8 +72,9 @@ void save_sram(void) {
     if (!is_sram) return;
     // Don't save if we're already saving
     if (save_thread) return;
-    void *sram_copy = malloc(vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr);
-    memcpy(sram_copy, vb_state->V810_GAME_RAM.pmemory, vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr);
+    V810_MEMORYFETCH *sram = &vb_players[my_player_id].V810_GAME_RAM;
+    void *sram_copy = malloc(sram->size);
+    memcpy(sram_copy, sram->pmemory, sram->size);
 #ifdef __3DS__
     // Saving on the same thread is slow, but saving in another thread happens instantly
     save_thread = threadCreate(save_sram_thread, sram_copy, 4000, 0x18, 1, true);

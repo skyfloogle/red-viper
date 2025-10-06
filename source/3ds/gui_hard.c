@@ -105,7 +105,8 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo,
                 text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off,
                 text_monochrome, text_multicolor, text_brighten, text_brightness_disclaimer,
-                text_multi_waiting, text_multi_init_error, text_multi_disconnect;
+                text_multi_waiting, text_multi_init_error, text_multi_disconnect, text_multi_comm_error,
+                text_multi_reset_on_join;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -178,7 +179,7 @@ static inline int handle_buttons(Button buttons[], int count);
 #define DEFAULT_RETURN
 
 #define LOOP_END(buttons) \
-        button = HANDLE_BUTTONS((buttons)); \
+        if (loop) button = HANDLE_BUTTONS((buttons)); \
         if (button >= 0) loop = false; \
         C2D_Flush(); \
         C3D_FrameEnd(0); \
@@ -188,6 +189,8 @@ static inline int handle_buttons(Button buttons[], int count);
         guiop = GUIEXIT; \
         return DEFAULT_RETURN; \
     }
+
+static Button no_buttons[] = {{.hidden = true}};
 
 static void first_menu(int initial_button);
 static Button first_menu_buttons[] = {
@@ -252,9 +255,13 @@ static Button multiplayer_host_buttons[] = {
     {.str = "Cancel", .x=160-48, .y=180, .w=48*2, .h=48},
 };
 
-static void multiplayer_room(int initial_button);
-static Button multiplayer_room_buttons[] = {
-    #define MULTI_ROOM_LEAVE 0
+static void multiplayer_sram_transfer(void);
+
+static void multiplayer_ready_room(bool is_host);
+static Button multiplayer_ready_room_buttons[] = {
+    #define MULTI_READY_START 0
+    {.str = "Start", .x=160-48, .y=180, .w=48*2, .h=48},
+    #define MULTI_READY_LEAVE 1
     {.str="Leave", .x=0, .y=208, .w=56, .h=32},
 };
 
@@ -625,7 +632,7 @@ static Button forwarder_error_buttons[] = {
     SETUP_BUTTONS(multiplayer_main_buttons); \
     SETUP_BUTTONS(multiplayer_host_buttons); \
     SETUP_BUTTONS(multiplayer_join_buttons); \
-    SETUP_BUTTONS(multiplayer_room_buttons); \
+    SETUP_BUTTONS(multiplayer_ready_room_buttons); \
     SETUP_BUTTONS(multiplayer_error_buttons); \
     SETUP_BUTTONS(controls_buttons); \
     SETUP_BUTTONS(cpp_options_buttons); \
@@ -776,6 +783,7 @@ static void game_menu(int initial_button) {
 }
 
 static void main_menu(int initial_button) {
+    is_multiplayer = false;
     if (game_running) game_menu(initial_button);
     else first_menu(initial_button);
 }
@@ -1136,6 +1144,7 @@ static void multiplayer_main(int initial_button) {
         return multiplayer_error(res, &text_multi_init_error);
     }
     LOOP_BEGIN(multiplayer_main_buttons, initial_button);
+        C2D_DrawText(&text_multi_reset_on_join, C2D_AlignCenter | C2D_WithColor, 320 / 2, 140, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(multiplayer_main_buttons);
     switch (button) {
         case MULTI_MAIN_HOST:
@@ -1161,7 +1170,7 @@ static void multiplayer_host() {
             udsGetConnectionStatus(&status);
             if (status.total_nodes > 1) {
                 C3D_FrameEnd(0);
-                [[gnu::musttail]] return multiplayer_room(0);
+                [[gnu::musttail]] return multiplayer_ready_room(true);
             }
         }
         C2D_DrawText(&text_multi_waiting, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
@@ -1195,7 +1204,7 @@ static void multiplayer_join() {
             udsExit();
             [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error);
         } else {
-            [[gnu::musttail]] return multiplayer_room(0);
+            [[gnu::musttail]] return multiplayer_ready_room(false);
         }
     } else if (button == MULTI_JOIN_REFRESH) {
         [[gnu::musttail]] return multiplayer_join();
@@ -1204,16 +1213,10 @@ static void multiplayer_join() {
     }
 }
 
-static void multiplayer_room(int initial_button) {
-    static char chars[16] = "";
-    static C2D_Text text;
-    int other_x, other_y;
-
-    // udsGetConnectionStatus(&status);
-    C2D_TextBufClear(dynamic_textbuf);
-    C2D_TextParse(&text, dynamic_textbuf, chars);
-    C2D_TextOptimize(&text);
-    LOOP_BEGIN(multiplayer_room_buttons, initial_button);
+static void multiplayer_sram_transfer() {
+    int send_progress = 0;
+    int recv_progress = 0;
+    LOOP_BEGIN(no_buttons, -1);
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsConnectionStatus status;
             udsGetConnectionStatus(&status);
@@ -1224,27 +1227,76 @@ static void multiplayer_room(int initial_button) {
                 [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect);
             }
         }
-        C2D_DrawText(&text, C2D_WithColor, 20, 20, 0, 1.0, 1.0, TINT_100);
-        touchPosition touchPos;
-        hidTouchRead(&touchPos);
-        Packet *send_packet = new_packet_to_send();
-        if (send_packet && (hidKeysHeld() & KEY_TOUCH)) {
-            send_packet->packet_type = PACKET_INPUTS;
-            send_packet->inputs.shb = touchPos.px;
-            send_packet->inputs.slb = touchPos.py;
+        Packet *send_packet;
+        while (send_progress < vb_state->V810_GAME_RAM.size && (send_packet = new_packet_to_send())) {
+            send_packet->packet_type = PACKET_DATA;
+            memcpy(send_packet->data.data, vb_players[my_player_id].V810_GAME_RAM.pmemory + send_progress, sizeof(send_packet->data.data));
+            send_progress += sizeof(send_packet->data.data);
+            ship_packet(send_packet);
         }
-        ship_packet(send_packet);
         Packet *recv_packet;
-        while ((recv_packet = read_next_packet())) {
-            if (recv_packet->packet_type == PACKET_INPUTS) {
-                C2D_DrawCircle(recv_packet->inputs.shb, recv_packet->inputs.slb, 0, 5, TINT_COLOR, TINT_COLOR, TINT_COLOR, TINT_COLOR);
+        while (recv_progress < vb_state->V810_GAME_RAM.size && (recv_packet = read_next_packet())) {
+            if (recv_packet->packet_type == PACKET_DATA) {
+                memcpy(vb_players[!my_player_id].V810_GAME_RAM.pmemory + recv_progress, recv_packet->data.data, sizeof(recv_packet->data.data));
+                recv_progress += sizeof(recv_packet->data.data);
+            } else {
+                C3D_FrameEnd(0);
+                local_disconnect();
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(1, &text_multi_comm_error);
             }
         }
-    LOOP_END(multiplayer_room_buttons);
-    if (button == MULTI_ROOM_LEAVE) {
-        local_disconnect();
+        C2D_DrawRectSolid(60, 140, 0, 200, 16, C2D_Color32(0.5 * TINT_R, 0.5 * TINT_G, 0.5 * TINT_B, 255));
+        C2D_DrawRectSolid(60, 140, 0, 200 * recv_progress / vb_state->V810_GAME_RAM.size, 16, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        if (send_progress == vb_state->V810_GAME_RAM.size && recv_progress == vb_state->V810_GAME_RAM.size) {
+            loop = false;
+            guiop = AKILL | VBRESET;
+        }
+    LOOP_END(no_buttons);
+}
+
+static void multiplayer_ready_room(bool is_host) {
+    multiplayer_ready_room_buttons[MULTI_READY_START].hidden = !is_host;
+    {
+        udsConnectionStatus status;
+        udsGetConnectionStatus(&status);
+        is_multiplayer = true;
+        my_player_id = status.cur_NetworkNodeID - 1;
     }
-    [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_HOST);
+    LOOP_BEGIN(multiplayer_ready_room_buttons, 0);
+        if (udsWaitConnectionStatusEvent(false, false)) {
+            udsConnectionStatus status;
+            udsGetConnectionStatus(&status);
+            if (status.total_nodes < 2) {
+                C3D_FrameEnd(0);
+                local_disconnect();
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect);
+            }
+        }
+        if (!is_host) {
+            Packet *packet = read_next_packet();
+            if (packet) {
+                if (packet->packet_type == PACKET_RESUME) {
+                    loop = false;
+                    button = MULTI_READY_START;
+                }
+            }
+        }
+    LOOP_END(multiplayer_ready_room_buttons);
+    if (button == MULTI_READY_START) {
+        if (is_host) {
+            // should be ok if we haven't sent anything yet
+            Packet *packet = new_packet_to_send();
+            packet->packet_type = PACKET_RESUME;
+            ship_packet(packet);
+        }
+        [[gnu::musttail]] return multiplayer_sram_transfer();
+    } else if (button == MULTI_READY_LEAVE) {
+        local_disconnect();
+        udsExit();
+        return multiplayer_main(is_host ? MULTI_MAIN_HOST : MULTI_MAIN_JOIN);
+    }
 }
 
 static void multiplayer_error(int err, C2D_Text *message) {
@@ -2945,6 +2997,8 @@ void guiInit(void) {
     STATIC_TEXT(&text_multi_waiting, "Waiting for connection...")
     STATIC_TEXT(&text_multi_init_error, "Could not start wireless.\nIs wireless enabled?")
     STATIC_TEXT(&text_multi_disconnect, "Peer disconnected.")
+    STATIC_TEXT(&text_multi_comm_error, "Communication error.")
+    STATIC_TEXT(&text_multi_reset_on_join, "Game will reset when connecting.")
 }
 
 static bool shouldRedrawMenu = true;
