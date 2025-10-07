@@ -18,11 +18,17 @@
 #include "replay.h"
 #include "utils.h"
 #include "vblink.h"
+#include "multiplayer.h"
 
 char rom_path[256] = "sdmc:/vb/";
 char rom_name[128];
 
 bool game_running = false;
+
+#define INPUT_BUFFER_MAX 10
+static HWORD input_buffer[2][INPUT_BUFFER_MAX];
+static int input_buffer_head[2] = {0, 0};
+static int input_buffer_tail = 0;
 
 Handle frame_event;
 volatile int lag_frames;
@@ -105,8 +111,28 @@ int main(void) {
     lag_frames = 0;
     svcClearEvent(frame_event);
 
+    input_buffer_tail = 0;
+    for (int i = 0; i < 2; i++) {
+        for (int p = 0; p < 2; p++) {
+            input_buffer[p][i] = 0;
+            input_buffer_head[p]++;
+        }
+    }
+
     while(aptMainLoop()) {
         osTickCounterStart(&frameTickCounter);
+
+        if (is_multiplayer) {
+            do {
+                Packet *recv_packet;
+                while ((recv_packet = read_next_packet())) {
+                    if (recv_packet->packet_type == PACKET_INPUTS) {
+                        input_buffer[!my_player_id][input_buffer_head[!my_player_id]] = recv_packet->inputs;
+                        input_buffer_head[!my_player_id] = (input_buffer_head[!my_player_id] + 1) % INPUT_BUFFER_MAX;
+                    }
+                }
+            } while (input_buffer_head[!my_player_id] == input_buffer_tail);
+        }
 
         hidScanInput();
         int keys = hidKeysDown();
@@ -131,6 +157,14 @@ int main(void) {
             }
             lag_frames = 0;
             svcClearEvent(frame_event);
+
+            input_buffer_tail = 0;
+            for (int i = 0; i < 2; i++) {
+                for (int p = 0; p < 2; p++) {
+                    input_buffer[p][i] = 0;
+                    input_buffer_head[p]++;
+                }
+            }
         }
 
         bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
@@ -220,15 +254,30 @@ int main(void) {
         // if hold, turn off fast forward, as it'll be turned back on while reading input
         if (!tVBOpt.FF_TOGGLE) tVBOpt.FASTFORWARD = false;
 
-        // read inputs once per frame
-        HWORD inputs = V810_RControll(false);
-        // TODO don't just duplicate
-        for (int i = 0; i < 2; i++) {
-            vb_players[i].tHReg.SLB = inputs;
-            vb_players[i].tHReg.SHB = inputs >> 8;
+        // add inputs to buffer
+        {
+            HWORD new_inputs = V810_RControll(false);
+            input_buffer[my_player_id][input_buffer_head[my_player_id]] = new_inputs;
+            if (is_multiplayer) {
+                // TODO: probably account for empty case if input buffer gets much bigger
+                Packet *send_packet;
+                while (!(send_packet = new_packet_to_send())) {}
+                send_packet->packet_type = PACKET_INPUTS;
+                send_packet->inputs = new_inputs;
+                ship_packet(send_packet);
+            }
+            input_buffer_head[my_player_id] = (input_buffer_head[my_player_id] + 1) % INPUT_BUFFER_MAX;
         }
 
-        replay_update(inputs);
+        // read inputs from buffer
+        for (int p = 0; p < 2; p++) {
+            HWORD inputs = input_buffer[p][input_buffer_tail];
+            vb_players[p].tHReg.SLB = inputs;
+            vb_players[p].tHReg.SHB = inputs >> 8;
+        }
+        replay_update(input_buffer[my_player_id][input_buffer_tail]);
+        input_buffer_tail = (input_buffer_tail + 1) % INPUT_BUFFER_MAX;
+
 
         osTickCounterStart(&drcTickCounter);
         err = v810_run();

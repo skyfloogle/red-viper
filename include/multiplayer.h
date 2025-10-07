@@ -20,9 +20,7 @@ typedef struct {
     u8 ack_id;
     u8 packet_type;
     union {
-        struct {
-            u8 slb, shb;
-        } inputs;
+        u16 inputs;
         struct {
             char name[64];
             u32 crc32;
