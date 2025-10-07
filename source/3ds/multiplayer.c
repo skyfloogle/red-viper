@@ -227,6 +227,14 @@ static Result handle_receiving(void) {
         packet->packet_type &= ~TRANSPORT_MASK;
         packet++;
     }
+    // ack packets until we can't
+    try_ack_packet:
+    for (int i = 0; i < RECV_HEAP_COUNT; i++) {
+        if ((u8)(recv_ack_id + 1) == packet->packet_id) {
+            recv_ack_id++;
+            goto try_ack_packet;
+        }
+    }
     return res;
 }
 
@@ -271,10 +279,6 @@ Packet *read_next_packet(void) {
             }
         }
         recv_id++;
-        // in case there was a skip, ack here as well
-        if ((u8)(recv_ack_id + 1) == out->packet_id) {
-            recv_ack_id++;
-        }
         NET_LOG("properly recv %d (acking %d)\n", out->packet_id, out->ack_id);
         if (out->packet_type != PACKET_NOP) {
             return out;
