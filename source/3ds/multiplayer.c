@@ -260,22 +260,26 @@ static Packet *try_find_next_packet(void) {
 }
 
 Packet *read_next_packet(void) {
-    Packet *out = try_find_next_packet();
-    if (out == NULL) {
-        svcSleepThread(0);
-        out = try_find_next_packet();
-    }
-    if (out) {
+    while (true) {
+        Packet *out = try_find_next_packet();
+        if (out == NULL) {
+            svcSleepThread(0);
+            out = try_find_next_packet();
+            if (out == NULL) {
+                NET_LOG("properly recv nothing\n");
+                return NULL;
+            }
+        }
         recv_id++;
         // in case there was a skip, ack here as well
         if ((u8)(recv_ack_id + 1) == out->packet_id) {
             recv_ack_id++;
         }
         NET_LOG("properly recv %d (acking %d)\n", out->packet_id, out->ack_id);
-    } else {
-        NET_LOG("properly recv nothing\n");
+        if (out->packet_type != PACKET_NOP) {
+            return out;
+        }
     }
-    return out;
 }
 
 Packet *new_packet_to_send(void) {
