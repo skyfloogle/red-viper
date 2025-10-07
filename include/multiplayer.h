@@ -41,5 +41,6 @@ void local_disconnect(void);
 Packet *read_next_packet(void);
 Packet *new_packet_to_send(void);
 void ship_packet(Packet *packet);
+bool send_queue_empty(void);
 
 #endif

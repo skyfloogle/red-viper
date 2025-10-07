@@ -305,3 +305,7 @@ void ship_packet(Packet *packet) {
     packet->packet_type |= TRANSPORT_MASK;
     NET_LOG("shipping packet %d\n", shippable_packet);
 }
+
+bool send_queue_empty(void) {
+    return (u8)(shippable_packet + 1) == sent_id;
+}

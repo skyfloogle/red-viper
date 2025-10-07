@@ -1234,8 +1234,10 @@ static void multiplayer_sram_transfer() {
             send_progress += sizeof(send_packet->data.data);
             ship_packet(send_packet);
         }
+        bool recvd_packet = false;
         Packet *recv_packet;
         while (recv_progress < vb_state->V810_GAME_RAM.size && (recv_packet = read_next_packet())) {
+            recvd_packet = true;
             if (recv_packet->packet_type == PACKET_DATA) {
                 memcpy(vb_players[!my_player_id].V810_GAME_RAM.pmemory + recv_progress, recv_packet->data.data, sizeof(recv_packet->data.data));
                 recv_progress += sizeof(recv_packet->data.data);
@@ -1245,6 +1247,11 @@ static void multiplayer_sram_transfer() {
                 udsExit();
                 [[gnu::musttail]] return multiplayer_error(1, &text_multi_comm_error);
             }
+        }
+        // send nops so any acks can get through
+        if (!recvd_packet && send_queue_empty() && (send_packet = new_packet_to_send())) {
+            send_packet->packet_type = PACKET_NOP;
+            ship_packet(send_packet);
         }
         C2D_DrawRectSolid(60, 140, 0, 200, 16, C2D_Color32(0.5 * TINT_R, 0.5 * TINT_G, 0.5 * TINT_B, 255));
         C2D_DrawRectSolid(60, 140, 0, 200 * recv_progress / vb_state->V810_GAME_RAM.size, 16, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
