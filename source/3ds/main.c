@@ -102,6 +102,9 @@ int main(void) {
     TickCounter drcTickCounter;
     TickCounter frameTickCounter;
 
+    lag_frames = 0;
+    svcClearEvent(frame_event);
+
     while(aptMainLoop()) {
         osTickCounterStart(&frameTickCounter);
 
@@ -127,6 +130,7 @@ int main(void) {
                 drc_clearCache();
             }
             lag_frames = 0;
+            svcClearEvent(frame_event);
         }
 
         bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;

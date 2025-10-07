@@ -2776,6 +2776,7 @@ void openMenu(void) {
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
+    gspWaitForVBlank();
     if (guiop == 0) sound_resume();
     else if (guiop == AKILL) sound_refresh();
     else if (!(guiop & GUIEXIT)) sound_reset();
