@@ -24,6 +24,8 @@ static Packet send_queue[SEND_QUEUE_COUNT] = {0};
 static volatile u8 sent_id;
 static volatile u8 shippable_packet;
 
+#define TRANSPORT_MASK 0x80
+
 static bool events_created = false;
 static Handle end_event, send_event;
 static Thread send_thread_handle, recv_thread_handle;
@@ -144,7 +146,7 @@ void local_disconnect(void) {
 }
 
 static size_t packet_size(const Packet *packet) {
-    switch ((PacketType)packet->packet_type) {
+    switch ((PacketType)(packet->packet_type & ~TRANSPORT_MASK)) {
         case PACKET_NULL:
         case PACKET_NOP:
         case PACKET_PAUSE:
@@ -221,7 +223,8 @@ static Result handle_receiving(void) {
         if ((u8)(recv_ack_id + 1) == packet->packet_id) {
             recv_ack_id++;
         }
-        // leave in heap and continue
+        // clear for reception and continue
+        packet->packet_type &= ~TRANSPORT_MASK;
         packet++;
     }
     return res;
@@ -248,7 +251,7 @@ static void handle_sending(void) {
 
 static Packet *try_find_next_packet(void) {
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
-        if (recv_heap[i].packet_type != PACKET_NULL && recv_heap[i].packet_id == recv_id) {
+        if (recv_heap[i].packet_type != PACKET_NULL && !(recv_heap[i].packet_type & TRANSPORT_MASK) && recv_heap[i].packet_id == recv_id) {
             return &recv_heap[i];
             break;
         }
@@ -291,5 +294,6 @@ Packet *new_packet_to_send(void) {
 void ship_packet(Packet *packet) {
     if (packet == NULL) return;
     shippable_packet = packet->packet_id;
+    packet->packet_type |= TRANSPORT_MASK;
     NET_LOG("shipping packet %d\n", shippable_packet);
 }
