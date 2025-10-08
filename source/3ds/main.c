@@ -112,7 +112,7 @@ int main(void) {
     svcClearEvent(frame_event);
 
     input_buffer_tail = 0;
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 4; i++) {
         for (int p = 0; p < 2; p++) {
             input_buffer[p][i] = 0;
             input_buffer_head[p]++;
@@ -123,7 +123,7 @@ int main(void) {
         osTickCounterStart(&frameTickCounter);
 
         if (is_multiplayer) {
-            do {
+            while (true) {
                 Packet *recv_packet;
                 while ((recv_packet = read_next_packet())) {
                     if (recv_packet->packet_type == PACKET_INPUTS) {
@@ -131,7 +131,13 @@ int main(void) {
                         input_buffer_head[!my_player_id] = (input_buffer_head[!my_player_id] + 1) % INPUT_BUFFER_MAX;
                     }
                 }
-            } while (input_buffer_head[!my_player_id] == input_buffer_tail);
+                if (input_buffer_head[!my_player_id] == input_buffer_tail) {
+                    svcSleepThread(1000000);
+                    lag_frames = 0;
+                } else {
+                    break;
+                }
+            }
         }
 
         hidScanInput();
@@ -265,7 +271,10 @@ int main(void) {
             if (is_multiplayer) {
                 // TODO: probably account for empty case if input buffer gets much bigger
                 Packet *send_packet;
-                while (!(send_packet = new_packet_to_send())) {}
+                while (!(send_packet = new_packet_to_send())) {
+                    svcSleepThread(1000000);
+                    lag_frames = 0;
+                }
                 send_packet->packet_type = PACKET_INPUTS;
                 send_packet->inputs = new_inputs;
                 ship_packet(send_packet);
