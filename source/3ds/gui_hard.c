@@ -784,6 +784,7 @@ static void game_menu(int initial_button) {
 
 static void main_menu(int initial_button) {
     is_multiplayer = false;
+    my_player_id = 0;
     if (game_running) game_menu(initial_button);
     else first_menu(initial_button);
 }
