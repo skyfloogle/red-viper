@@ -167,88 +167,92 @@ int main(void) {
             }
         }
 
-        bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+        // drawing
+        {
+            vb_state = &vb_players[my_player_id];
+            bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
 
-        // frameskip can cause bugs in golf when transitioning from VIP to software rendering
-        if (is_golf) just_lagged = false;
-        // frameskip causes visual glitches
-        if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) just_lagged = false;
+            // frameskip can cause bugs in golf when transitioning from VIP to software rendering
+            if (is_golf) just_lagged = false;
+            // frameskip causes visual glitches
+            if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) just_lagged = false;
 
-        // forcefully disable antiflicker if software rendering is in use
-        // because we can't easily delay the fb update until afterwards
-        // and it's not likely that software rendering games will flicker at 50fps anyway
-        if (tDSPCACHE.DDSPDataState[vb_state->tVIPREG.tDisplayedFB] == CPU_WROTE) {
-            on_time = false;
-        }
+            // forcefully disable antiflicker if software rendering is in use
+            // because we can't easily delay the fb update until afterwards
+            // and it's not likely that software rendering games will flicker at 50fps anyway
+            if (tDSPCACHE.DDSPDataState[vb_state->tVIPREG.tDisplayedFB] == CPU_WROTE) {
+                on_time = false;
+            }
 
-        // Display a frame, only after the right number of 'skips'
-        // Also don't display if drawing is still ongoing
-        if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing) {
-            int displayed_fb = vb_state->tVIPREG.tDisplayedFB;
-            // pass C3D_FRAME_NONBLOCK to enable frameskip, 0 to disable
-            // it's only needed for 1 second in the mario clash intro afaik
-            // so just bite the bullet and do the frameskip, rather that than slowdown
-            if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
-                guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
+            // Display a frame, only after the right number of 'skips'
+            // Also don't display if drawing is still ongoing
+            if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing) {
+                int displayed_fb = vb_state->tVIPREG.tDisplayedFB;
+                // pass C3D_FRAME_NONBLOCK to enable frameskip, 0 to disable
+                // it's only needed for 1 second in the mario clash intro afaik
+                // so just bite the bullet and do the frameskip, rather that than slowdown
+                if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
+                    guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
 
-                // Golf hack: switch to software rendering during gameplay.
-                if (is_golf) {
-                    if (*(uint8_t*)(vb_state->V810_DISPLAY_RAM.off + 0x3dbc0) == 0x40 &&
-                        *(uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x3dbe6) == 0x48 &&
-                        memcmp((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x3dbec, "\0\0\x80\x01\x1f\0\0\x80\0\0", 10) == 0
-                    ) {
-                        // looks like hills, do software rendering
-                        if (tVBOpt.RENDERMODE != RM_CPUONLY) {
-                            tVBOpt.RENDERMODE = RM_CPUONLY;
-                            clearCache();
-                        }
-                    } else {
-                        // switch back to hardware rendering
-                        if (tVBOpt.RENDERMODE != RM_TOGPU) {
-                            tVBOpt.RENDERMODE = RM_TOGPU;
-                            for (int i = 0; i < 3; i++) {
-                                memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + (0x8000 * i), 0, 0x6000);
+                    // Golf hack: switch to software rendering during gameplay.
+                    if (is_golf) {
+                        if (*(uint8_t*)(vb_state->V810_DISPLAY_RAM.off + 0x3dbc0) == 0x40 &&
+                            *(uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x3dbe6) == 0x48 &&
+                            memcmp((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x3dbec, "\0\0\x80\x01\x1f\0\0\x80\0\0", 10) == 0
+                        ) {
+                            // looks like hills, do software rendering
+                            if (tVBOpt.RENDERMODE != RM_CPUONLY) {
+                                tVBOpt.RENDERMODE = RM_CPUONLY;
+                                clearCache();
+                            }
+                        } else {
+                            // switch back to hardware rendering
+                            if (tVBOpt.RENDERMODE != RM_TOGPU) {
+                                tVBOpt.RENDERMODE = RM_TOGPU;
+                                for (int i = 0; i < 3; i++) {
+                                    memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + (0x8000 * i), 0, 0x6000);
+                                }
                             }
                         }
                     }
-                }
 
-                // if we just had a lagframe on which drawing happened, don't draw
-                if ((vb_state->tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {
-                    video_render(displayed_fb, on_time);
-                    on_time = true;
-                } else if (on_time) {
-                    if (tVBOpt.ANTIFLICKER) video_flush(false);
-                    on_time = false;
+                    // if we just had a lagframe on which drawing happened, don't draw
+                    if ((vb_state->tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {
+                        video_render(displayed_fb, on_time);
+                        on_time = true;
+                    } else if (on_time) {
+                        if (tVBOpt.ANTIFLICKER) video_flush(false);
+                        on_time = false;
+                    }
+                    C3D_FrameEnd(0);
                 }
-                C3D_FrameEnd(0);
-            }
-            if (tVBOpt.RENDERMODE != RM_CPUONLY) {
-                if (vb_state->tVIPREG.XPCTRL & 0x0002) {
-                    if (tDSPCACHE.DDSPDataState[!displayed_fb] != GPU_CLEAR) {
-                        memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x8000 * !displayed_fb, 0, 0x6000);
-                        memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x10000 + 0x8000 * !displayed_fb, 0, 0x6000);
-                        for (int i = 0; i < 64; i++) {
-                            tDSPCACHE.SoftBufWrote[!displayed_fb][i].min = 0xff;
-                            tDSPCACHE.SoftBufWrote[!displayed_fb][i].max = 0;
+                if (tVBOpt.RENDERMODE != RM_CPUONLY) {
+                    if (vb_state->tVIPREG.XPCTRL & 0x0002) {
+                        if (tDSPCACHE.DDSPDataState[!displayed_fb] != GPU_CLEAR) {
+                            memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x8000 * !displayed_fb, 0, 0x6000);
+                            memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x10000 + 0x8000 * !displayed_fb, 0, 0x6000);
+                            for (int i = 0; i < 64; i++) {
+                                tDSPCACHE.SoftBufWrote[!displayed_fb][i].min = 0xff;
+                                tDSPCACHE.SoftBufWrote[!displayed_fb][i].max = 0;
+                            }
+                            memset(tDSPCACHE.OpaquePixels.u32[!displayed_fb], 0, sizeof(tDSPCACHE.OpaquePixels.u32[!displayed_fb]));
+                            uint32_t fb_size;
+                            uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[!displayed_fb], 0, &fb_size);
+                            memset(out_fb, 0, fb_size);
+                            tDSPCACHE.DDSPDataState[!displayed_fb] = GPU_CLEAR;
                         }
-                        memset(tDSPCACHE.OpaquePixels.u32[!displayed_fb], 0, sizeof(tDSPCACHE.OpaquePixels.u32[!displayed_fb]));
-                        uint32_t fb_size;
-                        uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[!displayed_fb], 0, &fb_size);
-                        memset(out_fb, 0, fb_size);
-                        tDSPCACHE.DDSPDataState[!displayed_fb] = GPU_CLEAR;
                     }
                 }
+            } else {
+                // no game graphics, draw menu if possible
+                if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
+                    // refresh top screen for antiflicker
+                    if (tVBOpt.ANTIFLICKER && on_time) video_flush(false);
+                    guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
+                    C3D_FrameEnd(0);
+                }
+                on_time = false;
             }
-        } else {
-            // no game graphics, draw menu if possible
-            if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
-                // refresh top screen for antiflicker
-                if (tVBOpt.ANTIFLICKER && on_time) video_flush(false);
-                guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
-                C3D_FrameEnd(0);
-            }
-            on_time = false;
         }
 
         // if hold, turn off fast forward, as it'll be turned back on while reading input
@@ -279,6 +283,7 @@ int main(void) {
         input_buffer_tail = (input_buffer_tail + 1) % INPUT_BUFFER_MAX;
 
 
+        vb_state = &vb_players[0];
         osTickCounterStart(&drcTickCounter);
         err = v810_run();
         osTickCounterUpdate(&drcTickCounter);
