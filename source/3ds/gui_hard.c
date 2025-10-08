@@ -1264,6 +1264,10 @@ static void multiplayer_sram_transfer() {
 }
 
 static void multiplayer_ready_room(bool is_host) {
+    char player_name[11] = {0};
+    char player_str[16];
+    C2D_Text p1_text;
+    C2D_Text p2_text;
     multiplayer_ready_room_buttons[MULTI_READY_START].hidden = !is_host;
     {
         udsConnectionStatus status;
@@ -1271,6 +1275,22 @@ static void multiplayer_ready_room(bool is_host) {
         is_multiplayer = true;
         my_player_id = status.cur_NetworkNodeID - 1;
     }
+    C2D_TextBufClear(dynamic_textbuf);
+    udsNodeInfo node_info = {0};
+
+    udsGetNodeInformation(1, &node_info);
+    udsGetNodeInfoUsername(&node_info, player_name);
+    snprintf(player_str, sizeof(player_str), "P1: %s", player_name);
+    C2D_TextParse(&p1_text, dynamic_textbuf, player_str);
+    C2D_TextOptimize(&p1_text);
+
+    memset(player_name, 0, sizeof(player_name));
+    udsGetNodeInformation(2, &node_info);
+    udsGetNodeInfoUsername(&node_info, player_name);
+    snprintf(player_str, sizeof(player_str), "P2: %s", player_name);
+    C2D_TextParse(&p2_text, dynamic_textbuf, player_str);
+    C2D_TextOptimize(&p2_text);
+
     LOOP_BEGIN(multiplayer_ready_room_buttons, 0);
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsConnectionStatus status;
@@ -1291,6 +1311,8 @@ static void multiplayer_ready_room(bool is_host) {
                 }
             }
         }
+        C2D_DrawText(&p1_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&p2_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(multiplayer_ready_room_buttons);
     if (button == MULTI_READY_START) {
         if (is_host) {
