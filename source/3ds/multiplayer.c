@@ -218,7 +218,7 @@ static Result handle_receiving(void) {
                 continue;
             }
         }
-        NET_LOG("recv valid packet with id %d type %d size %d content %d,%d (acking %d)\n", packet->packet_id, packet->packet_type, actual_size, packet->inputs.shb, packet->inputs.slb, packet->ack_id);
+        NET_LOG("recv valid packet with id %d type %d size %d (acking %d)\n", packet->packet_id, packet->packet_type, actual_size, packet->ack_id);
         // if it happens to be the next packet we're looking for, ack it
         if ((u8)(recv_ack_id + 1) == packet->packet_id) {
             recv_ack_id++;
@@ -252,7 +252,7 @@ static void handle_sending(void) {
         }
         packet->ack_id = recv_ack_id;
         packet->crc8 = packet_crc(packet);
-        NET_LOG("sending packet %d with type %d size %d content %d,%d (acking %d)\n", packet->packet_id, packet->packet_type, packet_size(packet), packet->inputs.shb, packet->inputs.slb, packet->ack_id);
+        NET_LOG("sending packet %d with type %d size %d (acking %d)\n", packet->packet_id, packet->packet_type, packet_size(packet), packet->ack_id);
         udsSendTo(UDS_BROADCAST_NETWORKNODEID, data_channel, UDS_SENDFLAG_Default, packet, packet_size(packet));
     }
 }
