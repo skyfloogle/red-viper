@@ -134,6 +134,15 @@ int main(void) {
                 if (input_buffer_head[!my_player_id] == input_buffer_tail) {
                     svcSleepThread(1000000);
                     lag_frames = 0;
+                    if (udsWaitConnectionStatusEvent(false, false)) {
+                        udsConnectionStatus status;
+                        udsGetConnectionStatus(&status);
+                        if (status.total_nodes < 2) {
+                            local_disconnect();
+                            udsExit();
+                            is_multiplayer = false;
+                        }
+                    }
                 } else {
                     break;
                 }
@@ -274,6 +283,15 @@ int main(void) {
                 while (!(send_packet = new_packet_to_send())) {
                     svcSleepThread(1000000);
                     lag_frames = 0;
+                    if (udsWaitConnectionStatusEvent(false, false)) {
+                        udsConnectionStatus status;
+                        udsGetConnectionStatus(&status);
+                        if (status.total_nodes < 2) {
+                            local_disconnect();
+                            udsExit();
+                            is_multiplayer = false;
+                        }
+                    }
                 }
                 send_packet->packet_type = PACKET_INPUTS;
                 send_packet->inputs = new_inputs;
