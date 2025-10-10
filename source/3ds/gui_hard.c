@@ -1171,6 +1171,7 @@ static void multiplayer_host() {
             udsGetConnectionStatus(&status);
             if (status.total_nodes > 1) {
                 C3D_FrameEnd(0);
+                udsSetNewConnectionsBlocked(true, true, false);
                 [[gnu::musttail]] return multiplayer_ready_room(true);
             }
         }
