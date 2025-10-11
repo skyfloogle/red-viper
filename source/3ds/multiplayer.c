@@ -171,7 +171,7 @@ static Result handle_receiving(void) {
     Result res = 0;
     while (packet < recv_heap + RECV_HEAP_COUNT) {
         if (packet->packet_type != PACKET_NULL && (s8)(packet->packet_id - recv_id) >= 0) {
-            NET_LOG("unrecvd packet %d in buffer (next %d)\n", packet->packet_id, recv_id);
+            NET_LOG("unrecvd packet %d in buffer at index %d (next %d)\n", packet->packet_id, packet - recv_heap, recv_id);
             packet++;
             continue;
         }
@@ -208,6 +208,7 @@ static Result handle_receiving(void) {
         // check if the packet is old
         if ((s8)(packet->packet_id - recv_ack_id) <= 0) {
             NET_LOG("recv'd old packet %d acking %d\n", packet->packet_id, packet->ack_id);
+            packet->packet_type = PACKET_NULL;
             continue;
         }
         // check for duplicates
@@ -218,7 +219,7 @@ static Result handle_receiving(void) {
                 continue;
             }
         }
-        NET_LOG("recv valid packet with id %d type %d size %d (acking %d)\n", packet->packet_id, packet->packet_type, actual_size, packet->ack_id);
+        NET_LOG("recv valid packet with id %d type %d size %d (acking %d)\n", packet->packet_id, packet->packet_type & ~TRANSPORT_MASK, actual_size, packet->ack_id);
         // if it happens to be the next packet we're looking for, ack it
         if ((u8)(recv_ack_id + 1) == packet->packet_id) {
             recv_ack_id++;
@@ -243,7 +244,7 @@ static void handle_sending(void) {
     for (int i = sent_id; i < sent_id + 8; i++) {
         packet = &send_queue[i % SEND_QUEUE_COUNT];
         if (packet->packet_type == PACKET_NULL || (s8)(packet->packet_id - sent_id) < 0) {
-            NET_LOG("send breaking on type %d id %d sent_id %d\n", packet->packet_type, packet->packet_id, sent_id);
+            NET_LOG("send breaking on type %d id %d sent_id %d\n", packet->packet_type & ~TRANSPORT_MASK, packet->packet_id, sent_id);
             break;
         }
         if ((s8)(packet->packet_id - shippable_packet) > 0) {
@@ -252,7 +253,7 @@ static void handle_sending(void) {
         }
         packet->ack_id = recv_ack_id;
         packet->crc8 = packet_crc(packet);
-        NET_LOG("sending packet %d with type %d size %d (acking %d)\n", packet->packet_id, packet->packet_type, packet_size(packet), packet->ack_id);
+        NET_LOG("sending packet %d with type %d size %d (acking %d)\n", packet->packet_id, packet->packet_type & ~TRANSPORT_MASK, packet_size(packet), packet->ack_id);
         udsSendTo(UDS_BROADCAST_NETWORKNODEID, data_channel, UDS_SENDFLAG_Default, packet, packet_size(packet));
     }
 }
@@ -295,7 +296,6 @@ Packet *new_packet_to_send(void) {
     packet->packet_type = PACKET_NOP;
     packet->packet_id = shippable_packet + 1;
     NET_LOG("attempting to send %d (sent_id %d)\n", packet->packet_id, sent_id);
-    svcSignalEvent(send_event);
     return packet;
 }
 
@@ -303,7 +303,8 @@ void ship_packet(Packet *packet) {
     if (packet == NULL) return;
     shippable_packet = packet->packet_id;
     packet->packet_type |= TRANSPORT_MASK;
-    NET_LOG("shipping packet %d\n", shippable_packet);
+    svcSignalEvent(send_event);
+    NET_LOG("shipping packet %d with type %d\n", shippable_packet, packet->packet_type & ~TRANSPORT_MASK);
 }
 
 bool send_queue_empty(void) {
