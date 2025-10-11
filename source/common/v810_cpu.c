@@ -748,3 +748,16 @@ int v810_run(void) {
 
     return 0;
 }
+
+void v810_endmultiplayer() {
+    if (my_player_id == 1) {
+        VB_STATE tmp;
+        memcpy(&tmp, &vb_players[0], sizeof(tmp));
+        memcpy(&vb_players[0], &vb_players[1], sizeof(tmp));
+        memcpy(&vb_players[1], &tmp, sizeof(tmp));
+    }
+    my_player_id = 0;
+    emulated_player_id = 0;
+    emulating_self = true;
+    is_multiplayer = false;
+}

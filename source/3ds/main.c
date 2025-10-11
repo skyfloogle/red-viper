@@ -122,30 +122,29 @@ int main(void) {
     while(aptMainLoop()) {
         osTickCounterStart(&frameTickCounter);
 
-        if (is_multiplayer) {
-            while (true) {
-                Packet *recv_packet;
-                while ((recv_packet = read_next_packet())) {
-                    if (recv_packet->packet_type == PACKET_INPUTS) {
-                        input_buffer[!my_player_id][input_buffer_head[!my_player_id]] = recv_packet->inputs;
-                        input_buffer_head[!my_player_id] = (input_buffer_head[!my_player_id] + 1) % INPUT_BUFFER_MAX;
+        while (is_multiplayer) {
+            Packet *recv_packet;
+            while ((recv_packet = read_next_packet())) {
+                if (recv_packet->packet_type == PACKET_INPUTS) {
+                    input_buffer[!my_player_id][input_buffer_head[!my_player_id]] = recv_packet->inputs;
+                    input_buffer_head[!my_player_id] = (input_buffer_head[!my_player_id] + 1) % INPUT_BUFFER_MAX;
+                }
+            }
+            if (input_buffer_head[!my_player_id] == input_buffer_tail) {
+                svcSleepThread(1000000);
+                lag_frames = 0;
+                if (udsWaitConnectionStatusEvent(false, false)) {
+                    udsConnectionStatus status;
+                    udsGetConnectionStatus(&status);
+                    if (status.total_nodes < 2) {
+                        local_disconnect();
+                        udsExit();
+                        v810_endmultiplayer();
+                        break;
                     }
                 }
-                if (input_buffer_head[!my_player_id] == input_buffer_tail) {
-                    svcSleepThread(1000000);
-                    lag_frames = 0;
-                    if (udsWaitConnectionStatusEvent(false, false)) {
-                        udsConnectionStatus status;
-                        udsGetConnectionStatus(&status);
-                        if (status.total_nodes < 2) {
-                            local_disconnect();
-                            udsExit();
-                            is_multiplayer = false;
-                        }
-                    }
-                } else {
-                    break;
-                }
+            } else {
+                break;
             }
         }
 
@@ -289,13 +288,16 @@ int main(void) {
                         if (status.total_nodes < 2) {
                             local_disconnect();
                             udsExit();
-                            is_multiplayer = false;
+                            v810_endmultiplayer();
+                            break;
                         }
                     }
                 }
-                send_packet->packet_type = PACKET_INPUTS;
-                send_packet->inputs = new_inputs;
-                ship_packet(send_packet);
+                if (send_packet) {
+                    send_packet->packet_type = PACKET_INPUTS;
+                    send_packet->inputs = new_inputs;
+                    ship_packet(send_packet);
+                }
             }
             input_buffer_head[my_player_id] = (input_buffer_head[my_player_id] + 1) % INPUT_BUFFER_MAX;
         }

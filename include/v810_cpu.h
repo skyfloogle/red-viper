@@ -128,4 +128,6 @@ int serviceInt(unsigned int cycles, WORD PC);
 
 int v810_run(void);
 
+void v810_endmultiplayer(void);
+
 #endif

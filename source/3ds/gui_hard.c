@@ -218,6 +218,14 @@ static Button game_menu_buttons[] = {
     {.str="Savestates", .x=112, .y=64, .w=80 + 16, .h=80},
 };
 
+static void multiplayer_menu();
+static Button multiplayer_menu_buttons[] = {
+    #define MULTI_MENU_RESUME 0
+    {.str="Resume", .x=0, .y=0, .w=320, .h=48},
+    #define MULTI_MENU_LEAVE 1
+    {.str="Leave", .x=112, .y=192, .w=96, .h=48},
+};
+
 static void rom_loader(void);
 static Button rom_loader_buttons[] = {
     #define ROM_LOADER_UP 0
@@ -628,6 +636,7 @@ static Button forwarder_error_buttons[] = {
 #define SETUP_ALL_BUTTONS \
     SETUP_BUTTONS(first_menu_buttons); \
     SETUP_BUTTONS(game_menu_buttons); \
+    SETUP_BUTTONS(multiplayer_menu_buttons); \
     SETUP_BUTTONS(rom_loader_buttons); \
     SETUP_BUTTONS(multiplayer_main_buttons); \
     SETUP_BUTTONS(multiplayer_host_buttons); \
@@ -783,10 +792,28 @@ static void game_menu(int initial_button) {
 }
 
 static void main_menu(int initial_button) {
-    is_multiplayer = false;
-    my_player_id = 0;
-    if (game_running) game_menu(initial_button);
-    else first_menu(initial_button);
+    if (is_multiplayer) {
+        [[gnu::musttail]] return multiplayer_menu();
+    } else {
+        my_player_id = 0;
+        if (game_running) [[gnu::musttail]] return game_menu(initial_button);
+        else [[gnu::musttail]] return first_menu(initial_button);
+    }
+}
+
+static void multiplayer_menu() {
+    LOOP_BEGIN(multiplayer_menu_buttons, 0);
+    LOOP_END(multiplayer_menu_buttons);
+    switch (button) {
+        case MULTI_MENU_RESUME:
+            return;
+        case MULTI_MENU_LEAVE:
+            is_multiplayer = false;
+            local_disconnect();
+            udsExit();
+            v810_endmultiplayer();
+            [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
+    }
 }
 
 int strptrcmp(const void *s1, const void *s2) {
@@ -1160,6 +1187,7 @@ static void multiplayer_main(int initial_button) {
             [[gnu::musttail]] return multiplayer_join();
         case MULTI_MAIN_BACK:
             udsExit();
+            is_multiplayer = false;
             [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
     }
 }
@@ -1340,6 +1368,7 @@ static void multiplayer_error(int err, C2D_Text *message) {
         C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
         if (err != 0) C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(multiplayer_error_buttons);
+    is_multiplayer = false;
     [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
 }
 
