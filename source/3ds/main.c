@@ -26,6 +26,7 @@ char rom_name[128];
 bool game_running = false;
 
 #define INPUT_BUFFER_MAX 10
+#define INPUT_BUFFER_RUNAHEAD 2
 static HWORD input_buffer[2][INPUT_BUFFER_MAX];
 static int input_buffer_head[2] = {0, 0};
 static int input_buffer_tail = 0;
@@ -112,7 +113,7 @@ int main(void) {
     svcClearEvent(frame_event);
 
     input_buffer_tail = 0;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < INPUT_BUFFER_RUNAHEAD; i++) {
         for (int p = 0; p < 2; p++) {
             input_buffer[p][i] = 0;
             input_buffer_head[p]++;
@@ -174,10 +175,11 @@ int main(void) {
             svcClearEvent(frame_event);
 
             input_buffer_tail = 0;
-            for (int i = 0; i < 2; i++) {
+            input_buffer_head[0] = input_buffer_head[1] = 0;
+            for (int i = 0; i < INPUT_BUFFER_RUNAHEAD; i++) {
                 for (int p = 0; p < 2; p++) {
                     input_buffer[p][i] = 0;
-                    input_buffer_head[p]++;
+                    input_buffer_head[p] = (input_buffer_head[p] + 1) % INPUT_BUFFER_MAX;
                 }
             }
         }
