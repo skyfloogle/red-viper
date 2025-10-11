@@ -195,7 +195,7 @@ static Button no_buttons[] = {{.hidden = true}};
 static void first_menu(int initial_button);
 static Button first_menu_buttons[] = {
     {.str="Load ROM", .x=16, .y=16, .w=288, .h=144},
-    {.str="Multi\nplayer", .x=0, .y=176, .w=80, .h=64},
+    {.str="Multi\nplayer", .x=0, .y=176, .w=80, .h=64, .hidden=true},
     {.str="Options", .x=240, .y=176, .w=80, .h=64},
     {.str="Quit", .x=112, .y=192, .w=96, .h=48},
 };
