@@ -55,6 +55,7 @@ int help_about(void);
 void guiInit(void);
 void guiUpdate(float total_time, float drc_time);
 void openMenu(void);
+void openPeerDisconnectMenu(void);
 void showSoundError(void);
 void showError(int code);
 

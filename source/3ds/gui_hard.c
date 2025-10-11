@@ -803,6 +803,16 @@ static void main_menu(int initial_button) {
 
 static void multiplayer_menu() {
     LOOP_BEGIN(multiplayer_menu_buttons, 0);
+        if (udsWaitConnectionStatusEvent(false, false)) {
+            udsConnectionStatus status;
+            udsGetConnectionStatus(&status);
+            if (status.total_nodes < 2) {
+                C3D_FrameEnd(0);
+                local_disconnect();
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect);
+            }
+        }
     LOOP_END(multiplayer_menu_buttons);
     switch (button) {
         case MULTI_MENU_RESUME:
@@ -3074,6 +3084,23 @@ void openMenu(void) {
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
+    gspWaitForVBlank();
+    if (guiop == 0) sound_resume();
+    else if (guiop == AKILL) sound_refresh();
+    else if (!(guiop & GUIEXIT)) sound_reset();
+    inMenu = false;
+}
+
+void openPeerDisconnectMenu(void) {
+    inMenu = true;
+    shouldRedrawMenu = true;
+    if (game_running) {
+        sound_pause();
+        save_sram();
+    }
+    C2D_Prepare();
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+    multiplayer_error(0, &text_multi_disconnect);
     gspWaitForVBlank();
     if (guiop == 0) sound_resume();
     else if (guiop == AKILL) sound_refresh();

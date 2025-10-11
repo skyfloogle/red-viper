@@ -140,6 +140,7 @@ int main(void) {
                         local_disconnect();
                         udsExit();
                         v810_endmultiplayer();
+                        openPeerDisconnectMenu();
                         break;
                     }
                 }
@@ -289,6 +290,7 @@ int main(void) {
                             local_disconnect();
                             udsExit();
                             v810_endmultiplayer();
+                            openPeerDisconnectMenu();
                             break;
                         }
                     }
