@@ -273,7 +273,7 @@ static Button multiplayer_ready_room_buttons[] = {
     {.str="Leave", .x=0, .y=208, .w=56, .h=32},
 };
 
-static void multiplayer_error(int err, C2D_Text *messsage);
+static void multiplayer_error(int err, C2D_Text *messsage, bool exit_to_menu);
 static Button multiplayer_error_buttons[] = {
     {.str = "Exit", .x=160-48, .y=180, .w=48*2, .h=48},
 };
@@ -810,7 +810,7 @@ static void multiplayer_menu() {
                 C3D_FrameEnd(0);
                 local_disconnect();
                 udsExit();
-                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect);
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
             }
         }
     LOOP_END(multiplayer_menu_buttons);
@@ -1179,7 +1179,7 @@ static void rom_loader(void) {
 static void multiplayer_main(int initial_button) {
     Result res = udsInit(0x3000, NULL);
     if (R_FAILED(res)) {
-        return multiplayer_error(res, &text_multi_init_error);
+        return multiplayer_error(res, &text_multi_init_error, true);
     }
     LOOP_BEGIN(multiplayer_main_buttons, initial_button);
         C2D_DrawText(&text_multi_reset_on_join, C2D_AlignCenter | C2D_WithColor, 320 / 2, 140, 0, 0.7, 0.7, TINT_COLOR);
@@ -1189,7 +1189,7 @@ static void multiplayer_main(int initial_button) {
             res = create_network();
             if (R_FAILED(res)) {
                 udsExit();
-                [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error);
+                [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error, true);
             } else {
                 [[gnu::musttail]] return multiplayer_host();
             }
@@ -1242,7 +1242,7 @@ static void multiplayer_join() {
         Result res = connect_to_network(&networks[button].network);
         if (R_FAILED(res)) {
             udsExit();
-            [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error);
+            [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error, true);
         } else {
             [[gnu::musttail]] return multiplayer_ready_room(false);
         }
@@ -1264,7 +1264,7 @@ static void multiplayer_sram_transfer() {
                 C3D_FrameEnd(0);
                 local_disconnect();
                 udsExit();
-                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect);
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
             }
         }
         Packet *send_packet;
@@ -1285,7 +1285,7 @@ static void multiplayer_sram_transfer() {
                 C3D_FrameEnd(0);
                 local_disconnect();
                 udsExit();
-                [[gnu::musttail]] return multiplayer_error(1, &text_multi_comm_error);
+                [[gnu::musttail]] return multiplayer_error(1, &text_multi_comm_error, true);
             }
         }
         // send nops so any acks can get through
@@ -1338,7 +1338,7 @@ static void multiplayer_ready_room(bool is_host) {
                 C3D_FrameEnd(0);
                 local_disconnect();
                 udsExit();
-                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect);
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
             }
         }
         if (!is_host) {
@@ -1368,7 +1368,7 @@ static void multiplayer_ready_room(bool is_host) {
     }
 }
 
-static void multiplayer_error(int err, C2D_Text *message) {
+static void multiplayer_error(int err, C2D_Text *message, bool exit_to_menu) {
     C2D_Text text;
     char code_message[32];
     snprintf(code_message, sizeof(code_message), "Error code: %d", err);
@@ -1379,7 +1379,7 @@ static void multiplayer_error(int err, C2D_Text *message) {
         if (err != 0) C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(multiplayer_error_buttons);
     is_multiplayer = false;
-    [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
+    if (exit_to_menu) [[gnu::musttail]] return main_menu(MAIN_MENU_MULTI);
 }
 
 static void controls(int initial_button) {
@@ -3100,7 +3100,7 @@ void openPeerDisconnectMenu(void) {
     }
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    multiplayer_error(0, &text_multi_disconnect);
+    multiplayer_error(0, &text_multi_disconnect, false);
     gspWaitForVBlank();
     if (guiop == 0) sound_resume();
     else if (guiop == AKILL) sound_refresh();
