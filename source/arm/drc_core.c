@@ -423,6 +423,17 @@ static void drc_findLastConditionalInst(int pos) {
                     save_flags = false;
                     break;
                 }
+            case V810_OP_SHR_I:
+                // virtual league baseball 2 uses a shr in busywaits in several places
+                if (i == pos - 1 && i >= 2
+                    && inst_cache[i - 2].opcode == V810_OP_MOVHI
+                    && inst_cache[i - 1].opcode == V810_OP_LD_H
+                    && inst_cache[i].opcode == V810_OP_SHR_I
+                    && inst_cache[pos].PC + inst_cache[pos].branch_offset == inst_cache[i - 2].PC
+                ) {
+                    save_flags = false;
+                    break;
+                }
             default:
                 if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
                     dprintf(1, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
