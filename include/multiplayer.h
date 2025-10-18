@@ -36,9 +36,11 @@ Result create_network(void);
 Result scan_beacons(udsNetworkScanInfo **networks, size_t *total_networks);
 Result connect_to_network(const udsNetworkStruct *network);
 void local_disconnect(void);
+bool wait_for_packet(u64 max);
 Packet *read_next_packet(void);
 Packet *new_packet_to_send(void);
 void ship_packet(Packet *packet);
+bool wait_for_free_send_slot(u64 max);
 bool send_queue_empty(void);
 
 #endif

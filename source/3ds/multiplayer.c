@@ -27,7 +27,8 @@ static volatile u8 shippable_packet;
 #define TRANSPORT_MASK 0x80
 
 static bool events_created = false;
-static Handle end_event, send_event;
+// note: bindctx.event is oneshot, so for more than one listener we need our own
+static Handle end_event, send_event, recv_event, sent_event;
 static Thread send_thread_handle, recv_thread_handle;
 
 FILE *logfile;
@@ -90,9 +91,13 @@ static void init_ids(void) {
     if (!events_created) {
         svcCreateEvent(&end_event, RESET_STICKY);
         svcCreateEvent(&send_event, RESET_STICKY);
+        svcCreateEvent(&recv_event, RESET_STICKY);
+        svcCreateEvent(&sent_event, RESET_STICKY);
     }
     svcClearEvent(end_event);
     svcClearEvent(send_event);
+    svcClearEvent(recv_event);
+    svcClearEvent(sent_event);
     recv_thread_handle = threadCreate(recv_thread, NULL, 4000, 0x19, 1, true);
     send_thread_handle = threadCreate(send_thread, NULL, 4000, 0x19, 1, true);
 }
@@ -204,6 +209,7 @@ static Result handle_receiving(void) {
         if ((s8)(packet->ack_id - sent_id) >= 0 && send_queue[packet->ack_id % SEND_QUEUE_COUNT].packet_id == packet->ack_id) {
             send_queue[packet->ack_id % SEND_QUEUE_COUNT].packet_type = PACKET_NULL;
             sent_id = packet->ack_id + 1;
+            svcSignalEvent(sent_event);
         }
         // check if the packet is old
         if ((s8)(packet->packet_id - recv_ack_id) <= 0) {
@@ -223,6 +229,7 @@ static Result handle_receiving(void) {
         // if it happens to be the next packet we're looking for, ack it
         if ((u8)(recv_ack_id + 1) == packet->packet_id) {
             recv_ack_id++;
+            svcSignalEvent(recv_event);
         }
         // clear for reception and continue
         packet->packet_type &= ~TRANSPORT_MASK;
@@ -233,6 +240,7 @@ static Result handle_receiving(void) {
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
         if (packet->packet_type != PACKET_NULL && (u8)(recv_ack_id + 1) == packet->packet_id) {
             recv_ack_id++;
+            svcSignalEvent(recv_event);
             goto try_ack_packet;
         }
     }
@@ -266,6 +274,21 @@ static Packet *try_find_next_packet(void) {
         }
     }
     return NULL;
+}
+
+bool wait_for_packet(u64 max) {
+    svcClearEvent(recv_event);
+    if (try_find_next_packet()) return false;
+    Handle handles[2] = {end_event, recv_event};
+    u64 start = osGetTime();
+    s32 event_id;
+    while (R_FAILED(svcWaitSynchronizationN(&event_id, handles, 2, false, max))) {
+        if (send_queue_empty()) {
+            NET_LOG("uh oh, we're gonna be stuck here now\n");
+        }
+    }
+    NET_LOG("recv waited for %lldms\n", osGetTime() - start);
+    return true;
 }
 
 Packet *read_next_packet(void) {
@@ -305,6 +328,20 @@ void ship_packet(Packet *packet) {
     packet->packet_type |= TRANSPORT_MASK;
     svcSignalEvent(send_event);
     NET_LOG("shipping packet %d with type %d\n", shippable_packet, packet->packet_type & ~TRANSPORT_MASK);
+}
+
+bool wait_for_free_send_slot(u64 max) {
+    svcClearEvent(sent_event);
+    Packet *packet = &send_queue[(shippable_packet + 1) % SEND_QUEUE_COUNT];
+    if (packet->packet_type != PACKET_NULL && (s8)(sent_id - packet->packet_id) <= 0) {
+        u64 start = osGetTime();
+        Handle handles[2] = {end_event, sent_event};
+        s32 event_id;
+        svcWaitSynchronizationN(&event_id, handles, 2, false, max);
+        NET_LOG("send waited for %lldms\n", osGetTime() - start);
+        return true;
+    }
+    return false;
 }
 
 bool send_queue_empty(void) {

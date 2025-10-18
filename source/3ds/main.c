@@ -138,7 +138,7 @@ int main(void) {
                     send_packet->packet_type = PACKET_NOP;
                     ship_packet(send_packet);
                 }
-                svcSleepThread(1000000);
+                wait_for_packet(1000000000);
                 lag_frames = 0;
                 if (udsWaitConnectionStatusEvent(false, false)) {
                     udsConnectionStatus status;
@@ -289,7 +289,7 @@ int main(void) {
                 // TODO: probably account for empty case if input buffer gets much bigger
                 Packet *send_packet;
                 while (!(send_packet = new_packet_to_send())) {
-                    svcSleepThread(1000000);
+                    wait_for_free_send_slot(1000000000);
                     lag_frames = 0;
                     if (udsWaitConnectionStatusEvent(false, false)) {
                         udsConnectionStatus status;
