@@ -23,6 +23,8 @@ static volatile u8 recv_ack_id;
 static Packet send_queue[SEND_QUEUE_COUNT] = {0};
 static volatile u8 sent_id;
 static volatile u8 shippable_packet;
+static u64 last_send_time[SEND_QUEUE_COUNT];
+#define RESEND_TIMEOUT 40
 
 #define TRANSPORT_MASK 0x80
 
@@ -249,6 +251,7 @@ static Result handle_receiving(void) {
 
 static void handle_sending(void) {
     Packet *packet;
+    u64 time = osGetTime();
     for (int i = sent_id; i < sent_id + 8; i++) {
         packet = &send_queue[i % SEND_QUEUE_COUNT];
         if (packet->packet_type == PACKET_NULL || (s8)(packet->packet_id - sent_id) < 0) {
@@ -259,6 +262,11 @@ static void handle_sending(void) {
             NET_LOG("packet %d not ready for shipping (shippable %d, diff %d)\n", packet->packet_id, shippable_packet, (s8)(packet->packet_id - shippable_packet));
             break;
         }
+        if (time - last_send_time[i % SEND_QUEUE_COUNT] < RESEND_TIMEOUT) {
+            NET_LOG("packet %d already sent, won't send again too soon\n", packet->packet_id);
+            continue;
+        }
+        last_send_time[i % SEND_QUEUE_COUNT] = time;
         packet->ack_id = recv_ack_id;
         packet->crc8 = packet_crc(packet);
         NET_LOG("sending packet %d with type %d size %d (acking %d)\n", packet->packet_id, packet->packet_type & ~TRANSPORT_MASK, packet_size(packet), packet->ack_id);
@@ -326,6 +334,7 @@ void ship_packet(Packet *packet) {
     if (packet == NULL) return;
     shippable_packet = packet->packet_id;
     packet->packet_type |= TRANSPORT_MASK;
+    last_send_time[packet->packet_id % SEND_QUEUE_COUNT] = 0;
     svcSignalEvent(send_event);
     NET_LOG("shipping packet %d with type %d\n", shippable_packet, packet->packet_type & ~TRANSPORT_MASK);
 }
