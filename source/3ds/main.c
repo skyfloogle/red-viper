@@ -25,7 +25,7 @@ char rom_name[128];
 
 bool game_running = false;
 
-#define INPUT_BUFFER_MAX 10
+#define INPUT_BUFFER_MAX 16
 #define INPUT_BUFFER_RUNAHEAD 2
 static HWORD input_buffer[2][INPUT_BUFFER_MAX];
 static int input_buffer_head[2] = {0, 0};
