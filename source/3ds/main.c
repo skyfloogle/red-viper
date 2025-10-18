@@ -132,6 +132,12 @@ int main(void) {
                 }
             }
             if (input_buffer_head[!my_player_id] == input_buffer_tail) {
+                if (send_queue_empty()) {
+                    // they might be waiting for an ack from us, so send one
+                    Packet *send_packet = new_packet_to_send();
+                    send_packet->packet_type = PACKET_NOP;
+                    ship_packet(send_packet);
+                }
                 svcSleepThread(1000000);
                 lag_frames = 0;
                 if (udsWaitConnectionStatusEvent(false, false)) {
