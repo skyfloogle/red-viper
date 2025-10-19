@@ -92,7 +92,7 @@ int main(void) {
     aptHook(&cookie, aptBacklight, NULL);
 
     guiop = 0;
-    openMenu();
+    openMenu(true);
     if (guiop & GUIEXIT) {
         goto exit;
     }
@@ -112,10 +112,12 @@ int main(void) {
     lag_frames = 0;
     svcClearEvent(frame_event);
 
+    bool waiting_for_menu = false;
+    bool needs_menu_message = false;
     input_buffer_tail = 0;
     for (int i = 0; i < INPUT_BUFFER_RUNAHEAD; i++) {
         for (int p = 0; p < 2; p++) {
-            input_buffer[p][i] = 0;
+            input_buffer[p][i] = 2;
             input_buffer_head[p]++;
         }
     }
@@ -124,6 +126,9 @@ int main(void) {
         osTickCounterStart(&frameTickCounter);
 
         while (is_multiplayer) {
+            bool received_menu_command = input_buffer[!my_player_id][(input_buffer_head[!my_player_id] + INPUT_BUFFER_MAX - 1) % INPUT_BUFFER_MAX] == 0;
+            if (received_menu_command) break;
+
             Packet *recv_packet;
             while ((recv_packet = read_next_packet())) {
                 if (recv_packet->packet_type == PACKET_INPUTS) {
@@ -159,10 +164,29 @@ int main(void) {
         hidScanInput();
         int keys = hidKeysDown();
 
-        if ((keys & KEY_TOUCH) && guiShouldPause()) {
+        if ((keys & KEY_TOUCH) && guiShouldPause() && !waiting_for_menu) {
+            waiting_for_menu = true;
+            needs_menu_message = is_multiplayer;
+        }
+        bool show_menu = is_multiplayer
+            ? (input_buffer[0][input_buffer_tail] == 0 || input_buffer[1][input_buffer_tail] == 0)
+            : waiting_for_menu;
+
+        if (show_menu) {
             save_sram();
+
+            waiting_for_menu = false;
+            needs_menu_message = false;
+
+            bool my_menu = !is_multiplayer || (
+                input_buffer[my_player_id][input_buffer_tail] == 0 && (
+                    // give priority to player 1
+                    my_player_id == 0 || input_buffer[0][input_buffer_tail] != 0
+                )
+            );
+
             guiop = 0;
-            openMenu();
+            openMenu(my_menu);
             if (guiop & GUIEXIT) {
                 goto exit;
             }
@@ -184,7 +208,7 @@ int main(void) {
             input_buffer_head[0] = input_buffer_head[1] = 0;
             for (int i = 0; i < INPUT_BUFFER_RUNAHEAD; i++) {
                 for (int p = 0; p < 2; p++) {
-                    input_buffer[p][i] = 0;
+                    input_buffer[p][i] = 2;
                     input_buffer_head[p] = (input_buffer_head[p] + 1) % INPUT_BUFFER_MAX;
                 }
             }
@@ -284,8 +308,10 @@ int main(void) {
         // add inputs to buffer
         {
             HWORD new_inputs = V810_RControll(false);
+            // we can send multiple, they can just be ignored at the receiving end
+            if (waiting_for_menu) new_inputs = 0;
             input_buffer[my_player_id][input_buffer_head[my_player_id]] = new_inputs;
-            if (is_multiplayer) {
+            if (is_multiplayer && (!waiting_for_menu || needs_menu_message)) {
                 // TODO: probably account for empty case if input buffer gets much bigger
                 Packet *send_packet;
                 while (!(send_packet = new_packet_to_send())) {

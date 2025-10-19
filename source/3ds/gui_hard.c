@@ -218,13 +218,15 @@ static Button game_menu_buttons[] = {
     {.str="Savestates", .x=112, .y=64, .w=80 + 16, .h=80},
 };
 
-static void multiplayer_menu();
+static void multiplayer_menu(void);
 static Button multiplayer_menu_buttons[] = {
     #define MULTI_MENU_RESUME 0
     {.str="Resume", .x=0, .y=0, .w=320, .h=48},
     #define MULTI_MENU_LEAVE 1
     {.str="Leave", .x=112, .y=192, .w=96, .h=48},
 };
+
+static void multiplayer_wait_for_peer(void);
 
 static void rom_loader(void);
 static Button rom_loader_buttons[] = {
@@ -801,7 +803,7 @@ static void main_menu(int initial_button) {
     }
 }
 
-static void multiplayer_menu() {
+static void multiplayer_menu(void) {
     LOOP_BEGIN(multiplayer_menu_buttons, 0);
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsConnectionStatus status;
@@ -816,6 +818,21 @@ static void multiplayer_menu() {
     LOOP_END(multiplayer_menu_buttons);
     switch (button) {
         case MULTI_MENU_RESUME:
+            while (wait_for_free_send_slot(1000000000)) {
+                if (udsWaitConnectionStatusEvent(false, false)) {
+                    udsConnectionStatus status;
+                    udsGetConnectionStatus(&status);
+                    if (status.total_nodes < 2) {
+                        C3D_FrameEnd(0);
+                        local_disconnect();
+                        udsExit();
+                        [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
+                    }
+                }
+            }
+            Packet *send_packet = new_packet_to_send();
+            send_packet->packet_type = PACKET_RESUME;
+            ship_packet(send_packet);
             return;
         case MULTI_MENU_LEAVE:
             is_multiplayer = false;
@@ -824,6 +841,38 @@ static void multiplayer_menu() {
             v810_endmultiplayer();
             [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
     }
+}
+
+static void multiplayer_wait_for_peer(void) {
+    char player_name[11] = {0};
+    udsNodeInfo peer_info;
+    udsGetNodeInformation(!my_player_id + 1, &peer_info);
+    udsGetNodeInfoUsername(&peer_info, player_name);
+    char message[32];
+    snprintf(message, sizeof(message), "%s paused the game.", player_name);
+    C2D_Text text;
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_TextParse(&text, dynamic_textbuf, message);
+    C2D_TextOptimize(&text);
+    LOOP_BEGIN(no_buttons, -1);
+        if (udsWaitConnectionStatusEvent(false, false)) {
+            udsConnectionStatus status;
+            udsGetConnectionStatus(&status);
+            if (status.total_nodes < 2) {
+                C3D_FrameEnd(0);
+                local_disconnect();
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
+            }
+        }
+        Packet *recv_packet;
+        if ((recv_packet = read_next_packet())) {
+            if (recv_packet->packet_type == PACKET_RESUME) {
+                loop = false;
+            }
+        }
+        C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
+    LOOP_END(no_buttons);
 }
 
 int strptrcmp(const void *s1, const void *s2) {
@@ -3074,7 +3123,7 @@ void guiInit(void) {
 static bool shouldRedrawMenu = true;
 static bool inMenu = false;
 
-void openMenu(void) {
+void openMenu(bool my_menu) {
     inMenu = true;
     shouldRedrawMenu = true;
     if (game_running) {
@@ -3083,7 +3132,11 @@ void openMenu(void) {
     }
     C2D_Prepare();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
+    if (my_menu) {
+        main_menu(game_running ? MAIN_MENU_RESUME : MAIN_MENU_LOAD_ROM);
+    } else {
+        multiplayer_wait_for_peer();
+    }
     gspWaitForVBlank();
     if (guiop == 0) sound_resume();
     else if (guiop == AKILL) sound_refresh();
