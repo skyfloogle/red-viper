@@ -25,6 +25,7 @@ static volatile u8 sent_id;
 static volatile u8 shippable_packet;
 static u64 last_send_time[SEND_QUEUE_COUNT];
 #define RESEND_TIMEOUT 40
+#define MAX_PACKET_SIZE (sizeof(Packet) + 4)
 
 #define TRANSPORT_MASK 0x80
 
@@ -35,7 +36,7 @@ static Thread send_thread_handle, recv_thread_handle;
 
 FILE *logfile;
 #ifdef NET_LOGGING
-#define NET_LOG(...) fprintf(logfile, __VA_ARGS__)
+#define NET_LOG(...) fprintf(logfile, "[%lld] ", osGetTime()); fprintf(logfile, __VA_ARGS__)
 #else
 #define NET_LOG(...)
 #endif
@@ -66,7 +67,7 @@ static void send_thread(void *args) {
     Handle handles[2] = {end_event, send_event};
     s32 event_id;
     while (true) {
-        Result res = svcWaitSynchronizationN(&event_id, handles, 2, false, 10000000);
+        Result res = svcWaitSynchronizationN(&event_id, handles, 2, false, 40000000);
         if (R_SUCCEEDED(res)) {
             if (event_id == 0) {
                 break;
@@ -153,20 +154,25 @@ void local_disconnect(void) {
 }
 
 static size_t packet_size(const Packet *packet) {
+    int size = 0;
     switch ((PacketType)(packet->packet_type & ~TRANSPORT_MASK)) {
         case PACKET_NULL:
         case PACKET_NOP:
         case PACKET_PAUSE:
         case PACKET_RESUME:
-            return PACKET_HEADER_SIZE;
+            size = PACKET_HEADER_SIZE;
+            break;
         case PACKET_INPUTS:
-            return PACKET_HEADER_SIZE + sizeof(packet->inputs);
+            size = PACKET_HEADER_SIZE + sizeof(packet->inputs);
+            break;
         case PACKET_LOADED:
-            return PACKET_HEADER_SIZE + sizeof(packet->loaded);
+            size = PACKET_HEADER_SIZE + sizeof(packet->loaded);
+            break;
         case PACKET_DATA:
-            return PACKET_HEADER_SIZE + sizeof(packet->data);
+            size = PACKET_HEADER_SIZE + sizeof(packet->data);
+            break;
     }
-    return 0;
+    return (size + 3) & ~3;
 }
 
 static u8 packet_crc(const Packet *packet) {
@@ -174,6 +180,9 @@ static u8 packet_crc(const Packet *packet) {
 }
 
 static Result handle_receiving(void) {
+    static u8 recv_area[MAX_PACKET_SIZE];
+    u8 *recv_cursor = recv_area;
+    size_t actual_size;
     Packet *packet = recv_heap;
     Result res = 0;
     while (packet < recv_heap + RECV_HEAP_COUNT) {
@@ -183,29 +192,39 @@ static Result handle_receiving(void) {
             continue;
         }
         NET_LOG("overwriting packet %d\n", packet->packet_id);
-        size_t actual_size;
-        res = udsPullPacket(&bindctx, packet, sizeof(*packet), &actual_size, NULL);
-        if (R_FAILED(res)) {
-            NET_LOG("recv error %ld\n", res);
-            packet->packet_type = PACKET_NULL;
-            break;
+        if (recv_cursor == recv_area) {
+            res = udsPullPacket(&bindctx, recv_area, sizeof(recv_area), &actual_size, NULL);
+            if (R_FAILED(res)) {
+                NET_LOG("recv error %ld\n", res);
+                packet->packet_type = PACKET_NULL;
+                break;
+            }
+            if (actual_size == 0) {
+                // no data
+                NET_LOG("recv no data\n");
+                packet->packet_type = PACKET_NULL;
+                break;
+            }
+            NET_LOG("received %d bytes\n", actual_size);
         }
-        if (actual_size == 0) {
-            // no data
-            NET_LOG("recv no data\n");
-            packet->packet_type = PACKET_NULL;
-            break;
-        }
-        if (actual_size < PACKET_HEADER_SIZE || actual_size != packet_size(packet)) {
+        if (recv_cursor + PACKET_HEADER_SIZE > recv_area + actual_size || recv_cursor + packet_size((Packet*)recv_cursor) > recv_area + actual_size) {
             NET_LOG("recv packet looks too small\n");
             packet->packet_type = PACKET_NULL;
+            recv_cursor = recv_area;
             continue;
         }
+        memcpy(packet, recv_cursor, packet_size((Packet*)recv_cursor));
+        recv_cursor += packet_size((Packet*)recv_cursor);
+        if (recv_cursor >= recv_area + actual_size) {
+            recv_cursor = recv_area;
+        }
+
         if (packet_crc(packet) != packet->crc8) {
-            NET_LOG("recv checksum doesn't match\n");
+            NET_LOG("recv checksum doesn't match: %02x%02x%02x%02x%02x%02x\n", recv_area[0], recv_area[1], recv_area[2], recv_area[3], recv_area[4], recv_area[5]);
             packet->packet_type = PACKET_NULL;
             continue;
         }
+
         // valid packet
         // ack the ack
         if ((s8)(packet->ack_id - sent_id) >= 0 && send_queue[packet->ack_id % SEND_QUEUE_COUNT].packet_id == packet->ack_id) {
@@ -251,26 +270,44 @@ static Result handle_receiving(void) {
 
 static void handle_sending(void) {
     Packet *packet;
+    static u8 send_area[MAX_PACKET_SIZE] __attribute__((aligned(4)));
+    u8 *send_cursor = send_area;
     u64 time = osGetTime();
     for (int i = sent_id; i < sent_id + 8; i++) {
         packet = &send_queue[i % SEND_QUEUE_COUNT];
-        if (packet->packet_type == PACKET_NULL || (s8)(packet->packet_id - sent_id) < 0) {
-            NET_LOG("send breaking on type %d id %d sent_id %d\n", packet->packet_type & ~TRANSPORT_MASK, packet->packet_id, sent_id);
+
+        // send previous packets if not already done
+        u8 *next_cursor = send_cursor + packet_size(packet);
+        if (next_cursor - send_area > sizeof(send_area)) {
+            NET_LOG("sending %d bytes\n", send_cursor - send_area);
+            udsSendTo(UDS_BROADCAST_NETWORKNODEID, data_channel, UDS_SENDFLAG_Default, send_area, send_cursor - send_area);
+            send_cursor = send_area;
+            next_cursor += packet_size(packet);
             break;
+        }
+
+        if (packet->packet_type == PACKET_NULL || (s8)(packet->packet_id - sent_id) < 0) {
+            NET_LOG("not sending old packet with type %d id %d sent_id %d\n", packet->packet_type & ~TRANSPORT_MASK, packet->packet_id, sent_id);
+            continue;
         }
         if ((s8)(packet->packet_id - shippable_packet) > 0) {
             NET_LOG("packet %d not ready for shipping (shippable %d, diff %d)\n", packet->packet_id, shippable_packet, (s8)(packet->packet_id - shippable_packet));
             break;
         }
         if (time - last_send_time[i % SEND_QUEUE_COUNT] < RESEND_TIMEOUT) {
-            NET_LOG("packet %d already sent, won't send again too soon\n", packet->packet_id);
-            continue;
+            // NET_LOG("packet %d already sent, won't send again too soon\n", packet->packet_id);
+            // continue;
         }
         last_send_time[i % SEND_QUEUE_COUNT] = time;
         packet->ack_id = recv_ack_id;
         packet->crc8 = packet_crc(packet);
         NET_LOG("sending packet %d with type %d size %d (acking %d)\n", packet->packet_id, packet->packet_type & ~TRANSPORT_MASK, packet_size(packet), packet->ack_id);
-        udsSendTo(UDS_BROADCAST_NETWORKNODEID, data_channel, UDS_SENDFLAG_Default, packet, packet_size(packet));
+        memcpy(send_cursor, packet, packet_size(packet));
+        send_cursor = next_cursor;
+    }
+    if (send_cursor != send_area) {
+        NET_LOG("sending %d bytes: %02x%02x%02x%02x%02x%02x\n", send_cursor - send_area, send_area[0], send_area[1], send_area[2], send_area[3], send_area[4], send_area[5]);
+        udsSendTo(UDS_BROADCAST_NETWORKNODEID, data_channel, UDS_SENDFLAG_Default, send_area, send_cursor - send_area);
     }
 }
 
@@ -290,7 +327,7 @@ bool wait_for_packet(u64 max) {
     Handle handles[2] = {end_event, recv_event};
     u64 start = osGetTime();
     s32 event_id;
-    while (R_FAILED(svcWaitSynchronizationN(&event_id, handles, 2, false, max))) {
+    if (R_FAILED(svcWaitSynchronizationN(&event_id, handles, 2, false, max))) {
         if (send_queue_empty()) {
             NET_LOG("uh oh, we're gonna be stuck here now\n");
         }
@@ -326,7 +363,6 @@ Packet *new_packet_to_send(void) {
     }
     packet->packet_type = PACKET_NOP;
     packet->packet_id = shippable_packet + 1;
-    NET_LOG("attempting to send %d (sent_id %d)\n", packet->packet_id, sent_id);
     return packet;
 }
 
