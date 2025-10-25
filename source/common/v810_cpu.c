@@ -610,7 +610,7 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
 
         if (vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing && (vb_state->tVIPREG.XPCTRL & XPEN)) {
             vb_state->tVIPREG.tDisplayedFB = !vb_state->tVIPREG.tDisplayedFB;
-            if (!tVBOpt.VIP_OVERCLOCK) {
+            if (!tVBOpt.VIP_OVERCLOCK || is_multiplayer) {
                 vb_state->tVIPREG.frametime = videoProcessingTime();
             } else {
                 // pre-0.9.7 behaviour
