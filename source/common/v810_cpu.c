@@ -245,9 +245,6 @@ int v810_load_step(void) {
     if (load_pos >= all_size) {
         // final setup
 
-        // Copy SRAM to Player 2
-        memcpy(vb_players[1].V810_GAME_RAM.pmemory, vb_players[0].V810_GAME_RAM.pmemory, vb_players[0].V810_GAME_RAM.size);
-
         // If we need to save, we'll find out later
         is_sram = false;
 

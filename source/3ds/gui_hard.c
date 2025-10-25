@@ -1305,6 +1305,9 @@ static void multiplayer_join() {
 static void multiplayer_sram_transfer() {
     int send_progress = 0;
     int recv_progress = 0;
+    if (my_player_id == 1) {
+        memcpy(vb_players[1].V810_GAME_RAM.pmemory, vb_players[0].V810_GAME_RAM.pmemory, vb_players[0].V810_GAME_RAM.size);
+    }
     LOOP_BEGIN(no_buttons, -1);
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsConnectionStatus status;
