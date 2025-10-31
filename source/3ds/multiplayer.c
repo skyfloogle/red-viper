@@ -36,7 +36,7 @@ static Thread send_thread_handle, recv_thread_handle;
 
 FILE *logfile;
 #ifdef NET_LOGGING
-#define NET_LOG(...) fprintf(logfile, "[%lld] ", osGetTime()); fprintf(logfile, __VA_ARGS__)
+#define NET_LOG(...) fprintf(logfile, __VA_ARGS__)
 #else
 #define NET_LOG(...)
 #endif
@@ -85,11 +85,11 @@ static void init_ids(void) {
     shippable_packet = UINT8_MAX;
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
         recv_heap[i].packet_type = PACKET_NULL;
-        recv_heap[i].packet_id = UINT8_MAX;
+        recv_heap[i].packet_id = UINT8_MAX - 1;
     }
     for (int i = 0; i < SEND_QUEUE_COUNT; i++) {
         send_queue[i].packet_type = PACKET_NULL;
-        recv_heap[i].packet_id = UINT8_MAX;
+        send_queue[i].packet_id = UINT8_MAX;
     }
     if (!events_created) {
         svcCreateEvent(&end_event, RESET_STICKY);
@@ -107,7 +107,9 @@ static void init_ids(void) {
 
 Result create_network(void) {
     #ifdef NET_LOGGING
+    static char buf[8192];
     logfile = fopen("sdmc:/uds.log", "w");
+    setvbuf(logfile, buf, _IOFBF, sizeof(buf));
     #endif
     NET_LOG("creating network\n");
     udsGenerateDefaultNetworkStruct(&network, wlancommID, net_id, 2);
@@ -186,7 +188,8 @@ static Result handle_receiving(void) {
     Packet *packet = recv_heap;
     Result res = 0;
     while (packet < recv_heap + RECV_HEAP_COUNT) {
-        if (packet->packet_type != PACKET_NULL && (s8)(packet->packet_id - recv_id) >= 0) {
+        // don't overwrite most recent packet
+        if (packet->packet_type != PACKET_NULL && !(packet->packet_type & TRANSPORT_MASK) && (s8)(packet->packet_id - (recv_id - 1)) > 0) {
             NET_LOG("unrecvd packet %d in buffer at index %d (next %d)\n", packet->packet_id, packet - recv_heap, recv_id);
             packet++;
             continue;
@@ -286,6 +289,10 @@ static void handle_sending(void) {
             break;
         }
 
+        int size = packet_size(packet);
+        memcpy(send_cursor, packet, size);
+        packet = (Packet*)send_cursor;
+
         if (packet->packet_type == PACKET_NULL || (s8)(packet->packet_id - sent_id) < 0) {
             NET_LOG("not sending old packet with type %d id %d sent_id %d\n", packet->packet_type & ~TRANSPORT_MASK, packet->packet_id, sent_id);
             continue;
@@ -298,11 +305,14 @@ static void handle_sending(void) {
             // NET_LOG("packet %d already sent, won't send again too soon\n", packet->packet_id);
             // continue;
         }
+        // just in case we got interrupted during the memcpy
+        if (packet_crc(packet) != packet->crc8) {
+            continue;
+        }
         last_send_time[i % SEND_QUEUE_COUNT] = time;
         packet->ack_id = recv_ack_id;
         packet->crc8 = packet_crc(packet);
         NET_LOG("sending packet %d with type %d size %d (acking %d)\n", packet->packet_id, packet->packet_type & ~TRANSPORT_MASK, packet_size(packet), packet->ack_id);
-        memcpy(send_cursor, packet, packet_size(packet));
         send_cursor = next_cursor;
     }
     if (send_cursor != send_area) {
@@ -370,6 +380,7 @@ void ship_packet(Packet *packet) {
     if (packet == NULL) return;
     shippable_packet = packet->packet_id;
     packet->packet_type |= TRANSPORT_MASK;
+    packet->crc8 = packet_crc(packet);
     last_send_time[packet->packet_id % SEND_QUEUE_COUNT] = 0;
     svcSignalEvent(send_event);
     NET_LOG("shipping packet %d with type %d\n", shippable_packet, packet->packet_type & ~TRANSPORT_MASK);
