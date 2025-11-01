@@ -323,7 +323,7 @@ static void handle_sending(void) {
 
 static Packet *try_find_next_packet(void) {
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
-        if (recv_heap[i].packet_type != PACKET_NULL && !(recv_heap[i].packet_type & TRANSPORT_MASK) && recv_heap[i].packet_id == recv_id) {
+        if (recv_heap[i].packet_id == recv_id && recv_heap[i].packet_type != PACKET_NULL && !(recv_heap[i].packet_type & TRANSPORT_MASK)) {
             return &recv_heap[i];
             break;
         }
