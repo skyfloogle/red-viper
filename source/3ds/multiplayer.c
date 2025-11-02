@@ -34,6 +34,8 @@ static bool events_created = false;
 static Handle end_event, send_event, recv_event, sent_event;
 static Thread send_thread_handle, recv_thread_handle;
 
+static LightLock recv_lock;
+
 FILE *logfile;
 #ifdef NET_LOGGING
 #define NET_LOG(...) fprintf(logfile, __VA_ARGS__)
@@ -96,6 +98,7 @@ static void init_ids(void) {
         svcCreateEvent(&send_event, RESET_STICKY);
         svcCreateEvent(&recv_event, RESET_STICKY);
         svcCreateEvent(&sent_event, RESET_STICKY);
+        LightLock_Init(&recv_lock);
     }
     svcClearEvent(end_event);
     svcClearEvent(send_event);
@@ -187,6 +190,7 @@ static Result handle_receiving(void) {
     size_t actual_size;
     Packet *packet = recv_heap;
     Result res = 0;
+    LightLock_Lock(&recv_lock);
     while (packet < recv_heap + RECV_HEAP_COUNT) {
         // don't overwrite most recent packet
         if (packet->packet_type != PACKET_NULL && !(packet->packet_type & TRANSPORT_MASK) && (s8)(packet->packet_id - (recv_id - 1)) > 0) {
@@ -259,6 +263,7 @@ static Result handle_receiving(void) {
         packet->packet_type &= ~TRANSPORT_MASK;
         packet++;
     }
+    LightLock_Unlock(&recv_lock);
     // ack packets until we can't
     try_ack_packet:
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
@@ -322,12 +327,15 @@ static void handle_sending(void) {
 }
 
 static Packet *try_find_next_packet(void) {
+    LightLock_Lock(&recv_lock);
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
         if (recv_heap[i].packet_id == recv_id && recv_heap[i].packet_type != PACKET_NULL && !(recv_heap[i].packet_type & TRANSPORT_MASK)) {
+            LightLock_Unlock(&recv_lock);
             return &recv_heap[i];
             break;
         }
     }
+    LightLock_Unlock(&recv_lock);
     return NULL;
 }
 
