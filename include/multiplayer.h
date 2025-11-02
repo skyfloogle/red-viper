@@ -35,6 +35,14 @@ typedef struct {
     };
 } Packet;
 
+#define APPDATA_VERSION 0
+
+typedef struct {
+    u32 appdata_version;
+    u32 emulator_version;
+    char rom_name[48];
+} NetAppData;
+
 Result create_network(void);
 Result scan_beacons(udsNetworkScanInfo **networks, size_t *total_networks);
 Result connect_to_network(const udsNetworkStruct *network);

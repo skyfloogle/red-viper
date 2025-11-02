@@ -118,6 +118,18 @@ Result create_network(void) {
     NET_LOG("creating network\n");
     udsGenerateDefaultNetworkStruct(&network, wlancommID, net_id, 2);
     Result res = udsCreateNetwork(&network, passphrase, sizeof(passphrase), &bindctx, data_channel, UDS_DEFAULT_RECVBUFSIZE);
+    NetAppData appdata;
+    appdata.appdata_version = APPDATA_VERSION;
+    appdata.emulator_version = GIT_HASH;
+
+    char *filename = strrchr(tVBOpt.ROM_PATH, '/');
+    if (filename) filename++;
+    else filename = tVBOpt.ROM_PATH;
+    snprintf(appdata.rom_name, sizeof(appdata.rom_name), "%s", filename);
+    char *lastdot = strrchr(appdata.rom_name, '.');
+    if (lastdot) *lastdot = 0;
+    udsSetApplicationData(&appdata, sizeof(appdata));
+    
     if (R_SUCCEEDED(res)) {
         init_ids();
     }

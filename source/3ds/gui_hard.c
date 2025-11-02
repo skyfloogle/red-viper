@@ -1338,13 +1338,30 @@ static void multiplayer_join() {
 
     C2D_TextBufClear(dynamic_textbuf);
 
+    static C2D_Text info_texts[MULTI_JOIN_COUNT];
+
     for (int i = 0; i < MULTI_JOIN_COUNT; i++) {
         multiplayer_join_buttons[i].hidden = i >= total_networks;
         if (!multiplayer_join_buttons[i].hidden) {
-            char text[11] = {0};
-            udsGetNodeInfoUsername(&networks[i].nodes[0], text);
-            C2D_TextParse(&multiplayer_join_buttons[i].text, dynamic_textbuf, text);
+            char name_text[11] = {0};
+            udsGetNodeInfoUsername(&networks[i].nodes[0], name_text);
+            C2D_TextParse(&multiplayer_join_buttons[i].text, dynamic_textbuf, name_text);
             C2D_TextOptimize(&multiplayer_join_buttons[i].text);
+
+            NetAppData appdata;
+            size_t real_appdata_size;
+            udsGetNetworkStructApplicationData(&networks[i].network, &appdata, sizeof(appdata), &real_appdata_size);
+            char *info_text;
+            if (real_appdata_size != sizeof(appdata) || appdata.appdata_version != APPDATA_VERSION || appdata.emulator_version != GIT_HASH) {
+                info_text = "Version mismatch!";
+            } else {
+                info_text = appdata.rom_name;
+            }
+            multiplayer_join_buttons[i].show_toggle = true;
+            multiplayer_join_buttons[i].toggle = false;
+            multiplayer_join_buttons[i].toggle_text_off = &info_texts[i];
+            C2D_TextParse(&info_texts[i], dynamic_textbuf, info_text);
+            C2D_TextOptimize(&info_texts[i]);
         }
     }
 
