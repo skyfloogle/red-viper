@@ -192,6 +192,8 @@ static inline int handle_buttons(Button buttons[], int count);
 
 static Button no_buttons[] = {{.hidden = true}};
 
+static void main_menu(int initial_button);
+
 static void first_menu(int initial_button);
 static Button first_menu_buttons[] = {
     {.str="Load ROM", .x=16, .y=16, .w=288, .h=144},
@@ -232,7 +234,7 @@ static Button multiplayer_menu_buttons[] = {
 
 static void multiplayer_wait_for_peer(void);
 
-static void rom_loader(void);
+static bool rom_loader(void);
 static Button rom_loader_buttons[] = {
     #define ROM_LOADER_UP 0
     {.str="Up", .x=0, .y=0, .w=32, .h=32},
@@ -633,7 +635,7 @@ static Button about_buttons[] = {
     {.str="Back", .x=160-48, .y=180, .w=48*2, .h=48},
 };
 
-static void load_rom(void);
+static bool load_rom(void);
 static Button load_rom_buttons[] = {
     {.str="Unload & cancel", .x=160-80, .y=180, .w=80*2, .h=48},
 };
@@ -728,7 +730,8 @@ static void first_menu(int initial_button) {
 
         // at this point we know we're a forwarder, so just load the rom
         tVBOpt.FORWARDER = true;
-        [[gnu::musttail]] return load_rom();
+        load_rom();
+        return;
     }
 
     no_forwarder:
@@ -740,7 +743,8 @@ static void first_menu(int initial_button) {
     guiop = 0;
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
-            [[gnu::musttail]] return rom_loader();
+            if (rom_loader()) return;
+            else [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
         case MAIN_MENU_MULTI:
             [[gnu::musttail]] return multiplayer_main(0);
         case MAIN_MENU_OPTIONS:
@@ -768,7 +772,8 @@ static void game_menu(int initial_button) {
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
             guiop = AKILL | VBRESET;
-            [[gnu::musttail]] return rom_loader();
+            if (rom_loader()) return;
+            else [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
         case MAIN_MENU_MULTI:
             [[gnu::musttail]] return multiplayer_main(0);
         case MAIN_MENU_OPTIONS:
@@ -906,7 +911,7 @@ int strptrcmp(const void *s1, const void *s2) {
     return strcasecmp(*(const char**)s1, *(const char**)s2);
 }
 
-static void rom_loader(void) {
+static bool rom_loader(void) {
     static char path[300] = {0};
     static char old_dir[300] = {0};
     if (!path[0]) {
@@ -935,7 +940,7 @@ static void rom_loader(void) {
     if (!dirHandle) {
         // TODO error
         guiop = 0;
-        return;
+        return false;
     }
 
     char **dirs = malloc(8 * sizeof(char*));
@@ -1020,6 +1025,9 @@ static void rom_loader(void) {
     int das_start = 20;
     int xdas_length = 0, xdas_time = 0, xdas_count = 0;
     int ydas_length = 0, ydas_time = 0, ydas_count = 0;
+
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN false
 
     LOOP_BEGIN(rom_loader_buttons, -1);
         // process rom list
@@ -1194,6 +1202,9 @@ static void rom_loader(void) {
         C2D_DrawText(&text_btn_X, C2D_AlignLeft | C2D_WithColor, 8, 32, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(rom_loader_buttons);
 
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN
+
     buttonLock = false;
 
     for (int i = 0; i < dirCount; i++) free(dirs[i]);
@@ -1206,6 +1217,7 @@ static void rom_loader(void) {
     if (clicked_entry < 0) {
         switch (button) {
             case ROM_LOADER_UP: // Up
+            {
                 strcpy(old_dir, path);
                 // cut trailing slash from old dir
                 char *last_slash = strrchr(old_dir, '/');
@@ -1219,7 +1231,9 @@ static void rom_loader(void) {
                     path[len - 1] = 0;
                 }
                 [[gnu::musttail]] return rom_loader();
-            case ROM_LOADER_BACK: [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
+            }
+            case ROM_LOADER_BACK: return false;
+            default: return false; // not gonna happen but fixes a compiler warning
         }
     } else if (clicked_entry < dirCount) {
         [[gnu::musttail]] return rom_loader();
@@ -2754,12 +2768,14 @@ static void about(void) {
     [[gnu::musttail]] return options(OPTIONS_ABOUT);
 }
 
-static void load_error(int err, bool unloaded) {
+static bool load_error(int err, bool unloaded) {
     C2D_Text text;
     char code_message[32];
     snprintf(code_message, sizeof(code_message), "Error code: %d", err);
     C2D_TextParse(&text, dynamic_textbuf, code_message);
     C2D_TextOptimize(&text);
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN false
     LOOP_BEGIN(about_buttons, 0);
         C2D_DrawText(&text_loaderr, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.5, 0.5, TINT_COLOR);
         C2D_DrawText(&text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
@@ -2767,6 +2783,8 @@ static void load_error(int err, bool unloaded) {
             C2D_DrawText(&text_unloaded, C2D_AlignCenter | C2D_WithColor, 320 / 2, 160, 0, 0.5, 0.5, TINT_COLOR);
         }
     LOOP_END(about_buttons);
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN
     [[gnu::musttail]] return rom_loader();
 }
 
@@ -2784,13 +2802,14 @@ static void forwarder_error(int err) {
     return;
 }
 
-static void load_rom(void) {
+static bool load_rom(void) {
     if (save_thread) threadJoin(save_thread, U64_MAX);
     int ret;
     if ((ret = v810_load_init())) {
         // instant fail
         if (tVBOpt.FORWARDER) {
-            [[gnu::musttail]] return forwarder_error(ret);
+            forwarder_error(ret);
+            return false;
         } else {
             [[gnu::musttail]] return load_error(ret, false);
         }
@@ -2805,6 +2824,8 @@ static void load_rom(void) {
 
     if (tVBOpt.FORWARDER) load_rom_buttons[0].hidden = true;
 
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN false
     LOOP_BEGIN(load_rom_buttons, -1);
         ret = v810_load_step();
         if (ret < 0) {
@@ -2821,13 +2842,15 @@ static void load_rom(void) {
             }
         }
     LOOP_END(load_rom_buttons);
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN
     if (tVBOpt.GAME_SETTINGS) loadFileOptions();
     if (ret == 100) {
         // complete
         game_running = true;
         loadGameOptions();
         last_savestate = 0;
-        return;
+        return true;
     } else {
         game_running = false;
         // redraw logo since we unloaded
@@ -2837,7 +2860,8 @@ static void load_rom(void) {
         if (ret < 0) {
             // error
             if (tVBOpt.FORWARDER) {
-                [[gnu::musttail]] return forwarder_error(ret);
+                forwarder_error(ret);
+                return false;
             } else {
                 [[gnu::musttail]] return load_error(ret, true);
             }
