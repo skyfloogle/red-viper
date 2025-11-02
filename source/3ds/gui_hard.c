@@ -823,7 +823,7 @@ static void multiplayer_menu(int initial_button) {
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsConnectionStatus status;
             udsGetConnectionStatus(&status);
-            if (status.total_nodes < 2) {
+            if (status.total_nodes < 2 || status.status == 11) {
                 C3D_FrameEnd(0);
                 local_disconnect();
                 udsExit();
@@ -839,7 +839,7 @@ static void multiplayer_menu(int initial_button) {
                 if (udsWaitConnectionStatusEvent(false, false)) {
                     udsConnectionStatus status;
                     udsGetConnectionStatus(&status);
-                    if (status.total_nodes < 2) {
+                    if (status.total_nodes < 2 || status.status == 11) {
                         C3D_FrameEnd(0);
                         local_disconnect();
                         udsExit();
@@ -882,7 +882,7 @@ static void multiplayer_wait_for_peer(void) {
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsConnectionStatus status;
             udsGetConnectionStatus(&status);
-            if (status.total_nodes < 2) {
+            if (status.total_nodes < 2 || status.status == 11) {
                 C3D_FrameEnd(0);
                 local_disconnect();
                 udsExit();
@@ -1339,7 +1339,7 @@ static void multiplayer_sram_transfer() {
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsConnectionStatus status;
             udsGetConnectionStatus(&status);
-            if (status.total_nodes < 2) {
+            if (status.total_nodes < 2 || status.status == 11) {
                 C3D_FrameEnd(0);
                 local_disconnect();
                 udsExit();
@@ -1421,7 +1421,7 @@ static void multiplayer_ready_room(bool is_host, int initial_button) {
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsConnectionStatus status;
             udsGetConnectionStatus(&status);
-            if (status.total_nodes < 2) {
+            if (status.total_nodes < 2 || status.status == 11) {
                 C3D_FrameEnd(0);
                 local_disconnect();
                 udsExit();
@@ -3168,7 +3168,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_brightness_disclaimer, "Actual brightness may vary by game.")
     STATIC_TEXT(&text_multi_waiting, "Waiting for connection...")
     STATIC_TEXT(&text_multi_init_error, "Could not start wireless.\nIs wireless enabled?")
-    STATIC_TEXT(&text_multi_disconnect, "Peer disconnected.")
+    STATIC_TEXT(&text_multi_disconnect, "Disconnected.")
     STATIC_TEXT(&text_multi_comm_error, "Communication error.")
     STATIC_TEXT(&text_multi_reset_on_join, "Game will reset when connecting.")
     STATIC_TEXT(&text_input_buffer, "Input buffer:")

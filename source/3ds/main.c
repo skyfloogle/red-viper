@@ -147,7 +147,7 @@ int main(void) {
                 if (udsWaitConnectionStatusEvent(false, false)) {
                     udsConnectionStatus status;
                     udsGetConnectionStatus(&status);
-                    if (status.total_nodes < 2) {
+                    if (status.total_nodes < 2 || status.status == 11) {
                         local_disconnect();
                         udsExit();
                         v810_endmultiplayer();
@@ -319,7 +319,7 @@ int main(void) {
                     if (udsWaitConnectionStatusEvent(false, false)) {
                         udsConnectionStatus status;
                         udsGetConnectionStatus(&status);
-                        if (status.total_nodes < 2) {
+                        if (status.total_nodes < 2 || status.status == 11) {
                             local_disconnect();
                             udsExit();
                             v810_endmultiplayer();
