@@ -197,7 +197,7 @@ static void main_menu(int initial_button);
 static void first_menu(int initial_button);
 static Button first_menu_buttons[] = {
     {.str="Load ROM", .x=16, .y=16, .w=288, .h=144},
-    {.str="Multi\nplayer", .x=0, .y=176, .w=80, .h=64, .hidden=true},
+    {.str="Multi\nplayer", .x=0, .y=176, .w=80, .h=64},
     {.str="Options", .x=240, .y=176, .w=80, .h=64},
     {.str="Quit", .x=112, .y=192, .w=96, .h=48},
 };
@@ -234,7 +234,7 @@ static Button multiplayer_menu_buttons[] = {
 
 static void multiplayer_wait_for_peer(void);
 
-static bool rom_loader(void);
+static bool rom_loader(char *message);
 static Button rom_loader_buttons[] = {
     #define ROM_LOADER_UP 0
     {.str="Up", .x=0, .y=0, .w=32, .h=32},
@@ -242,7 +242,7 @@ static Button rom_loader_buttons[] = {
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
-static void multiplayer_main(int initial_button);
+static void multiplayer_main(int initial_button, bool init_uds);
 static Button multiplayer_main_buttons[] = {
     #define MULTI_MAIN_HOST 0
     {.str="Host", .x=16, .y=16, .w=288, .h=48},
@@ -635,7 +635,7 @@ static Button about_buttons[] = {
     {.str="Back", .x=160-48, .y=180, .w=48*2, .h=48},
 };
 
-static bool load_rom(void);
+static bool load_rom(char *rom_message);
 static Button load_rom_buttons[] = {
     {.str="Unload & cancel", .x=160-80, .y=180, .w=80*2, .h=48},
 };
@@ -730,7 +730,7 @@ static void first_menu(int initial_button) {
 
         // at this point we know we're a forwarder, so just load the rom
         tVBOpt.FORWARDER = true;
-        load_rom();
+        load_rom(NULL);
         return;
     }
 
@@ -743,10 +743,10 @@ static void first_menu(int initial_button) {
     guiop = 0;
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
-            if (rom_loader()) return;
+            if (rom_loader(NULL)) return;
             else [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
         case MAIN_MENU_MULTI:
-            [[gnu::musttail]] return multiplayer_main(0);
+            [[gnu::musttail]] return multiplayer_main(0, true);
         case MAIN_MENU_OPTIONS:
             [[gnu::musttail]] return options(0);
         case MAIN_MENU_QUIT:
@@ -772,10 +772,10 @@ static void game_menu(int initial_button) {
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
             guiop = AKILL | VBRESET;
-            if (rom_loader()) return;
+            if (rom_loader(NULL)) return;
             else [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
         case MAIN_MENU_MULTI:
-            [[gnu::musttail]] return multiplayer_main(0);
+            [[gnu::musttail]] return multiplayer_main(0, true);
         case MAIN_MENU_OPTIONS:
             [[gnu::musttail]] return options(0);
         case MAIN_MENU_QUIT:
@@ -911,7 +911,7 @@ int strptrcmp(const void *s1, const void *s2) {
     return strcasecmp(*(const char**)s1, *(const char**)s2);
 }
 
-static bool rom_loader(void) {
+static bool rom_loader(char *message) {
     static char path[300] = {0};
     static char old_dir[300] = {0};
     if (!path[0]) {
@@ -1175,15 +1175,15 @@ static bool rom_loader(void) {
         // draw
         C2D_TextBufClear(dynamic_textbuf);
         float y = -scroll_pos;
-        C2D_Text text;
+        C2D_Text path_text;
         // entries
         for (int i = 0; i < entry_count; i++) {
             if (y + entry_height >= 0 && y < 240) {
-                C2D_TextParse(&text, dynamic_textbuf, i < dirCount ? dirs[i] : files[i - dirCount]);
-                C2D_TextOptimize(&text);
+                C2D_TextParse(&path_text, dynamic_textbuf, i < dirCount ? dirs[i] : files[i - dirCount]);
+                C2D_TextOptimize(&path_text);
                 C2D_DrawRectSolid(56, y, 0, 264, entry_height, clicked_entry == i ? TINT_50 : TINT_100);
                 if (cursor == i) C2D_DrawRectSolid(56 + 4, y + entry_height - 8, 0, 264 - 8, 1, BLACK);
-                C2D_DrawText(&text, C2D_AlignLeft, 64, y + 8, 0, 0.5, 0.5);
+                C2D_DrawText(&path_text, C2D_AlignLeft, 64, y + 8, 0, 0.5, 0.5);
             }
             y += entry_height;
         }
@@ -1193,10 +1193,19 @@ static bool rom_loader(void) {
             C2D_DrawRectSolid(320-2, 32 + (240-32-8) * (scroll_pos - scroll_top) / (scroll_bottom - scroll_top), 0, 2, 8, TINT_COLOR);
         }
         // path
-        C2D_TextParse(&text, dynamic_textbuf, path);
-        C2D_TextOptimize(&text);
+        C2D_TextParse(&path_text, dynamic_textbuf, path);
+        C2D_TextOptimize(&path_text);
         C2D_DrawRectSolid(0, 0, 0, 320, 32, BLACK);
-        C2D_DrawText(&text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, TINT_COLOR);
+
+        if (message) {
+            C2D_Text message_text;
+            C2D_TextParse(&message_text, dynamic_textbuf, message);
+            C2D_TextOptimize(&message_text);
+            C2D_DrawText(&message_text, C2D_AlignLeft | C2D_WithColor, 48, 0, 0, 0.5, 0.5, TINT_COLOR);
+            C2D_DrawText(&path_text, C2D_AlignLeft | C2D_WithColor, 48, 16, 0, 0.5, 0.5, TINT_COLOR);
+        } else {
+            C2D_DrawText(&path_text, C2D_AlignLeft | C2D_WithColor, 48, 8, 0, 0.5, 0.5, TINT_COLOR);
+        }
 
         // up button indicator
         C2D_DrawText(&text_btn_X, C2D_AlignLeft | C2D_WithColor, 8, 32, 0, 0.7, 0.7, TINT_COLOR);
@@ -1230,13 +1239,13 @@ static bool rom_loader(void) {
                     // so we can just get rid of the slash at the end
                     path[len - 1] = 0;
                 }
-                [[gnu::musttail]] return rom_loader();
+                [[gnu::musttail]] return rom_loader(message);
             }
             case ROM_LOADER_BACK: return false;
             default: return false; // not gonna happen but fixes a compiler warning
         }
     } else if (clicked_entry < dirCount) {
-        [[gnu::musttail]] return rom_loader();
+        [[gnu::musttail]] return rom_loader(message);
     } else {
         // clear screen buffer
         for (int i = 0; i < 2; i++) {
@@ -1262,29 +1271,42 @@ static bool rom_loader(void) {
         // we know there's a dot
         strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
         saveFileOptions();
-        [[gnu::musttail]] return load_rom();
+        [[gnu::musttail]] return load_rom(message);
     }
 }
 
-static void multiplayer_main(int initial_button) {
-    Result res = udsInit(0x3000, NULL);
-    if (R_FAILED(res)) {
-        return multiplayer_error(res, &text_multi_init_error, true);
+static void multiplayer_main(int initial_button, bool init_uds) {
+    Result res;
+    if (init_uds) {
+        res = udsInit(0x3000, NULL);
+        if (R_FAILED(res)) {
+            return multiplayer_error(res, &text_multi_init_error, true);
+        }
     }
+    menu_start:
     LOOP_BEGIN(multiplayer_main_buttons, initial_button);
         C2D_DrawText(&text_multi_reset_on_join, C2D_AlignCenter | C2D_WithColor, 320 / 2, 140, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(multiplayer_main_buttons);
     switch (button) {
         case MULTI_MAIN_HOST:
-            res = create_network();
-            if (R_FAILED(res)) {
-                udsExit();
-                [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error, true);
+            if (game_running || rom_loader("Pick a game to host.")) {
+                res = create_network();
+                if (R_FAILED(res)) {
+                    udsExit();
+                    [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error, true);
+                } else {
+                    [[gnu::musttail]] return multiplayer_host();
+                }
             } else {
-                [[gnu::musttail]] return multiplayer_host();
+                goto menu_start;
             }
         case MULTI_MAIN_JOIN:
-            [[gnu::musttail]] return multiplayer_join();
+            // TODO do this later
+            if (game_running || rom_loader("Pick a game to join with.")) {
+                [[gnu::musttail]] return multiplayer_join();
+            } else {
+                goto menu_start;
+            }
         case MULTI_MAIN_BACK:
             udsExit();
             is_multiplayer = false;
@@ -1306,7 +1328,7 @@ static void multiplayer_host() {
         C2D_DrawText(&text_multi_waiting, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(multiplayer_host_buttons);
     local_disconnect();
-    [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_HOST);
+    [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_HOST, false);
 }
 
 static void multiplayer_join() {
@@ -1339,7 +1361,7 @@ static void multiplayer_join() {
     } else if (button == MULTI_JOIN_REFRESH) {
         [[gnu::musttail]] return multiplayer_join();
     } else if (button == MULTI_JOIN_BACK) {
-        [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_JOIN);
+        [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_JOIN, false);
     }
 }
 
@@ -1479,8 +1501,7 @@ static void multiplayer_ready_room(bool is_host, int initial_button) {
             [[gnu::musttail]] return multiplayer_ready_room(is_host, MULTI_READY_BUFFER_PLUS);
         case MULTI_READY_LEAVE:
             local_disconnect();
-            udsExit();
-            [[gnu::musttail]] return multiplayer_main(is_host ? MULTI_MAIN_HOST : MULTI_MAIN_JOIN);
+            [[gnu::musttail]] return multiplayer_main(is_host ? MULTI_MAIN_HOST : MULTI_MAIN_JOIN, false);
     }
 }
 
@@ -2768,7 +2789,7 @@ static void about(void) {
     [[gnu::musttail]] return options(OPTIONS_ABOUT);
 }
 
-static bool load_error(int err, bool unloaded) {
+static bool load_error(int err, bool unloaded, char *rom_message) {
     C2D_Text text;
     char code_message[32];
     snprintf(code_message, sizeof(code_message), "Error code: %d", err);
@@ -2785,7 +2806,7 @@ static bool load_error(int err, bool unloaded) {
     LOOP_END(about_buttons);
     #undef DEFAULT_RETURN
     #define DEFAULT_RETURN
-    [[gnu::musttail]] return rom_loader();
+    [[gnu::musttail]] return rom_loader(rom_message);
 }
 
 static void forwarder_error(int err) {
@@ -2802,7 +2823,7 @@ static void forwarder_error(int err) {
     return;
 }
 
-static bool load_rom(void) {
+static bool load_rom(char *rom_message) {
     if (save_thread) threadJoin(save_thread, U64_MAX);
     int ret;
     if ((ret = v810_load_init())) {
@@ -2811,7 +2832,7 @@ static bool load_rom(void) {
             forwarder_error(ret);
             return false;
         } else {
-            [[gnu::musttail]] return load_error(ret, false);
+            [[gnu::musttail]] return load_error(ret, false, rom_message);
         }
     }
     C2D_Text text;
@@ -2863,12 +2884,12 @@ static bool load_rom(void) {
                 forwarder_error(ret);
                 return false;
             } else {
-                [[gnu::musttail]] return load_error(ret, true);
+                [[gnu::musttail]] return load_error(ret, true, rom_message);
             }
         } else {
             // cancelled
             v810_load_cancel();
-            [[gnu::musttail]] return rom_loader();
+            [[gnu::musttail]] return rom_loader(rom_message);
         }
     }
 }
