@@ -22,6 +22,8 @@
 #define CONFIG_FILENAME "sdmc:/config/red-viper/rv_config.ini"
 #define CONFIG_FILENAME_LEGACY "rv_config.ini"
 
+#define INPUT_BUFFER_MAX 10
+
 // vbkey positions
 enum VB_KCFG {
     VB_KCFG_LUP,
@@ -133,6 +135,7 @@ typedef struct VB_OPT {
     bool  VIP_OVER_SOFT;
     bool  FORWARDER;
     bool  DOUBLE_BUFFER;
+    int   INPUT_BUFFER; // for multiplayer
 } VB_OPT;
 
 void setCustomMappingDefaults(void);

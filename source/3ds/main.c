@@ -25,9 +25,8 @@ char rom_name[128];
 
 bool game_running = false;
 
-#define INPUT_BUFFER_MAX 16
-#define INPUT_BUFFER_RUNAHEAD 2
-static HWORD input_buffer[2][INPUT_BUFFER_MAX];
+#define INPUT_BUFFER_SIZE (INPUT_BUFFER_MAX + 2)
+static HWORD input_buffer[2][INPUT_BUFFER_SIZE];
 static int input_buffer_head[2] = {0, 0};
 static int input_buffer_tail = 0;
 
@@ -115,7 +114,7 @@ int main(void) {
     bool waiting_for_menu = false;
     bool needs_menu_message = false;
     input_buffer_tail = 0;
-    for (int i = 0; i < INPUT_BUFFER_RUNAHEAD; i++) {
+    for (int i = 0; i < tVBOpt.INPUT_BUFFER; i++) {
         for (int p = 0; p < 2; p++) {
             input_buffer[p][i] = 2;
             input_buffer_head[p]++;
@@ -126,14 +125,14 @@ int main(void) {
         osTickCounterStart(&frameTickCounter);
 
         while (is_multiplayer) {
-            bool received_menu_command = input_buffer[!my_player_id][(input_buffer_head[!my_player_id] + INPUT_BUFFER_MAX - 1) % INPUT_BUFFER_MAX] == 0;
+            bool received_menu_command = input_buffer[!my_player_id][(input_buffer_head[!my_player_id] + INPUT_BUFFER_SIZE - 1) % INPUT_BUFFER_SIZE] == 0;
             if (received_menu_command) break;
 
             Packet *recv_packet;
             while ((recv_packet = read_next_packet())) {
                 if (recv_packet->packet_type == PACKET_INPUTS) {
                     input_buffer[!my_player_id][input_buffer_head[!my_player_id]] = recv_packet->inputs;
-                    input_buffer_head[!my_player_id] = (input_buffer_head[!my_player_id] + 1) % INPUT_BUFFER_MAX;
+                    input_buffer_head[!my_player_id] = (input_buffer_head[!my_player_id] + 1) % INPUT_BUFFER_SIZE;
                 }
             }
             if (input_buffer_head[!my_player_id] == input_buffer_tail) {
@@ -206,10 +205,10 @@ int main(void) {
 
             input_buffer_tail = 0;
             input_buffer_head[0] = input_buffer_head[1] = 0;
-            for (int i = 0; i < INPUT_BUFFER_RUNAHEAD; i++) {
+            for (int i = 0; i < tVBOpt.INPUT_BUFFER; i++) {
                 for (int p = 0; p < 2; p++) {
                     input_buffer[p][i] = 2;
-                    input_buffer_head[p] = (input_buffer_head[p] + 1) % INPUT_BUFFER_MAX;
+                    input_buffer_head[p] = (input_buffer_head[p] + 1) % INPUT_BUFFER_SIZE;
                 }
             }
         }
@@ -335,7 +334,7 @@ int main(void) {
                     ship_packet(send_packet);
                 }
             }
-            input_buffer_head[my_player_id] = (input_buffer_head[my_player_id] + 1) % INPUT_BUFFER_MAX;
+            input_buffer_head[my_player_id] = (input_buffer_head[my_player_id] + 1) % INPUT_BUFFER_SIZE;
         }
 
         // read inputs from buffer
@@ -345,7 +344,7 @@ int main(void) {
             vb_players[p].tHReg.SHB = inputs >> 8;
         }
         replay_update(input_buffer[my_player_id][input_buffer_tail]);
-        input_buffer_tail = (input_buffer_tail + 1) % INPUT_BUFFER_MAX;
+        input_buffer_tail = (input_buffer_tail + 1) % INPUT_BUFFER_SIZE;
 
 
         vb_state = &vb_players[0];

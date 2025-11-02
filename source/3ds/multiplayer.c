@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "vb_set.h"
 #include "crc8.h"
 
 // #define NET_LOGGING
@@ -164,8 +165,10 @@ static size_t packet_size(const Packet *packet) {
         case PACKET_NULL:
         case PACKET_NOP:
         case PACKET_PAUSE:
-        case PACKET_RESUME:
             size = PACKET_HEADER_SIZE;
+            break;
+        case PACKET_RESUME:
+            size = PACKET_HEADER_SIZE + sizeof(packet->resume);
             break;
         case PACKET_INPUTS:
             size = PACKET_HEADER_SIZE + sizeof(packet->inputs);

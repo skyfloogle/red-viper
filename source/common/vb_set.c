@@ -150,6 +150,7 @@ void setDefaults(void) {
     tVBOpt.VIP_OVERCLOCK = false;
     tVBOpt.FORWARDER = false;
     tVBOpt.DOUBLE_BUFFER = false;
+    tVBOpt.INPUT_BUFFER = 2;
     strcpy(tVBOpt.HOME_PATH, "sdmc:/red-viper");
 
     // Default keys
