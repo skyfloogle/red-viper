@@ -3236,10 +3236,21 @@ void guiInit(void) {
     STATIC_TEXT(&text_input_buffer, "Input buffer:")
 }
 
+bool backlightEnabled = true;
+
+bool toggleBacklight(bool enable) {
+    gspLcdInit();
+    enable ? GSPLCD_PowerOnBacklight(GSPLCD_SCREEN_BOTTOM) : GSPLCD_PowerOffBacklight(GSPLCD_SCREEN_BOTTOM);
+    gspLcdExit();
+    return enable;
+}
+
 static bool shouldRedrawMenu = true;
 static bool inMenu = false;
 
 void openMenu(bool my_menu) {
+    bool oldBacklight = backlightEnabled;
+    if (!backlightEnabled) backlightEnabled = toggleBacklight(true);
     inMenu = true;
     shouldRedrawMenu = true;
     if (game_running) {
@@ -3258,9 +3269,17 @@ void openMenu(bool my_menu) {
     else if (guiop == AKILL) sound_refresh();
     else if (!(guiop & GUIEXIT)) sound_reset();
     inMenu = false;
+    if (!oldBacklight) {
+        if (my_menu || !is_multiplayer) shouldRedrawMenu = true;
+        else backlightEnabled = toggleBacklight(false);
+    }
 }
 
 void openPeerDisconnectMenu(void) {
+    if (!backlightEnabled) {
+        backlightEnabled = toggleBacklight(true);
+        shouldRedrawMenu = true;
+    }
     inMenu = true;
     shouldRedrawMenu = true;
     if (game_running) {
@@ -3275,15 +3294,6 @@ void openPeerDisconnectMenu(void) {
     else if (guiop == AKILL) sound_refresh();
     else if (!(guiop & GUIEXIT)) sound_reset();
     inMenu = false;
-}
-
-bool backlightEnabled = true;
-
-bool toggleBacklight(bool enable) {
-    gspLcdInit();
-    enable ? GSPLCD_PowerOnBacklight(GSPLCD_SCREEN_BOTTOM) : GSPLCD_PowerOffBacklight(GSPLCD_SCREEN_BOTTOM);
-    gspLcdExit();
-    return enable;
 }
 
 void toggleVsync(bool enable) {
