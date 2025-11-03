@@ -16,11 +16,11 @@ static u8 net_id = 0;
 static u8 data_channel = 1;
 static const char passphrase[] = "Red Viper " VERSION;
 static udsNetworkScanInfo *beacons;
-#define RECV_HEAP_COUNT 8
+#define RECV_HEAP_COUNT 16
 static Packet recv_heap[RECV_HEAP_COUNT] = {0};
 static volatile u8 recv_id;
 static volatile u8 recv_ack_id;
-#define SEND_QUEUE_COUNT 8
+#define SEND_QUEUE_COUNT 16
 static Packet send_queue[SEND_QUEUE_COUNT] = {0};
 static volatile u8 sent_id;
 static volatile u8 shippable_packet;
@@ -343,15 +343,16 @@ static void handle_sending(void) {
 
 static Packet *try_find_next_packet(void) {
     LightLock_Lock(&recv_lock);
+    Packet *out = NULL;
     for (int i = 0; i < RECV_HEAP_COUNT; i++) {
         if (recv_heap[i].packet_id == recv_id && recv_heap[i].packet_type != PACKET_NULL && !(recv_heap[i].packet_type & TRANSPORT_MASK)) {
-            LightLock_Unlock(&recv_lock);
-            return &recv_heap[i];
-            break;
+            out = &recv_heap[i];
+        } else if (recv_heap[i].packet_id == recv_id - 1) {
+            recv_heap[i].packet_type = PACKET_NULL;
         }
     }
     LightLock_Unlock(&recv_lock);
-    return NULL;
+    return out;
 }
 
 bool wait_for_packet(u64 max) {

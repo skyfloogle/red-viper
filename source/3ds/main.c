@@ -129,7 +129,7 @@ int main(void) {
             if (received_menu_command) break;
 
             Packet *recv_packet;
-            while ((recv_packet = read_next_packet())) {
+            while ((input_buffer_head[!my_player_id] - input_buffer_tail + INPUT_BUFFER_SIZE) % INPUT_BUFFER_SIZE < INPUT_BUFFER_SIZE - 2 && (recv_packet = read_next_packet())) {
                 if (recv_packet->packet_type == PACKET_INPUTS) {
                     input_buffer[!my_player_id][input_buffer_head[!my_player_id]] = recv_packet->inputs;
                     input_buffer_head[!my_player_id] = (input_buffer_head[!my_player_id] + 1) % INPUT_BUFFER_SIZE;
@@ -184,6 +184,9 @@ int main(void) {
                 )
             );
 
+            bool was_multiplayer = is_multiplayer;
+            int old_input_buffer = tVBOpt.INPUT_BUFFER;
+
             guiop = 0;
             openMenu(my_menu);
             if (guiop & GUIEXIT) {
@@ -202,6 +205,28 @@ int main(void) {
             }
             lag_frames = 0;
             svcClearEvent(frame_event);
+
+            // wait for all leftover input packets to come in
+            // do this after handling the menu to prevent entry lag
+            if (is_multiplayer && was_multiplayer && my_menu) {
+                while (input_buffer_head[!my_player_id] != (input_buffer_tail + old_input_buffer) % INPUT_BUFFER_SIZE) {
+                    Packet *recv_packet;
+                    if ((recv_packet = read_next_packet())) {
+                        input_buffer_head[!my_player_id] = (input_buffer_head[!my_player_id] + 1) % INPUT_BUFFER_SIZE;
+                    }
+                    if (udsWaitConnectionStatusEvent(false, false)) {
+                        udsConnectionStatus status;
+                        udsGetConnectionStatus(&status);
+                        if (status.total_nodes < 2 || status.status == 11) {
+                            local_disconnect();
+                            udsExit();
+                            v810_endmultiplayer();
+                            openPeerDisconnectMenu();
+                            break;
+                        }
+                    }
+                }
+            }
 
             input_buffer_tail = 0;
             input_buffer_head[0] = input_buffer_head[1] = 0;

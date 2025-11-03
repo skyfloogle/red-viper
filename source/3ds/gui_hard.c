@@ -897,7 +897,7 @@ static void multiplayer_wait_for_peer(void) {
         Packet *recv_packet;
         if ((recv_packet = read_next_packet())) {
             if (recv_packet->packet_type == PACKET_RESUME) {
-                if (recv_packet->resume.input_buffer < INPUT_BUFFER_MAX) {
+                if (recv_packet->resume.input_buffer <= INPUT_BUFFER_MAX) {
                     tVBOpt.INPUT_BUFFER = recv_packet->resume.input_buffer;
                 }
                 loop = false;
@@ -1485,7 +1485,7 @@ static void multiplayer_ready_room(bool is_host, int initial_button) {
             Packet *packet = read_next_packet();
             if (packet) {
                 if (packet->packet_type == PACKET_RESUME) {
-                    if (packet->resume.input_buffer < INPUT_BUFFER_MAX) {
+                    if (packet->resume.input_buffer <= INPUT_BUFFER_MAX) {
                         tVBOpt.INPUT_BUFFER = packet->resume.input_buffer;
                     }
                     loop = false;
