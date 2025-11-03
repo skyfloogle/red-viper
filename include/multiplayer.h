@@ -27,7 +27,7 @@ typedef struct {
             u32 sram_size;
         } loaded;
         struct {
-            int input_buffer;
+            u8 input_buffer;
         } resume;
         struct {
             u8 data[0x400];

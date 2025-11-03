@@ -2,6 +2,7 @@
 #define VB_SET_H_
 
 #include <stdbool.h>
+#include "vb_types.h"
 
 #define D_VGA       0
 #define D_VESA1     1
@@ -135,7 +136,7 @@ typedef struct VB_OPT {
     bool  VIP_OVER_SOFT;
     bool  FORWARDER;
     bool  DOUBLE_BUFFER;
-    int   INPUT_BUFFER; // for multiplayer
+    BYTE  INPUT_BUFFER; // for multiplayer
 } VB_OPT;
 
 void setCustomMappingDefaults(void);
