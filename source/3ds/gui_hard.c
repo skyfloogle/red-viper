@@ -106,7 +106,7 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off,
                 text_monochrome, text_multicolor, text_brighten, text_brightness_disclaimer,
                 text_multi_waiting, text_multi_init_error, text_multi_disconnect, text_multi_comm_error,
-                text_multi_reset_on_join, text_input_buffer;
+                text_multi_reset_on_join, text_input_buffer, text_areyousure_leave;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -225,11 +225,13 @@ static Button multiplayer_menu_buttons[] = {
     #define MULTI_MENU_RESUME 0
     {.str="Resume", .x=0, .y=0, .w=320, .h=48},
     #define MULTI_MENU_BUFFER_MINUS 1
-    {.str="-", .x=180, .y=140, .w=32, .h=32},
+    {.str="-", .x=180, .y=80, .w=32, .h=32},
     #define MULTI_MENU_BUFFER_PLUS 2
-    {.str="+", .x=180+64, .y=140, .w=32, .h=32},
-    #define MULTI_MENU_LEAVE 3
-    {.str="Leave", .x=112, .y=192, .w=96, .h=48},
+    {.str="+", .x=180+64, .y=80, .w=32, .h=32},
+    #define MULTI_MENU_RESET 3
+    {.str="Reset", .x=320/2-176/2, .y=140, .w=176, .h=48},
+    #define MULTI_MENU_LEAVE 4
+    {.str="Exit multiplayer", .x=320/2-176/2, .y=192, .w=176, .h=48},
 };
 
 static void multiplayer_wait_for_peer(void);
@@ -254,13 +256,13 @@ static Button multiplayer_main_buttons[] = {
 
 static void multiplayer_join(void);
 static Button multiplayer_join_buttons[] = {
-    {.str="", .x=72, .y=16+56*0, .w=176, .h=48},
-    {.str="", .x=72, .y=16+56*1, .w=176, .h=48},
-    {.str="", .x=72, .y=16+56*2, .w=176, .h=48},
-    {.str="", .x=72, .y=16+56*3, .w=176, .h=48},
+    {.str="", .x=320/2-224/2, .y=4+50*0, .w=224, .h=48},
+    {.str="", .x=320/2-224/2, .y=4+50*1, .w=224, .h=48},
+    {.str="", .x=320/2-224/2, .y=4+50*2, .w=224, .h=48},
+    {.str="", .x=320/2-224/2, .y=4+50*3, .w=224, .h=48},
     #define MULTI_JOIN_COUNT 4
     #define MULTI_JOIN_REFRESH 4
-    {.str="Refresh", .x=0, .y=0, .w=68, .h=32},
+    {.str="Refresh", .x=320-68, .y=208, .w=68, .h=32},
     #define MULTI_JOIN_BACK 5
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
@@ -835,8 +837,8 @@ static void multiplayer_menu(int initial_button) {
                 [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
             }
         }
-        C2D_DrawText(&text_input_buffer, C2D_AlignRight | C2D_WithColor, 180 - 8, 144, 0, 0.7, 0.7, TINT_COLOR);
-        C2D_DrawText(&buffer_text, C2D_AlignCenter | C2D_WithColor, 180 + 48, 144, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&text_input_buffer, C2D_AlignRight | C2D_WithColor, 180 - 8, 84, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&buffer_text, C2D_AlignCenter | C2D_WithColor, 180 + 48, 84, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(multiplayer_menu_buttons);
     switch (button) {
         case MULTI_MENU_RESUME:
@@ -857,6 +859,37 @@ static void multiplayer_menu(int initial_button) {
             send_packet->resume.input_buffer = tVBOpt.INPUT_BUFFER;
             ship_packet(send_packet);
             return;
+        case MULTI_MENU_RESET:
+            if (areyousure(&text_areyousure_reset)) {
+                // clear screen buffer
+                for (int i = 0; i < 2; i++) {
+                    C2D_TargetClear(screenTargetHard[i], 0);
+                }
+                C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+                video_flush(true);
+                C3D_FrameEnd(0);
+                guiop = AKILL | VBRESET;
+                
+                while (wait_for_free_send_slot(1000000000)) {
+                    if (udsWaitConnectionStatusEvent(false, false)) {
+                        udsConnectionStatus status;
+                        udsGetConnectionStatus(&status);
+                        if (status.total_nodes < 2 || status.status == 11) {
+                            C3D_FrameEnd(0);
+                            local_disconnect();
+                            udsExit();
+                            [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
+                        }
+                    }
+                }
+                Packet *send_packet = new_packet_to_send();
+                send_packet->packet_type = PACKET_RESET;
+                send_packet->resume.input_buffer = tVBOpt.INPUT_BUFFER;
+                ship_packet(send_packet);
+                return;
+            } else {
+                [[gnu::musttail]] return multiplayer_menu(MULTI_MENU_RESET);
+            }
         case MULTI_MENU_BUFFER_MINUS:
             if (tVBOpt.INPUT_BUFFER > 1) tVBOpt.INPUT_BUFFER--;
             [[gnu::musttail]] return multiplayer_menu(MULTI_MENU_BUFFER_MINUS);
@@ -864,11 +897,15 @@ static void multiplayer_menu(int initial_button) {
             if (tVBOpt.INPUT_BUFFER < INPUT_BUFFER_MAX) tVBOpt.INPUT_BUFFER++;
             [[gnu::musttail]] return multiplayer_menu(MULTI_MENU_BUFFER_PLUS);
         case MULTI_MENU_LEAVE:
-            is_multiplayer = false;
-            local_disconnect();
-            udsExit();
-            v810_endmultiplayer();
-            [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
+            if (areyousure(&text_areyousure_leave)) {
+                is_multiplayer = false;
+                local_disconnect();
+                udsExit();
+                v810_endmultiplayer();
+                [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
+            } else {
+                [[gnu::musttail]] return multiplayer_menu(MULTI_MENU_LEAVE);
+            }
     }
 }
 
@@ -896,7 +933,15 @@ static void multiplayer_wait_for_peer(void) {
         }
         Packet *recv_packet;
         if ((recv_packet = read_next_packet())) {
-            if (recv_packet->packet_type == PACKET_RESUME) {
+            if (recv_packet->packet_type == PACKET_RESUME || recv_packet->packet_type == PACKET_RESET) {
+                if (recv_packet->packet_type == PACKET_RESET) {
+                    // clear screen buffer
+                    for (int i = 0; i < 2; i++) {
+                        C2D_TargetClear(screenTargetHard[i], 0);
+                    }
+                    video_flush(true);
+                    guiop = AKILL | VBRESET;
+                }
                 if (recv_packet->resume.input_buffer <= INPUT_BUFFER_MAX) {
                     tVBOpt.INPUT_BUFFER = recv_packet->resume.input_buffer;
                 }
@@ -1315,6 +1360,16 @@ static void multiplayer_main(int initial_button, bool init_uds) {
 }
 
 static void multiplayer_host() {
+    C2D_Text rom_text, version_text;
+    C2D_TextBufClear(dynamic_textbuf);
+    char buf[64];
+    NetAppData appdata;
+    udsGetApplicationData(&appdata, sizeof(appdata), NULL);
+    snprintf(buf, sizeof(buf), "Game: %s", appdata.rom_name);
+    C2D_TextParse(&rom_text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&rom_text);
+    C2D_TextParse(&version_text, dynamic_textbuf, "Version: " VERSION);
+    C2D_TextOptimize(&version_text);
     udsConnectionStatus status;
     LOOP_BEGIN(multiplayer_host_buttons, 0);
         if (udsWaitConnectionStatusEvent(false, false)) {
@@ -1325,7 +1380,9 @@ static void multiplayer_host() {
                 [[gnu::musttail]] return multiplayer_ready_room(true, 0);
             }
         }
-        C2D_DrawText(&text_multi_waiting, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&text_multi_waiting, C2D_AlignCenter | C2D_WithColor, 320 / 2, 60, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&rom_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 110, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&version_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 130, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(multiplayer_host_buttons);
     local_disconnect();
     [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_HOST, false);
@@ -1352,9 +1409,11 @@ static void multiplayer_join() {
             size_t real_appdata_size;
             udsGetNetworkStructApplicationData(&networks[i].network, &appdata, sizeof(appdata), &real_appdata_size);
             char *info_text;
-            if (real_appdata_size != sizeof(appdata) || appdata.appdata_version != APPDATA_VERSION || appdata.emulator_version != GIT_HASH) {
+            if (real_appdata_size != sizeof(appdata) || appdata.protocol_version != APPDATA_VERSION) {
                 info_text = "Version mismatch!";
             } else {
+                // just in case
+                appdata.rom_name[sizeof(appdata.rom_name)-1] = 0;
                 info_text = appdata.rom_name;
             }
             multiplayer_join_buttons[i].show_toggle = true;
@@ -1365,7 +1424,12 @@ static void multiplayer_join() {
         }
     }
 
+    C2D_Text version_text;
+    C2D_TextParse(&version_text, dynamic_textbuf, VERSION);
+    C2D_TextOptimize(&version_text);
+
     LOOP_BEGIN(multiplayer_join_buttons, 0);
+        C2D_DrawText(&version_text, C2D_AlignCenter | C2D_WithColor, 320/2, 220, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(multiplayer_join_buttons);
     if (button < MULTI_JOIN_COUNT) {
         Result res = connect_to_network(&networks[button].network);
@@ -3171,6 +3235,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_no, "No")
     STATIC_TEXT(&text_areyousure_reset, "Are you sure you want to reset?")
     STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?")
+    STATIC_TEXT(&text_areyousure_leave, "Are you sure you want to\nexit multiplayer?")
     STATIC_TEXT(&text_savestate_menu, "Savestates")
     STATIC_TEXT(&text_save, "Save")
     STATIC_TEXT(&text_load, "Load")

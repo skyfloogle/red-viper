@@ -11,6 +11,7 @@ typedef enum {
     PACKET_RESUME,
     PACKET_PAUSE,
     PACKET_DATA,
+    PACKET_RESET,
 } PacketType;
 
 typedef struct {
@@ -38,7 +39,7 @@ typedef struct {
 #define APPDATA_VERSION 0
 
 typedef struct {
-    u32 appdata_version;
+    u32 protocol_version;
     u32 emulator_version;
     char rom_name[48];
 } NetAppData;

@@ -336,7 +336,6 @@ int main(void) {
             if (waiting_for_menu) new_inputs = 0;
             input_buffer[my_player_id][input_buffer_head[my_player_id]] = new_inputs;
             if (is_multiplayer && (!waiting_for_menu || needs_menu_message)) {
-                // TODO: probably account for empty case if input buffer gets much bigger
                 Packet *send_packet;
                 while (!(send_packet = new_packet_to_send())) {
                     wait_for_free_send_slot(1000000000);

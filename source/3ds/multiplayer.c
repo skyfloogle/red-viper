@@ -119,7 +119,7 @@ Result create_network(void) {
     udsGenerateDefaultNetworkStruct(&network, wlancommID, net_id, 2);
     Result res = udsCreateNetwork(&network, passphrase, sizeof(passphrase), &bindctx, data_channel, UDS_DEFAULT_RECVBUFSIZE);
     NetAppData appdata;
-    appdata.appdata_version = APPDATA_VERSION;
+    appdata.protocol_version = APPDATA_VERSION;
     appdata.emulator_version = GIT_HASH;
 
     char *filename = strrchr(tVBOpt.ROM_PATH, '/');
@@ -180,6 +180,7 @@ static size_t packet_size(const Packet *packet) {
             size = PACKET_HEADER_SIZE;
             break;
         case PACKET_RESUME:
+        case PACKET_RESET:
             size = PACKET_HEADER_SIZE + sizeof(packet->resume);
             break;
         case PACKET_INPUTS:
