@@ -3609,20 +3609,22 @@ void guiUpdate(float total_time, float drc_time) {
         shouldRedrawMenu = false;
         C2D_TargetClear(screen, 0);
         drawTouchControls(0);
-        // fastforward icon
-        if (tVBOpt.FASTFORWARD) C2D_DrawRectSolid(0, 240-32, 0, 32, 32, C2D_Color32(32, 32, 32, 255));
         int col_line = C2D_Color32(64, 64, 64, 255);
-        C2D_DrawLine(0, 240-32, col_line, 31.5, 240-32, col_line, 1, 0);
-        C2D_DrawLine(31.5, 240-32, col_line, 31.5, 240, col_line, 1, 0);
-        int t1l = 8 - 5 * !tVBOpt.PERF_INFO;
-        int t1r = 15 - !tVBOpt.PERF_INFO;
-        int t2l = 18 - !tVBOpt.PERF_INFO;
-        int t2r = 25 + 3 * !tVBOpt.PERF_INFO;
-        int tu = 240-28;
-        int tm = 240-22 + 6 * !tVBOpt.PERF_INFO;
-        int tb = 240-16 + 12 * !tVBOpt.PERF_INFO;
-        C2D_DrawTriangle(t1l, tu, col_line, t1l, tb, col_line, t1r, tm, col_line, 0);
-        C2D_DrawTriangle(t2l, tu, col_line, t2l, tb, col_line, t2r, tm, col_line, 0);
+        if (!is_multiplayer) {
+            // fastforward icon
+            if (tVBOpt.FASTFORWARD) C2D_DrawRectSolid(0, 240-32, 0, 32, 32, C2D_Color32(32, 32, 32, 255));
+            C2D_DrawLine(0, 240-32, col_line, 31.5, 240-32, col_line, 1, 0);
+            C2D_DrawLine(31.5, 240-32, col_line, 31.5, 240, col_line, 1, 0);
+            int t1l = 8 - 5 * !tVBOpt.PERF_INFO;
+            int t1r = 15 - !tVBOpt.PERF_INFO;
+            int t2l = 18 - !tVBOpt.PERF_INFO;
+            int t2r = 25 + 3 * !tVBOpt.PERF_INFO;
+            int tu = 240-28;
+            int tm = 240-22 + 6 * !tVBOpt.PERF_INFO;
+            int tb = 240-16 + 12 * !tVBOpt.PERF_INFO;
+            C2D_DrawTriangle(t1l, tu, col_line, t1l, tb, col_line, t1r, tm, col_line, 0);
+            C2D_DrawTriangle(t2l, tu, col_line, t2l, tb, col_line, t2r, tm, col_line, 0);
+        }
         if (!old_2ds) {
             // backlight icon
             int col_top = TINT_50;
@@ -3707,7 +3709,11 @@ void guiUpdate(float total_time, float drc_time) {
 bool guiShouldPause(void) {
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (touch_pos.px >= 32 || (touch_pos.py > (old_2ds ? 0 : 32) && touch_pos.py < 240-32))) && backlightEnabled;
+    return (touch_pos.px < tVBOpt.PAUSE_RIGHT && (
+        touch_pos.px >= 32 || (
+            (old_2ds || touch_pos.py > 32) && // backlight
+            (is_multiplayer || touch_pos.py < 240-32)) // fastforward
+        )) && backlightEnabled;
 }
 
 int guiGetInput(bool ingame) {
@@ -3719,11 +3725,13 @@ int guiGetInput(bool ingame) {
             return 0;
         }
         if (ingame) {
-            if (touch_pos.px < 32 && touch_pos.py >= 240-32) {
-                if ((tVBOpt.FF_TOGGLE ? hidKeysDown() : hidKeysHeld()) & KEY_TOUCH) {
-                    tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
+            if (!is_multiplayer) {
+                if (touch_pos.px < 32 && touch_pos.py >= 240-32) {
+                    if ((tVBOpt.FF_TOGGLE ? hidKeysDown() : hidKeysHeld()) & KEY_TOUCH) {
+                        tVBOpt.FASTFORWARD = !tVBOpt.FASTFORWARD;
+                    }
+                    return 0;
                 }
-                return 0;
             }
             if (hidKeysDown() & KEY_TOUCH && (touch_pos.px <= 32 && touch_pos.py <= 32) && !old_2ds) {
                 backlightEnabled = toggleBacklight(false);
