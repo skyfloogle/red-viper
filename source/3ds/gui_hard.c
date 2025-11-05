@@ -225,13 +225,15 @@ static Button multiplayer_menu_buttons[] = {
     #define MULTI_MENU_RESUME 0
     {.str="Resume", .x=0, .y=0, .w=320, .h=48},
     #define MULTI_MENU_BUFFER_MINUS 1
-    {.str="-", .x=180, .y=80, .w=32, .h=32},
+    {.str="-", .x=180, .y=100, .w=32, .h=32},
     #define MULTI_MENU_BUFFER_PLUS 2
-    {.str="+", .x=180+64, .y=80, .w=32, .h=32},
+    {.str="+", .x=180+64, .y=100, .w=32, .h=32},
     #define MULTI_MENU_RESET 3
-    {.str="Reset", .x=320/2-176/2, .y=140, .w=176, .h=48},
+    {.str="Reset", .x=0, .y=176, .w=80, .h=64},
     #define MULTI_MENU_LEAVE 4
-    {.str="Exit multiplayer", .x=320/2-176/2, .y=192, .w=176, .h=48},
+    {.str="Leave", .x=112, .y=192, .w=96, .h=48},
+    #define MULTI_MENU_OPTIONS 5
+    {.str="Options", .x=240, .y=176, .w=80, .h=64},
 };
 
 static void multiplayer_wait_for_peer(void);
@@ -750,7 +752,8 @@ static void first_menu(int initial_button) {
         case MAIN_MENU_MULTI:
             [[gnu::musttail]] return multiplayer_main(0, true);
         case MAIN_MENU_OPTIONS:
-            [[gnu::musttail]] return options(0);
+            options(0);
+            [[gnu::musttail]] return first_menu(MAIN_MENU_OPTIONS);
         case MAIN_MENU_QUIT:
             if (areyousure(&text_areyousure_exit)) {
             guiop = GUIEXIT;
@@ -779,7 +782,8 @@ static void game_menu(int initial_button) {
         case MAIN_MENU_MULTI:
             [[gnu::musttail]] return multiplayer_main(0, true);
         case MAIN_MENU_OPTIONS:
-            [[gnu::musttail]] return options(0);
+            options(0);
+            [[gnu::musttail]] return game_menu(MAIN_MENU_OPTIONS);
         case MAIN_MENU_QUIT:
             if (areyousure(&text_areyousure_exit)) {
                 guiop = AKILL | GUIEXIT;
@@ -837,8 +841,8 @@ static void multiplayer_menu(int initial_button) {
                 [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
             }
         }
-        C2D_DrawText(&text_input_buffer, C2D_AlignRight | C2D_WithColor, 180 - 8, 84, 0, 0.7, 0.7, TINT_COLOR);
-        C2D_DrawText(&buffer_text, C2D_AlignCenter | C2D_WithColor, 180 + 48, 84, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&text_input_buffer, C2D_AlignRight | C2D_WithColor, 180 - 8, 104, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&buffer_text, C2D_AlignCenter | C2D_WithColor, 180 + 48, 104, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(multiplayer_menu_buttons);
     switch (button) {
         case MULTI_MENU_RESUME:
@@ -906,6 +910,9 @@ static void multiplayer_menu(int initial_button) {
             } else {
                 [[gnu::musttail]] return multiplayer_menu(MULTI_MENU_LEAVE);
             }
+        case MULTI_MENU_OPTIONS:
+            options(0);
+            [[gnu::musttail]] return multiplayer_menu(MULTI_MENU_OPTIONS);
     }
 }
 
@@ -2604,9 +2611,9 @@ static void options(int initial_button) {
         case OPTIONS_CONTROLS: // Controls
             [[gnu::musttail]] return controls(0);
         case OPTIONS_ABOUT: // About
-            return about();
+            [[gnu::musttail]] return about();
         case OPTIONS_BACK: // Back
-            [[gnu::musttail]] return main_menu(MAIN_MENU_OPTIONS);
+            {return;}
         case OPTIONS_DEBUG: // Save debug info
             [[gnu::musttail]] return save_debug_info();
         case OPTIONS_SAVE_GLOBAL:
