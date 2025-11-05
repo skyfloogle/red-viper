@@ -110,7 +110,7 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_multi_waiting, text_multi_init_error, text_multi_disconnect, text_multi_comm_error,
                 text_multi_reset_on_join, text_input_buffer, text_areyousure_leave, text_areyousure_version,
                 text_multi_no_match, text_multi_not_loaded, text_dlplay_saving, text_multi_preparing,
-                text_downloading;
+                text_downloading, text_forwarder_nomatch, text_protocol_mismatch;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -1526,7 +1526,7 @@ static void multiplayer_join() {
         udsGetNetworkStructApplicationData(&networks[button].network, &appdata, sizeof(appdata), &real_appdata_size);
         if (real_appdata_size != sizeof(appdata) || appdata.protocol_version != PROTOCOL_VERSION) {
             udsExit();
-            [[gnu::musttail]] return multiplayer_error(1, &text_multi_comm_error, true);
+            [[gnu::musttail]] return multiplayer_error(0, &text_protocol_mismatch, true);
         } else if (appdata.emulator_version != GIT_HASH && !areyousure(&text_areyousure_version)) {
             [[gnu::musttail]] return multiplayer_join();
         } else {
@@ -1566,6 +1566,11 @@ static void multiplayer_prepare_join(int initial_button) {
     C2D_Text their_crc32_text;
 
     Packet *send_packet;
+
+    if (tVBOpt.FORWARDER) {
+        multiplayer_prepare_join_buttons[MULTI_PREPARE_SD].hidden = true;
+        multiplayer_prepare_join_buttons[MULTI_PREPARE_DLPLAY].hidden = true;
+    }
 
     NetAppData appdata;
     udsGetApplicationData(&appdata, sizeof(appdata), NULL);
@@ -1618,7 +1623,11 @@ static void multiplayer_prepare_join(int initial_button) {
         C2D_DrawText(&their_game_text, C2D_AlignCenter | C2D_WithColor, 320/2, 90, 0, 0.5, 0.5, TINT_COLOR);
         C2D_DrawText(&their_crc32_text, C2D_AlignCenter | C2D_WithColor, 320/2, 105, 0, 0.5, 0.5, TINT_COLOR);
 
-        C2D_DrawText(&text_dlplay_saving, C2D_AlignRight | C2D_WithColor, 310, 200, 0, 0.5, 0.5, TINT_COLOR);
+        if (!tVBOpt.FORWARDER) {
+            C2D_DrawText(&text_dlplay_saving, C2D_AlignRight | C2D_WithColor, 310, 200, 0, 0.5, 0.5, TINT_COLOR);
+        } else {
+            C2D_DrawText(&text_forwarder_nomatch, C2D_AlignCenter | C2D_WithColor, 320/2, 150, 0, 0.5, 0.5, TINT_COLOR);
+        }
     LOOP_END(multiplayer_prepare_join_buttons);
 
     switch (button) {
@@ -3491,7 +3500,7 @@ void guiInit(void) {
     C2D_SpriteFromSheet(&splash_right, splash_sheet, splash_splash_right_idx);
     C2D_SpriteSetPos(&splash_right, 0, 256);
 
-    static_textbuf = C2D_TextBufNew(2048);
+    static_textbuf = C2D_TextBufNew(4096);
     dynamic_textbuf = C2D_TextBufNew(4096);
     STATIC_TEXT(&text_A, "A")
     STATIC_TEXT(&text_B, "B")
@@ -3527,6 +3536,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?")
     STATIC_TEXT(&text_areyousure_leave, "Are you sure you want to\nexit multiplayer?")
     STATIC_TEXT(&text_areyousure_version, "Your emulator version doesn't\nmatch the host's.\nThis can cause desyncs.\nYour version: " VERSION "\nConnect anyway?")
+    STATIC_TEXT(&text_protocol_mismatch, "Your emulator version doesn't\nmatch the host's.\nPlease ensure both are updated.\nYour version: " VERSION)
     STATIC_TEXT(&text_savestate_menu, "Savestates")
     STATIC_TEXT(&text_save, "Save")
     STATIC_TEXT(&text_load, "Load")
@@ -3595,6 +3605,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_multi_no_match, "Loaded game does not match.")
     STATIC_TEXT(&text_multi_not_loaded, "No game is currently loaded.")
     STATIC_TEXT(&text_dlplay_saving, "Note: Download Play will disable saving.")
+    STATIC_TEXT(&text_forwarder_nomatch, "Forwarders cannot join other games.")
     SETUP_ALL_BUTTONS
 }
 
