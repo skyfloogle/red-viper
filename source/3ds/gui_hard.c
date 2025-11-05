@@ -1362,16 +1362,16 @@ static void multiplayer_main(int initial_button, bool init_uds) {
 static void multiplayer_host() {
     C2D_Text rom_text, version_text;
     C2D_TextBufClear(dynamic_textbuf);
-    char buf[64];
+    char buf[96];
     NetAppData appdata;
     udsGetApplicationData(&appdata, sizeof(appdata), NULL);
-    snprintf(buf, sizeof(buf), "Game: %s", appdata.rom_name);
+    snprintf(buf, sizeof(buf), "%s\nCRC32: %08lX", appdata.rom_name, tVBOpt.CRC32);
     C2D_TextParse(&rom_text, dynamic_textbuf, buf);
     C2D_TextOptimize(&rom_text);
-    C2D_TextParse(&version_text, dynamic_textbuf, "Version: " VERSION);
+    C2D_TextParse(&version_text, dynamic_textbuf, "Red Viper " VERSION);
     C2D_TextOptimize(&version_text);
     udsConnectionStatus status;
-    LOOP_BEGIN(multiplayer_host_buttons, 0);
+    LOOP_BEGIN(multiplayer_host_buttons, -1);
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsGetConnectionStatus(&status);
             if (status.total_nodes > 1) {
@@ -1381,8 +1381,8 @@ static void multiplayer_host() {
             }
         }
         C2D_DrawText(&text_multi_waiting, C2D_AlignCenter | C2D_WithColor, 320 / 2, 60, 0, 0.7, 0.7, TINT_COLOR);
-        C2D_DrawText(&rom_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 110, 0, 0.5, 0.5, TINT_COLOR);
-        C2D_DrawText(&version_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 130, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&rom_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 100, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&version_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 150, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(multiplayer_host_buttons);
     local_disconnect();
     [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_HOST, false);
