@@ -70,6 +70,8 @@ static void save_sram_thread(void *sram) {
 void save_sram(void) {
     // Do not save sram if it's not required!
     if (!is_sram) return;
+    // Don't save if there is no save path
+    if (tVBOpt.RAM_PATH[0] == 0) return;
     // Don't save if we're already saving
     if (save_thread) return;
     V810_MEMORYFETCH *sram = &vb_players[my_player_id].V810_GAME_RAM;

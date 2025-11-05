@@ -26,6 +26,8 @@
 #include "cpp.h"
 #include "extrapad.h"
 #include "multiplayer.h"
+#include "rom_db.h"
+#include "patches.h"
 
 #define COLOR_R(COLOR) ( ((COLOR) & 0x000000FF) )
 #define COLOR_G(COLOR) ( ((COLOR) & 0x0000FF00) >> 8)
@@ -106,7 +108,9 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off,
                 text_monochrome, text_multicolor, text_brighten, text_brightness_disclaimer,
                 text_multi_waiting, text_multi_init_error, text_multi_disconnect, text_multi_comm_error,
-                text_multi_reset_on_join, text_input_buffer, text_areyousure_leave;
+                text_multi_reset_on_join, text_input_buffer, text_areyousure_leave, text_areyousure_version,
+                text_multi_no_match, text_multi_not_loaded, text_dlplay_saving, text_multi_preparing,
+                text_downloading;
 
 #define CUSTOM_3DS_BUTTON_TEXT(BUTTON) static C2D_Text text_custom_3ds_button_##BUTTON;
 PERFORM_FOR_EACH_3DS_BUTTON(CUSTOM_3DS_BUTTON_TEXT)
@@ -271,6 +275,24 @@ static Button multiplayer_join_buttons[] = {
 
 static void multiplayer_host(void);
 static Button multiplayer_host_buttons[] = {
+    #define MULTI_HOST_LEAVE 0
+    {.str = "Cancel", .x=0, .y=208, .w=64, .h=32},
+    #define MULTI_HOST_CHANGE 1
+    {.str = "Change ROM", .x=160-64, .y=180, .w=64*2, .h=48},
+};
+
+static void multiplayer_prepare_join(int initial_button);
+static Button multiplayer_prepare_join_buttons[] = {
+    #define MULTI_PREPARE_SD 0
+    {.str="Load from\nSD Card", .x=32, .y=140, .w=112, .h=52},
+    #define MULTI_PREPARE_DLPLAY 1
+    {.str="Download\nPlay", .x=176, .y=140, .w=112, .h=52},
+    #define MULTI_PREPARE_LEAVE 2
+    {.str="Leave", .x=0, .y=208, .w=56, .h=32},
+};
+
+static void multiplayer_dlplay(void);
+static Button multiplayer_dlplay_buttons[] = {
     #define MULTI_ROOM_LEAVE 0
     {.str = "Cancel", .x=160-48, .y=180, .w=48*2, .h=48},
 };
@@ -650,13 +672,13 @@ static Button forwarder_error_buttons[] = {
 };
 
 #define SETUP_ALL_BUTTONS \
-    SETUP_BUTTONS(first_menu_buttons); \
     SETUP_BUTTONS(game_menu_buttons); \
     SETUP_BUTTONS(multiplayer_menu_buttons); \
     SETUP_BUTTONS(rom_loader_buttons); \
     SETUP_BUTTONS(multiplayer_main_buttons); \
     SETUP_BUTTONS(multiplayer_host_buttons); \
     SETUP_BUTTONS(multiplayer_join_buttons); \
+    SETUP_BUTTONS(multiplayer_prepare_join_buttons); \
     SETUP_BUTTONS(multiplayer_ready_room_buttons); \
     SETUP_BUTTONS(multiplayer_error_buttons); \
     SETUP_BUTTONS(controls_buttons); \
@@ -679,7 +701,8 @@ static Button forwarder_error_buttons[] = {
     SETUP_BUTTONS(load_rom_buttons); \
     SETUP_BUTTONS(areyousure_buttons); \
     SETUP_BUTTONS(savestate_buttons); \
-    SETUP_BUTTONS(savestate_confirm_buttons);
+    SETUP_BUTTONS(savestate_confirm_buttons); \
+    SETUP_BUTTONS(first_menu_buttons);
 
 static int last_savestate = 0;
 
@@ -1353,12 +1376,7 @@ static void multiplayer_main(int initial_button, bool init_uds) {
                 goto menu_start;
             }
         case MULTI_MAIN_JOIN:
-            // TODO do this later
-            if (game_running || rom_loader("Pick a game to join with.")) {
-                [[gnu::musttail]] return multiplayer_join();
-            } else {
-                goto menu_start;
-            }
+            [[gnu::musttail]] return multiplayer_join();
         case MULTI_MAIN_BACK:
             udsExit();
             is_multiplayer = false;
@@ -1372,27 +1390,90 @@ static void multiplayer_host() {
     char buf[96];
     NetAppData appdata;
     udsGetApplicationData(&appdata, sizeof(appdata), NULL);
+    appdata.rom_name[sizeof(appdata.rom_name) - 1] = 0;
     snprintf(buf, sizeof(buf), "%s\nCRC32: %08lX", appdata.rom_name, tVBOpt.CRC32);
     C2D_TextParse(&rom_text, dynamic_textbuf, buf);
     C2D_TextOptimize(&rom_text);
     C2D_TextParse(&version_text, dynamic_textbuf, "Red Viper " VERSION);
     C2D_TextOptimize(&version_text);
+
+    bool connected = false;
+    bool dlplay = false;
+    int dlplay_progress = -1;
+
+    multiplayer_host_buttons[MULTI_HOST_CHANGE].hidden = false;
+
     udsConnectionStatus status;
     LOOP_BEGIN(multiplayer_host_buttons, -1);
         if (udsWaitConnectionStatusEvent(false, false)) {
             udsGetConnectionStatus(&status);
-            if (status.total_nodes > 1) {
-                C3D_FrameEnd(0);
+            if (!connected && status.total_nodes > 1) {
                 udsSetNewConnectionsBlocked(true, true, false);
-                [[gnu::musttail]] return multiplayer_ready_room(true, 0);
+                connected = true;
+                multiplayer_host_buttons[MULTI_HOST_CHANGE].hidden = true;
+            } else if (connected && (status.total_nodes < 2 || status.status == 11)) {
+                C3D_FrameEnd(0);
+                local_disconnect();
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
             }
         }
-        C2D_DrawText(&text_multi_waiting, C2D_AlignCenter | C2D_WithColor, 320 / 2, 60, 0, 0.7, 0.7, TINT_COLOR);
+
+        if (connected) {
+            if (dlplay_progress < 0) {
+                Packet *read_packet = read_next_packet();
+                if (read_packet) {
+                    if (read_packet->packet_type == PACKET_LOADED) {
+                        C3D_FrameEnd(0);
+                        [[gnu::musttail]] return multiplayer_ready_room(true, 0);
+                    } else if (read_packet->packet_type == PACKET_DLPLAY_RQ) {
+                        Packet *send_packet = new_packet_to_send();
+                        send_packet->packet_type = PACKET_DLPLAY_SIZE;
+                        send_packet->dlplay_size.rom_size = V810_ROM1.size;
+                        ship_packet(send_packet);
+                        dlplay_progress = 0;
+                    }
+                }
+            }
+            if (dlplay_progress >= 0) {
+                Packet *send_packet;
+                while (dlplay_progress < V810_ROM1.size && (send_packet = new_packet_to_send())) {
+                    send_packet->packet_type = PACKET_DATA;
+                    memcpy(send_packet->data.data, V810_ROM1.pmemory + dlplay_progress, sizeof(send_packet->data.data));
+                    dlplay_progress += sizeof(send_packet->data.data);
+                    ship_packet(send_packet);
+                }
+
+                // once they're done they'll send a PACKET_LOADED
+                // also always read packets to ensure the buffer is clear of nops
+                Packet *read_packet = read_next_packet();
+                if (read_packet && read_packet->packet_type == PACKET_LOADED) {
+                    C3D_FrameEnd(0);
+                    [[gnu::musttail]] return multiplayer_ready_room(true, 0);
+                }
+            }
+        }
+
+        if (!connected) {
+            C2D_DrawText(&text_multi_waiting, C2D_AlignCenter | C2D_WithColor, 320 / 2, 60, 0, 0.7, 0.7, TINT_COLOR);
+        } else {
+            C2D_DrawText(&text_multi_preparing, C2D_AlignCenter | C2D_WithColor, 320 / 2, 60, 0, 0.7, 0.7, TINT_COLOR);
+        }
         C2D_DrawText(&rom_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 100, 0, 0.5, 0.5, TINT_COLOR);
         C2D_DrawText(&version_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 150, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(multiplayer_host_buttons);
     local_disconnect();
-    [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_HOST, false);
+    if (button == MULTI_HOST_CHANGE && rom_loader("Pick a game to host.") && game_running) {
+        Result res = create_network();
+        if (R_FAILED(res)) {
+            udsExit();
+            [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error, true);
+        } else {
+            [[gnu::musttail]] return multiplayer_host();
+        }
+    } else {
+        [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_HOST, false);
+    }
 }
 
 static void multiplayer_join() {
@@ -1416,7 +1497,7 @@ static void multiplayer_join() {
             size_t real_appdata_size;
             udsGetNetworkStructApplicationData(&networks[i].network, &appdata, sizeof(appdata), &real_appdata_size);
             char *info_text;
-            if (real_appdata_size != sizeof(appdata) || appdata.protocol_version != APPDATA_VERSION) {
+            if (real_appdata_size != sizeof(appdata) || appdata.protocol_version != PROTOCOL_VERSION) {
                 info_text = "Version mismatch!";
             } else {
                 // just in case
@@ -1439,18 +1520,220 @@ static void multiplayer_join() {
         C2D_DrawText(&version_text, C2D_AlignCenter | C2D_WithColor, 320/2, 220, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(multiplayer_join_buttons);
     if (button < MULTI_JOIN_COUNT) {
-        Result res = connect_to_network(&networks[button].network);
-        if (R_FAILED(res)) {
+        NetAppData appdata;
+        size_t real_appdata_size;
+        udsGetNetworkStructApplicationData(&networks[button].network, &appdata, sizeof(appdata), &real_appdata_size);
+        if (real_appdata_size != sizeof(appdata) || appdata.protocol_version != PROTOCOL_VERSION) {
             udsExit();
-            [[gnu::musttail]] return multiplayer_error(res, &text_multi_init_error, true);
+            [[gnu::musttail]] return multiplayer_error(1, &text_multi_comm_error, true);
+        } else if (appdata.emulator_version != GIT_HASH && !areyousure(&text_areyousure_version)) {
+            [[gnu::musttail]] return multiplayer_join();
         } else {
-            [[gnu::musttail]] return multiplayer_ready_room(false, 0);
+            Result res = connect_to_network(&networks[button].network);
+            if (R_FAILED(res)) {
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(res, &text_multi_comm_error, true);
+            } else {
+                NetAppData appdata;
+                size_t actual_size;
+                udsGetApplicationData(&appdata, sizeof(appdata), &actual_size);
+                if (appdata.protocol_version != PROTOCOL_VERSION || actual_size != sizeof(appdata)) {
+                    udsExit();
+                    [[gnu::musttail]] return multiplayer_error(1, &text_multi_comm_error, true);
+                } else if (game_running && appdata.rom_crc32 == tVBOpt.CRC32) {
+                    Packet *send_packet = new_packet_to_send();
+                    send_packet->packet_type = PACKET_LOADED;
+                    ship_packet(send_packet);
+                    [[gnu::musttail]] return multiplayer_ready_room(false, 0);
+                } else {
+                    [[gnu::musttail]] return multiplayer_prepare_join(0);
+                }
+            }
         }
     } else if (button == MULTI_JOIN_REFRESH) {
         [[gnu::musttail]] return multiplayer_join();
     } else if (button == MULTI_JOIN_BACK) {
         [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_JOIN, false);
     }
+}
+
+static void multiplayer_prepare_join(int initial_button) {
+    char buf[96];
+    C2D_Text my_game_text;
+    C2D_Text my_crc32_text;
+    C2D_Text their_game_text;
+    C2D_Text their_crc32_text;
+
+    Packet *send_packet;
+
+    NetAppData appdata;
+    udsGetApplicationData(&appdata, sizeof(appdata), NULL);
+    appdata.rom_name[sizeof(appdata.rom_name) - 1] = 0;
+    
+    C2D_TextBufClear(dynamic_textbuf);
+
+    snprintf(buf, sizeof(buf), "Their game: %s", appdata.rom_name);
+    C2D_TextParse(&their_game_text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&their_game_text);
+
+    snprintf(buf, sizeof(buf), "CRC32: %08lX", appdata.rom_crc32);
+    C2D_TextParse(&their_crc32_text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&their_crc32_text);
+
+    if (game_running) {
+        char *filename = strrchr(tVBOpt.ROM_PATH, '/');
+        if (filename) filename++;
+        else filename = tVBOpt.ROM_PATH;
+        snprintf(buf, sizeof(buf), "Your game: %s", filename);
+        char *lastdot = strrchr(buf, '.');
+        if (lastdot) *lastdot = 0;
+        C2D_TextParse(&my_game_text, dynamic_textbuf, buf);
+        C2D_TextOptimize(&my_game_text);
+
+        snprintf(buf, sizeof(buf), "CRC32: %08lX", tVBOpt.CRC32);
+        C2D_TextParse(&my_crc32_text, dynamic_textbuf, buf);
+        C2D_TextOptimize(&my_crc32_text);
+    }
+
+    LOOP_BEGIN(multiplayer_prepare_join_buttons, initial_button);
+        if (udsWaitConnectionStatusEvent(false, false)) {
+            udsConnectionStatus status;
+            udsGetConnectionStatus(&status);
+            if (status.total_nodes < 2 || status.status == 11) {
+                C3D_FrameEnd(0);
+                local_disconnect();
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
+            }
+        }
+
+        if (game_running) {
+            C2D_DrawText(&text_multi_no_match, C2D_AlignCenter | C2D_WithColor, 320/2, 20, 0, 0.7, 0.7, TINT_COLOR);
+            C2D_DrawText(&my_game_text, C2D_AlignCenter | C2D_WithColor, 320/2, 55, 0, 0.5, 0.5, TINT_COLOR);
+            C2D_DrawText(&my_crc32_text, C2D_AlignCenter | C2D_WithColor, 320/2, 70, 0, 0.5, 0.5, TINT_COLOR);
+        } else {
+            C2D_DrawText(&text_multi_not_loaded, C2D_AlignCenter | C2D_WithColor, 320/2, 30, 0, 0.7, 0.7, TINT_COLOR);
+        }
+        C2D_DrawText(&their_game_text, C2D_AlignCenter | C2D_WithColor, 320/2, 90, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&their_crc32_text, C2D_AlignCenter | C2D_WithColor, 320/2, 105, 0, 0.5, 0.5, TINT_COLOR);
+
+        C2D_DrawText(&text_dlplay_saving, C2D_AlignRight | C2D_WithColor, 310, 200, 0, 0.5, 0.5, TINT_COLOR);
+    LOOP_END(multiplayer_prepare_join_buttons);
+
+    switch (button) {
+        case MULTI_PREPARE_SD:
+            snprintf(buf, sizeof(buf), "Please load: %s", appdata.rom_name);
+            if (rom_loader(buf) && tVBOpt.CRC32 == appdata.rom_crc32) {
+                send_packet = new_packet_to_send();
+                send_packet->packet_type = PACKET_LOADED;
+                ship_packet(send_packet);
+                [[gnu::musttail]] return multiplayer_ready_room(false, 0);
+            } else {
+                [[gnu::musttail]] return multiplayer_prepare_join(MULTI_PREPARE_SD);
+            }
+            break;
+        case MULTI_PREPARE_DLPLAY:
+            send_packet = new_packet_to_send();
+            send_packet->packet_type = PACKET_DLPLAY_RQ;
+            ship_packet(send_packet);
+            [[gnu::musttail]] return multiplayer_dlplay();
+        case MULTI_PREPARE_LEAVE:
+            local_disconnect();
+            [[gnu::musttail]] return multiplayer_main(MULTI_MAIN_JOIN, false);
+    }
+}
+
+static void multiplayer_dlplay(void) {
+    NetAppData appdata;
+    udsGetApplicationData(&appdata, sizeof(appdata), NULL);
+    appdata.rom_name[sizeof(appdata.rom_name) - 1] = 0;
+
+    game_running = false;
+    bool size_received = false;
+    int dlplay_progress = 0;
+    LOOP_BEGIN(multiplayer_dlplay_buttons, -1);
+        if (udsWaitConnectionStatusEvent(false, false)) {
+            udsConnectionStatus status;
+            udsGetConnectionStatus(&status);
+            if (status.total_nodes < 2 || status.status == 11) {
+                C3D_FrameEnd(0);
+                local_disconnect();
+                udsExit();
+                [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
+            }
+        }
+        bool packet_received = false;
+        Packet *recv_packet;
+        if (!size_received && (recv_packet = read_next_packet())) {
+            packet_received = true;
+            if (recv_packet->packet_type == PACKET_DLPLAY_SIZE) {
+                int rom_size = recv_packet->dlplay_size.rom_size;
+                if (rom_size > MAX_ROM_SIZE || ((rom_size - 1) & rom_size)) {
+                    C3D_FrameEnd(0);
+                    local_disconnect();
+                    udsExit();
+                    [[gnu::musttail]] return multiplayer_error(0, &text_multi_init_error, true);
+                }
+                V810_ROM1.size = rom_size;
+                V810_ROM1.highaddr = 0x7000000 + rom_size - 1;
+                size_received = true;
+            }
+        }
+        while (size_received && (recv_packet = read_next_packet())) {
+            packet_received = true;
+            if (recv_packet->packet_type == PACKET_DATA) {
+                memcpy(V810_ROM1.pmemory + dlplay_progress, recv_packet->data.data, sizeof(recv_packet->data.data));
+                dlplay_progress += sizeof(recv_packet->data.data);
+            }
+        }
+        if (packet_received && send_queue_empty()) {
+            Packet *send_packet = new_packet_to_send();
+            send_packet->packet_type = PACKET_NOP;
+            ship_packet(send_packet);
+        }
+        if (size_received && dlplay_progress == V810_ROM1.size) {
+            tVBOpt.RAM_PATH[0] = 0;
+            game_running = true;
+            is_sram = false;
+            gen_table();
+            tVBOpt.CRC32 = get_crc(V810_ROM1.size);
+            memcpy(tVBOpt.GAME_ID, (char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
+            apply_patches();
+            v810_reset();
+
+            Packet *send_packet = new_packet_to_send();
+            send_packet->packet_type = PACKET_LOADED;
+            ship_packet(send_packet);
+
+            C3D_FrameEnd(0);
+            [[gnu::musttail]] return multiplayer_ready_room(false, 0);
+        }
+
+        if (size_received) C2D_DrawRectSolid(60, 140, 0, 200, 16, C2D_Color32(0.5 * TINT_R, 0.5 * TINT_G, 0.5 * TINT_B, 255));
+        if (size_received) {
+            C2D_DrawRectSolid(60, 140, 0, 200 * dlplay_progress / V810_ROM1.size, 16, C2D_Color32(TINT_R, TINT_G, TINT_B, 255));
+        }
+
+        C2D_TextBufClear(dynamic_textbuf);
+
+
+        C2D_DrawText(&text_downloading, C2D_AlignCenter | C2D_WithColor, 320/2, 60, 0, 0.7, 0.7, TINT_COLOR);
+
+        C2D_Text game_name_text;
+        C2D_TextParse(&game_name_text, dynamic_textbuf, appdata.rom_name);
+        C2D_TextOptimize(&game_name_text);
+        C2D_DrawText(&game_name_text, C2D_AlignCenter | C2D_WithColor, 320/2, 85, 0, 0.5, 0.5, TINT_COLOR);
+
+        C2D_Text progress_text;
+        char progress_buf[20];
+        snprintf(progress_buf, sizeof(progress_buf), "Progress: %5.2f%%", dlplay_progress * 100.0 / V810_ROM1.size);
+        C2D_TextParse(&progress_text, dynamic_textbuf, progress_buf);
+        C2D_TextOptimize(&progress_text);
+        C2D_DrawText(&progress_text, C2D_AlignLeft | C2D_WithColor, 320/2 - 80, 110, 0, 0.7, 0.7, TINT_COLOR);
+    LOOP_END(multiplayer_dlplay_buttons);
+    local_disconnect();
+    udsExit();
+    [[gnu::musttail]] return multiplayer_error(0, &text_multi_disconnect, true);
 }
 
 static void multiplayer_sram_transfer() {
@@ -2779,7 +3062,7 @@ static bool areyousure(C2D_Text *message) {
     #undef DEFAULT_RETURN
     #define DEFAULT_RETURN false
     LOOP_BEGIN(areyousure_buttons, AREYOUSURE_NO);
-        C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80 - 40 * (message == &text_areyousure_version), 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(areyousure_buttons);
     #undef DEFAULT_RETURN
     #define DEFAULT_RETURN
@@ -3209,7 +3492,6 @@ void guiInit(void) {
 
     static_textbuf = C2D_TextBufNew(2048);
     dynamic_textbuf = C2D_TextBufNew(4096);
-    SETUP_ALL_BUTTONS
     STATIC_TEXT(&text_A, "A")
     STATIC_TEXT(&text_B, "B")
     STATIC_TEXT(&text_btn_A, "\uE000")
@@ -3243,6 +3525,7 @@ void guiInit(void) {
     STATIC_TEXT(&text_areyousure_reset, "Are you sure you want to reset?")
     STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?")
     STATIC_TEXT(&text_areyousure_leave, "Are you sure you want to\nexit multiplayer?")
+    STATIC_TEXT(&text_areyousure_version, "Your emulator version doesn't\nmatch the host's.\nThis can cause desyncs.\nYour version: " VERSION "\nConnect anyway?")
     STATIC_TEXT(&text_savestate_menu, "Savestates")
     STATIC_TEXT(&text_save, "Save")
     STATIC_TEXT(&text_load, "Load")
@@ -3301,11 +3584,17 @@ void guiInit(void) {
     STATIC_TEXT(&text_brighten, "Brighten")
     STATIC_TEXT(&text_brightness_disclaimer, "Actual brightness may vary by game.")
     STATIC_TEXT(&text_multi_waiting, "Waiting for connection...")
+    STATIC_TEXT(&text_multi_preparing, "Peer is preparing...")
+    STATIC_TEXT(&text_downloading, "Downloading...")
     STATIC_TEXT(&text_multi_init_error, "Could not start wireless.\nIs wireless enabled?")
     STATIC_TEXT(&text_multi_disconnect, "Disconnected.")
     STATIC_TEXT(&text_multi_comm_error, "Communication error.")
     STATIC_TEXT(&text_multi_reset_on_join, "Game will reset when connecting.")
     STATIC_TEXT(&text_input_buffer, "Input buffer:")
+    STATIC_TEXT(&text_multi_no_match, "Loaded game does not match.")
+    STATIC_TEXT(&text_multi_not_loaded, "No game is currently loaded.")
+    STATIC_TEXT(&text_dlplay_saving, "Note: Download Play will disable saving.")
+    SETUP_ALL_BUTTONS
 }
 
 bool backlightEnabled = true;

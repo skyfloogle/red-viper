@@ -119,8 +119,9 @@ Result create_network(void) {
     udsGenerateDefaultNetworkStruct(&network, wlancommID, net_id, 2);
     Result res = udsCreateNetwork(&network, passphrase, sizeof(passphrase), &bindctx, data_channel, UDS_DEFAULT_RECVBUFSIZE);
     NetAppData appdata;
-    appdata.protocol_version = APPDATA_VERSION;
+    appdata.protocol_version = PROTOCOL_VERSION;
     appdata.emulator_version = GIT_HASH;
+    appdata.rom_crc32 = tVBOpt.CRC32;
 
     char *filename = strrchr(tVBOpt.ROM_PATH, '/');
     if (filename) filename++;
@@ -176,7 +177,8 @@ static size_t packet_size(const Packet *packet) {
     switch ((PacketType)(packet->packet_type & ~TRANSPORT_MASK)) {
         case PACKET_NULL:
         case PACKET_NOP:
-        case PACKET_PAUSE:
+        case PACKET_LOADED:
+        case PACKET_DLPLAY_RQ:
             size = PACKET_HEADER_SIZE;
             break;
         case PACKET_RESUME:
@@ -186,8 +188,8 @@ static size_t packet_size(const Packet *packet) {
         case PACKET_INPUTS:
             size = PACKET_HEADER_SIZE + sizeof(packet->inputs);
             break;
-        case PACKET_LOADED:
-            size = PACKET_HEADER_SIZE + sizeof(packet->loaded);
+        case PACKET_DLPLAY_SIZE:
+            size = PACKET_HEADER_SIZE + sizeof(packet->dlplay_size);
             break;
         case PACKET_DATA:
             size = PACKET_HEADER_SIZE + sizeof(packet->data);
@@ -307,6 +309,7 @@ static void handle_sending(void) {
             udsSendTo(UDS_BROADCAST_NETWORKNODEID, data_channel, UDS_SENDFLAG_Default, send_area, send_cursor - send_area);
             send_cursor = send_area;
             next_cursor += packet_size(packet);
+            // if we send too many at once we crash nwm
             break;
         }
 

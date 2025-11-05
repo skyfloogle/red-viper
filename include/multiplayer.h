@@ -6,12 +6,13 @@
 typedef enum {
     PACKET_NULL, // Not a packet
     PACKET_NOP,
-    PACKET_INPUTS,
     PACKET_LOADED,
+    PACKET_DLPLAY_RQ,
+    PACKET_DLPLAY_SIZE,
     PACKET_RESUME,
-    PACKET_PAUSE,
-    PACKET_DATA,
     PACKET_RESET,
+    PACKET_INPUTS,
+    PACKET_DATA,
 } PacketType;
 
 typedef struct {
@@ -23,10 +24,8 @@ typedef struct {
     union {
         u16 inputs;
         struct {
-            char name[64];
-            u32 crc32;
-            u32 sram_size;
-        } loaded;
+            u32 rom_size;
+        } dlplay_size;
         struct {
             u8 input_buffer;
         } resume;
@@ -36,11 +35,12 @@ typedef struct {
     };
 } Packet;
 
-#define APPDATA_VERSION 0
+#define PROTOCOL_VERSION 0
 
 typedef struct {
     u32 protocol_version;
     u32 emulator_version;
+    u32 rom_crc32;
     char rom_name[48];
 } NetAppData;
 
