@@ -9,12 +9,16 @@
 
 // #define NET_LOGGING
 
+// https://stackoverflow.com/a/40591483
+#define STR_IMPL_(...) #__VA_ARGS__      //stringify argument
+#define STR(...) STR_IMPL_(__VA_ARGS__)  //indirection to expand argument macros
+
 static udsNetworkStruct network;
 static udsBindContext bindctx;
 static const u32 wlancommID = 0x2d23bfdb;
 static u8 net_id = 0;
 static u8 data_channel = 1;
-static const char passphrase[] = "Red Viper " VERSION;
+static const char passphrase[] = "Red Viper " STR(PROTOCOL_VERSION);
 static udsNetworkScanInfo *beacons;
 #define RECV_HEAP_COUNT 16
 static Packet recv_heap[RECV_HEAP_COUNT] = {0};
