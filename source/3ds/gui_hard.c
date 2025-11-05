@@ -679,6 +679,7 @@ static Button forwarder_error_buttons[] = {
     SETUP_BUTTONS(multiplayer_host_buttons); \
     SETUP_BUTTONS(multiplayer_join_buttons); \
     SETUP_BUTTONS(multiplayer_prepare_join_buttons); \
+    SETUP_BUTTONS(multiplayer_dlplay_buttons); \
     SETUP_BUTTONS(multiplayer_ready_room_buttons); \
     SETUP_BUTTONS(multiplayer_error_buttons); \
     SETUP_BUTTONS(controls_buttons); \
