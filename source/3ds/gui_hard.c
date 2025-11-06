@@ -108,7 +108,8 @@ static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, 
                 text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off,
                 text_monochrome, text_multicolor, text_brighten, text_brightness_disclaimer,
                 text_multi_waiting, text_multi_init_error, text_multi_disconnect, text_multi_comm_error,
-                text_multi_reset_on_join, text_input_buffer, text_areyousure_leave, text_areyousure_version,
+                text_multi_reset_on_join, text_input_buffer, text_areyousure_leave,
+                text_version_mismatch, text_your_version, text_connect_anyway,
                 text_multi_no_match, text_multi_not_loaded, text_dlplay_saving, text_multi_preparing,
                 text_downloading, text_forwarder_nomatch, text_protocol_mismatch;
 
@@ -1402,7 +1403,7 @@ static void multiplayer_host() {
     bool dlplay = false;
     int dlplay_progress = -1;
 
-    multiplayer_host_buttons[MULTI_HOST_CHANGE].hidden = false;
+    multiplayer_host_buttons[MULTI_HOST_CHANGE].hidden = tVBOpt.FORWARDER;
 
     udsConnectionStatus status;
     LOOP_BEGIN(multiplayer_host_buttons, -1);
@@ -1477,6 +1478,70 @@ static void multiplayer_host() {
     }
 }
 
+static void multiplayer_forwarder_crc32_mismatch(NetAppData *appdata) {
+    char buf[96];
+    C2D_Text my_game_text;
+    C2D_Text my_crc32_text;
+    C2D_Text their_game_text;
+    C2D_Text their_crc32_text;
+
+    appdata->rom_name[sizeof(appdata->rom_name) - 1] = 0;
+    
+    C2D_TextBufClear(dynamic_textbuf);
+
+    snprintf(buf, sizeof(buf), "Their game: %s", appdata->rom_name);
+    C2D_TextParse(&their_game_text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&their_game_text);
+
+    snprintf(buf, sizeof(buf), "CRC32: %08lX", appdata->rom_crc32);
+    C2D_TextParse(&their_crc32_text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&their_crc32_text);
+
+    char *filename = strrchr(tVBOpt.ROM_PATH, '/');
+    if (filename) filename++;
+    else filename = tVBOpt.ROM_PATH;
+    snprintf(buf, sizeof(buf), "Your game: %s", filename);
+    char *lastdot = strrchr(buf, '.');
+    if (lastdot) *lastdot = 0;
+    C2D_TextParse(&my_game_text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&my_game_text);
+
+    snprintf(buf, sizeof(buf), "CRC32: %08lX", tVBOpt.CRC32);
+    C2D_TextParse(&my_crc32_text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&my_crc32_text);
+
+    LOOP_BEGIN(multiplayer_error_buttons, 0);
+        C2D_DrawText(&text_multi_no_match, C2D_AlignCenter | C2D_WithColor, 320/2, 20, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&my_game_text, C2D_AlignCenter | C2D_WithColor, 320/2, 55, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&my_crc32_text, C2D_AlignCenter | C2D_WithColor, 320/2, 70, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&their_game_text, C2D_AlignCenter | C2D_WithColor, 320/2, 90, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&their_crc32_text, C2D_AlignCenter | C2D_WithColor, 320/2, 105, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&text_forwarder_nomatch, C2D_AlignCenter | C2D_WithColor, 320/2, 140, 0, 0.5, 0.5, TINT_COLOR);
+    LOOP_END(multiplayer_error_buttons);
+
+    [[gnu::musttail]] return multiplayer_join();
+}
+
+static bool multiplayer_areyousure_version(char *their_version) {
+    char buf[48];
+    snprintf(buf, sizeof(buf), "Their version: %s", their_version);
+    C2D_Text their_version_text;
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_TextParse(&their_version_text, dynamic_textbuf, buf);
+    C2D_TextOptimize(&their_version_text);
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN false
+    LOOP_BEGIN(areyousure_buttons, AREYOUSURE_NO);
+        C2D_DrawText(&text_version_mismatch, C2D_AlignCenter | C2D_WithColor, 320 / 2, 35, 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(&text_your_version, C2D_AlignCenter | C2D_WithColor, 320 / 2, 105, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&their_version_text, C2D_AlignCenter | C2D_WithColor, 320 / 2, 120, 0, 0.5, 0.5, TINT_COLOR);
+        C2D_DrawText(&text_connect_anyway, C2D_AlignCenter | C2D_WithColor, 320 / 2, 140, 0, 0.7, 0.7, TINT_COLOR);
+    LOOP_END(areyousure_buttons);
+    #undef DEFAULT_RETURN
+    #define DEFAULT_RETURN
+    return button == AREYOUSURE_YES;
+}
+
 static void multiplayer_join() {
     udsNetworkScanInfo *networks;
     size_t total_networks;
@@ -1521,13 +1586,17 @@ static void multiplayer_join() {
         C2D_DrawText(&version_text, C2D_AlignCenter | C2D_WithColor, 320/2, 220, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(multiplayer_join_buttons);
     if (button < MULTI_JOIN_COUNT) {
-        NetAppData appdata;
+        // static to aid calls to multiplayer_forwarder_crc32_mismatch
+        static NetAppData appdata;
         size_t real_appdata_size;
         udsGetNetworkStructApplicationData(&networks[button].network, &appdata, sizeof(appdata), &real_appdata_size);
+        appdata.emulator_version[sizeof(appdata.emulator_version) - 1] = 0;
         if (real_appdata_size != sizeof(appdata) || appdata.protocol_version != PROTOCOL_VERSION) {
             udsExit();
             [[gnu::musttail]] return multiplayer_error(0, &text_protocol_mismatch, true);
-        } else if (appdata.emulator_version != GIT_HASH && !areyousure(&text_areyousure_version)) {
+        } else if (tVBOpt.FORWARDER && tVBOpt.CRC32 != appdata.rom_crc32) {
+            [[gnu::musttail]] return multiplayer_forwarder_crc32_mismatch(&appdata);
+        } else if (strcmp(appdata.emulator_version, VERSION) != 0 && !multiplayer_areyousure_version(appdata.emulator_version)) {
             [[gnu::musttail]] return multiplayer_join();
         } else {
             Result res = connect_to_network(&networks[button].network);
@@ -1535,10 +1604,9 @@ static void multiplayer_join() {
                 udsExit();
                 [[gnu::musttail]] return multiplayer_error(res, &text_multi_comm_error, true);
             } else {
-                NetAppData appdata;
-                size_t actual_size;
-                udsGetApplicationData(&appdata, sizeof(appdata), &actual_size);
-                if (appdata.protocol_version != PROTOCOL_VERSION || actual_size != sizeof(appdata)) {
+                udsGetApplicationData(&appdata, sizeof(appdata), &real_appdata_size);
+                if (real_appdata_size != sizeof(appdata) || appdata.protocol_version != PROTOCOL_VERSION) {
+                    local_disconnect();
                     udsExit();
                     [[gnu::musttail]] return multiplayer_error(1, &text_multi_comm_error, true);
                 } else if (game_running && appdata.rom_crc32 == tVBOpt.CRC32) {
@@ -1546,6 +1614,9 @@ static void multiplayer_join() {
                     send_packet->packet_type = PACKET_LOADED;
                     ship_packet(send_packet);
                     [[gnu::musttail]] return multiplayer_ready_room(false, 0);
+                } else if (tVBOpt.FORWARDER) {
+                    local_disconnect();
+                    [[gnu::musttail]] return multiplayer_forwarder_crc32_mismatch(&appdata);
                 } else {
                     [[gnu::musttail]] return multiplayer_prepare_join(0);
                 }
@@ -1623,11 +1694,7 @@ static void multiplayer_prepare_join(int initial_button) {
         C2D_DrawText(&their_game_text, C2D_AlignCenter | C2D_WithColor, 320/2, 90, 0, 0.5, 0.5, TINT_COLOR);
         C2D_DrawText(&their_crc32_text, C2D_AlignCenter | C2D_WithColor, 320/2, 105, 0, 0.5, 0.5, TINT_COLOR);
 
-        if (!tVBOpt.FORWARDER) {
-            C2D_DrawText(&text_dlplay_saving, C2D_AlignRight | C2D_WithColor, 310, 200, 0, 0.5, 0.5, TINT_COLOR);
-        } else {
-            C2D_DrawText(&text_forwarder_nomatch, C2D_AlignCenter | C2D_WithColor, 320/2, 150, 0, 0.5, 0.5, TINT_COLOR);
-        }
+        C2D_DrawText(&text_dlplay_saving, C2D_AlignRight | C2D_WithColor, 310, 200, 0, 0.5, 0.5, TINT_COLOR);
     LOOP_END(multiplayer_prepare_join_buttons);
 
     switch (button) {
@@ -3072,7 +3139,7 @@ static bool areyousure(C2D_Text *message) {
     #undef DEFAULT_RETURN
     #define DEFAULT_RETURN false
     LOOP_BEGIN(areyousure_buttons, AREYOUSURE_NO);
-        C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80 - 40 * (message == &text_areyousure_version), 0, 0.7, 0.7, TINT_COLOR);
+        C2D_DrawText(message, C2D_AlignCenter | C2D_WithColor, 320 / 2, 80, 0, 0.7, 0.7, TINT_COLOR);
     LOOP_END(areyousure_buttons);
     #undef DEFAULT_RETURN
     #define DEFAULT_RETURN
@@ -3535,7 +3602,9 @@ void guiInit(void) {
     STATIC_TEXT(&text_areyousure_reset, "Are you sure you want to reset?")
     STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?")
     STATIC_TEXT(&text_areyousure_leave, "Are you sure you want to\nexit multiplayer?")
-    STATIC_TEXT(&text_areyousure_version, "Your emulator version doesn't\nmatch the host's.\nThis can cause desyncs.\nYour version: " VERSION "\nConnect anyway?")
+    STATIC_TEXT(&text_version_mismatch, "Your emulator version doesn't\nmatch the host's.\nThis can cause desyncs.")
+    STATIC_TEXT(&text_your_version, "Your version: " VERSION)
+    STATIC_TEXT(&text_connect_anyway, "Connect anyway?")
     STATIC_TEXT(&text_protocol_mismatch, "Your emulator version doesn't\nmatch the host's.\nPlease ensure both are updated.\nYour version: " VERSION)
     STATIC_TEXT(&text_savestate_menu, "Savestates")
     STATIC_TEXT(&text_save, "Save")

@@ -39,7 +39,7 @@ typedef struct {
 
 typedef struct {
     u32 protocol_version;
-    u32 emulator_version;
+    char emulator_version[32];
     u32 rom_crc32;
     char rom_name[48];
 } NetAppData;

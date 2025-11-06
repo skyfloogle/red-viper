@@ -124,7 +124,7 @@ Result create_network(void) {
     Result res = udsCreateNetwork(&network, passphrase, sizeof(passphrase), &bindctx, data_channel, UDS_DEFAULT_RECVBUFSIZE);
     NetAppData appdata;
     appdata.protocol_version = PROTOCOL_VERSION;
-    appdata.emulator_version = GIT_HASH;
+    strcpy(appdata.emulator_version, VERSION);
     appdata.rom_crc32 = tVBOpt.CRC32;
 
     char *filename = strrchr(tVBOpt.ROM_PATH, '/');

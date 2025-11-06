@@ -70,7 +70,6 @@ CFLAGS	:=	-g -Wall -Wno-format-truncation -Werror -O2 -mword-relocations -Wswitc
 			-Wno-unused-variable \
 			-ffunction-sections \
 			-DVERSION=\"$(FULL_VERSION)\" \
-			-DGIT_HASH=0x$(GIT_HASH) \
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -D__3DS__ $(EXTRA_CFLAGS)
