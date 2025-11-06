@@ -427,8 +427,11 @@ static void drc_findLastConditionalInst(int pos) {
                 // virtual league baseball 2 uses a shr in busywaits in several places
                 if (i == pos - 1 && i >= 2
                     && inst_cache[i - 2].opcode == V810_OP_MOVHI
+                    && inst_cache[i - 2].reg1 == 0
                     && inst_cache[i - 1].opcode == V810_OP_LD_H
+                    && inst_cache[i - 1].reg1 == inst_cache[i - 2].reg2
                     && inst_cache[i].opcode == V810_OP_SHR_I
+                    && inst_cache[i].reg2 == inst_cache[i - 1].reg2
                     && inst_cache[pos].PC + inst_cache[pos].branch_offset == inst_cache[i - 2].PC
                 ) {
                     save_flags = false;
@@ -436,14 +439,14 @@ static void drc_findLastConditionalInst(int pos) {
                 }
             default:
                 if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
-                    dprintf(1, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+                    dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
                     inst_cache[pos].busywait = true;
                 }
                 return;
         }
     }
     if (busywait && inst_cache[0].PC <= inst_cache[pos].PC + inst_cache[pos].branch_offset) {
-        dprintf(1, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+        dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
         inst_cache[pos].busywait = true;
     }
 }
