@@ -13,6 +13,7 @@ hardware-accelerated renderer to achieve high performance on the 3DS's limited h
 * Fully customizable button mapping, including New 3DS inputs and the Circle Pad Pro
 * Virtual right D-Pad or A/B buttons on the touch screen
 * Configurable color palettes
+* Local wireless multiplayer
 
 ## Installation
 
