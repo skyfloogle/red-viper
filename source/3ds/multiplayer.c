@@ -30,7 +30,10 @@ static volatile u8 sent_id;
 static volatile u8 shippable_packet;
 static u64 last_send_time[SEND_QUEUE_COUNT];
 #define RESEND_TIMEOUT 40
+// note: real max packet size is 0x5c6, but can't update this without a protocol version bump
 #define MAX_PACKET_SIZE (sizeof(Packet) + 4)
+static_assert(sizeof(Packet) <= MAX_PACKET_SIZE);
+static_assert(MAX_PACKET_SIZE <= 0x5c6);
 
 #define TRANSPORT_MASK 0x80
 
