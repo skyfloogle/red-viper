@@ -303,6 +303,13 @@ void v810_reset(void) {
         vb_state->v810_state.irq_handler = &drc_handleInterrupts;
         vb_state->v810_state.reloc_table = &drc_relocTable;
 
+        vb_state->v810_state.next_event_type = EVENT_DISPLAY;
+        for (int i = 0; i < EVENT_COUNT; i++) {
+            if (i != EVENT_DISPLAY) {
+                vb_state->v810_state.event_timestamps[i] = INT32_MAX;
+            }
+        }
+
         vb_state->v810_state.P_REG[0]    =  0x00000000;
         vb_state->v810_state.PC          =  0xFFFFFFF0;
         vb_state->v810_state.S_REG[ECR]  =  0x0000FFF0;
@@ -369,50 +376,52 @@ void v810_reset(void) {
         memcmp(tVBOpt.GAME_ID, "E4VREJ", 6) == 0; // Red Alarm (J)
 }
 
-void predictEvent(bool increment) {
+void updatePrediction(VB_STATE *vb_state, EventType event_type, bool increment) {
+    if (event_type == EVENT_TIMER) {
+        if (vb_state->tHReg.TCR & 0x01) {
+            int ticks = vb_state->tHReg.tCount ? vb_state->tHReg.tCount : vb_state->tHReg.tTHW;
+            if (!(vb_state->tHReg.TCR & 0x10)) ticks = ticks * 5 - vb_state->tHReg.ticks;
+            vb_state->v810_state.event_timestamps[EVENT_TIMER] = ticks * 400 + vb_state->tHReg.lasttime;
+        } else {
+            vb_state->v810_state.event_timestamps[EVENT_TIMER] = INT32_MAX;
+        }
+    } else if (event_type == EVENT_COMM) {
+        if (!is_multiplayer && (vb_state->tHReg.CCR & 0x14) == 0x14) {
+            // single player remote comm should never finish
+            vb_state->v810_state.event_timestamps[EVENT_COMM] = INT32_MAX;
+        } else if (vb_state->tHReg.CCR & 0x04) {
+            vb_state->v810_state.event_timestamps[EVENT_COMM] = vb_state->tHReg.nextcomm;
+        } else {
+            vb_state->v810_state.event_timestamps[EVENT_COMM] = INT32_MAX;
+        }
+    } else if (event_type == EVENT_INPUT) {
+        if (vb_state->tHReg.SCR & 0x02) {
+            vb_state->v810_state.event_timestamps[EVENT_INPUT] = vb_state->tHReg.hwRead + vb_state->tHReg.lastinput;
+        } else {
+            vb_state->v810_state.event_timestamps[EVENT_INPUT] = INT32_MAX;
+        }
+    } else if (event_type == EVENT_SYNC) {
+        vb_state->v810_state.event_timestamps[EVENT_SYNC] = vb_state->tHReg.lastsync + MULTIPLAYER_SYNC_CYCLES;
+    }
+    predictEvent(vb_state, increment);
+}
+
+void predictEvent(VB_STATE *vb_state, bool increment) {
     if (increment) {
         vb_state->v810_state.cycles += vb_state->v810_state.cycles_until_event_full - vb_state->v810_state.cycles_until_event_partial;
     }
 
-    WORD cycles = vb_state->v810_state.cycles;
-    int disptime = cycles - vb_state->tVIPREG.lastdisp;
-    int next_event = 400000 - disptime;
-    if (vb_state->tVIPREG.displaying) {
-        if (disptime < 60000) next_event = 60000 - disptime;
-        else if (disptime < 160000) next_event = 160000 - disptime;
-        else if (disptime < 200000) next_event = 200000 - disptime;
-        else if (disptime < 260000) next_event = 260000 - disptime;
-        else if (disptime < 360000) next_event = 360000 - disptime;
+    EventType next_event_type = 0;
+    int next_event = vb_state->v810_state.event_timestamps[0];
+    for (int i = 1; i < EVENT_COUNT; i++) {
+        if (next_event > vb_state->v810_state.event_timestamps[i]) {
+            next_event = vb_state->v810_state.event_timestamps[i];
+            next_event_type = i;
+        }
     }
-    if (vb_state->tHReg.TCR & 0x01) {
-        int ticks = vb_state->tHReg.tCount ? vb_state->tHReg.tCount : vb_state->tHReg.tTHW;
-        if (!(vb_state->tHReg.TCR & 0x10)) ticks = ticks * 5 - vb_state->tHReg.ticks;
-        int next_timer = ticks * 400 - (cycles - vb_state->tHReg.lasttime);
-        if (next_event > next_timer) next_event = next_timer;
-    }
-    if (vb_state->tHReg.SCR & 2) {
-        int next_input = vb_state->tHReg.hwRead - (cycles - vb_state->tHReg.lastinput);
-        if (next_event > next_input) next_event = next_input;
-    }
-    if (vb_state->tVIPREG.drawing) {
-        int drawtime = cycles - vb_state->tVIPREG.lastdraw;
-        int sboff = (vb_state->tVIPREG.rowcount) * vb_state->tVIPREG.frametime / 28 + 1120;
-        // the maths in serviceDisplayInt is slightly different, so add 1 to compensate
-        int nextrow = (vb_state->tVIPREG.rowcount + 1) * vb_state->tVIPREG.frametime / 28 + 1;
-        int next_draw;
-        if (drawtime < sboff) next_draw = sboff - drawtime;
-        else next_draw = nextrow - drawtime;
-        if (next_event > next_draw) next_event = next_draw;
-    }
-    if (is_multiplayer) {
-        int next_sync = vb_state->tHReg.lastsync + MULTIPLAYER_SYNC_CYCLES - cycles;
-        if (next_event > next_sync) next_event = next_sync;
-    }
-    if (vb_state->tHReg.CCR & 0x04) {
-        // communication underway
-        int next_comm = vb_state->tHReg.nextcomm - cycles;
-        if (next_event > next_comm) next_event = next_comm;
-    }
+
+    vb_state->v810_state.next_event_type = next_event_type;
+    next_event -= vb_state->v810_state.cycles;
 
     if (next_event < 0) next_event = 0;
 
@@ -440,6 +449,7 @@ static bool eventInput(int cycles, WORD PC) {
         if (next_input <= 0) {
             vb_state->tHReg.SCR &= ~2;
             pending_int = true;
+            updatePrediction(vb_state, EVENT_INPUT, false);
         }
     }
     vb_state->tHReg.lastinput = cycles;
@@ -464,6 +474,7 @@ static bool eventTimer(int cycles, WORD PC) {
             vb_state->tHReg.TLB = (vb_state->tHReg.tCount&0xFF);
             vb_state->tHReg.THB = ((vb_state->tHReg.tCount>>8)&0xFF);
         }
+        updatePrediction(vb_state, EVENT_TIMER, false);
     }
     return false;
 }
@@ -471,6 +482,7 @@ static bool eventTimer(int cycles, WORD PC) {
 static bool eventSync(int cycles, WORD PC) {
     if (is_multiplayer && (SWORD)(cycles - vb_state->tHReg.lastsync) >= MULTIPLAYER_SYNC_CYCLES) {
         vb_state->tHReg.lastsync += MULTIPLAYER_SYNC_CYCLES;
+        updatePrediction(vb_state, EVENT_SYNC, false);
         vb_state->v810_state.ret = true;
         return true;
     }
@@ -482,7 +494,8 @@ static bool eventComm(int cycles, WORD PC) {
         // communication underway
         if (!is_multiplayer && (vb_state->tHReg.CCR & 0x14) == 0x14) {
             // single player remote comm should never finish
-            vb_state->tHReg.nextcomm = cycles + 3200;
+            vb_state->tHReg.nextcomm = INT32_MAX;
+            updatePrediction(vb_state, EVENT_COMM, false);
         }
         if ((SWORD)(vb_state->tHReg.nextcomm - cycles) <= 0) {
             // communication complete
@@ -497,6 +510,7 @@ static bool eventComm(int cycles, WORD PC) {
             if (!(vb_state->tHReg.CCSR & 0x80) && ((vb_state->tHReg.CCSR & 0x14) == 0x14 || (vb_state->tHReg.CCSR & 0x14) == 0)) {
                 vb_state->tHReg.ccInt = true;
             }
+            updatePrediction(vb_state, EVENT_COMM, false);
         }
     }
     return false;
@@ -519,6 +533,8 @@ static bool eventDisplay(int cycles, WORD PC) {
             vb_state->tVIPREG.lastdraw = vb_state->tVIPREG.lastdisp;
         }
 
+        vb_state->v810_state.event_timestamps[EVENT_DISPLAY] = vb_state->tVIPREG.displaying ? 60000 : 200000;
+
         if (vb_state->tVIPREG.tFrame-- == 0) {
             vb_state->tVIPREG.tFrame = vb_state->tVIPREG.FRMCYC;
             interrupts |= GAMESTART;
@@ -530,9 +546,12 @@ static bool eventDisplay(int cycles, WORD PC) {
                     vb_state->tVIPREG.drawing = true;
                     vb_state->tVIPREG.XPSTTS = XPEN | ((!vb_state->tVIPREG.tDisplayedFB+1)<<2) | SBOUT;
                     vb_state->tVIPREG.rowcount = 0;
+                    vb_state->v810_state.event_timestamps[EVENT_DRAW] = vb_state->tVIPREG.frametime / 28 + 1;
                 }
             }
         }
+
+        updatePrediction(vb_state, EVENT_DISPLAY, false);
 
         vb_state->tVIPREG.INTPND |= interrupts;
         pending_int = true;
@@ -542,25 +561,36 @@ static bool eventDisplay(int cycles, WORD PC) {
     {
         int dpstts_old = vb_state->tVIPREG.DPSTTS;
         int dpstts_new = dpstts_old;
+        int next_event = vb_state->v810_state.event_timestamps[EVENT_DISPLAY];
         if (disptime >= 200000) {
             // FCLK low (high was handled already)
             dpstts_new &= ~FCLK;
+            next_event = vb_state->tVIPREG.displaying ? 260000 : 400000;
         }
         if (likely(vb_state->tVIPREG.displaying)) {
             if (disptime < 60000) {
             } else if (disptime < 160000) {
                 // LxBSY high
                 dpstts_new |= vb_state->tVIPREG.tDisplayedFB & 1 ? L1BSY : L0BSY;
-            } else if (disptime < 260000) {
+                next_event = 160000;
+            } else if (disptime < 200000) {
                 // LxBSY low
                 dpstts_new &= ~DPBSY;
+                next_event = 200000;
+            } else if (disptime < 260000) {
             } else if (disptime < 360000) {
                 // RxBSY high
                 dpstts_new |= vb_state->tVIPREG.tDisplayedFB & 1 ? R1BSY : R0BSY;
+                next_event = 360000;
             } else {
                 // RxBSY low
                 dpstts_new &= ~DPBSY;
+                next_event = 400000;
             }
+        }
+        if (unlikely(next_event != vb_state->v810_state.event_timestamps[EVENT_DISPLAY])) {
+            vb_state->v810_state.event_timestamps[EVENT_DISPLAY] = next_event;
+            updatePrediction(vb_state, EVENT_DISPLAY, false);
         }
         if (unlikely(dpstts_new != dpstts_old)) {
             vb_state->tVIPREG.DPSTTS = dpstts_new;
@@ -603,6 +633,7 @@ static bool eventDraw(int cycles, WORD PC) {
 
     // XPSTTS management
     if (likely(vb_state->tVIPREG.drawing)) {
+        int next_event = vb_state->v810_state.event_timestamps[EVENT_DRAW];
         int rowcount = drawtime * 28 / vb_state->tVIPREG.frametime;
         if (unlikely(rowcount > vb_state->tVIPREG.rowcount)) {
             pending_int = true;
@@ -614,23 +645,29 @@ static bool eventDraw(int cycles, WORD PC) {
                 if (rowcount == ((vb_state->tVIPREG.XPCTRL >> 8) & 0x1f)) {
                     vb_state->tVIPREG.INTPND |= SBHIT;
                 }
+                next_event = vb_state->tVIPREG.lastdraw + rowcount * vb_state->tVIPREG.frametime / 28 + 1120;
             } else {
                 // finished drawing
                 vb_state->tVIPREG.drawing = false;
                 vb_state->tVIPREG.XPSTTS = 0x1b00 | (vb_state->tVIPREG.XPCTRL & XPEN);
                 vb_state->tVIPREG.INTPND |= XPEND;
+                next_event = INT_MAX;
             }
         } else if (unlikely(rowcount < 28 && drawtime - rowcount * vb_state->tVIPREG.frametime / 28 >= 1120)) {
             // it's been roughly 56 microseconds, so clear SBOUT
             if (vb_state->tVIPREG.XPSTTS | SBOUT) pending_int = true;
             vb_state->tVIPREG.XPSTTS &= ~SBOUT;
+            next_event = vb_state->tVIPREG.lastdraw + (rowcount + 1) * vb_state->tVIPREG.frametime / 28 + 1;
+        }
+        if (next_event != vb_state->v810_state.event_timestamps[EVENT_DRAW]) {
+            vb_state->v810_state.event_timestamps[EVENT_DRAW] = next_event;
+            updatePrediction(vb_state, EVENT_DRAW, false);
         }
     }
 
     return pending_int;
 }
 
-// Returns number of cycles until next timer interrupt.
 int serviceInt(int cycles, WORD PC) {
     bool pending_int = false;
 
@@ -642,12 +679,11 @@ int serviceInt(int cycles, WORD PC) {
             case EVENT_TIMER  : pending_int = eventTimer  (cycles, PC) || pending_int; break;
             case EVENT_SYNC   : pending_int = eventSync   (cycles, PC) || pending_int; break;
             case EVENT_COMM   : pending_int = eventComm   (cycles, PC) || pending_int; break;
+            case EVENT_COUNT: break; // unreachable
         }
     }
 
     pending_int = checkInterrupts(PC) || pending_int;
-
-    predictEvent(false);
 
     return pending_int;
 }
@@ -717,7 +753,9 @@ void v810_exp(WORD iNum, WORD eCode) {
 }
 
 void v810_reset_timings(void) {
+    #ifdef __3DS__
     sound_state.last_cycles -= vb_players[my_player_id].tVIPREG.lastdisp;
+    #endif
     for (int i = 0; i < 2; i++) {
         int off = vb_players[i].tVIPREG.lastdisp;
         vb_players[i].v810_state.cycles -= off;
@@ -727,8 +765,17 @@ void v810_reset_timings(void) {
         }
         vb_players[i].tHReg.lastsync -= off;
         vb_players[i].tHReg.lasttime -= off;
-        vb_players[i].tHReg.nextcomm -= off;
+        if (vb_players[i].tHReg.nextcomm != INT32_MAX)
+            vb_players[i].tHReg.nextcomm -= off;
+        for (int j = 0; j < EVENT_COUNT; j++) {
+            if (vb_players[i].v810_state.event_timestamps[j] != INT32_MAX) {
+                vb_players[i].v810_state.event_timestamps[j] -= off;
+            }
+        }
         vb_players[i].tVIPREG.lastdisp = 0;
+        if (is_multiplayer) {
+            updatePrediction(&vb_players[i], EVENT_SYNC, false);
+        }
     }
 }
 
@@ -739,6 +786,7 @@ int v810_run(void) {
 
     while (true) {
         int ret = 0;
+        if (is_multiplayer) updatePrediction(vb_state, EVENT_SYNC, false);
         #if DRC_AVAILABLE
         if (likely((vb_state->v810_state.PC & 0x07000000) == 0x07000000)) {
             ret = drc_run();
@@ -772,6 +820,7 @@ int v810_run(void) {
                                 // waiting on nothing, so delay until after the next sync
                                 vb_players[i].tHReg.nextcomm = vb_players[i].v810_state.cycles + 8000;
                             }
+                            updatePrediction(&vb_players[i], EVENT_COMM, false);
                         }
                     }
                 }
@@ -796,4 +845,6 @@ void v810_endmultiplayer() {
     emulated_player_id = 0;
     emulating_self = true;
     is_multiplayer = false;
+    vb_players[0].v810_state.event_timestamps[EVENT_SYNC] = INT32_MAX;
+    updatePrediction(vb_state, EVENT_SYNC, false);
 }

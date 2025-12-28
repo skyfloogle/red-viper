@@ -100,8 +100,13 @@ typedef struct {
     int cycles_until_event_full;
     int (*irq_handler)(WORD, WORD*);
     void(*reloc_table)(void);
+    int event_timestamps[EVENT_COUNT];
+    EventType next_event_type;
     BYTE ret;
 } cpu_state;
+
+// forward declaration
+struct VB_STATE_t;
 
 ///////////////////////////////////////////////////////////////////
 // Define CPU Globals
@@ -132,7 +137,9 @@ bool v810_int(WORD iNum, WORD PC);
 // Generate Exception #n
 void v810_exp(WORD iNum, WORD eCode);
 
-void predictEvent(bool increment);
+void updatePrediction(struct VB_STATE_t *vb_state, EventType event_type, bool increment);
+
+void predictEvent(struct VB_STATE_t *vb_state, bool increment);
 
 bool checkInterrupts(WORD PC);
 

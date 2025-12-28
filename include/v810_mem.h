@@ -61,7 +61,7 @@ typedef struct {
 } V810_HREGDAT;
 
 // VB state
-typedef struct {
+typedef struct VB_STATE_t {
     cpu_state v810_state;
     V810_MEMORYFETCH V810_DISPLAY_RAM;
     V810_MEMORYFETCH V810_SOUND_RAM;

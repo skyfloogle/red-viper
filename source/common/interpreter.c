@@ -26,12 +26,14 @@ int interpreter_run(void) {
     // can't do this with PSW because interrupts modify it
     WORD PC = vb_state->v810_state.PC;
     WORD last_PC = PC;
-    WORD cycles = vb_state->v810_state.cycles;
+    int cycles = vb_state->v810_state.cycles;
     BYTE last_opcode = 0;
-    WORD target = cycles;
+    int target = cycles + vb_state->v810_state.cycles_until_event_partial;
     do {
-        if ((SWORD)(target - cycles) <= 0) {
+        if (cycles >= target) {
             vb_state->v810_state.PC = PC;
+            vb_state->v810_state.cycles = cycles;
+            vb_state->v810_state.cycles_until_event_full = vb_state->v810_state.cycles_until_event_partial = 0;
             if (serviceInt(cycles, PC) && (PC != vb_state->v810_state.PC || vb_state->v810_state.ret)) {
                 // interrupt triggered, so we exit
                 // PC may have been modified so don't reset it
@@ -298,7 +300,7 @@ int interpreter_run(void) {
                     if (reg1 < 4) {
                         vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~1) | !res;
                     } else {
-                        vb_state->v810_state.cycles += res;
+                        cycles += res;
                         if (vb_state->v810_state.P_REG[28]) {
                             PC = last_PC;
                         }

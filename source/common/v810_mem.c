@@ -484,20 +484,20 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
     case 0x02000000:    //CCR
         //~ dtprintf(3,ferr,"\nWrite  BYTE HCREG CCR [%08x]:%02x ",addr,data);
         data |= vb_state->tHReg.CCR & 0x04;
-        if (data & 0x04) {
-            if (
+        bool start_comm = ((data & 0x04) && (
                 // begin communication
                 !(vb_state->tHReg.CCR & 0x04) ||
                 // remote -> host
                 ((vb_state->tHReg.CCR & 0x10) && !(data & 0x10))
-            ) {
-                vb_state->tHReg.nextcomm = vb_state->v810_state.cycles + vb_state->v810_state.cycles_until_event_full - vb_state->v810_state.cycles_until_event_partial + 3200;
-            }
-        }
+        ));
         vb_state->tHReg.CCR = ((data|0x69)&0xFD);
         if (data & 0x80) {
             // acknowledge interrupt
             vb_state->tHReg.cInt = false;
+        }
+        if (start_comm) {
+            vb_state->tHReg.nextcomm = vb_state->v810_state.cycles + vb_state->v810_state.cycles_until_event_full - vb_state->v810_state.cycles_until_event_partial + 3200;
+            updatePrediction(vb_state, EVENT_COMM, false);
         }
         break;
     case 0x02000004:    //CCSR
@@ -526,7 +526,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
         vb_state->tHReg.TLB = data;
         vb_state->tHReg.tTHW = (vb_state->tHReg.TLB | (vb_state->tHReg.tTHW & 0xFF00)); //Reset internal count
         vb_state->tHReg.tCount = vb_state->tHReg.tTHW;
-        if (vb_state->tHReg.TCR & 0x01) predictEvent(true);
+        updatePrediction(vb_state, EVENT_TIMER, true);
         //vb_state->tHReg.tTHW = (vb_state->tHReg.TLB | (vb_state->tHReg.THB << 8)); //Reset internal count
         break;
     case 0x0200001C:    //THB
@@ -534,7 +534,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
         vb_state->tHReg.THB = data;
         vb_state->tHReg.tTHW = ((vb_state->tHReg.THB << 8) | (vb_state->tHReg.tTHW & 0xFF)); //Reset internal count
         vb_state->tHReg.tCount = vb_state->tHReg.tTHW;
-        if (vb_state->tHReg.TCR & 0x01) predictEvent(true);
+        updatePrediction(vb_state, EVENT_TIMER, true);
         //vb_state->tHReg.tTHW = (vb_state->tHReg.TLB | (vb_state->tHReg.THB << 8)); //Reset internal count
         break;
     case 0x02000020: {  //TCR
@@ -567,7 +567,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
             }
         }
 
-        predictEvent(true);
+        updatePrediction(vb_state, EVENT_TIMER, true);
 
         break;
     }
@@ -586,7 +586,7 @@ WORD hcreg_wbyte(WORD addr, BYTE data) {
                 vb_state->tHReg.SCR |= 2;
                 vb_state->tHReg.hwRead = 10240;
                 vb_state->tHReg.lastinput = vb_state->v810_state.cycles + vb_state->v810_state.cycles_until_event_full - vb_state->v810_state.cycles_until_event_partial;
-                predictEvent(true);
+                updatePrediction(vb_state, EVENT_INPUT, true);
             }
         } else if(data & 0x20) { //Software Read, same for now....
         }
