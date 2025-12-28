@@ -419,6 +419,19 @@ void predictEvent(bool increment) {
     vb_state->v810_state.cycles_until_event_full = vb_state->v810_state.cycles_until_event_partial = next_event;
 }
 
+bool checkInterrupts(WORD PC) {
+    int interrupt = 0;
+    if (unlikely(vb_state->tVIPREG.INTENB & vb_state->tVIPREG.INTPND)) {
+        interrupt = 4;
+    } else if (unlikely(vb_state->tHReg.cInt || vb_state->tHReg.ccInt)) {
+        interrupt = 3;
+    } else if (unlikely(vb_state->tHReg.tInt)) {
+        interrupt = 1;
+    }
+
+    return interrupt != 0 && v810_int(interrupt, PC);
+}
+
 static int serviceDisplayInt(int cycles, WORD PC);
 
 // Returns number of cycles until next timer interrupt.
@@ -489,14 +502,7 @@ int serviceInt(int cycles, WORD PC) {
         }
     }
 
-    if (vb_state->tHReg.cInt || vb_state->tHReg.ccInt) {
-        pending_int = v810_int(3, PC) || pending_int;
-    }
-
-    if (vb_state->tHReg.tInt) {
-        // zero & interrupt enabled
-        pending_int = v810_int(1, PC) || pending_int;
-    }
+    pending_int = checkInterrupts(PC) || pending_int;
 
     predictEvent(false);
 
@@ -619,11 +625,6 @@ static int serviceDisplayInt(int cycles, WORD PC) {
         }
 
         sound_update(cycles);
-    }
-
-    if (unlikely(vb_state->tVIPREG.INTENB & vb_state->tVIPREG.INTPND)) {
-        v810_int(4, PC);
-        pending_int = 1;
     }
 
     predictEvent(false);

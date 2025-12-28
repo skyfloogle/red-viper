@@ -124,6 +124,8 @@ void v810_exp(WORD iNum, WORD eCode);
 
 void predictEvent(bool increment);
 
+bool checkInterrupts(WORD PC);
+
 int serviceInt(int cycles, WORD PC);
 
 int v810_run(void);
