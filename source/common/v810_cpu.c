@@ -419,10 +419,10 @@ void predictEvent(bool increment) {
     vb_state->v810_state.cycles_until_event_full = vb_state->v810_state.cycles_until_event_partial = next_event;
 }
 
-static int serviceDisplayInt(unsigned int cycles, WORD PC);
+static int serviceDisplayInt(int cycles, WORD PC);
 
 // Returns number of cycles until next timer interrupt.
-int serviceInt(unsigned int cycles, WORD PC) {
+int serviceInt(int cycles, WORD PC) {
     bool pending_int = false;
 
     // hardware read timing
@@ -503,7 +503,7 @@ int serviceInt(unsigned int cycles, WORD PC) {
     return pending_int;
 }
 
-static int serviceDisplayInt(unsigned int cycles, WORD PC) {
+static int serviceDisplayInt(int cycles, WORD PC) {
     int gamestart;
     unsigned int disptime = (cycles - vb_state->tVIPREG.lastdisp);
     bool pending_int = 0;
@@ -695,8 +695,26 @@ void v810_exp(WORD iNum, WORD eCode) {
     }
 }
 
+void v810_reset_timings(void) {
+    sound_state.last_cycles -= vb_players[my_player_id].tVIPREG.lastdisp;
+    for (int i = 0; i < 2; i++) {
+        int off = vb_players[i].tVIPREG.lastdisp;
+        vb_players[i].v810_state.cycles -= off;
+        vb_players[i].tVIPREG.lastdraw -= off;
+        if (vb_players[i].tHReg.SCR & 2) {
+            vb_players[i].tHReg.lastinput -= off;
+        }
+        vb_players[i].tHReg.lastsync -= off;
+        vb_players[i].tHReg.lasttime -= off;
+        vb_players[i].tHReg.nextcomm -= off;
+        vb_players[i].tVIPREG.lastdisp = 0;
+    }
+}
+
 int v810_run(void) {
     vb_state->v810_state.ret = false;
+
+    v810_reset_timings();
 
     while (true) {
         int ret = 0;

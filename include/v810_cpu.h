@@ -85,7 +85,7 @@ typedef struct {
     WORD PC;
     WORD flags;
     WORD except_flags;
-    WORD cycles;
+    int  cycles;
     int cycles_until_event_partial;
     int cycles_until_event_full;
     int (*irq_handler)(WORD, WORD*);
@@ -124,7 +124,7 @@ void v810_exp(WORD iNum, WORD eCode);
 
 void predictEvent(bool increment);
 
-int serviceInt(unsigned int cycles, WORD PC);
+int serviceInt(int cycles, WORD PC);
 
 int v810_run(void);
 

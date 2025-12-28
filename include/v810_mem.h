@@ -26,8 +26,8 @@ typedef struct{
     HWORD BKCOL;
     int frametime;
     // timing
-    WORD lastdisp;
-    WORD lastdraw;
+    int  lastdisp;
+    int  lastdraw;
     BYTE rowcount;
     bool drawing;
     bool displaying;
@@ -42,8 +42,8 @@ typedef struct {
     BYTE TLB;       //Timer Lower Byte,     0x02000018
     BYTE ticks;
     HWORD tTHW;     //Timer TempHWord, 	not publicly visible
-    WORD lasttime;
-    WORD lastinput;
+    int  lasttime;
+    int  lastinput;
     SWORD tCount;  //Timer Counter register, not publicly visible
     bool tInt;
     BYTE SHB;       //Serial Higher Byte,   0x02000014  //Read Only
@@ -56,8 +56,8 @@ typedef struct {
     HWORD hwRead;   //Hardware input read timer
     bool cInt;      //Communication interrupt
     bool ccInt;     //Signal interrupt
-    WORD lastsync;  //Multiplayer emulator sync
-    WORD nextcomm;  //Next communication event
+    int  lastsync;  //Multiplayer emulator sync
+    int  nextcomm;  //Next communication event
 } V810_HREGDAT;
 
 // VB state

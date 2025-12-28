@@ -2380,7 +2380,7 @@ void drc_dumpDebugInfo(int code) {
     for (i = 0; i < 32; i++)
         fprintf(f, "s%d: 0x%08" PRIx32 "\n", i, vb_state->v810_state.S_REG[i]);
 
-    fprintf(f, "Cycles: %" PRIu32 "\n", vb_state->v810_state.cycles);
+    fprintf(f, "Cycles: %d\n", vb_state->v810_state.cycles);
     fprintf(f, "Cache start: %p\n", cache_start);
     fprintf(f, "Cache pos: %p\n", cache_pos);
 

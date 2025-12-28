@@ -35,7 +35,7 @@ block_reg_map:
 
 .data
 
-.extern vb_state, serviceInt, serviceint, tVBOpt
+.extern vb_state, serviceInt, tVBOpt
 
 .text
 
