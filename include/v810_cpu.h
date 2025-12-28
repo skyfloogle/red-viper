@@ -79,6 +79,16 @@ typedef struct {
     WORD highaddr; // end of ram
 } V810_REGFETCH;
 
+typedef enum {
+    EVENT_INPUT,
+    EVENT_TIMER,
+    EVENT_DISPLAY,
+    EVENT_DRAW,
+    EVENT_SYNC,
+    EVENT_COMM,
+    EVENT_COUNT,
+} EventType;
+
 typedef struct {
     WORD P_REG[32]; // Main program reg pr0-pr31
     WORD S_REG[32]; // System registers sr0-sr31

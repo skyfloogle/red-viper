@@ -432,13 +432,8 @@ bool checkInterrupts(WORD PC) {
     return interrupt != 0 && v810_int(interrupt, PC);
 }
 
-static int serviceDisplayInt(int cycles, WORD PC);
-
-// Returns number of cycles until next timer interrupt.
-int serviceInt(int cycles, WORD PC) {
+static bool eventInput(int cycles, WORD PC) {
     bool pending_int = false;
-
-    // hardware read timing
     if (vb_state->tHReg.SCR & 2) {
         int next_input = vb_state->tHReg.hwRead - (cycles - vb_state->tHReg.lastinput);
         vb_state->tHReg.hwRead = next_input;
@@ -448,8 +443,10 @@ int serviceInt(int cycles, WORD PC) {
         }
     }
     vb_state->tHReg.lastinput = cycles;
+    return pending_int;
+}
 
-    // timer
+static bool eventTimer(int cycles, WORD PC) {
     if ((cycles-vb_state->tHReg.lasttime) >= 400) {
         int new_ticks = (cycles - vb_state->tHReg.lasttime) / 400;
         vb_state->tHReg.lasttime += 400 * new_ticks;
@@ -468,24 +465,25 @@ int serviceInt(int cycles, WORD PC) {
             vb_state->tHReg.THB = ((vb_state->tHReg.tCount>>8)&0xFF);
         }
     }
+    return false;
+}
 
-    // graphics has higher priority, so try that first
-    pending_int = serviceDisplayInt(cycles, PC) || pending_int;
-
-    // multiplayer stuff
-    if (is_multiplayer) {
-        if ((SWORD)(cycles - vb_state->tHReg.lastsync) >= MULTIPLAYER_SYNC_CYCLES) {
-            vb_state->tHReg.lastsync += MULTIPLAYER_SYNC_CYCLES;
-            vb_state->v810_state.ret = true;
-            pending_int = true;
-        }
-    } else if ((vb_state->tHReg.CCR & 0x14) == 0x14) {
-        // single player remote comm should never finish
-        vb_state->tHReg.nextcomm = cycles + 3200;
+static bool eventSync(int cycles, WORD PC) {
+    if (is_multiplayer && (SWORD)(cycles - vb_state->tHReg.lastsync) >= MULTIPLAYER_SYNC_CYCLES) {
+        vb_state->tHReg.lastsync += MULTIPLAYER_SYNC_CYCLES;
+        vb_state->v810_state.ret = true;
+        return true;
     }
+    return false;
+}
 
+static bool eventComm(int cycles, WORD PC) {
     if (vb_state->tHReg.CCR & 0x04) {
         // communication underway
+        if (!is_multiplayer && (vb_state->tHReg.CCR & 0x14) == 0x14) {
+            // single player remote comm should never finish
+            vb_state->tHReg.nextcomm = cycles + 3200;
+        }
         if ((SWORD)(vb_state->tHReg.nextcomm - cycles) <= 0) {
             // communication complete
             vb_state->tHReg.cLock = false;
@@ -501,18 +499,13 @@ int serviceInt(int cycles, WORD PC) {
             }
         }
     }
-
-    pending_int = checkInterrupts(PC) || pending_int;
-
-    predictEvent(false);
-
-    return pending_int;
+    return false;
 }
 
-static int serviceDisplayInt(int cycles, WORD PC) {
+static bool eventDisplay(int cycles, WORD PC) {
     int gamestart;
     unsigned int disptime = (cycles - vb_state->tVIPREG.lastdisp);
-    bool pending_int = 0;
+    bool pending_int = false;
 
     if (unlikely(vb_state->tVIPREG.newframe)) {
         // new frame
@@ -542,7 +535,7 @@ static int serviceDisplayInt(int cycles, WORD PC) {
         }
 
         vb_state->tVIPREG.INTPND |= interrupts;
-        pending_int = 1;
+        pending_int = true;
     }
 
     // DPSTTS management
@@ -571,7 +564,7 @@ static int serviceDisplayInt(int cycles, WORD PC) {
         }
         if (unlikely(dpstts_new != dpstts_old)) {
             vb_state->tVIPREG.DPSTTS = dpstts_new;
-            pending_int = 1;
+            pending_int = true;
             if (dpstts_old & DPBSY) {
                 // old status had DPBSY, which necessarily means new one doesn't
                 vb_state->tVIPREG.INTPND |= (dpstts_old & (L0BSY | L1BSY)) ? LFBEND : RFBEND;
@@ -579,13 +572,40 @@ static int serviceDisplayInt(int cycles, WORD PC) {
         }
     }
 
+    if (unlikely(disptime >= 400000)) {
+        // frame end
+        vb_state->tVIPREG.rowcount = 0;
+        vb_state->v810_state.ret = 1;
+        vb_state->tVIPREG.lastdisp += 400000;
+        vb_state->tVIPREG.newframe = true;
+        pending_int = true;
+
+        if (vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing && (vb_state->tVIPREG.XPCTRL & XPEN)) {
+            vb_state->tVIPREG.tDisplayedFB = !vb_state->tVIPREG.tDisplayedFB;
+            if (!tVBOpt.VIP_OVERCLOCK || is_multiplayer) {
+                vb_state->tVIPREG.frametime = videoProcessingTime();
+            } else {
+                // pre-0.9.7 behaviour
+                vb_state->tVIPREG.frametime = 137216;
+            }
+        }
+
+        sound_update(cycles);
+    }
+
+    return pending_int;
+}
+
+static bool eventDraw(int cycles, WORD PC) {
+    bool pending_int = false;
+
     unsigned int drawtime = (cycles-vb_state->tVIPREG.lastdraw);
 
     // XPSTTS management
     if (likely(vb_state->tVIPREG.drawing)) {
         int rowcount = drawtime * 28 / vb_state->tVIPREG.frametime;
         if (unlikely(rowcount > vb_state->tVIPREG.rowcount)) {
-            pending_int = 1;
+            pending_int = true;
             if (rowcount < 28) {
                 // new row mid-frame
                 vb_state->tVIPREG.rowcount = rowcount;
@@ -602,30 +622,30 @@ static int serviceDisplayInt(int cycles, WORD PC) {
             }
         } else if (unlikely(rowcount < 28 && drawtime - rowcount * vb_state->tVIPREG.frametime / 28 >= 1120)) {
             // it's been roughly 56 microseconds, so clear SBOUT
-            if (vb_state->tVIPREG.XPSTTS | SBOUT) pending_int = 1;
+            if (vb_state->tVIPREG.XPSTTS | SBOUT) pending_int = true;
             vb_state->tVIPREG.XPSTTS &= ~SBOUT;
         }
     }
 
-    if (unlikely(disptime >= 400000)) {
-        // frame end
-        vb_state->v810_state.ret = 1;
-        vb_state->tVIPREG.lastdisp += 400000;
-        vb_state->tVIPREG.newframe = true;
-        pending_int = 1;
+    return pending_int;
+}
 
-        if (vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing && (vb_state->tVIPREG.XPCTRL & XPEN)) {
-            vb_state->tVIPREG.tDisplayedFB = !vb_state->tVIPREG.tDisplayedFB;
-            if (!tVBOpt.VIP_OVERCLOCK || is_multiplayer) {
-                vb_state->tVIPREG.frametime = videoProcessingTime();
-            } else {
-                // pre-0.9.7 behaviour
-                vb_state->tVIPREG.frametime = 137216;
-            }
+// Returns number of cycles until next timer interrupt.
+int serviceInt(int cycles, WORD PC) {
+    bool pending_int = false;
+
+    for (int i = 0; i < EVENT_COUNT; i++) {
+        switch (i) {
+            case EVENT_INPUT  : pending_int = eventInput  (cycles, PC) || pending_int; break;
+            case EVENT_DISPLAY: pending_int = eventDisplay(cycles, PC) || pending_int; break;
+            case EVENT_DRAW   : pending_int = eventDraw   (cycles, PC) || pending_int; break;
+            case EVENT_TIMER  : pending_int = eventTimer  (cycles, PC) || pending_int; break;
+            case EVENT_SYNC   : pending_int = eventSync   (cycles, PC) || pending_int; break;
+            case EVENT_COMM   : pending_int = eventComm   (cycles, PC) || pending_int; break;
         }
-
-        sound_update(cycles);
     }
+
+    pending_int = checkInterrupts(PC) || pending_int;
 
     predictEvent(false);
 
