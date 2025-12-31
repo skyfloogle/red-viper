@@ -530,6 +530,7 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
                 } else {
                     vb_state->tVIPREG.drawing = true;
                     vb_state->tVIPREG.XPSTTS = XPEN | ((!vb_state->tVIPREG.tDisplayedFB+1)<<2) | SBOUT;
+                    vb_state->tVIPREG.rowcount = 0;
                 }
             }
         }
@@ -602,7 +603,6 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
 
     if (unlikely(disptime >= 400000)) {
         // frame end
-        vb_state->tVIPREG.rowcount = 0;
         vb_state->v810_state.ret = 1;
         vb_state->tVIPREG.lastdisp += 400000;
         vb_state->tVIPREG.newframe = true;
