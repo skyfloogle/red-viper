@@ -403,28 +403,31 @@ void updatePrediction(VB_STATE *vb_state, EventType event_type, bool increment) 
     } else if (event_type == EVENT_SYNC) {
         vb_state->v810_state.event_timestamps[EVENT_SYNC] = vb_state->tHReg.lastsync + MULTIPLAYER_SYNC_CYCLES;
     }
-    predictEvent(vb_state, increment);
-}
 
-void predictEvent(VB_STATE *vb_state, bool increment) {
+    int next_event;
+    if (vb_state->v810_state.event_timestamps[event_type] - vb_state->v810_state.cycles < vb_state->v810_state.cycles_until_event_full) {
+        vb_state->v810_state.next_event_type = event_type;
+        next_event = vb_state->v810_state.event_timestamps[event_type];
+    } else if (vb_state->v810_state.next_event_type == event_type && vb_state->v810_state.event_timestamps[event_type] - vb_state->v810_state.cycles != vb_state->v810_state.cycles_until_event_full) {
+        EventType next_event_type = 0;
+        next_event = vb_state->v810_state.event_timestamps[0];
+        for (int i = 1; i < EVENT_COUNT; i++) {
+            if (next_event > vb_state->v810_state.event_timestamps[i]) {
+                next_event = vb_state->v810_state.event_timestamps[i];
+                next_event_type = i;
+            }
+        }
+        vb_state->v810_state.next_event_type = next_event_type;
+    } else {
+        return;
+    }
+
     if (increment) {
         vb_state->v810_state.cycles += vb_state->v810_state.cycles_until_event_full - vb_state->v810_state.cycles_until_event_partial;
     }
 
-    EventType next_event_type = 0;
-    int next_event = vb_state->v810_state.event_timestamps[0];
-    for (int i = 1; i < EVENT_COUNT; i++) {
-        if (next_event > vb_state->v810_state.event_timestamps[i]) {
-            next_event = vb_state->v810_state.event_timestamps[i];
-            next_event_type = i;
-        }
-    }
-
-    vb_state->v810_state.next_event_type = next_event_type;
     next_event -= vb_state->v810_state.cycles;
-
     if (next_event < 0) next_event = 0;
-
     vb_state->v810_state.cycles_until_event_full = vb_state->v810_state.cycles_until_event_partial = next_event;
 }
 
