@@ -82,10 +82,10 @@ typedef struct {
 typedef enum {
     EVENT_INPUT,
     EVENT_TIMER,
-    EVENT_DISPLAY,
     EVENT_DRAW,
     EVENT_SYNC,
     EVENT_COMM,
+    EVENT_DISPLAY,
     EVENT_COUNT,
 } EventType;
 

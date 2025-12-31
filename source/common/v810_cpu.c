@@ -456,7 +456,7 @@ static bool eventInput(int cycles, WORD PC) {
     return pending_int;
 }
 
-static bool eventTimer(int cycles, WORD PC) {
+static bool eventTimer(VB_STATE *vb_state, int cycles, WORD PC) {
     if ((cycles-vb_state->tHReg.lasttime) >= 400) {
         int new_ticks = (cycles - vb_state->tHReg.lasttime) / 400;
         vb_state->tHReg.lasttime += 400 * new_ticks;
@@ -671,14 +671,14 @@ static bool eventDraw(int cycles, WORD PC) {
 int serviceInt(int cycles, WORD PC) {
     bool pending_int = false;
 
-    for (int i = 0; i < EVENT_COUNT; i++) {
-        switch (i) {
+    while (vb_state->v810_state.cycles_until_event_partial <= 0) {
+        switch (vb_state->v810_state.next_event_type) {
             case EVENT_INPUT  : pending_int = eventInput  (cycles, PC) || pending_int; break;
-            case EVENT_DISPLAY: pending_int = eventDisplay(cycles, PC) || pending_int; break;
             case EVENT_DRAW   : pending_int = eventDraw   (cycles, PC) || pending_int; break;
-            case EVENT_TIMER  : pending_int = eventTimer  (cycles, PC) || pending_int; break;
+            case EVENT_TIMER  : pending_int = eventTimer  (vb_state, cycles, PC) || pending_int; break;
             case EVENT_SYNC   : pending_int = eventSync   (cycles, PC) || pending_int; break;
             case EVENT_COMM   : pending_int = eventComm   (cycles, PC) || pending_int; break;
+            case EVENT_DISPLAY: pending_int = eventDisplay(cycles, PC) || pending_int; if (vb_state->tVIPREG.newframe) return true; break;
             case EVENT_COUNT: break; // unreachable
         }
     }
@@ -783,6 +783,11 @@ int v810_run(void) {
     vb_state->v810_state.ret = false;
 
     v810_reset_timings();
+
+    // timer is always running but not always active, so run it once a frame just to make sure it's not totally dead
+    for (int i = 0; i < 2; i++) {
+        eventTimer(&vb_players[i], vb_players[i].v810_state.cycles, vb_players[i].v810_state.PC);
+    }
 
     while (true) {
         int ret = 0;
