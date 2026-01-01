@@ -1,6 +1,6 @@
 VERSION_MAJOR := 1
 VERSION_MINOR := 2
-VERSION_MICRO := 0
+VERSION_MICRO := 1
 VERSION := v${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
 
 #---------------------------------------------------------------------------------
