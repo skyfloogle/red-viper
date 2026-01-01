@@ -34,3 +34,4 @@ drc_relocTable:
 .word       ins_rev
 .word       drc_clearScreenForGolf
 .word       baseball2_scaling
+.word       baseball2_sort

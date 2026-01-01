@@ -444,6 +444,32 @@ void baseball2_scaling(WORD in_img, WORD out_img, WORD scale_fixed) {
     }
 }
 
+void baseball2_sort(void) {
+    u8 ids[13];
+    typedef struct {
+        WORD padding1;
+        HWORD key;
+        HWORD padding2[sizeof(ids)];
+    } SortableItem;
+    SortableItem *out = (SortableItem*)(vb_state->V810_VB_RAM.pmemory + 0x93a0);
+    SortableItem originals[sizeof(ids)];
+    memcpy(originals, out, sizeof(originals));
+    for (int i = 0; i < sizeof(ids); i++) ids[i] = i;
+    // insertion sort
+    for (int i = 1; i < sizeof(ids); i++) {
+        u8 x = ids[i];
+        u8 key = originals[x].key;
+        int j;
+        for (j = i; j > 0 && originals[ids[j - 1]].key > key; j--) {
+            ids[j] = ids[j - 1];
+        }
+        ids[j] = x;
+    }
+    for (int i = 0; i < sizeof(ids); i++) {
+        memcpy(&out[i], &originals[ids[i]], sizeof(out[i]));
+    }
+}
+
 // Workaround for an issue where the CPSR is modified outside of the block
 // before a conditional branch.
 // Sets save_flags for all unconditional instructions prior to a branch.
@@ -876,6 +902,19 @@ static int drc_translateBlock(void) {
             BLX(ARM_COND_AL, 2);
         }
 
+        // In Virtual League Baseball 2's overhead view, the draw order of the
+        // fielders is sorted very inefficiently: each fielder is a 32-byte
+        // object, and every swap in the sort swaps the entire set of 32 bytes.
+        // Replace with code that sorts the same array much more efficiently.
+        if (unlikely(is_baseball_2 && inst_cache[i].PC == 0x07007428)) {
+            LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
+            LDR_IO(2, 2, DRC_RELOC_BALLSORT*4);
+            BLX(ARM_COND_AL, 2);
+            // skip to after sorting code
+            inst_cache[i].branch_offset = 0x070074b8 - 0x07007428;
+            B(ARM_COND_AL, 0);
+        }
+
         // Waterworld hack: slow down the sample at the start.
         // This roughly emulates register hazards to a certain extent,
         // with some tweaks to bring it as close as possible to a hardware recording.
@@ -953,7 +992,8 @@ static int drc_translateBlock(void) {
             {
                 arm_inst *branch_to_tweak = NULL;
                 if (unlikely(is_baseball_2 && inst_cache[i].PC + inst_cache[i].branch_offset == 0x070077ca)) {
-                    // In the overhead view, the fielders are scaled in software.
+                    // In the overhead view in Virtual League Baseball 2,
+                    // the fielders are scaled in software.
                     // This algorithm is slow when recompiled, so we override it
                     // with a faster native implementation.
 
