@@ -367,6 +367,83 @@ void drc_clearScreenForGolf(void) {
 #endif
 }
 
+// baseball 2 sprite cache
+#define BASEBALL2_SPRITES_COUNT 440
+static bool baseball2_sprites_is_unpacked[BASEBALL2_SPRITES_COUNT];
+static BYTE baseball2_sprites_unpacked[BASEBALL2_SPRITES_COUNT][32][32];
+
+void baseball2_scaling(WORD in_img, WORD out_img, WORD scale_fixed) {
+    // The input/output format is 4x4 tiles
+    void *in_ptr = (void*)(V810_ROM1.off + in_img);
+    void *out_ptr = (void*)(vb_state->V810_VB_RAM.off + out_img);
+
+    // Get cached sprite if possible
+    unsigned sprite_id = (in_img >> 8) - 0x734;
+    BYTE (*in_unpacked)[32];
+    bool is_unpacked;
+    if ((in_img & 0xff) == 0x18 && sprite_id < BASEBALL2_SPRITES_COUNT) {
+        in_unpacked = baseball2_sprites_unpacked[sprite_id];
+        is_unpacked = baseball2_sprites_is_unpacked[sprite_id];
+    } else {
+        static BYTE tmp[32][32];
+        in_unpacked = tmp;
+        is_unpacked = false;
+    }
+    if (!is_unpacked) {
+        // Cached doesn't exist, so unpack input image
+        for (int ty = 0; ty < 4; ty++) {
+            for (int tx = 0; tx < 4; tx++) {
+                for (int y = 0; y < 8; y++) {
+                    HWORD row = ((HWORD*)in_ptr)[ty*8*4+tx*8+y];
+                    for (int x = 0; x < 8; x++) {
+                        in_unpacked[ty*8+y][tx*8+x] = (row >> (x*2)) & 3;
+                    }
+                }
+            }
+        }
+    }
+
+    // Pre-compute x offsets
+    int xcount = 32;
+    BYTE x_offsets[32];
+    for (int i = 0; i < 32; i++) {
+        unsigned x_offset = (i * scale_fixed) >> 16;
+        if (x_offset >= 32) {
+            xcount = i;
+            break;
+        }
+        x_offsets[i] = x_offset;
+    }
+
+    // Scale
+    static BYTE out_unpacked[32][32];
+    memset(out_unpacked, 0, sizeof(out_unpacked));
+    for (
+        unsigned y = 0, scaled_y_fp = 0, scaled_y = 0;
+        y < 32 && scaled_y < 32;
+        y++, scaled_y_fp += scale_fixed, scaled_y = scaled_y_fp >> 16
+    ) {
+        unsigned scaled_y = scaled_y_fp >> 16;
+        for (unsigned x = 0; x < xcount; x++) {
+            unsigned scaled_x = x_offsets[x];
+            out_unpacked[y][x] = in_unpacked[scaled_y][scaled_x];
+        }
+    }
+    
+    // Re-pack into output
+    for (int ty = 0; ty < 4; ty++) {
+        for (int tx = 0; tx < 4; tx++) {
+            for (int y = 0; y < 8; y++) {
+                HWORD row = 0;
+                for (int x = 0; x < 8; x++) {
+                    row |= out_unpacked[ty*8+y][tx*8+x] << (x*2);
+                }
+                ((HWORD*)out_ptr)[ty*8*4+tx*8+y] = row;
+            }
+        }
+    }
+}
+
 // Workaround for an issue where the CPSR is modified outside of the block
 // before a conditional branch.
 // Sets save_flags for all unconditional instructions prior to a branch.
@@ -674,6 +751,7 @@ static int drc_translateBlock(void) {
     bool is_virtual_lab = memcmp(tVBOpt.GAME_ID, "AHVJVJ", 6) == 0;
     bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
     bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    bool is_baseball_2 = memcmp(tVBOpt.GAME_ID, "7FVVQE", 6) == 0 && V810_ROM1.size >= 0x100000; // size check for memory safety
     bool is_space_invaders = memcmp(tVBOpt.GAME_ID, "C0VSPJ", 6) == 0;
     bool is_jack_bros = memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0;
     bool chcw_load_seen = (vb_state->v810_state.S_REG[CHCW] & 2) != 0;
@@ -769,6 +847,10 @@ static int drc_translateBlock(void) {
         } else if(r != arm_reg2) { \
             MOV(r, arm_reg2); \
         }
+    
+    #define LOAD_REG(arm,vb) \
+        if (!phys_regs[vb]) LDR_IO(arm, 11, offsetof(cpu_state, P_REG[vb])); \
+        else MOV(arm, phys_regs[vb]);
 
     #define SAVE_REG2(r) \
         if (arm_reg2 < 4) STR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2])); \
@@ -868,6 +950,30 @@ static int drc_translateBlock(void) {
                 }
                 break;
             case V810_OP_JAL: // jal disp26
+            {
+                arm_inst *branch_to_tweak = NULL;
+                if (unlikely(is_baseball_2 && inst_cache[i].PC + inst_cache[i].branch_offset == 0x070077ca)) {
+                    // In the overhead view, the fielders are scaled in software.
+                    // This algorithm is slow when recompiled, so we override it
+                    // with a faster native implementation.
+
+                    // Verify that our values make sense, otherwise revert to original
+                    LOAD_REG(0, 17);
+                    LOAD_REG(1, 18);
+                    MOV_IS(2, 0, ARM_SHIFT_LSR, 20);
+                    CMP_I(2, 0x70, 0);
+                    Boff(ARM_COND_NE, 9);
+                    MOV_IS(2, 1, ARM_SHIFT_LSR, 16);
+                    CMP_I(2, 0x5, 24);
+                    Boff(ARM_COND_NE, 6);
+                    // Do HLE
+                    LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
+                    LDR_IO(3, 3, DRC_RELOC_BALLSCALE*4);
+                    LOAD_REG(2, 19);
+                    BLX(ARM_COND_AL, 3);
+                    branch_to_tweak = inst_ptr;
+                    Boff(ARM_COND_AL, 0);
+                }
                 if (is_space_invaders && inst_cache[i].PC == 0x07007fb6) {
                     // Make sure the Space Invaders intro FMV runs at the correct speed (ish).
                     // Value determined through trial and error.
@@ -886,7 +992,10 @@ static int drc_translateBlock(void) {
                     STR_IO(1, 11, offsetof(cpu_state, P_REG[31]));
                 ADDCYCLES();
                 POP(1 << 15);
+                // fix the skip if needed
+                if (branch_to_tweak) branch_to_tweak->b_bl.imm = inst_ptr - branch_to_tweak - 2;
                 break;
+            }
             case V810_OP_RETI:
                 LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
                 TST_I(0, PSW_NP >> 8, 24);
@@ -2226,6 +2335,7 @@ void drc_init(void) {
 
 void drc_reset(void) {
     memset(rom_data_code_map, 0, sizeof(rom_data_code_map[0])*(BLOCK_MAP_COUNT >> 3));
+    memset(baseball2_sprites_is_unpacked, 0, sizeof(baseball2_sprites_is_unpacked));
     drc_clearCache();
 }
 

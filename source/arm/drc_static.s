@@ -1,7 +1,7 @@
 .arm
 .align 4
 
-.extern __divsi3, __modsi3, __udivsi3, __umodsi3, mem_rbyte, mem_rhword, mem_rword, mem_wbyte, mem_whword, mem_wword, ins_err, ins_rev, drc_clearScreenForGolf
+.extern __divsi3, __modsi3, __udivsi3, __umodsi3, mem_rbyte, mem_rhword, mem_rword, mem_wbyte, mem_whword, mem_wword, ins_err, ins_rev, drc_clearScreenForGolf, baseball2_scaling
 
 .text
 @ A cheap relocation table
@@ -33,3 +33,4 @@ drc_relocTable:
 .word       ins_notbsu
 .word       ins_rev
 .word       drc_clearScreenForGolf
+.word       baseball2_scaling

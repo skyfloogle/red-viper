@@ -44,6 +44,7 @@ enum {
     DRC_RELOC_BSTR      = 8,
     DRC_RELOC_REV       = 24,
     DRC_RELOC_GOLFHACK  = 25,
+    DRC_RELOC_BALLSCALE = 26,
 };
 
 #define END_BLOCK 0xFF
