@@ -195,7 +195,6 @@ int main(void) {
             if (guiop & VBRESET) {
                 V810_RControll(true);
                 v810_reset();
-                drc_reset();
                 clearCache();
                 frame = 0;
             }

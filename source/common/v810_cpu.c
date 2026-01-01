@@ -367,6 +367,10 @@ void v810_reset(void) {
         memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0 || // Jack Bros. (J)
         memcmp(tVBOpt.GAME_ID, "01VREE", 6) == 0 || // Red Alarm (U)
         memcmp(tVBOpt.GAME_ID, "E4VREJ", 6) == 0; // Red Alarm (J)
+
+    #if DRC_AVAILABLE
+    drc_reset();
+    #endif
 }
 
 void predictEvent(bool increment) {
