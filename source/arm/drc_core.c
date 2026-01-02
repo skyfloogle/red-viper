@@ -367,9 +367,11 @@ void drc_clearScreenForGolf(void) {
 #endif
 }
 
-// baseball 2 sprite cache
-#define BASEBALL2_SPRITES_COUNT 440
+// Baseball 2 unpacked sprite cache. Not strictly required for performance,
+// but since we're HLE'ing this anyway, might as well.
+#define BASEBALL2_SPRITES_COUNT 512
 static bool baseball2_sprites_is_unpacked[BASEBALL2_SPRITES_COUNT];
+static WORD baseball2_sprites_address[BASEBALL2_SPRITES_COUNT];
 static BYTE baseball2_sprites_unpacked[BASEBALL2_SPRITES_COUNT][32][32];
 
 void baseball2_scaling(WORD in_img, WORD out_img, WORD scale_fixed) {
@@ -378,19 +380,13 @@ void baseball2_scaling(WORD in_img, WORD out_img, WORD scale_fixed) {
     void *out_ptr = (void*)(vb_state->V810_VB_RAM.off + out_img);
 
     // Get cached sprite if possible
-    unsigned sprite_id = (in_img >> 8) - 0x734;
-    BYTE (*in_unpacked)[32];
-    bool is_unpacked;
-    if ((in_img & 0xff) == 0x18 && sprite_id < BASEBALL2_SPRITES_COUNT) {
-        in_unpacked = baseball2_sprites_unpacked[sprite_id];
-        is_unpacked = baseball2_sprites_is_unpacked[sprite_id];
-    } else {
-        static BYTE tmp[32][32];
-        in_unpacked = tmp;
-        is_unpacked = false;
-    }
+    unsigned sprite_id = (in_img >> 8) % BASEBALL2_SPRITES_COUNT;
+    BYTE (*in_unpacked)[32] = baseball2_sprites_unpacked[sprite_id];
+    bool is_unpacked = baseball2_sprites_is_unpacked[sprite_id] && baseball2_sprites_address[sprite_id] == in_img;
     if (!is_unpacked) {
         // Cached doesn't exist, so unpack input image
+        baseball2_sprites_is_unpacked[sprite_id] = true;
+        baseball2_sprites_address[sprite_id] = in_img;
         for (int ty = 0; ty < 4; ty++) {
             for (int tx = 0; tx < 4; tx++) {
                 for (int y = 0; y < 8; y++) {
