@@ -160,6 +160,8 @@ int main(void) {
             }
         }
 
+        if (aptShouldClose()) break;
+
         hidScanInput();
         int keys = hidKeysDown();
 
@@ -226,6 +228,8 @@ int main(void) {
                     }
                 }
             }
+
+            if (aptShouldClose()) break;
 
             input_buffer_tail = 0;
             input_buffer_head[0] = input_buffer_head[1] = 0;
@@ -359,6 +363,8 @@ int main(void) {
             }
             input_buffer_head[my_player_id] = (input_buffer_head[my_player_id] + 1) % INPUT_BUFFER_SIZE;
         }
+
+        if (aptShouldClose()) break;
 
         // read inputs from buffer
         for (int p = 0; p < 2; p++) {
