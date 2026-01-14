@@ -423,6 +423,7 @@ exit:
     sound_close();
     if (save_thread) threadJoin(save_thread, U64_MAX);
     endThreads();
+    local_disconnect();
     video_quit();
     drc_exit();
     v810_exit();

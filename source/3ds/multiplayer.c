@@ -15,6 +15,7 @@
 
 static udsNetworkStruct network;
 static udsBindContext bindctx;
+static bool net_initialized = false;
 static const u32 wlancommID = 0x2d23bfdb;
 static u8 net_id = 0;
 static u8 data_channel = 1;
@@ -114,6 +115,7 @@ static void init_ids(void) {
     svcClearEvent(sent_event);
     recv_thread_handle = threadCreate(recv_thread, NULL, 4000, 0x19, 1, true);
     send_thread_handle = threadCreate(send_thread, NULL, 4000, 0x19, 1, true);
+    net_initialized = true;
 }
 
 Result create_network(void) {
@@ -163,6 +165,8 @@ Result connect_to_network(const udsNetworkStruct *network) {
 
 void local_disconnect(void) {
     static udsConnectionStatus status;
+    if (!net_initialized) return;
+    net_initialized = false;
     svcSignalEvent(end_event);
     udsGetConnectionStatus(&status);
     threadJoin(send_thread_handle, 100000000);
