@@ -164,6 +164,7 @@ static void setRegularDrawing(void) {
 	C3D_TexBind(2, &palette_mask);
 
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset, 0, 0, 0, 0);
 	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal1tex, 8), pal1tex, sizeof(pal1tex));
 	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal2tex, 8), pal2tex, sizeof(pal2tex));
 	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal3col, 8), pal3col, sizeof(pal3col));
@@ -425,10 +426,6 @@ void video_hard_render(int drawn_fb) {
 		if (!(windows[wnd * 16] & 0xc000))
 			continue;
 		int vcount = 0;
-		
-		#define DRAW_VBUF \
-			if (vcur - vbuf > VBUF_SIZE) dprintf(0, "VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE); \
-			if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 
 		if ((windows[wnd * 16] & 0x3000) != 0x3000) {
 			// background world
@@ -818,7 +815,8 @@ void video_hard_render(int drawn_fb) {
 			}
 			object_group_id = (object_group_id - 1) & 3;
 			
-			DRAW_VBUF;
+			if (vcur - vbuf > VBUF_SIZE) dprintf(0, "VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
+			if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
 		}
 	}
 
