@@ -471,13 +471,13 @@ void baseball2_sort(void) {
 // Sets save_flags for all unconditional instructions prior to a branch.
 static void drc_findLastConditionalInst(int pos) {
     bool save_flags = true, busywait = inst_cache[pos].branch_offset <= 0 && inst_cache[pos].opcode != V810_OP_SETF;
-    int i;
-    for (i = pos - 1; i >= 0; i--) {
-        if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
-            dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
-            inst_cache[pos].busywait = true;
-            busywait = false;
-        }
+    if (inst_cache[pos].branch_offset == 0) {
+        // catch edge case of block that starts with branch to self
+        dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+        inst_cache[pos].busywait = true;
+        busywait = false;
+    }
+    for (int i = pos - 1; i >= 0; i--) {
         switch (inst_cache[i].opcode) {
             case V810_OP_LD_W:
             case V810_OP_IN_W:
@@ -543,6 +543,11 @@ static void drc_findLastConditionalInst(int pos) {
                 }
             default:
                 return;
+        }
+        if (busywait && inst_cache[i].PC <= inst_cache[pos].PC + inst_cache[pos].branch_offset) {
+            dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+            inst_cache[pos].busywait = true;
+            busywait = false;
         }
     }
 }
