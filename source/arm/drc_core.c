@@ -476,6 +476,7 @@ static void drc_findLastConditionalInst(int pos) {
         if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
             dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
             inst_cache[pos].busywait = true;
+            busywait = false;
         }
         switch (inst_cache[i].opcode) {
             case V810_OP_LD_W:
