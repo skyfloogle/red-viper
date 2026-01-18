@@ -473,6 +473,10 @@ static void drc_findLastConditionalInst(int pos) {
     bool save_flags = true, busywait = inst_cache[pos].branch_offset <= 0 && inst_cache[pos].opcode != V810_OP_SETF;
     int i;
     for (i = pos - 1; i >= 0; i--) {
+        if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
+            dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
+            inst_cache[pos].busywait = true;
+        }
         switch (inst_cache[i].opcode) {
             case V810_OP_LD_W:
             case V810_OP_IN_W:
@@ -537,16 +541,8 @@ static void drc_findLastConditionalInst(int pos) {
                     break;
                 }
             default:
-                if (busywait && inst_cache[i].PC < inst_cache[pos].PC + inst_cache[pos].branch_offset) {
-                    dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
-                    inst_cache[pos].busywait = true;
-                }
                 return;
         }
-    }
-    if (busywait && inst_cache[0].PC <= inst_cache[pos].PC + inst_cache[pos].branch_offset) {
-        dprintf(0, "busywait at %lx to %lx\n", inst_cache[pos].PC, inst_cache[pos].PC + inst_cache[pos].branch_offset);
-        inst_cache[pos].busywait = true;
     }
 }
 
@@ -568,6 +564,10 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
         highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
         lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
         highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
+
+        if (cur_PC == 0x07004e1a) {
+            dprintf(0, "iaupsdfhjasdjklfhasdlf %lx", cur_PC);
+        }
 
         inst_cache[i].PC = cur_PC;
         inst_cache[i].save_flags = false;
