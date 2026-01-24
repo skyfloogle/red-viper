@@ -351,7 +351,7 @@ void video_flush(bool default_for_both) {
 	if (!default_for_both) orig_eye = tVBOpt.DEFAULT_EYE;
 	if (eye_count == 2) default_for_both = false;
 
-	if (tDSPCACHE.ColumnTableInvalid)
+	if (tDSPCACHE.ColumnTableInvalid || (minRepeat != maxRepeat && tDSPCACHE.BrtPALMod))
 		processColumnTable();
 
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
@@ -471,6 +471,10 @@ void video_flush(bool default_for_both) {
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	for (int i = 0; i <= 5; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
+
+	// cleanup
+	tDSPCACHE.ColumnTableInvalid = false;
+	tDSPCACHE.BrtPALMod = false;
 }
 
 void video_quit(void) {

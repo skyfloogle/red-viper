@@ -820,8 +820,6 @@ void video_hard_render(int drawn_fb) {
 		}
 	}
 
-	// cleanup
-	tDSPCACHE.BrtPALMod = false;
 	// invalidate any unused bgmaps
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		if (!tileMapCache[i].used) tileMapCache[i].bg = -1;
