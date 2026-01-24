@@ -3762,9 +3762,9 @@ void toggleVsync(bool enable) {
 }
 
 void toggleAnaglyph(bool enable, bool also_update_vsync) {
-    tVBOpt.ANAGLYPH = enable;
     // updating 3d mode resets VTotal, so turn off VSync in advance to fix the cache
     if (also_update_vsync) toggleVsync(false);
+    tVBOpt.ANAGLYPH = enable;
     gfxSet3D(!enable);
     if (!also_update_vsync) return;
     // push 1 frame and wait for VBlank to reset VTotal
