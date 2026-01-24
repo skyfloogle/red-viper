@@ -50,8 +50,7 @@ int main(void) {
     Handle nothingEvent = 0;
     svcCreateEvent(&nothingEvent, 0);
 
-    // gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false); // legacy renderer
-    gfxInitDefault(); // hardware renderer
+    gfxInit(GSP_RGBA8_OES, GSP_BGR8_OES, false);
     fsInit();
     archiveMountSdmc();
     romfsInit();

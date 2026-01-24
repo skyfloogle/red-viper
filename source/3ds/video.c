@@ -150,7 +150,7 @@ static int get_colour(int id, int brt_reg) {
 void video_init(void) {
     #define DISPLAY_TRANSFER_FLAGS                                                                     \
         (GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |               \
-        GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
+        GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGBA8) | \
         GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
 
@@ -212,7 +212,7 @@ void video_init(void) {
 	// The 3DS has two 3MB VRAM banks, so for this to work, 3 framebuffers must go into one bank.
 	// However, the allocator alternates between banks, so we need to allocate those first,
 	// before even the final render targets.
-	finalScreen = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, -1);
+	finalScreen = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, -1);
 
 	// render one frame on the top screen and vsync to update vtotal
 	C3D_FrameBegin(0);
