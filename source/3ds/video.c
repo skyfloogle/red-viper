@@ -110,7 +110,7 @@ HWORD V810_RControll(bool reset) {
     return ret_keys;
 }
 
-C3D_RenderTarget *finalScreen[2];
+C3D_RenderTarget *finalScreen;
 
 static float *final_vbuf;
 static uint32_t *coltable_vbuf;
@@ -212,15 +212,16 @@ void video_init(void) {
 	// The 3DS has two 3MB VRAM banks, so for this to work, 3 framebuffers must go into one bank.
 	// However, the allocator alternates between banks, so we need to allocate those first,
 	// before even the final render targets.
-	finalScreen[0] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, -1);
-	C3D_RenderTargetSetOutput(finalScreen[0], GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
-	finalScreen[1] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, -1);
-	C3D_RenderTargetSetOutput(finalScreen[1], GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
+	finalScreen = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, -1);
 
 	// render one frame on the top screen and vsync to update vtotal
 	C3D_FrameBegin(0);
-	C3D_FrameDrawOn(finalScreen[0]);
-	C3D_RenderTargetClear(finalScreen[0], C3D_CLEAR_COLOR, 0, 0);
+	C3D_FrameDrawOn(finalScreen);
+	C3D_RenderTargetClear(finalScreen, C3D_CLEAR_COLOR, 0, 0);
+	// citro3d automatically sets the right flags if the top right screen is updated
+	// so manually transfer to left, automatically transfer to right
+	C3D_FrameBufTransfer(&finalScreen->frameBuf, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
+	C3D_RenderTargetSetOutput(finalScreen, GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
 	C3D_FrameEnd(0);
 	gspWaitForVBlank();
 
@@ -450,15 +451,34 @@ void video_flush(bool default_for_both) {
 
 	C3D_AlphaTest(false, GPU_GREATER, 0);
 
-	for (int dst_eye = 0; dst_eye < (default_for_both ? 2 : eye_count); dst_eye++) {
+	int dst_eye_count = default_for_both ? 2 : eye_count;
+
+	for (int dst_eye = 0; dst_eye < dst_eye_count; dst_eye++) {
 		int src_eye = default_for_both ? orig_eye : !tVBOpt.ANAGLYPH && CONFIG_3D_SLIDERSTATE == 0 ? tVBOpt.DEFAULT_EYE : dst_eye;
 		if (tVBOpt.ANAGLYPH) {
 			C3D_DepthTest(false, GPU_ALWAYS, (src_eye ? tVBOpt.ANAGLYPH_RIGHT : tVBOpt.ANAGLYPH_LEFT) | GPU_WRITE_ALPHA);
 		}
 		float depthOffset = getDepthOffset(default_for_both, dst_eye, tVBOpt.SLIDERMODE);
-		C3D_RenderTarget *target = finalScreen[dst_eye && !tVBOpt.ANAGLYPH];
-		C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
-		C3D_FrameDrawOn(target);
+
+		// citro3d automatically sets all the right flags if the right eye is updated
+		// so if we're drawing both eyes, manually transfer the left eye
+		// that way they can share a framebuffer
+
+		if (dst_eye == 1 && !tVBOpt.ANAGLYPH) {
+			// we just rendered left eye and we're about to do the right eye
+			// so transfer that manually and automatically transfer the right eye
+			C3D_FrameSplit(0);
+			C3D_FrameBufTransfer(&finalScreen->frameBuf, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
+			C3D_RenderTargetSetOutput(NULL, GFX_TOP, GFX_LEFT, 0);
+			C3D_RenderTargetSetOutput(finalScreen, GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
+		} else if (dst_eye_count == 1) {
+			// no right eye, so automatically transfer to left
+			C3D_RenderTargetSetOutput(finalScreen, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
+			C3D_RenderTargetSetOutput(NULL, GFX_TOP, GFX_RIGHT, 0);
+		}
+
+		C3D_RenderTargetClear(finalScreen, C3D_CLEAR_ALL, 0, 0);
+		C3D_FrameDrawOn(finalScreen);
 		C3D_SetViewport(viewportY, viewportX+depthOffset, VIEWPORT_HEIGHT, VIEWPORT_WIDTH);
 		C3D_FVUnifSet(GPU_GEOMETRY_SHADER, uLoc.shading_offset, (src_eye ? 0.5 : 0) + 1/256.0, 0, 0, 0);
 		C3D_DrawArrays(GPU_GEOMETRY_PRIM, src_eye*96, 96);
