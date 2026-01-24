@@ -183,7 +183,7 @@ void setDefaults(void) {
     vbkey[__builtin_ctz(KEY_ZL)] = VB_KEY_B;
     vbkey[__builtin_ctz(KEY_ZR)] = VB_KEY_A;
 
-    toggleAnaglyph(false, false);
+    toggleAnaglyph(false);
 #endif
 }
 
@@ -250,7 +250,7 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->DPAD_MODE = atoi(value) % 3;
     } else if (MATCH("anaglyph", "enabled")) {
         #ifdef __3DS__
-        toggleAnaglyph(atoi(value), false);
+        toggleAnaglyph(atoi(value));
         #endif
     } else if (MATCH("anaglyph", "left")) {
         tVBOpt.ANAGLYPH_LEFT = atoi(value);

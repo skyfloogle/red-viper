@@ -61,7 +61,7 @@ void showError(int code);
 
 bool guiShouldPause(void);
 void toggleVsync(bool enable);
-void toggleAnaglyph(bool enable, bool also_update_vsync);
+void toggleAnaglyph(bool enable);
 int guiGetInput(bool ingame);
 void setPresetControls(bool button);
 void setCustomControls(void);

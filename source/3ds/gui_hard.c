@@ -3004,7 +3004,7 @@ static void video_settings(int initial_button) {
     LOOP_END(video_settings_buttons);
     switch (button) {
         case VIDEO_MODE:
-            toggleAnaglyph(!tVBOpt.ANAGLYPH, true);
+            toggleAnaglyph(!tVBOpt.ANAGLYPH);
             tVBOpt.MODIFIED = true;
             [[gnu::musttail]] return video_settings(button);
         case VIDEO_SETTINGS:
@@ -3738,6 +3738,8 @@ void openPeerDisconnectMenu(void) {
     inMenu = false;
 }
 
+static bool vsync_enabled = false;
+
 void toggleVsync(bool enable) {
     // setup the thread
     endThread(frame_pacer_thread);
@@ -3753,27 +3755,27 @@ void toggleVsync(bool enable) {
         startPeriodic(frame_pacer_thread, 20000000, false);
     }
     // update VTotal only when necessary
-    static bool old_enable = false;
-    if (enable == old_enable) return;
-    old_enable = enable;
+    if (enable == vsync_enabled) return;
+    vsync_enabled = enable;
     gspWaitForVBlank();
     GSPGPU_WriteHWRegs(0x400424, &vtotal_top, 4);
     GSPGPU_WriteHWRegs(0x400524, &vtotal_bottom, 4);
 }
 
-void toggleAnaglyph(bool enable, bool also_update_vsync) {
+void toggleAnaglyph(bool enable) {
+    bool old_vsync = vsync_enabled;
     // updating 3d mode resets VTotal, so turn off VSync in advance to fix the cache
-    if (also_update_vsync) toggleVsync(false);
+    if (old_vsync) toggleVsync(false);
     tVBOpt.ANAGLYPH = enable;
     gfxSet3D(!enable);
-    if (!also_update_vsync) return;
+    if (!old_vsync) return;
     // push 1 frame and wait for VBlank to reset VTotal
     C3D_FrameBegin(0);
     video_flush(true);
     C3D_FrameEnd(0);
     gspWaitForVBlank();
     // re-enable VSync if applicable
-    toggleVsync(tVBOpt.VSYNC);
+    toggleVsync(old_vsync);
 }
 
 void aptBacklight(APT_HookType hook, void* param) {
