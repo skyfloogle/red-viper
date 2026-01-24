@@ -124,6 +124,8 @@ static C3D_ProcTexColorLut procTexColorLut;
 uint8_t maxRepeat = 0, minRepeat = 0;
 C3D_Tex columnTableTexture;
 
+uint32_t columnTableSoft[2][96][3];
+
 u8 brightness_lut[256];
 
 int eye_count = 2;
@@ -262,6 +264,10 @@ void processColumnTable(void) {
 
 				coltable_proctex[t*96+i+1] = col_b;
 				coltable_vbuf[t*96+i] = col_c;
+
+				columnTableSoft[t][i][0] = __builtin_bswap32(col_a);
+				columnTableSoft[t][i][1] = __builtin_bswap32(col_b);
+				columnTableSoft[t][i][2] = __builtin_bswap32(col_c);
 			}
 		}
 		// 1 pixel from the leftmost entry still leaks in
@@ -352,9 +358,6 @@ float getDepthOffset(bool default_for_both, int eye, bool full_parallax) {
 static int orig_eye = 0;
 
 static void video_flush_hard(bool default_for_both) {
-	if (tDSPCACHE.ColumnTableInvalid || (minRepeat != maxRepeat && tDSPCACHE.BrtPALMod))
-		processColumnTable();
-
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_FLOAT, 4);
@@ -491,10 +494,6 @@ static void video_flush_hard(bool default_for_both) {
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	for (int i = 0; i <= 5; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
-
-	// cleanup
-	tDSPCACHE.ColumnTableInvalid = false;
-	tDSPCACHE.BrtPALMod = false;
 }
 
 static void video_flush_soft(bool default_for_both) {
@@ -507,13 +506,14 @@ static void video_flush_soft(bool default_for_both) {
 		(u32*)gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL),
 	};
 
-	// TODO column table
 	u32 colors[4] = {
 		__builtin_bswap32(get_colour(0, 0)),
-		__builtin_bswap32(get_colour(1, vb_state->tVIPREG.BRTA)),
-		__builtin_bswap32(get_colour(2, vb_state->tVIPREG.BRTB)),
-		__builtin_bswap32(get_colour(3, vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC)),
+		__builtin_bswap32(get_colour(1, vb_state->tVIPREG.BRTA * maxRepeat)),
+		__builtin_bswap32(get_colour(2, vb_state->tVIPREG.BRTB * maxRepeat)),
+		__builtin_bswap32(get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * maxRepeat)),
 	};
+
+	bool use_column_table = minRepeat != maxRepeat;
 	
 	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
 	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
@@ -532,6 +532,11 @@ static void video_flush_soft(bool default_for_both) {
 		outbuf[dst_eye] += 224;
 
 		for (int x = 0; x < 384; x++) {
+			if (use_column_table && x % 4 == 0) {
+				colors[1] = columnTableSoft[src_eye][x / 4][0];
+				colors[2] = columnTableSoft[src_eye][x / 4][1];
+				colors[3] = columnTableSoft[src_eye][x / 4][2];
+			}
 			for (int ty = 0; ty < 224 / 16; ty++) {
 				u32 intile = *inbuf[src_eye]++;
 				for (int p = 0; p < 16; p++) {
@@ -558,11 +563,18 @@ void video_flush(bool default_for_both) {
 	if (!default_for_both) orig_eye = tVBOpt.DEFAULT_EYE;
 	if (eye_count == 2) default_for_both = false;
 
+	if (tDSPCACHE.ColumnTableInvalid || (minRepeat != maxRepeat && tDSPCACHE.BrtPALMod))
+		processColumnTable();
+
 	// note: soft flush is also incompatible with antiflicker
-	if (!USE_SOFT_FLUSH || tVBOpt.RENDERMODE != RM_CPUONLY || tVBOpt.ANAGLYPH || minRepeat != maxRepeat)
+	if (!USE_SOFT_FLUSH || tVBOpt.RENDERMODE != RM_CPUONLY || tVBOpt.ANAGLYPH)
 		video_flush_hard(default_for_both);
 	else
 		video_flush_soft(default_for_both);
+
+	// cleanup
+	tDSPCACHE.ColumnTableInvalid = false;
+	tDSPCACHE.BrtPALMod = false;
 }
 
 void video_quit(void) {
