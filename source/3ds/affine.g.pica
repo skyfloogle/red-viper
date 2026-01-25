@@ -64,7 +64,7 @@
     mul outtc2.xy, bgmap_offsets[1].zw, r3.xy
     emit
 
-    ; bottom left
+    ; bottom right
     setemit 0, prim inv
     mov r0.x, v0.z
     mov outpos, r0

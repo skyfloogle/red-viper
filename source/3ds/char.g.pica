@@ -9,7 +9,6 @@
 ; v0: top left pos
 ; v1: xy: top left texcoord, z: palette
 ; v2: bottom right pos
-; v3: color (read: palette)
 
 .out outpos position
 .out outtc0 texcoord0
