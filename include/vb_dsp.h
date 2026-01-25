@@ -162,6 +162,8 @@ extern int blankTile;
 
 #ifdef __3DS__
 
+int video_get_colour(int id, int brt_reg);
+
 // video_hard
 extern C3D_Tex screenTexHard[2];
 extern C3D_RenderTarget *screenTargetHard[2];
@@ -171,8 +173,10 @@ void update_texture_cache_hard(void);
 
 // video_soft
 extern C3D_Tex screenTexSoft[2];
+extern uint32_t columnTableSoft[2][96][3];
 void video_soft_init(void);
 void video_soft_to_texture(int displayed_fb);
+void video_soft_to_fb(u32 *outbuf, int displayed_fb, int src_eye, bool use_column_table, bool additive);
 
 #endif
 

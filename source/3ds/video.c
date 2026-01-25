@@ -124,13 +124,11 @@ static C3D_ProcTexColorLut procTexColorLut;
 uint8_t maxRepeat = 0, minRepeat = 0;
 C3D_Tex columnTableTexture;
 
-uint32_t columnTableSoft[2][96][3];
-
 u8 brightness_lut[256];
 
 int eye_count = 2;
 
-static int get_colour(int id, int brt_reg) {
+int video_get_colour(int id, int brt_reg) {
 	if (id == 0) {
 		return tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.MTINT[tVBOpt.MULTIID][0] : 0;
 	}
@@ -253,9 +251,9 @@ void processColumnTable(void) {
 		uint8_t *tex = C3D_Tex2DGetImagePtr(&columnTableTexture, 0, NULL);
 		for (int t = 0; t < 2; t++) {
 			for (int i = 0; i < 96; i++) {
-				int col_a = get_colour(1, vb_state->tVIPREG.BRTA * (1 + table[t * 512 + (255 - i) * 2]));
-				int col_b = get_colour(2, vb_state->tVIPREG.BRTB * (1 + table[t * 512 + (255 - i) * 2]));
-				int col_c = get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]));
+				int col_a = video_get_colour(1, vb_state->tVIPREG.BRTA * (1 + table[t * 512 + (255 - i) * 2]));
+				int col_b = video_get_colour(2, vb_state->tVIPREG.BRTB * (1 + table[t * 512 + (255 - i) * 2]));
+				int col_c = video_get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * (1 + table[t * 512 + (255 - i) * 2]));
 
 				u8 *px = &tex[(128*8*t+((((i+1) & ~0xf) << 3) | (((i+1) & 8) << 3) | (((i+1) & 4) << 2) | (((i+1) & 2) << 1) | ((i+1) & 1))) * 3];
 				px[2] = (col_a) & 0xff;
@@ -412,11 +410,11 @@ static void video_flush_hard(bool default_for_both) {
 	C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
 	C3D_TexEnvBufUpdate(C3D_RGB, 1 << 2);
 
-	C3D_TexEnvBufColor(get_colour(0, 0));
+	C3D_TexEnvBufColor(video_get_colour(0, 0));
 	env = C3D_GetTexEnv(3);
 	C3D_TexEnvInit(env);
 	if (minRepeat == maxRepeat)
-		C3D_TexEnvColor(env, get_colour(1, vb_state->tVIPREG.BRTA * maxRepeat));
+		C3D_TexEnvColor(env, video_get_colour(1, vb_state->tVIPREG.BRTA * maxRepeat));
 	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_TEXTURE2, GPU_PREVIOUS_BUFFER, GPU_PREVIOUS);
 	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_R);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
@@ -424,7 +422,7 @@ static void video_flush_hard(bool default_for_both) {
 	env = C3D_GetTexEnv(4);
 	C3D_TexEnvInit(env);
 	if (minRepeat == maxRepeat)
-		C3D_TexEnvColor(env, get_colour(2, vb_state->tVIPREG.BRTB * maxRepeat));
+		C3D_TexEnvColor(env, video_get_colour(2, vb_state->tVIPREG.BRTB * maxRepeat));
 	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_TEXTURE3, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER);
 	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_G);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
@@ -432,7 +430,7 @@ static void video_flush_hard(bool default_for_both) {
 	env = C3D_GetTexEnv(5);
 	C3D_TexEnvInit(env);
 	if (minRepeat == maxRepeat)
-		C3D_TexEnvColor(env, get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * maxRepeat));
+		C3D_TexEnvColor(env, video_get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * maxRepeat));
 	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_PRIMARY_COLOR, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER);
 	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_B);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
@@ -507,10 +505,10 @@ static void video_flush_soft(bool default_for_both) {
 	};
 
 	u32 colors[4] = {
-		__builtin_bswap32(get_colour(0, 0)),
-		__builtin_bswap32(get_colour(1, vb_state->tVIPREG.BRTA * maxRepeat)),
-		__builtin_bswap32(get_colour(2, vb_state->tVIPREG.BRTB * maxRepeat)),
-		__builtin_bswap32(get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * maxRepeat)),
+		__builtin_bswap32(video_get_colour(0, 0)),
+		__builtin_bswap32(video_get_colour(1, vb_state->tVIPREG.BRTA * maxRepeat)),
+		__builtin_bswap32(video_get_colour(2, vb_state->tVIPREG.BRTB * maxRepeat)),
+		__builtin_bswap32(video_get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * maxRepeat)),
 	};
 
 	bool use_column_table = minRepeat != maxRepeat;
@@ -527,30 +525,10 @@ static void video_flush_soft(bool default_for_both) {
 		u32 *outbuf_end = outbuf[dst_eye] + (400 * 240);
 		outbuf[dst_eye] += (viewportX + depth_offset) * (240);
 		outbuf[dst_eye] += viewportY;
-		
-		// we step the column backwards, so skip to end
-		outbuf[dst_eye] += 224;
 
-		for (int x = 0; x < 384; x++) {
-			if (use_column_table && x % 4 == 0) {
-				colors[1] = columnTableSoft[src_eye][x / 4][0];
-				colors[2] = columnTableSoft[src_eye][x / 4][1];
-				colors[3] = columnTableSoft[src_eye][x / 4][2];
-			}
-			for (int ty = 0; ty < 224 / 16; ty++) {
-				u32 intile = *inbuf[src_eye]++;
-				for (int p = 0; p < 16; p++) {
-					*--outbuf[dst_eye] = colors[intile & 3];
-					intile >>= 2;
-				}
-			}
-			// inbuf is 256 tall = 32 extra pixels
-			inbuf[src_eye] += 2;
-			// skip from start of one to end of next
-			outbuf[dst_eye] += (TOP_SCREEN_HEIGHT + VIEWPORT_HEIGHT);
-		}
+		video_soft_to_fb(outbuf[dst_eye], g_displayed_fb, src_eye, use_column_table, dst_eye == 1);
 
-		outbuf[dst_eye] -= VIEWPORT_HEIGHT;
+		outbuf[dst_eye] += VIEWPORT_WIDTH * TOP_SCREEN_HEIGHT;
 		if (outbuf[dst_eye] < outbuf_end) {
 			memset(outbuf[dst_eye], 0, (outbuf_end - outbuf[dst_eye]) * 4);
 		}
@@ -567,7 +545,7 @@ void video_flush(bool default_for_both) {
 		processColumnTable();
 
 	// note: soft flush is also incompatible with antiflicker
-	if (!USE_SOFT_FLUSH || tVBOpt.RENDERMODE != RM_CPUONLY || tVBOpt.ANAGLYPH)
+	if (!USE_SOFT_FLUSH || tVBOpt.RENDERMODE != RM_CPUONLY)
 		video_flush_hard(default_for_both);
 	else
 		video_flush_soft(default_for_both);
