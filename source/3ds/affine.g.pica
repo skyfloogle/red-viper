@@ -6,9 +6,9 @@
 ; base required z and w
 .constf myconst(0.0, 0.0, -1.0, 1.0)
 
-; v0: (left,top,right,bottom) pos
-; v1: (u,v,u,v) texcoord origin
-; v2: (ix,iy,jx,jy) texcoord basis
+; v0: (left,top,right,bottom) pos (already transposed)
+; v1: (u,v,u,v) texcoord origin (not transposed yet)
+; v2: (ix,iy,jx,jy) texcoord basis (not transposed yet)
 
 .out outpos position
 .out outtc0 texcoord0
@@ -29,10 +29,10 @@
     mov outpos, r0
 
     add r3, bgmap_offsets[0], v1
-    mov outtc0.xy, r3.xy
-    mov outtc1.xy, r3.zw
+    mov outtc0.xy, r3.yx
+    mov outtc1.xy, r3.wz
     add r3.xy, bgmap_offsets[1].xy, v1.xy
-    mul outtc2.xy, bgmap_offsets[1].zw, r3.xy
+    mul outtc2.xy, bgmap_offsets[1].wz, r3.yx
     emit
 
     ; top right
@@ -44,10 +44,10 @@
     add r2.xyzw, r1.xyzw, v2.xyxy
 
     add r3, bgmap_offsets[0], r2
-    mov outtc0.xy, r3.xy
-    mov outtc1.xy, r3.zw
+    mov outtc0.xy, r3.yx
+    mov outtc1.xy, r3.wz
     add r3.xy, bgmap_offsets[1].xy, r2.xy
-    mul outtc2.xy, bgmap_offsets[1].zw, r3.xy
+    mul outtc2.xy, bgmap_offsets[1].wz, r3.yx
     emit
 
     ; bottom left
@@ -58,10 +58,10 @@
     add r1.xyzw, r1.xyzw, v2.zwzw
 
     add r3, bgmap_offsets[0], r1
-    mov outtc0.xy, r3.xy
-    mov outtc1.xy, r3.zw
+    mov outtc0.xy, r3.yx
+    mov outtc1.xy, r3.wz
     add r3.xy, bgmap_offsets[1].xy, r1.xy
-    mul outtc2.xy, bgmap_offsets[1].zw, r3.xy
+    mul outtc2.xy, bgmap_offsets[1].wz, r3.yx
     emit
 
     ; bottom right
@@ -72,10 +72,10 @@
     add r2.xyzw, r1.xyzw, v2.xyxy
 
     add r3, bgmap_offsets[0], r2
-    mov outtc0.xy, r3.xy
-    mov outtc1.xy, r3.zw
+    mov outtc0.xy, r3.yx
+    mov outtc1.xy, r3.wz
     add r3.xy, bgmap_offsets[1].xy, r2.xy
-    mul outtc2.xy, bgmap_offsets[1].zw, r3.xy
+    mul outtc2.xy, bgmap_offsets[1].wz, r3.yx
     emit
 
     end

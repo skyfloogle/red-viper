@@ -1,6 +1,6 @@
 .constf const1(0.00390625, 0.00390625, 0.000244140625, -1.0)
 
-; v0: (left,top,right,bottom) pos
+; v0: (left,top,right,bottom) pos (transposed)
 ; v1: (u,v) texcoord origin
 ; v2: (ix,iy,jx,jy) texcoord basis
 
@@ -13,12 +13,12 @@
     ; position: 0..size -> -1..1
     mov r0, const1.xyxy
     mad r0.xyzw, r0.xyxy, v0.xyzw, const1.wwww
-    mov outpos, r0
+    mov outpos.xyzw, r0.yxwz
     ; texcoord origin: 0..size -> 0..1
     mul r1.xyzw, const1.zzzz, v1.xyxy
     mov outtc0, r1
     ; texcoord basis: 0..size -> 0..1
     mul r2.xyzw, const1.zzzz, v2.xyzw
-    mov outmat, r2
+    mov outmat.xyzw, r2.zwxy
     end
 .end

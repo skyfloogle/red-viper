@@ -332,7 +332,8 @@ static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures
 		if (vbufs[eye] != NULL) {
 			int gx = base_gx + (eye == 0 ? -gp : gp);
 			
-			C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, 256 * eye + (gy >= 0 ? gy : 0), gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
+			// note: transposed
+			C3D_SetScissor(GPU_SCISSOR_NORMAL, 256 * eye + (gy >= 0 ? gy : 0), gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
 			C3D_DrawArrays(GPU_GEOMETRY_PRIM, vbufs[eye] - avbuf, h);
 		}
 	}
@@ -375,15 +376,16 @@ void video_hard_render(int drawn_fb) {
 	C3D_TexEnvInit(C3D_GetTexEnv(2));
 
 	C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
+	// note: output position is transposed
 	// left
 	if (start_eye == 0) {
-		C3D_ImmSendAttrib(384.0/256-1, 224.0/256-1, -1, -1);
+		C3D_ImmSendAttrib(224.0/256-1, 384.0/256-1, -1, -1);
 		C3D_ImmSendAttrib(0, 0, 0, 0);
 		C3D_ImmSendAttrib(0, 0, 0, 0);
 	}
 	// right
 	if (end_eye == 2) {
-		C3D_ImmSendAttrib(384.0/256-1, 224.0/256, -1, 0);
+		C3D_ImmSendAttrib(224.0/256, 384.0/256-1, 0, -1);
 		C3D_ImmSendAttrib(0, 0, 0, 0);
 		C3D_ImmSendAttrib(0, 0, 0, 0);
 	}
@@ -537,7 +539,8 @@ void video_hard_render(int drawn_fb) {
 							offset_x / 256.0,
 							eye, 0, 0);
 
-						C3D_SetScissor(GPU_SCISSOR_NORMAL, gx >= 0 ? gx : 0, (gy >= 0 ? gy : 0) + 256 * eye, gx + w, (gy + h < 256 ? gy + h : 256) + 256 * eye);
+						// note: transposed
+						C3D_SetScissor(GPU_SCISSOR_NORMAL, (gy >= 0 ? gy : 0) + 256 * eye, gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
 
 						C3D_DrawArrays(GPU_GEOMETRY_PRIM, vstart - vbuf, vcount);
 

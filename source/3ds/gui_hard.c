@@ -717,8 +717,9 @@ static void draw_logo(void) {
     
     for (int i = 0; i < 2; i++) {
         C2D_SceneBegin(screenTargetHard[i]);
-        C2D_ViewScale(1, -1);
-        C2D_ViewTranslate(0, -512);
+        C2D_ViewScale(-1, -1);
+        C2D_ViewRotateDegrees(90);
+        C2D_ViewTranslate(-512, 0);
         C2D_DrawSprite(&splash_left);
         C2D_DrawSprite(&splash_right);
     }

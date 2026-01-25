@@ -14,9 +14,9 @@
 ; v0: (left,top) pos
 ; v1: (left,top,palette,orient) texcoord
 
-.out outpos1 dummy
+.out outpos1 dummy ; transposed
 .out outtc0 dummy
-.out outpos2 dummy
+.out outpos2 dummy ; transposed
 
 .entry vmain_char
 .proc vmain_char
@@ -27,9 +27,9 @@
     mov r1, posscale
     mad r0.xy, r0.xy, v0.xy, posscale.zz
     add r0.xy, offset.xy, r0.xy
-    add r1.xy, orients[a0.x].xy, r0.xy
+    add r1.xy, orients[a0.x].yx, r0.yx
     mov outpos1, r1
-    add r1.xy, orients[a0.x].zw, r0.xy
+    add r1.xy, orients[a0.x].wz, r0.yx
     mov outpos2, r1
     ; outtex: 0..size -> 0..1
     mul r1, const2, v1
