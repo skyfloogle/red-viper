@@ -1372,7 +1372,7 @@ static int drc_translateBlock(void) {
                 MRS(0);
                 LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
                 PUSH(1 << 0);
-                LDR_IO(2, 2, DRC_RELOC_IDIVMOD*4);
+                LDR_IO(2, 2, DRC_RELOC_UIDIVMOD*4);
 
                 RELOAD_REG2(0);
                 RELOAD_REG1(1);
