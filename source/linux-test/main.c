@@ -16,6 +16,7 @@
 #include "vb_dsp.h"
 #include "vb_sound.h"
 VB_DSPCACHE tDSPCACHE;
+void video_download_vip(int drawn_fb) {}
 
 #if DRC_AVAILABLE
 #else

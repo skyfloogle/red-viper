@@ -46,6 +46,7 @@ enum VB_KCFG {
 typedef enum {
     RM_GPUONLY, // VIP only.
     RM_TOGPU, // Mix CPU and hardware VIP graphics on GPU.
+    RM_TOCPU, // Copy GPU VIP to CPU.
     RM_CPUONLY, // Software VIP.
 } RENDERMODE_t;
 

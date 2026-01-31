@@ -132,6 +132,7 @@ int videoProcessingTime(void);
 
 void video_init(void);
 void video_render(int displayed_fb, bool on_time);
+void video_download_vip(int drawn_fb);
 void video_flush(bool left_for_both);
 void video_quit(void);
 
@@ -168,7 +169,7 @@ int video_get_colour(int id, int brt_reg);
 extern C3D_Tex screenTexHard[2];
 extern C3D_RenderTarget *screenTargetHard[2];
 void video_hard_init(void);
-void video_hard_render(int drawn_fb);
+void video_hard_render(int drawn_fb, int previous_transfer_count);
 void update_texture_cache_hard(void);
 
 // video_soft

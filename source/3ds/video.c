@@ -277,13 +277,18 @@ void processColumnTable(void) {
 static int g_displayed_fb = 0;
 static int vip_displayed_fb = 0;
 
+static int previous_transfer_count;
+
 void video_render(int displayed_fb, bool on_time) {
+	previous_transfer_count = 0;
 	if (tVBOpt.ANTIFLICKER && on_time) video_flush(false);
+
+	if (tVBOpt.RENDERMODE == RM_TOCPU) video_download_vip(displayed_fb);
 	
 	g_displayed_fb = displayed_fb;
 	vip_displayed_fb = tVBOpt.DOUBLE_BUFFER ? displayed_fb : 0;
 
-	if (tVBOpt.RENDERMODE == RM_TOGPU || (tVBOpt.RENDERMODE == RM_CPUONLY && !USE_SOFT_FLUSH)) {
+	if (tVBOpt.RENDERMODE == RM_TOGPU || ((tVBOpt.RENDERMODE == RM_TOCPU || tVBOpt.RENDERMODE == RM_CPUONLY) && !USE_SOFT_FLUSH)) {
 		// postproc (can be done early)
 		video_soft_to_texture(displayed_fb);
 	}
@@ -301,7 +306,7 @@ void video_render(int displayed_fb, bool on_time) {
 	AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 4);
 	AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4);
 
-	eye_count = tVBOpt.ANAGLYPH || CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
+	eye_count = tVBOpt.ANAGLYPH || tVBOpt.RENDERMODE == RM_TOCPU || CONFIG_3D_SLIDERSTATE > 0.0f ? 2 : 1;
 
 	if (vb_state->tVIPREG.XPCTRL & XPEN) {
 		if (tDSPCACHE.CharCacheInvalid) {
@@ -312,7 +317,7 @@ void video_render(int displayed_fb, bool on_time) {
 		}
 
 		if (tVBOpt.RENDERMODE != RM_CPUONLY) {
-			video_hard_render(tVBOpt.DOUBLE_BUFFER ? !displayed_fb : 0);
+			video_hard_render(tVBOpt.DOUBLE_BUFFER ? !displayed_fb : 0, previous_transfer_count);
 		} else {
 			C3D_RenderTargetClear(screenTargetHard[!vip_displayed_fb], C3D_CLEAR_ALL, 0, 0);
 			video_soft_render(!displayed_fb);
@@ -369,7 +374,7 @@ static void video_flush_hard(bool default_for_both) {
 
 	C3D_TexEnv *env;
 	// If drawing VIP on top of softbuf, create a mask of the VIP graphics by adding all 3 channels.
-	if (tVBOpt.RENDERMODE != RM_CPUONLY && (tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR && tVBOpt.VIP_OVER_SOFT)) {
+	if (tVBOpt.RENDERMODE != RM_TOCPU && tVBOpt.RENDERMODE != RM_CPUONLY && (tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR && tVBOpt.VIP_OVER_SOFT)) {
 		env = C3D_GetTexEnv(0);
 		C3D_TexEnvInit(env);
 		C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, 0);
@@ -393,7 +398,7 @@ static void video_flush_hard(bool default_for_both) {
 	// Draw the softbuf onto the VIP, or vice versa.
 	env = C3D_GetTexEnv(2);
 	C3D_TexEnvInit(env);
-	if (tVBOpt.RENDERMODE != RM_CPUONLY) {
+	if (tVBOpt.RENDERMODE != RM_TOCPU && tVBOpt.RENDERMODE != RM_CPUONLY) {
 		C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_TEXTURE1, GPU_TEXTURE1);
 		if (tDSPCACHE.DDSPDataState[g_displayed_fb] != GPU_CLEAR) {
 			if (tVBOpt.VIP_OVER_SOFT) {
@@ -470,6 +475,7 @@ static void video_flush_hard(bool default_for_both) {
 			// so transfer that manually and automatically transfer the right eye
 			C3D_FrameSplit(0);
 			C3D_FrameBufTransfer(&finalScreen->frameBuf, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
+			previous_transfer_count++;
 			C3D_RenderTargetSetOutput(NULL, GFX_TOP, GFX_LEFT, 0);
 			C3D_RenderTargetSetOutput(finalScreen, GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
 		} else if (dst_eye_count == 1) {
@@ -545,7 +551,7 @@ void video_flush(bool default_for_both) {
 		processColumnTable();
 
 	// note: soft flush is also incompatible with antiflicker
-	if (!USE_SOFT_FLUSH || tVBOpt.RENDERMODE != RM_CPUONLY)
+	if (!USE_SOFT_FLUSH || (tVBOpt.RENDERMODE != RM_CPUONLY && tVBOpt.RENDERMODE != RM_TOCPU))
 		video_flush_hard(default_for_both);
 	else
 		video_flush_soft(default_for_both);

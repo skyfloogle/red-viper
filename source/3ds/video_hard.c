@@ -12,6 +12,7 @@
 
 #include <tex3ds.h>
 #include "palette_mask_t3x.h"
+#include "palette_mask_tocpu_t3x.h"
 #include "map1x1_t3x.h"
 #include "map1x2_t3x.h"
 #include "map1x4_t3x.h"
@@ -47,7 +48,7 @@ typedef struct {
 AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
 
 static C3D_Tex affine_masks[4][4];
-static C3D_Tex palette_mask;
+static C3D_Tex palette_mask, palette_mask_tocpu;
 
 static C3D_FVec pal1tex[8] = {0}, pal2tex[8] = {0}, pal3col[8] = {0};
 static C3D_FVec char_offset;
@@ -68,6 +69,49 @@ typedef struct {
 static vertex *vbuf, *vcur;
 #define AVBUF_SIZE 4096 * 8
 static avertex *avbuf, *avcur;
+
+// 224 works on hardware but breaks in azahar
+#define DOWNLOADED_FRAMEBUFFER_WIDTH 256
+static uint16_t *rgba4_framebuffers;
+
+static LightEvent transfer_event;
+
+static volatile int ppfCount = 0;
+static bool downloaded = false;
+static void ppfCallback(void *data) {
+	if (AtomicIncrement(&ppfCount) < 2) LightEvent_Signal(&transfer_event);
+}
+
+void video_download_vip(int drawn_fb) {
+	if (tVBOpt.RENDERMODE != RM_TOCPU) return;
+	if (downloaded) return;
+	downloaded = true;
+	while (ppfCount < 0) LightEvent_Wait(&transfer_event);
+	int eye = 0;
+	while (eye < 2) {
+		if (ppfCount < eye) LightEvent_Wait(&transfer_event);
+		uint16_t *in_fb = rgba4_framebuffers + (384 * DOWNLOADED_FRAMEBUFFER_WIDTH) * eye;
+		uint32_t *out_fb = (uint32_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
+		GSPGPU_FlushDataCache(in_fb, 384*DOWNLOADED_FRAMEBUFFER_WIDTH*2);
+		for (int x = 0; x < 384; x++) {
+			for (int y = 0; y < 224; y += (32/2)) {
+				uint32_t buf = 0;
+				for (int i = 0; i < (32/2); i++) {
+					buf |= (*in_fb++ >> 8) << (i*2);
+				}
+				*out_fb++ = buf;
+			}
+			in_fb += (DOWNLOADED_FRAMEBUFFER_WIDTH - 224);
+			out_fb += (256 - 224) / 4 / sizeof(out_fb[0]);
+		}
+		eye++;
+	}
+	tDSPCACHE.DDSPDataState[drawn_fb] = CPU_WROTE;
+	for (int i = 0; i < 64; i++) {
+		tDSPCACHE.SoftBufWrote[drawn_fb][i].min = 0;
+		tDSPCACHE.SoftBufWrote[drawn_fb][i].max = 31;
+	}
+}
 
 void video_hard_init(void) {
 	C3D_TexInitParams params;
@@ -119,6 +163,7 @@ void video_hard_init(void) {
 	affine_masks[3][3] = affine_masks[2][3] = affine_masks[1][3] = affine_masks[0][3];
 
 	Tex3DS_TextureFree(Tex3DS_TextureImport(palette_mask_t3x, palette_mask_t3x_size, &palette_mask, NULL, false));
+	Tex3DS_TextureFree(Tex3DS_TextureImport(palette_mask_tocpu_t3x, palette_mask_tocpu_t3x_size, &palette_mask_tocpu, NULL, false));
 
 	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
 
@@ -128,6 +173,10 @@ void video_hard_init(void) {
 
 	vbuf = linearAlloc(sizeof(vertex) * VBUF_SIZE);
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
+
+	rgba4_framebuffers = linearAlloc(384 * DOWNLOADED_FRAMEBUFFER_WIDTH * 2 * 2);
+	gspSetEventCallback(GSPGPU_EVENT_PPF, ppfCallback, NULL, false);
+	LightEvent_Init(&transfer_event, RESET_ONESHOT);
 }
 
 static void setRegularTexEnv(void) {
@@ -160,8 +209,8 @@ static void setRegularDrawing(void) {
 
 	setRegularTexEnv();
 
-	C3D_TexBind(1, &palette_mask);
-	C3D_TexBind(2, &palette_mask);
+	C3D_TexBind(1, tVBOpt.RENDERMODE != RM_TOCPU ? &palette_mask : &palette_mask_tocpu);
+	C3D_TexBind(2, tVBOpt.RENDERMODE != RM_TOCPU ? &palette_mask : &palette_mask_tocpu);
 
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset, 0, 0, 0, 0);
@@ -346,7 +395,7 @@ static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures
 	setRegularDrawing();
 }
 
-void video_hard_render(int drawn_fb) {
+void video_hard_render(int drawn_fb, int previous_transfer_count) {
 	C3D_FrameDrawOn(screenTargetHard[drawn_fb]);
 
 	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
@@ -393,7 +442,9 @@ void video_hard_render(int drawn_fb) {
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 
 	for (int i = 0; i < 4; i++) {
-		const C3D_FVec cols[4] = {{}, {.x = 1}, {.y = 1}, {.z = 1}};
+		const C3D_FVec normal_cols[4] = {{}, {.x = 1}, {.y = 1}, {.z = 1}};
+		const C3D_FVec tocpu_cols[4] = {{}, {.y = 1.0/16}, {.y = 2.0/16}, {.y = 3.0/16}};
+		const C3D_FVec *cols = tVBOpt.RENDERMODE != RM_TOCPU ? normal_cols : tocpu_cols;
 		HWORD pal = vb_state->tVIPREG.GPLT[i];
 		pal1tex[i].x = (((pal >> 1) & 0b110) + 1) / 8.0;
 		pal2tex[i].x = (((pal >> 3) & 0b110) + 1) / 8.0;
@@ -820,6 +871,26 @@ void video_hard_render(int drawn_fb) {
 			
 			if (vcur - vbuf > VBUF_SIZE) dprintf(0, "VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
 			if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
+		}
+	}
+
+	if (tVBOpt.RENDERMODE == RM_TOCPU) {
+		C3D_FrameSplit(0);
+		ppfCount = -previous_transfer_count;
+		downloaded = false;
+		for (int eye = start_eye; eye < end_eye; eye++) {
+			GX_DisplayTransfer(
+				screenTexHard[drawn_fb].data
+					+ ((8*8*2)*(256/8) * eye)
+					+ (512-384)*512*2, // line things up
+                GX_BUFFER_DIM(512, 384),
+				(u32*)(
+					rgba4_framebuffers
+					+ (384 * DOWNLOADED_FRAMEBUFFER_WIDTH * eye)
+					- ((512-DOWNLOADED_FRAMEBUFFER_WIDTH)*383) // account for weird offset when vflip and cropping are both on
+				),
+                GX_BUFFER_DIM(DOWNLOADED_FRAMEBUFFER_WIDTH, 384),
+                GX_TRANSFER_FLIP_VERT(1) | 4 | GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA4) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGBA4));
 		}
 	}
 
