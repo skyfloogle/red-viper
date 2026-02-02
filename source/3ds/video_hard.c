@@ -90,18 +90,19 @@ void video_download_vip(int drawn_fb) {
 	int eye = 0;
 	while (eye < 2) {
 		if (ppfCount < eye) LightEvent_Wait(&transfer_event);
-		uint16_t *in_fb = rgba4_framebuffers + (384 * DOWNLOADED_FRAMEBUFFER_WIDTH) * eye;
+		uint32_t *in_fb = (uint32_t*)(rgba4_framebuffers + (384 * DOWNLOADED_FRAMEBUFFER_WIDTH) * eye);
 		uint32_t *out_fb = (uint32_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
 		GSPGPU_FlushDataCache(in_fb, 384*DOWNLOADED_FRAMEBUFFER_WIDTH*2);
 		for (int x = 0; x < 384; x++) {
 			for (int y = 0; y < 224; y += (32/2)) {
 				uint32_t buf = 0;
-				for (int i = 0; i < (32/2); i++) {
-					buf |= (*in_fb++ >> 8) << (i*2);
+				for (int i = 0; i < (32/4); i++) {
+					uint32_t inbuf = *in_fb++;
+					buf |= (((inbuf & 0xffff) >> 8) | (inbuf >> 22)) << (i*4);
 				}
 				*out_fb++ = buf;
 			}
-			in_fb += (DOWNLOADED_FRAMEBUFFER_WIDTH - 224);
+			in_fb += (DOWNLOADED_FRAMEBUFFER_WIDTH - 224) / 2;
 			out_fb += (256 - 224) / 4 / sizeof(out_fb[0]);
 		}
 		eye++;
