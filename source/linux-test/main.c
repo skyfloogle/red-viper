@@ -16,8 +16,6 @@
 #include "vb_dsp.h"
 #include "vb_sound.h"
 VB_DSPCACHE tDSPCACHE;
-void sound_update(uint32_t cycles) {}
-void sound_write(int addr, uint16_t val) {}
 
 #if DRC_AVAILABLE
 #else
@@ -94,12 +92,14 @@ int main(int argc, char* argv[]) {
 
     clearCache();
 
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO);
     window = SDL_CreateWindow("Red Viper", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 384*2, 224*2*(1+is_multiplayer), 0);
     window_surface = SDL_GetWindowSurface(window);
     game_surface = SDL_CreateRGBSurfaceWithFormat(0, 384, 224, 32, SDL_PIXELFORMAT_XBGR8888);
 
     int lasttime = SDL_GetTicks();
+
+    sound_init();
 
     while (true) {
         for (int i = 0; i < 2; i++) {

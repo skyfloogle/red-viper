@@ -7,6 +7,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define SAMPLE_RATE 50000
+#define CYCLES_PER_SAMPLE (20000000 / SAMPLE_RATE)
+#define SAMPLE_COUNT (SAMPLE_RATE / 100)
+#define BUF_COUNT 9
+
 typedef struct {
     uint8_t shutoff_time, envelope_time, envelope_value, sample_pos;
     uint32_t freq_time;
@@ -24,6 +29,8 @@ typedef struct {
     int8_t shutoff_divider, envelope_divider;
 } SOUND_STATE;
 extern SOUND_STATE sound_state;
+
+extern uint8_t sound_fill_buf;
 
 //wave data number does not necessarily correspond to channel number
 //(value set in Waveform RAM Address)
@@ -91,5 +98,11 @@ void sound_close(void);
 void sound_pause(void);
 void sound_resume(void);
 void sound_reset(void);
+
+bool sound_init_backend(int16_t *wavebufs[]);
+void sound_close_backend(void);
+void sound_pause_backend(void);
+void sound_resume_backend(void);
+bool sound_push_backend(int16_t *buf);
 
 #endif //VB_SOUND_H_

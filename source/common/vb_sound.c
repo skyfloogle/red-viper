@@ -1,9 +1,11 @@
+#ifdef __3DS__
 #include <3ds.h>
+#endif
 
-#include "vb_gui.h"
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_sound.h"
+#include "vb_types.h"
 
 #define SAMPLE_RATE 50000
 #define CYCLES_PER_SAMPLE (20000000 / SAMPLE_RATE)
@@ -15,9 +17,10 @@ SOUND_STATE sound_state;
 static int constant_sample[5] = {-1, -1, -1, -1, -1};
 static bool changed_sample[5] = {0};
 
-static uint8_t fill_buf = 0;
+uint8_t sound_fill_buf = 0;
+
 static uint16_t buf_pos = 0;
-static ndspWaveBuf wavebufs[BUF_COUNT];
+static int16_t *wavebufs[BUF_COUNT];
 
 static volatile bool paused = false;
 
@@ -41,7 +44,7 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
         if (lrv & 0xf0) left_vol++;
         if (lrv & 0x0f) right_vol++;
     }
-    u8 sample;
+    uint8_t sample;
     if (ch < 5) {
         sample = SNDMEM(0x80 * (SNDMEM(S1RAM + 0x40 * ch) & 7) + 4 * channel->sample_pos) & 63;
     } else {
@@ -49,9 +52,9 @@ static void fill_buf_single_sample(int ch, int samples, int offset) {
         bit ^= sound_state.noise_shift >> noise_bits[(SNDMEM(S6EV1) >> 4) & 7];
         sample = (bit & 1) ? 0x3f : 0x00;
     }
-    u32 total = ((left_vol * sample) & 0xffff) | ((right_vol * sample) << 16);
+    uint32_t total = ((left_vol * sample) & 0xffff) | ((right_vol * sample) << 16);
     for (int i = 0; i < samples; i++) {
-        ((u32*)(wavebufs[fill_buf].data_pcm16))[offset + i] += total;
+        ((uint32_t*)(wavebufs[sound_fill_buf]))[offset + i] += total;
     }
 }
 
@@ -102,7 +105,7 @@ void sound_update(uint32_t cycles) {
             samples = SAMPLE_COUNT - buf_pos;
         if (samples > sound_state.effect_time)
             samples = sound_state.effect_time;
-        memset(wavebufs[fill_buf].data_pcm16 + buf_pos * 2, 0, sizeof(s16) * samples * 2);
+        memset(wavebufs[sound_fill_buf] + buf_pos * 2, 0, sizeof(int16_t) * samples * 2);
 
         for (int i = 0; i < 6; i++) {
             update_buf_with_freq(i, samples);
@@ -135,7 +138,7 @@ void sound_update(uint32_t cycles) {
                             // modulation
                             // only enable on first loop or if repeat
                             if (sound_state.modulation_state == 0 || (env & 0x20)) {
-                                sound_state.sweep_frequency = GET_FREQ(4) + (s8)SNDMEM(MODDATA + 4 * sound_state.modulation_counter);
+                                sound_state.sweep_frequency = GET_FREQ(4) + (int8_t)SNDMEM(MODDATA + 4 * sound_state.modulation_counter);
                             }
                             if (sound_state.modulation_state == 1) sound_state.modulation_state = 2;
                             // hardware bug: writing to S5FQ* locks the relevant byte when modulating
@@ -199,8 +202,8 @@ void sound_update(uint32_t cycles) {
             // final post processing
             for (int i = 0; i < SAMPLE_COUNT; i++) {
                 #define AMPLIFY(x) (((x) >> 4) * 95)
-                short left = AMPLIFY(wavebufs[fill_buf].data_pcm16[i * 2]) + dc_offset;
-                short right = AMPLIFY(wavebufs[fill_buf].data_pcm16[i * 2 + 1]) + dc_offset;
+                short left = AMPLIFY(wavebufs[sound_fill_buf][i * 2]) + dc_offset;
+                short right = AMPLIFY(wavebufs[sound_fill_buf][i * 2 + 1]) + dc_offset;
                 #undef AMPLIFY
                 int extra_offset = dc_offset - (-left - right + dc_offset * 48) / 50;
                 if (left < dc_offset || right < dc_offset) {
@@ -214,15 +217,13 @@ void sound_update(uint32_t cycles) {
                 right -= extra_offset;
                 dc_offset -= extra_offset;
                 if (dc_offset != 0) {
-                    wavebufs[fill_buf].data_pcm16[i * 2] = left;
-                    wavebufs[fill_buf].data_pcm16[i * 2 + 1] = right;
+                    wavebufs[sound_fill_buf][i * 2] = left;
+                    wavebufs[sound_fill_buf][i * 2 + 1] = right;
                 }
             }
             // push
-            if (wavebufs[fill_buf].status == NDSP_WBUF_DONE) {
-                DSP_FlushDataCache(wavebufs[fill_buf].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
-                ndspChnWaveBufAdd(0, &wavebufs[fill_buf]);
-                fill_buf = (fill_buf + 1) % BUF_COUNT;
+            if (sound_push_backend(wavebufs[sound_fill_buf])) {
+                sound_fill_buf = (sound_fill_buf + 1) % BUF_COUNT;
             }
             buf_pos = 0;
         }
@@ -324,62 +325,33 @@ void sound_refresh(void) {
         }
     }
     for (int i = 0; i < BUF_COUNT; i++) {
-        memset(wavebufs[i].data_pcm16, 0, SAMPLE_COUNT * 4);
+        memset(wavebufs[i], 0, SAMPLE_COUNT * 4);
     }
-    paused = false;
+    sound_resume();
 }
 
-void sound_callback(void *data) {
-    if (paused) return;
-    int last_buf = (fill_buf + BUF_COUNT - 2) % BUF_COUNT;
-    if (wavebufs[last_buf].status == NDSP_WBUF_DONE) {
-        // uh oh, we're running out so repeat the last buf
-        for (int buf = fill_buf + 1; (buf %= BUF_COUNT) != fill_buf; buf++) {
-            if (wavebufs[last_buf].status != NDSP_WBUF_DONE) continue;
-            memcpy(wavebufs[buf].data_pcm16, wavebufs[last_buf].data_pcm16, SAMPLE_COUNT * 4);
-            DSP_FlushDataCache(wavebufs[buf].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
-            ndspChnWaveBufAdd(0, &wavebufs[buf]);
+void sound_init(void) {
+    for (int i = 0; i < BUF_COUNT; i++) {
+        wavebufs[i] = linearAlloc(sizeof(int16_t) * SAMPLE_COUNT * 2);
+    }
+    if (!sound_init_backend(wavebufs)) {
+        for (int i = 0; i < BUF_COUNT; i++) {
+            linearFree(wavebufs[i]);
         }
     }
 }
 
-void sound_init(void) {
-    if (ndspInit()) {
-        showSoundError();
-        tVBOpt.SOUND = 0;
-        return;
-    }
-    memset(&sound_state, 0, sizeof(sound_state));
-    ndspChnReset(0);
-    ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
-    ndspChnSetInterp(0, NDSP_INTERP_POLYPHASE);
-    ndspChnSetRate(0, SAMPLE_RATE);
-    ndspSetCallback(sound_callback, NULL);
-    // About as loud as it can be without clipping when all channels are max volume
-    float mix[12] = {[0] = 1.5, [1] = 1.5};
-    ndspChnSetMix(0, mix);
-    for (int i = 0; i < BUF_COUNT; i++) {
-        memset(&wavebufs[i], 0, sizeof(wavebufs[i]));
-        wavebufs[i].data_pcm16 = linearAlloc(sizeof(s16) * SAMPLE_COUNT * 2);
-        wavebufs[i].nsamples = SAMPLE_COUNT;
-        DSP_FlushDataCache(wavebufs[i].data_pcm16, sizeof(s16) * SAMPLE_COUNT * 2);
-        ndspChnWaveBufAdd(0, &wavebufs[i]);
-    }
-}
-
 void sound_close(void) {
-    ndspExit();
-    for (int i = 0; i < BUF_COUNT; i++) linearFree(wavebufs[i].data_pcm16);
+    sound_close_backend();
+    for (int i = 0; i < BUF_COUNT; i++) linearFree(wavebufs[i]);
 }
 
 void sound_pause(void) {
-    paused = true;
-    dc_offset = 0;
-    ndspChnWaveBufClear(0);
+    sound_pause_backend();
 }
 
 void sound_resume(void) {
-    paused = false;
+    sound_resume_backend();
 }
 
 void sound_reset(void) {
