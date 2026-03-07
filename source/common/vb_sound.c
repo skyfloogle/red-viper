@@ -129,7 +129,7 @@ void sound_update(uint32_t cycles) {
                         if (new_sweep_frequency < 0) new_sweep_frequency = 0;
                     }
                 }
-                if ((env & 0x40) && --sound_state.sweep_time < 0) {
+                if ((env & 0x40) && --sound_state.sweep_time <= 0) {
                     int swp = SNDMEM(S5SWP);
                     int interval = (swp >> 4) & 7;
                     sound_state.sweep_time = interval * ((swp & 0x80) ? 8 : 1);
@@ -156,6 +156,7 @@ void sound_update(uint32_t cycles) {
                             if (sound_state.modulation_state == 0) sound_state.modulation_state = 1;
                             sound_state.modulation_counter = 0;
                         }
+                        sound_state.channels[4].freq_time %= GET_FREQ_TIME(4);
                     }
                 }
             }
@@ -240,7 +241,7 @@ void sound_write(int addr, uint16_t data) {
         // ram writes, these can be declined
         // all ram writes are declined if channel 5 is active
         if (SNDMEM(S5INT) & 0x80) return;
-        if ((addr & 0x370) < 0x280) {
+        if ((addr & 0x380) < 0x280) {
             // wave ram is declined if any channel is active
             if ((SNDMEM(S1INT) & 0x80) ||
                 (SNDMEM(S2INT) & 0x80) ||
