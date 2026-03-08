@@ -33,7 +33,7 @@ static inline u8 clamp255(int x) {
 #define BRIGHTNESS_FACTOR 1.75
 #define GAMMA 0.9
 
-#define USE_SOFT_FLUSH true
+#define USE_SOFT_FLUSH false
 
 // some stuff copied from vb_dsp.c
 
