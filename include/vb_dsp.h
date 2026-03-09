@@ -167,10 +167,8 @@ int video_get_colour(int id, int brt_reg);
 
 // video_hard
 extern C3D_Tex screenTexHard[2];
-extern C3D_RenderTarget *screenTargetHard[2];
 void video_hard_init(void);
 void video_hard_render(int drawn_fb, int previous_transfer_count);
-void update_texture_cache_hard(void);
 
 // video_soft
 extern C3D_Tex screenTexSoft[2];

@@ -9,6 +9,7 @@
 #include "utils.h"
 
 #include "vb_dsp.h"
+#include "video_hard.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"
 #include "vb_set.h"

@@ -52,6 +52,9 @@ void sdl_flush(bool displayed_fb, int player) {
     SDL_BlitScaled(game_surface, NULL, window_surface, &rect);
 }
 
+void video_init();
+void video_hard_render(int drawn_fb);
+
 int main(int argc, char* argv[]) {
     int err;
 
@@ -94,36 +97,45 @@ int main(int argc, char* argv[]) {
     clearCache();
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO);
-    window = SDL_CreateWindow("Red Viper", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 384*2, 224*2*(1+is_multiplayer), 0);
-    window_surface = SDL_GetWindowSurface(window);
-    game_surface = SDL_CreateRGBSurfaceWithFormat(0, 384, 224, 32, SDL_PIXELFORMAT_XBGR8888);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    window = SDL_CreateWindow("Red Viper", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 384*2, 224*2*(1+is_multiplayer), SDL_WINDOW_OPENGL);
+    // window_surface = SDL_GetWindowSurface(window);
+    // game_surface = SDL_CreateRGBSurfaceWithFormat(0, 384, 224, 32, SDL_PIXELFORMAT_XBGR8888);
+
+    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 
     int lasttime = SDL_GetTicks();
 
     sound_init();
 
+    video_init();
+
     while (true) {
-        for (int i = 0; i < 2; i++) {
-            vb_state = &vb_players[i];
-            clearCache();
-            if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing) {
-                if (vb_state->tVIPREG.XPCTRL & XPEN) {
-                    if (tDSPCACHE.CharCacheInvalid) {
-                        update_texture_cache_soft();
-                    }
+        // for (int i = 0; i < 2; i++) {
+        //     vb_state = &vb_players[i];
+        //     clearCache();
+        //     if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing) {
+        //         if (vb_state->tVIPREG.XPCTRL & XPEN) {
+        //             if (tDSPCACHE.CharCacheInvalid) {
+        //                 update_texture_cache_soft();
+        //             }
 
-                    video_soft_render(!vb_state->tVIPREG.tDisplayedFB);
+        //             video_soft_render(!vb_state->tVIPREG.tDisplayedFB);
 
-                    // we need to have these caches during rendering
-                    tDSPCACHE.CharCacheInvalid = false;
-                    memset(tDSPCACHE.BGCacheInvalid, 0, sizeof(tDSPCACHE.BGCacheInvalid));
-                    memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
-                }
+        //             // we need to have these caches during rendering
+        //             tDSPCACHE.CharCacheInvalid = false;
+        //             memset(tDSPCACHE.BGCacheInvalid, 0, sizeof(tDSPCACHE.BGCacheInvalid));
+        //             memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
+        //         }
 
-                sdl_flush(vb_state->tVIPREG.tDisplayedFB, i);
-            }
-        }
-        SDL_UpdateWindowSurface(window);
+        //         sdl_flush(vb_state->tVIPREG.tDisplayedFB, i);
+        //     }
+        // }
+        // SDL_UpdateWindowSurface(window);
+        video_render(0, false);
+        SDL_GL_SwapWindow(window);
 
         vb_state = &vb_players[0];
 

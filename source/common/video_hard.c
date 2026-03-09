@@ -1,18 +1,15 @@
 #include <stdlib.h>
 #include <string.h>
-#include <3ds.h>
-#include <citro3d.h>
 
 #include "vb_dsp.h"
 #include "v810_cpu.h"
 #include "v810_mem.h"
 #include "vb_set.h"
+#include "video_hard.h"
 
-#include "n3ds_shaders.h"
-
+#ifdef __3DS__
+#include "../3ds/n3ds_shaders.h"
 #include <tex3ds.h>
-#include "palette_mask_t3x.h"
-#include "palette_mask_tocpu_t3x.h"
 #include "map1x1_t3x.h"
 #include "map1x2_t3x.h"
 #include "map1x4_t3x.h"
@@ -27,124 +24,22 @@
 #include "map8x2_t3x.h"
 #include "map8x4_t3x.h"
 
-C3D_Tex screenTexHard[2];
-C3D_RenderTarget *screenTargetHard[2];
+static C3D_Tex affine_masks[4][4];
+static C3D_FVec bgmap_offsets[2];
+#endif
 
-static C3D_Tex tileTexture;
-
-// Virtual Bowling needs at least 4 for good performance
-#define AFFINE_CACHE_SIZE 8
-typedef struct {
-	C3D_Tex tex;
-	C3D_RenderTarget *target;
-	int bg;
-	short umin, umax, vmin, vmax;
-	short lumin, lumax, lvmin, lvmax;
-	u16 tiles[64 * 64];
-	u8 GPLT[4];
-	bool visible;
-	bool used;
-} AffineCacheEntry;
 AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
 
-static C3D_Tex affine_masks[4][4];
-static C3D_Tex palette_mask, palette_mask_tocpu;
+vertex *vbuf, *vcur;
+avertex *avbuf, *avcur;
 
-static C3D_FVec pal1tex[8] = {0}, pal2tex[8] = {0}, pal3col[8] = {0};
-static C3D_FVec char_offset;
-static C3D_FVec bgmap_offsets[2];
+uint16_t *rgba4_framebuffers;
 
-typedef struct {
-	short x, y;
-	u8 u, v, palette, orient;
-} __attribute__((aligned(4))) vertex;
-
-typedef struct {
-	short x1, y1, x2, y2;
-	short u, v;
-	short ix, iy, jx, jy;
-} avertex;
-
-#define VBUF_SIZE 64 * 64 * 2 * 32
-static vertex *vbuf, *vcur;
-#define AVBUF_SIZE 4096 * 8
-static avertex *avbuf, *avcur;
-
-// 224 works on hardware but breaks in azahar
-#define DOWNLOADED_FRAMEBUFFER_WIDTH 256
-static uint16_t *rgba4_framebuffers;
-
-static LightEvent transfer_event;
-
-static volatile int ppfCount = 0;
-static bool downloaded = false;
-static void ppfCallback(void *data) {
-	if (AtomicIncrement(&ppfCount) < 2) LightEvent_Signal(&transfer_event);
-}
-
-void video_download_vip(int drawn_fb) {
-	if (tVBOpt.RENDERMODE != RM_TOCPU) return;
-	if (downloaded) return;
-	downloaded = true;
-	while (ppfCount < 0) LightEvent_Wait(&transfer_event);
-	int eye = 0;
-	while (eye < 2) {
-		if (ppfCount < eye) LightEvent_Wait(&transfer_event);
-		uint32_t *in_fb = (uint32_t*)(rgba4_framebuffers + (384 * DOWNLOADED_FRAMEBUFFER_WIDTH) * eye);
-		uint32_t *out_fb = (uint32_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
-		GSPGPU_FlushDataCache(in_fb, 384*DOWNLOADED_FRAMEBUFFER_WIDTH*2);
-		for (int x = 0; x < 384; x++) {
-			for (int y = 0; y < 224; y += (32/2)) {
-				uint32_t buf = 0;
-				for (int i = 0; i < (32/4); i++) {
-					uint32_t inbuf = *in_fb++;
-					buf |= (((inbuf & 0xffff) >> 8) | (inbuf >> 22)) << (i*4);
-				}
-				*out_fb++ = buf;
-			}
-			in_fb += (DOWNLOADED_FRAMEBUFFER_WIDTH - 224) / 2;
-			out_fb += (256 - 224) / 4 / sizeof(out_fb[0]);
-		}
-		eye++;
-	}
-	tDSPCACHE.DDSPDataState[drawn_fb] = CPU_WROTE;
-	for (int i = 0; i < 64; i++) {
-		tDSPCACHE.SoftBufWrote[drawn_fb][i].min = 0;
-		tDSPCACHE.SoftBufWrote[drawn_fb][i].max = 31;
-	}
-}
 
 void video_hard_init(void) {
-	C3D_TexInitParams params;
-	params.width = 256;
-	params.height = 512;
-	params.format = GPU_RGBA4;
-	params.type = GPU_TEX_2D;
-	params.onVram = false;
-	params.maxLevel = 0;
-	C3D_TexInitWithParams(&tileTexture, NULL, params);
+	gpu_init();
 
-	params.width = 512;
-	params.height = 512;
-	params.format = GPU_RGBA4;
-	params.onVram = true;
-	for (int i = 0; i < 2; i++) {
-		C3D_TexInitWithParams(&screenTexHard[i], NULL, params);
-		// Drawing backwards with a depth buffer isn't faster, so omit the depth buffer.
-		screenTargetHard[i] = C3D_RenderTargetCreateFromTex(&screenTexHard[i], GPU_TEXFACE_2D, 0, -1);
-		C3D_RenderTargetClear(screenTargetHard[i], C3D_CLEAR_ALL, 0, 0);
-	}
-
-	params.width = 512;
-	params.height = 512;
-	params.format = GPU_RGBA4;
-	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
-		C3D_TexInitWithParams(&tileMapCache[i].tex, NULL, params);
-		tileMapCache[i].target = C3D_RenderTargetCreateFromTex(&tileMapCache[i].tex, GPU_TEXFACE_2D, 0, -1);
-		C3D_RenderTargetClear(tileMapCache[i].target, C3D_CLEAR_ALL, 0xffffffff, 0);
-		tileMapCache[i].bg = -1;
-	}
-
+	#ifdef __3DS__
 	#define LOAD_MASK(w,h,wp,hp) \
 		Tex3DS_TextureFree(Tex3DS_TextureImport(map ## w ## x ## h ## _t3x, map ## w ## x ## h ## _t3x_size, &affine_masks[wp][hp], NULL, false));
 	LOAD_MASK(1, 1, 0, 0);
@@ -162,62 +57,12 @@ void video_hard_init(void) {
 	LOAD_MASK(8, 4, 3, 2);
 	#undef LOAD_MASK
 	affine_masks[3][3] = affine_masks[2][3] = affine_masks[1][3] = affine_masks[0][3];
-
-	Tex3DS_TextureFree(Tex3DS_TextureImport(palette_mask_t3x, palette_mask_t3x_size, &palette_mask, NULL, false));
-	Tex3DS_TextureFree(Tex3DS_TextureImport(palette_mask_tocpu_t3x, palette_mask_tocpu_t3x_size, &palette_mask_tocpu, NULL, false));
-
-	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
-
-	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
-
-	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
+	#endif
 
 	vbuf = linearAlloc(sizeof(vertex) * VBUF_SIZE);
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
 
 	rgba4_framebuffers = linearAlloc(384 * DOWNLOADED_FRAMEBUFFER_WIDTH * 2 * 2);
-	gspSetEventCallback(GSPGPU_EVENT_PPF, ppfCallback, NULL, false);
-	LightEvent_Init(&transfer_event, RESET_ONESHOT);
-}
-
-static void setRegularTexEnv(void) {
-	C3D_TexEnv *env = C3D_GetTexEnv(0);
-	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_TEXTURE1, 0);
-	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_R, 0, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-
-	env = C3D_GetTexEnv(1);
-	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_TEXTURE2, GPU_PREVIOUS);
-	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_G, 0, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_MULTIPLY_ADD);
-
-	env = C3D_GetTexEnv(2);
-	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PREVIOUS);
-	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_B, 0, 0);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_MULTIPLY_ADD);
-
-	C3D_TexEnvInit(C3D_GetTexEnv(3));
-}
-
-static void setRegularDrawing(void) {
-	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
-	AttrInfo_Init(attrInfo);
-	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 2);
-	AttrInfo_AddLoader(attrInfo, 1, GPU_BYTE, 4);
-
-	setRegularTexEnv();
-
-	C3D_TexBind(1, tVBOpt.RENDERMODE != RM_TOCPU ? &palette_mask : &palette_mask_tocpu);
-	C3D_TexBind(2, tVBOpt.RENDERMODE != RM_TOCPU ? &palette_mask : &palette_mask_tocpu);
-
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset, 0, 0, 0, 0);
-	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal1tex, 8), pal1tex, sizeof(pal1tex));
-	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal2tex, 8), pal2tex, sizeof(pal2tex));
-	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal3col, 8), pal3col, sizeof(pal3col));
 }
 
 // returns vertex count
@@ -324,20 +169,20 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 	}
 
 	// set up cache texture
-	C3D_FrameDrawOn(cache->target);
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.posscale, 1.0 / (512 / 2), 1.0 / (512 / 2), -1.0, 1.0);
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset, 0, 0, 0, 0);
-	C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+	gpu_set_target(cache->target);
+	gpu_set_tile_offset(0, 0);
+	gpu_set_scissor(false, 0, 0, 0, 0);
 
-	C3D_AlphaTest(false, GPU_GREATER, 0);
-	if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
-	C3D_AlphaTest(true, GPU_GREATER, 0);
+	gpu_set_opaque(true);
+	gpu_draw_tiles(vcur - vbuf - vcount, vcount);
+	gpu_set_opaque(false);
 
 	return vcount;
 }
 
+#ifdef __3DS__
 static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
-	C3D_FrameDrawOn(screenTargetHard[drawn_fb]);
+	gpu_set_target(screenTargetHard[drawn_fb]);
 	C3D_BindProgram(&sAffine);
 
 	if (!use_masks) {
@@ -383,21 +228,17 @@ static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures
 			int gx = base_gx + (eye == 0 ? -gp : gp);
 			
 			// note: transposed
-			C3D_SetScissor(GPU_SCISSOR_NORMAL, 256 * eye + (gy >= 0 ? gy : 0), gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
+			gpu_set_scissor(true, 256 * eye + (gy >= 0 ? gy : 0), gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
 			C3D_DrawArrays(GPU_GEOMETRY_PRIM, vbufs[eye] - avbuf, h);
 		}
 	}
 
-	bufInfo = C3D_GetBufInfo();
-	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, vbuf, sizeof(vertex), 2, 0x10);
-	C3D_BindProgram(&sChar);
-	C3D_TexBind(0, &tileTexture);
-	setRegularDrawing();
+	gpu_setup_tile_drawing();
 }
+#endif
 
 void video_hard_render(int drawn_fb, int previous_transfer_count) {
-	C3D_FrameDrawOn(screenTargetHard[drawn_fb]);
+	gpu_set_target(screenTargetHard[drawn_fb]);
 
 	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
 	int end_eye = start_eye + eye_count;
@@ -410,65 +251,14 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 		tileMapCache[i].lvmax = tileMapCache[i].vmax;
 	}
 
-	// clear
-	C3D_BindProgram(&sFinal);
-	C3D_AlphaTest(false, GPU_GREATER, 0);
+	gpu_clear_screen(start_eye, end_eye);
 
-	C3D_TexEnv *env = C3D_GetTexEnv(0);
-	C3D_TexEnvInit(env);
-	// black, red, green, blue
-	const static u32 colors[4] = {0, 0xff0000ff, 0xff00ff00, 0xffff0000};
-	C3D_TexEnvColor(env, colors[vb_state->tVIPREG.BKCOL]);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
-	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-
-	C3D_TexEnvInit(C3D_GetTexEnv(1));
-	C3D_TexEnvInit(C3D_GetTexEnv(2));
-
-	C3D_ImmDrawBegin(GPU_GEOMETRY_PRIM);
-	// note: output position is transposed
-	// left
-	if (start_eye == 0) {
-		C3D_ImmSendAttrib(224.0/256-1, 384.0/256-1, -1, -1);
-		C3D_ImmSendAttrib(0, 0, 0, 0);
-		C3D_ImmSendAttrib(0, 0, 0, 0);
-	}
-	// right
-	if (end_eye == 2) {
-		C3D_ImmSendAttrib(224.0/256, 384.0/256-1, 0, -1);
-		C3D_ImmSendAttrib(0, 0, 0, 0);
-		C3D_ImmSendAttrib(0, 0, 0, 0);
-	}
-	C3D_ImmDrawEnd();
-	C3D_AlphaTest(true, GPU_GREATER, 0);
-
-	for (int i = 0; i < 4; i++) {
-		const C3D_FVec normal_cols[4] = {{}, {.x = 1}, {.y = 1}, {.z = 1}};
-		const C3D_FVec tocpu_cols[4] = {{}, {.y = 1.0/16}, {.y = 2.0/16}, {.y = 3.0/16}};
-		const C3D_FVec *cols = tVBOpt.RENDERMODE != RM_TOCPU ? normal_cols : tocpu_cols;
-		HWORD pal = vb_state->tVIPREG.GPLT[i];
-		pal1tex[i].x = (((pal >> 1) & 0b110) + 1) / 8.0;
-		pal2tex[i].x = (((pal >> 3) & 0b110) + 1) / 8.0;
-		memcpy(&pal3col[i], &cols[(pal >> 6) & 3], sizeof(C3D_FVec));
-		pal = vb_state->tVIPREG.JPLT[i];
-		pal1tex[i + 4].x = (((pal >> 1) & 0b110) + 1) / 8.0;
-		pal2tex[i + 4].x = (((pal >> 3) & 0b110) + 1) / 8.0;
-		memcpy(&pal3col[i + 4], &cols[(pal >> 6) & 3], sizeof(C3D_FVec));
-	}
+	gpu_setup_drawing();
 
 	vcur = vbuf;
 	avcur = avbuf;
 
-	setRegularDrawing();
-
-	C3D_TexBind(0, &tileTexture);
-	C3D_BindProgram(&sChar);
-
-	C3D_BufInfo *bufInfo = C3D_GetBufInfo();
-	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, vbuf, sizeof(vertex), 2, 0x10);
-
-	C3D_CullFace(GPU_CULL_NONE);
+	gpu_setup_tile_drawing();
 
 	u16 *windows = (u16 *)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
 
@@ -587,19 +377,18 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 
 						int offset_x = gx - mx + (left_mx & ~7);
 
-						C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset,
-							offset_x / 256.0,
-							eye, 0, 0);
+						gpu_set_tile_offset(offset_x / 256.0, eye);
 
 						// note: transposed
-						C3D_SetScissor(GPU_SCISSOR_NORMAL, (gy >= 0 ? gy : 0) + 256 * eye, gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
+						gpu_set_scissor(true, (gy >= 0 ? gy : 0) + 256 * eye, gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
 
-						C3D_DrawArrays(GPU_GEOMETRY_PRIM, vstart - vbuf, vcount);
+						gpu_draw_tiles(vstart - vbuf, vcount);
 
-						C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset, 0, 0, 0, 0);
+						gpu_set_tile_offset(0, 0);
 					}
 				}
 			} else {
+				#ifdef __3DS__
 				// hbias or affine world
 				u16 param_base = windows[wnd * 16 + 9];
 				s16 *params = (s16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
@@ -820,10 +609,11 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 				if (tex_count != 0) {
 					draw_affine_layer(drawn_fb, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 				}
+				#endif
 			}
 		} else {
 			// object world
-			C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+			gpu_set_scissor(false, 0, 0, 0, 0);
 			int start_index = object_group_id == 0 ? 1023 : (vb_state->tVIPREG.SPT[object_group_id - 1]) & 1023;
 			int end_index = vb_state->tVIPREG.SPT[object_group_id] & 1023;
 			for (int i = end_index; i != start_index; i = (i - 1) & 1023) {
@@ -871,91 +661,17 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 			object_group_id = (object_group_id - 1) & 3;
 			
 			if (vcur - vbuf > VBUF_SIZE) dprintf(0, "VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
-			if (vcount != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, vcur - vbuf - vcount, vcount);
+			gpu_draw_tiles(vcur - vbuf - vcount, vcount);
 		}
 	}
 
 	if (tVBOpt.RENDERMODE == RM_TOCPU) {
-		C3D_FrameSplit(0);
-		ppfCount = -previous_transfer_count;
-		downloaded = false;
-		for (int eye = start_eye; eye < end_eye; eye++) {
-			GX_DisplayTransfer(
-				screenTexHard[drawn_fb].data
-					+ ((8*8*2)*(256/8) * eye)
-					+ (512-384)*512*2, // line things up
-                GX_BUFFER_DIM(512, 384),
-				(u32*)(
-					rgba4_framebuffers
-					+ (384 * DOWNLOADED_FRAMEBUFFER_WIDTH * eye)
-					- ((512-DOWNLOADED_FRAMEBUFFER_WIDTH)*383) // account for weird offset when vflip and cropping are both on
-				),
-                GX_BUFFER_DIM(DOWNLOADED_FRAMEBUFFER_WIDTH, 384),
-                GX_TRANSFER_FLIP_VERT(1) | 4 | GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA4) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGBA4));
-		}
+		gpu_init_vip_download(previous_transfer_count, start_eye, end_eye, drawn_fb);
 	}
 
 	// invalidate any unused bgmaps
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		if (!tileMapCache[i].used) tileMapCache[i].bg = -1;
 		memcpy(tileMapCache[i].GPLT, vb_state->tVIPREG.GPLT, sizeof(vb_state->tVIPREG.GPLT));
-	}
-}
-
-void update_texture_cache_hard(void) {
-	uint16_t *texImage = C3D_Tex2DGetImagePtr(&tileTexture, 0, NULL);
-	blankTile = -1;
-	for (int t = 0; t < 2048; t++) {
-		// skip if this tile wasn't modified
-		if (!tDSPCACHE.CharacterCache[t]) {
-			if (blankTile < 0 && !tileVisible[t])
-				blankTile = t;
-			continue;
-		}
-
-		uint32_t *tile = (uint32_t*)(vb_state->V810_DISPLAY_RAM.off + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
-
-		int y = 63 - t / 32;
-		int x = t % 32;
-		uint32_t *dstbuf = (uint32_t*)(texImage + ((y * 32 + x) * 8 * 8));
-
-		// optimize invisible tiles
-		{
-			bool tv = ((uint64_t*)tile)[0] | ((uint64_t*)tile)[1];
-			tileVisible[t] = tv;
-			if (!tv) {
-				if (blankTile < 0) {
-					blankTile = t;
-				}
-				memset(dstbuf, 0, 8 * 8 * 2);
-				continue;
-			}
-		}
-		
-		for (int i = 2; i >= 0; i -= 2) {
-			uint32_t slice1 = tile[i + 1];
-			uint32_t slice2 = tile[i];
-	
-			// black, red, green, blue
-			const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
-
-			#define SQUARE(x, i) { \
-				uint32_t left  = x >> (0 + 4*i) & 0x00030003; \
-				uint32_t right = x >> (2 + 4*i) & 0x00030003; \
-				*dstbuf++ = colors[left >> 16] | (colors[right >> 16] << 16); \
-				*dstbuf++ = colors[(uint16_t)left] | (colors[(uint16_t)right] << 16); \
-			}
-
-			SQUARE(slice1, 0);
-			SQUARE(slice1, 1);
-			SQUARE(slice2, 0);
-			SQUARE(slice2, 1);
-			SQUARE(slice1, 2);
-			SQUARE(slice1, 3);
-			SQUARE(slice2, 2);
-			SQUARE(slice2, 3);
-
-			#undef SQUARE
-		}
 	}
 }

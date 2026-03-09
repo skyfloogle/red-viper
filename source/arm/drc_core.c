@@ -37,6 +37,7 @@
 #ifdef __3DS__
 #include <3ds.h>
 #include <citro3d.h>
+#include "video_hard.h"
 #endif
 
 #include "utils.h"

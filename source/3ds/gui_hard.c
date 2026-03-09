@@ -28,6 +28,7 @@
 #include "multiplayer.h"
 #include "rom_db.h"
 #include "patches.h"
+#include "video_hard.h"
 
 #define COLOR_R(COLOR) ( ((COLOR) & 0x000000FF) )
 #define COLOR_G(COLOR) ( ((COLOR) & 0x0000FF00) >> 8)

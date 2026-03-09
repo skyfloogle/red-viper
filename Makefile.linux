@@ -45,7 +45,7 @@ INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 CFLAGS	+=	$(INCLUDE)
 ASFLAGS	:=	-g $(ARCH)
-LIBS	:=	-lm -lminizip -lz -lSDL2
+LIBS	:=	-lm -lminizip -lz -lSDL2 -lGLESv2
 
 all: slowdebug
 release:	CFLAGS += -O3 -DDEBUGLEVEL=0
