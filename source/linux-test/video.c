@@ -135,5 +135,7 @@ void video_render(int displayed_fb, bool on_time) {
         0, 384.0/512.0};
     glVertexAttribPointer(glGetAttribLocation(sFinal, "aTexCoord"), 2, GL_FLOAT, GL_FALSE, 0, vTexCoords);
     glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aTexCoord"));
+    gpu_set_opaque(true);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    gpu_set_opaque(false);
 }

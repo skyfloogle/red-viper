@@ -63,6 +63,8 @@ void video_hard_init(void) {
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);
 
 	rgba4_framebuffers = linearAlloc(384 * DOWNLOADED_FRAMEBUFFER_WIDTH * 2 * 2);
+
+	gpu_set_opaque(false);
 }
 
 // returns vertex count

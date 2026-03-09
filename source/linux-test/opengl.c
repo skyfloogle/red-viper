@@ -31,6 +31,7 @@ void gpu_init(void) {
     }
 
     glDepthMask(GL_FALSE);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void gpu_clear_screen(int start_eye, int end_eye) {
@@ -72,7 +73,10 @@ void gpu_set_scissor(bool enabled, u32 left, u32 top, u32 right, u32 bottom) {
     glScissor(left, top, right - left, bottom - top);
 }
 
-void gpu_set_opaque(bool opaque) {}
+void gpu_set_opaque(bool opaque) {
+    if (opaque) glDisable(GL_BLEND);
+    else glEnable(GL_BLEND);
+}
 
 void gpu_draw_tiles(int first, int count) {
     glDrawArrays(GL_POINTS, first, count);
