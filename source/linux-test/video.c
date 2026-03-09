@@ -2,6 +2,7 @@
 
 #include "vb_dsp.h"
 #include "video_hard.h"
+#include "v810_mem.h"
 
 GLuint sChar, sFinal;
 
@@ -102,9 +103,11 @@ void video_init(void) {
         "}\n",
 
         "uniform sampler2D sTex;\n"
+        "uniform mediump vec3 uPalette[4];\n"
         "varying mediump vec2 vTexCoord;\n"
         "void main() {\n"
-        "   gl_FragColor = texture2D(sTex, vTexCoord);\n"
+        "   mediump vec4 color = texture2D(sTex, vTexCoord);\n"
+        "   gl_FragColor = vec4(mix(mix(mix(uPalette[0], uPalette[1], color.x), uPalette[2], color.y), uPalette[3], color.z), 1.0);\n"
         "}\n"
     );
 }
@@ -125,6 +128,14 @@ void video_render(int displayed_fb, bool on_time) {
     glScissor(0, 0, 384*2, 224*2);
 
     glUniform1i(glGetUniformLocation(sFinal, "sTex"), 0);
+    
+    float colors[4][3] = {
+        {0, 0, 0},
+        {vb_state->tVIPREG.BRTA / 128.0, 0, 0},
+        {vb_state->tVIPREG.BRTB / 128.0, 0, 0},
+        {(vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) / 128.0, 0, 0},
+    };
+    glUniform3fv(glGetUniformLocation(sFinal, "uPalette"), 4, &colors[0][0]);
 
     GLfloat vPositions[] = {
         -1, -1,
@@ -140,6 +151,7 @@ void video_render(int displayed_fb, bool on_time) {
         0, 384.0/512.0};
     glVertexAttribPointer(glGetAttribLocation(sFinal, "aTexCoord"), 2, GL_FLOAT, GL_FALSE, 0, vTexCoords);
     glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aTexCoord"));
+
     gpu_set_opaque(true);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     gpu_set_opaque(false);
