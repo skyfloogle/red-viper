@@ -66,11 +66,14 @@ void video_init(void) {
     video_hard_init();
     sChar = build_shader(
         "uniform vec2 uOffset;\n"
+        "uniform mat3 uPalette[8];\n"
         "attribute vec2 aPosition;\n"
         "attribute vec4 aParams;\n"
         "varying vec3 vParams;\n"
+        "varying mat3 vPalette;\n"
         "void main() {\n"
         "   vParams = aParams.xyw;\n"
+        "   vPalette = uPalette[int(aParams.z)];\n"
         "   vec2 realPos = aPosition * (1.0/256.0) - (1.0 - 4.0/256.0) + uOffset;\n"
         "   gl_Position = vec4(realPos.y, realPos.x, 0.0, 1.0);\n"
         "   gl_PointSize = 8.0;\n"
@@ -78,12 +81,14 @@ void video_init(void) {
 
         "uniform sampler2D sTex;\n"
         "varying mediump vec3 vParams;\n"
+        "varying mediump mat3 vPalette;\n"
         "void main() {\n"\
         "   mediump vec2 tileCoord = gl_PointCoord.yx;\n"
         "   if (vParams.z >= 2.0) tileCoord.x = 1.0 - tileCoord.x;\n"
         "   if (vParams.z == 1.0 || vParams.z == 3.0) tileCoord.y = 1.0 - tileCoord.y;\n"
-        "   mediump vec2 realCoord = (vParams.xy + vec2(1.0 - tileCoord.x, tileCoord.y)) / vec2(256.0 / 8.0, 512.0 / 8.0);"
-        "   gl_FragColor = texture2D(sTex, realCoord);"
+        "   mediump vec2 realCoord = (vParams.xy + vec2(1.0 - tileCoord.x, tileCoord.y)) / vec2(256.0 / 8.0, 512.0 / 8.0);\n"
+        "   lowp vec4 color = texture2D(sTex, realCoord);\n"
+        "   gl_FragColor = vec4(vPalette * color.xyz, color.w);\n"
         "}"
     );
 

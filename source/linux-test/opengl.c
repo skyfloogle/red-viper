@@ -11,6 +11,8 @@ GLuint screenTargetHard[2];
 
 extern GLuint sChar, sFinal;
 
+static float palettes[8][3][3];
+
 void gpu_init(void) {
     glGenTextures(1, &tileTexture);
     glBindTexture(GL_TEXTURE_2D, tileTexture);
@@ -40,6 +42,19 @@ void gpu_clear_screen(int start_eye, int end_eye) {
 }
 
 void gpu_setup_drawing(void) {
+    for (int i = 0; i < 4; i++) {
+        const float colors[4][3] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+        HWORD pal = vb_state->tVIPREG.GPLT[i];
+        for (int j = 0; j < 3; j++) {
+            pal = pal >> 2;
+            memcpy(palettes[i][j], colors[pal & 3], sizeof(colors[0]));
+        }
+        pal = vb_state->tVIPREG.JPLT[i];
+        for (int j = 0; j < 3; j++) {
+            pal = pal >> 2;
+            memcpy(palettes[i + 4][j], colors[pal & 3], sizeof(colors[0]));
+        }
+    }
     // all targets used in drawing are 512x512 so we can just set this here
     glViewport(0, 0, 512, 512);
 }
@@ -51,6 +66,7 @@ void gpu_setup_tile_drawing(void) {
     glVertexAttribPointer(glGetAttribLocation(sChar, "aPosition"), 2, GL_SHORT, GL_FALSE, sizeof(vertex), vbuf);
     glEnableVertexAttribArray(glGetAttribLocation(sChar, "aParams"));
     glVertexAttribPointer(glGetAttribLocation(sChar, "aParams"), 4, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(vertex), (u8*)vbuf + 4);
+    glUniformMatrix3fv(glGetUniformLocation(sChar, "uPalette"), 8, GL_FALSE, &palettes[0][0][0]);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tileTexture);
