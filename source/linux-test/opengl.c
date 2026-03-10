@@ -121,7 +121,9 @@ void update_texture_cache_hard(void) {
 				if (blankTile < 0) {
 					blankTile = t;
 				}
-				memset(dstbuf, 0, 8 * 8 * 2);
+                for (int y = 0; y < 8; y++) {
+                    memset(dstbuf + 256 * y, 0, 8 * 2);
+                }
 				continue;
 			}
 		}
