@@ -32,6 +32,17 @@ void gpu_init(void) {
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screenTexHard[i], 0);
     }
 
+    for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
+        glGenTextures(1, &tileMapCache[i].tex);
+        glBindTexture(GL_TEXTURE_2D, tileMapCache[i].tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
+        glGenFramebuffers(1, &tileMapCache[i].target);
+        glBindFramebuffer(GL_FRAMEBUFFER, tileMapCache[i].target);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tileMapCache[i].tex, 0);
+    }
+
     glDepthMask(GL_FALSE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
@@ -55,8 +66,6 @@ void gpu_setup_drawing(void) {
             memcpy(palettes[i + 4][j], colors[pal & 3], sizeof(colors[0]));
         }
     }
-    // all targets used in drawing are 512x512 so we can just set this here
-    glViewport(0, 0, 512, 512);
 }
 
 void gpu_setup_tile_drawing(void) {
@@ -81,6 +90,8 @@ void gpu_init_vip_download(int previous_transfer_count, int start_eye, int end_e
 
 void gpu_set_target(Framebuffer target) {
     glBindFramebuffer(GL_FRAMEBUFFER, target);
+    // all targets used in drawing are 512x512 so we can just set this here
+    glViewport(0, 0, 512, 512);
 }
 
 void gpu_set_scissor(bool enabled, u32 left, u32 top, u32 right, u32 bottom) {

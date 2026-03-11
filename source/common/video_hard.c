@@ -278,8 +278,13 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 			uint8_t mapid = windows[wnd * 16] & 0xf;
 			uint8_t scx_pow = ((windows[wnd * 16] >> 10) & 3);
 			uint8_t scy_pow = ((windows[wnd * 16] >> 8) & 3);
+			uint8_t map_count_pow = scx_pow + scy_pow;
+			bool huge_bg = map_count_pow > 3;
+			if (huge_bg) map_count_pow = 3;
 			uint8_t scx = 1 << scx_pow;
 			uint8_t scy = 1 << scy_pow;
+			uint8_t map_count = 1 << map_count_pow;
+			mapid &= ~(map_count - 1);
 			bool over = windows[wnd * 16] & 0x80;
 			int16_t base_gx = (s16)(windows[wnd * 16 + 1] << 6) >> 6;
 			int16_t gp = (s16)(windows[wnd * 16 + 2] << 6) >> 6;
@@ -390,7 +395,6 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 					}
 				}
 			} else {
-				#ifdef __3DS__
 				// hbias or affine world
 				u16 param_base = windows[wnd * 16 + 9];
 				s16 *params = (s16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
@@ -505,32 +509,13 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 
 				if (vbufs[0] == NULL && vbufs[1] == NULL) continue;
 
-				int map_count = scx * scy;
-				bool huge_bg = map_count > 8;
-				if (huge_bg) map_count = 8;
-				bool use_masks = huge_bg || (!over && map_count != 1);
-				if (use_masks) {
-					C3D_TexSetWrap(&affine_masks[scx_pow][scy_pow], over ? GPU_CLAMP_TO_BORDER : GPU_REPEAT, over ? GPU_CLAMP_TO_BORDER : GPU_REPEAT);
-					bgmap_offsets[1].x = 0;
-					bgmap_offsets[1].y = 0;
-					bgmap_offsets[1].z = 1.0f / scx;
-					bgmap_offsets[1].w = 1.0f / scy;
-				} else {
-					bgmap_offsets[1].x = 0;
-					bgmap_offsets[1].y = 0;
-					bgmap_offsets[1].z = 1;
-					bgmap_offsets[1].w = 1;
-				}
-
-				// draw with each texture
-				int tex_count = 0;
-				C3D_Tex *textures[3];
-				for (uint8_t sub_bg = 0; sub_bg < map_count; sub_bg++) {
+				bool visible[8] = {0};
+				for (int sub_bg = 0; sub_bg < map_count; sub_bg++) {
 					int sub_u = (sub_bg & (scx - 1)) * 512;
 					int sub_v = (sub_bg >> scx_pow) * 512;
 					// don't draw offscreen bgmaps
-					// with masks on this is too complicated
-					if (!use_masks) {
+					// with big backgrounds this is too complicated
+					if (!huge_bg && (over || map_count == 1)) {
 						if (!over) {
 							// repeating
 							// TODO can this be done faster with maths?
@@ -550,15 +535,43 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 								continue;
 							}
 						}
-					} else if (sub_bg % 2 == 0) {
+					}
+					visible[sub_bg] = true;
+					vcur += render_affine_cache(mapid + sub_bg, vbuf, vcur, umin, umax, vmin, vmax);
+				}
+
+				#ifdef __3DS__
+				bool use_masks = huge_bg || (!over && map_count != 1);
+				if (use_masks) {
+					C3D_TexSetWrap(&affine_masks[scx_pow][scy_pow], over ? GPU_CLAMP_TO_BORDER : GPU_REPEAT, over ? GPU_CLAMP_TO_BORDER : GPU_REPEAT);
+					bgmap_offsets[1].x = 0;
+					bgmap_offsets[1].y = 0;
+					bgmap_offsets[1].z = 1.0f / scx;
+					bgmap_offsets[1].w = 1.0f / scy;
+				} else {
+					bgmap_offsets[1].x = 0;
+					bgmap_offsets[1].y = 0;
+					bgmap_offsets[1].z = 1;
+					bgmap_offsets[1].w = 1;
+				}
+
+				// draw with each texture
+				int tex_count = 0;
+				C3D_Tex *textures[3];
+				for (uint8_t sub_bg = 0; sub_bg < map_count; sub_bg++) {
+					if (use_masks && sub_bg % 2 == 0) {
 						// new draw, adjust mask offsets
 						bgmap_offsets[1].x = sub_bg & (scx - 1);
 						bgmap_offsets[1].y = sub_bg >> scx_pow;
 					}
 
-					vcur += render_affine_cache(mapid + sub_bg, vbuf, vcur, umin, umax, vmin, vmax);
+					if (!visible[sub_bg]) continue;
+
 					int cache_id = (mapid + sub_bg) % AFFINE_CACHE_SIZE;
 					if (tileMapCache[cache_id].bg != mapid + sub_bg || !tileMapCache[cache_id].visible) continue;
+
+					int sub_u = (sub_bg & (scx - 1)) * 512;
+					int sub_v = (sub_bg >> scx_pow) * 512;
 
 					// set up wrapping for affine map
 					C3D_TexSetWrap(&tileMapCache[cache_id].tex,
@@ -611,6 +624,9 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 				if (tex_count != 0) {
 					draw_affine_layer(drawn_fb, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 				}
+				#else
+				(void)visible; // silence compiler warning
+				gpu_set_target(screenTargetHard[drawn_fb]);
 				#endif
 			}
 		} else {
