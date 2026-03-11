@@ -119,6 +119,11 @@ void video_render(int displayed_fb, bool on_time) {
     update_texture_cache_hard();
     video_hard_render(displayed_fb);
 
+    // we need to have these caches during rendering
+    tDSPCACHE.CharCacheInvalid = false;
+    memset(tDSPCACHE.BGCacheInvalid, 0, sizeof(tDSPCACHE.BGCacheInvalid));
+    memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glUseProgram(sFinal);
 
