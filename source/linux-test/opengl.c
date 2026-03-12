@@ -109,6 +109,8 @@ void gpu_draw_tiles(int first, int count) {
     glDrawArrays(GL_POINTS, first, count);
 }
 
+void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, avertex *vbufs[], bool visible[]) {}
+
 void update_texture_cache_hard(void) {
     int min_updated = 2048, max_updated = -1;
     for (int t = 0; t < 2048; t++) {

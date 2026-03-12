@@ -1,4 +1,5 @@
 #include "vb_types.h"
+#include "vb_dsp.h"
 
 #ifdef __3DS__
 #include <citro3d.h>
@@ -57,4 +58,5 @@ void gpu_set_target(Framebuffer target);
 void gpu_set_scissor(bool enabled, u32 left, u32 top, u32 right, u32 bottom);
 void gpu_set_opaque(bool opaque);
 void gpu_draw_tiles(int first, int count);
+void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, avertex *vbufs[], bool visible[]);
 void update_texture_cache_hard(void);
