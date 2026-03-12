@@ -182,12 +182,11 @@ static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
-	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 2);
-	AttrInfo_AddLoader(attrInfo, 2, GPU_SHORT, 4);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 4);
 
 	C3D_BufInfo *bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 3, 0x210);
+	BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 2, 0x10);
 
 	for (int eye = 0; eye < 2; eye++) {
 		if (vbufs[eye] != NULL) {

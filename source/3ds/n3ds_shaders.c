@@ -26,7 +26,7 @@ shaderProgram_s sAffine, sChar, sFinal;
 static YATT_ShaderBinary shader_binary = { n3ds_shader_shbin, &n3ds_shader_shbin_size, NULL };
 
 static YATT_ShaderProgram shader_programs[] = {
-    { &shader_binary, &sAffine, DVLE_AFFINE_G, DVLE_AFFINE_V, .gsh_stride = 3 },
+    { &shader_binary, &sAffine, DVLE_AFFINE_G, DVLE_AFFINE_V, .gsh_stride = 2 },
     { &shader_binary, &sChar,   DVLE_CHAR_G,   DVLE_CHAR_V,   .gsh_stride = 0 },
     { &shader_binary, &sFinal,  DVLE_FINAL_G,  DVLE_FINAL_V,  .gsh_stride = 3 },
 };

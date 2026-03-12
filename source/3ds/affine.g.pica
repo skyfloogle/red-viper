@@ -7,8 +7,7 @@
 .constf myconst(0.0, 0.0, -1.0, 1.0)
 
 ; v0: (left,top,right,bottom) pos (already transposed)
-; v1: (u,v,u,v) texcoord origin (not transposed yet)
-; v2: (ix,iy,jx,jy) texcoord basis (not transposed yet)
+; v1: (u1,v1,u2,v2) texcoord origin (not transposed yet)
 
 .out outpos position
 .out outtc0 texcoord0
@@ -18,9 +17,8 @@
 .entry gmain_affine
 .proc gmain_affine
     ; r0: position
-    ; r1: texcoord intermediate
-    ; r2: texcoord final
-    ; r3: tecoord shifted
+    ; r1: texcoord shifted
+    ; r2: texcoord shifted #2
 
     ; top left
     setemit 0
@@ -28,54 +26,44 @@
     mov r0.xy, v0.xy
     mov outpos, r0
 
-    add r3, bgmap_offsets[0], v1
-    mov outtc0.xy, r3.yx
-    mov outtc1.xy, r3.wz
-    add r3.xy, bgmap_offsets[1].xy, v1.xy
-    mul outtc2.xy, bgmap_offsets[1].wz, r3.yx
+    mov r1.xyzw, v1.xyxy
+    add r1, bgmap_offsets[0], v1.xyxy
+    mov outtc0.xy, r1.yx
+    mov outtc1.xy, r1.wz
+    add r2.xy, bgmap_offsets[1].xy, v1.xy
+    mul outtc2.xy, bgmap_offsets[1].wz, r2.yx
     emit
 
-    ; top right
+    ; bottom left (transposed: top right)
     setemit 1
     mov r0.x, v0.z
     mov outpos, r0
-    ; add i to texcoord origin
-    mov r1, v1
-    add r2.xyzw, r1.xyzw, v2.xyxy
 
-    add r3, bgmap_offsets[0], r2
-    mov outtc0.xy, r3.yx
-    mov outtc1.xy, r3.wz
-    add r3.xy, bgmap_offsets[1].xy, r2.xy
-    mul outtc2.xy, bgmap_offsets[1].wz, r3.yx
+    mov outtc0.xy, r1.yx
+    mov outtc1.xy, r1.wz
+    mul outtc2.xy, bgmap_offsets[1].wz, r2.yx
     emit
 
-    ; bottom left
+    ; top right (transposed: bottom left)
     setemit 2, prim
     mov r0.xy, v0.xw
     mov outpos, r0
-    ; add j to texcoord origin
-    add r1.xyzw, r1.xyzw, v2.zwzw
 
-    add r3, bgmap_offsets[0], r1
-    mov outtc0.xy, r3.yx
-    mov outtc1.xy, r3.wz
-    add r3.xy, bgmap_offsets[1].xy, r1.xy
-    mul outtc2.xy, bgmap_offsets[1].wz, r3.yx
+    add r1, bgmap_offsets[0], v1.zwzw
+    mov outtc0.xy, r1.yx
+    mov outtc1.xy, r1.wz
+    add r2.xy, bgmap_offsets[1].xy, v1.zw
+    mul outtc2.xy, bgmap_offsets[1].wz, r2.yx
     emit
 
     ; bottom right
     setemit 0, prim inv
     mov r0.x, v0.z
     mov outpos, r0
-    ; add i to previous texcoord
-    add r2.xyzw, r1.xyzw, v2.xyxy
 
-    add r3, bgmap_offsets[0], r2
-    mov outtc0.xy, r3.yx
-    mov outtc1.xy, r3.wz
-    add r3.xy, bgmap_offsets[1].xy, r2.xy
-    mul outtc2.xy, bgmap_offsets[1].wz, r3.yx
+    mov outtc0.xy, r1.yx
+    mov outtc1.xy, r1.wz
+    mul outtc2.xy, bgmap_offsets[1].wz, r2.yx
     emit
 
     end
