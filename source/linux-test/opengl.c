@@ -110,7 +110,7 @@ void gpu_draw_tiles(int first, int count) {
 }
 
 void update_texture_cache_hard(void) {
-    bool any_updated = false;
+    int min_updated = 2048, max_updated = -1;
     for (int t = 0; t < 2048; t++) {
 		// skip if this tile wasn't modified
 		if (!tDSPCACHE.CharacterCache[t]) {
@@ -119,7 +119,8 @@ void update_texture_cache_hard(void) {
 			continue;
 		}
 
-        any_updated = true;
+        if (min_updated > t) min_updated = t;
+        if (max_updated < t) max_updated = t;
 
         u16 *tile = (u16*)(vb_state->V810_DISPLAY_RAM.off + ((t & 0x600) << 6) + 0x6000 + (t & 0x1ff) * 16);
 
@@ -155,8 +156,8 @@ void update_texture_cache_hard(void) {
             dstbuf += 256;
         }
     }
-    if (any_updated) {
+    if (min_updated <= max_updated) {
         glBindTexture(GL_TEXTURE_2D, tileTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, tileTextureBuffer);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, (min_updated / 32) * 8, 256, (max_updated / 32 + 1 - min_updated / 32) * 8, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, tileTextureBuffer + (min_updated / 32 * 256 * 8));
     }
 }
