@@ -130,9 +130,8 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 	}
 
 	// set up cache texture
-	gpu_set_target(cache->target);
+	gpu_target_affine(cache_id);
 	gpu_set_tile_offset(0, 0);
-	gpu_set_scissor(false, 0, 0, 0, 0);
 
 	gpu_set_opaque(true);
 	gpu_draw_tiles(vcur - vbuf - vcount, vcount);
@@ -142,7 +141,7 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 }
 
 void video_hard_render(int drawn_fb, int previous_transfer_count) {
-	gpu_set_target(screenTargetHard[drawn_fb]);
+	gpu_target_screen(drawn_fb);
 
 	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
 	int end_eye = start_eye + eye_count;
@@ -440,7 +439,7 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 					vcur += render_affine_cache(mapid + sub_bg, vbuf, vcur, umin, umax, vmin, vmax);
 				}
 
-				gpu_set_target(screenTargetHard[drawn_fb]);
+				gpu_target_screen(drawn_fb);
 				gpu_draw_affine((WORLD*)&windows[wnd * 16], umin, vmin, umax, vmax, drawn_fb, vbufs, visible);
 			}
 			gpu_setup_tile_drawing();

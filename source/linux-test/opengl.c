@@ -40,18 +40,20 @@ void gpu_init(void) {
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screenTexHard[i], 0);
     }
 
-    for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
-        glGenTextures(1, &tileMapCache[i].tex);
-        glBindTexture(GL_TEXTURE_2D, tileMapCache[i].tex);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
-        glGenFramebuffers(1, &tileMapCache[i].target);
-        glBindFramebuffer(GL_FRAMEBUFFER, tileMapCache[i].target);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tileMapCache[i].tex, 0);
+    glGenTextures(1, &tileMapCache[0].tex);
+    glGenFramebuffers(1, &tileMapCache[0].target);
+    for (int i = 1; i < AFFINE_CACHE_SIZE; i++) {
+        tileMapCache[i].tex = tileMapCache[0].tex;
+        tileMapCache[i].target = tileMapCache[0].target;
     }
+    glBindTexture(GL_TEXTURE_2D, tileMapCache[0].tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512*8, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
+    glBindFramebuffer(GL_FRAMEBUFFER, tileMapCache[0].target);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tileMapCache[0].tex, 0);
 
     glDepthMask(GL_FALSE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -98,10 +100,15 @@ void gpu_set_tile_offset(float xoffset, float yoffset) {
 
 void gpu_init_vip_download(int previous_transfer_count, int start_eye, int end_eye, int drawn_fb) {}
 
-void gpu_set_target(Framebuffer target) {
-    glBindFramebuffer(GL_FRAMEBUFFER, target);
-    // all targets used in drawing are 512x512 so we can just set this here
+void gpu_target_screen(int drawn_fb) {
+    glBindFramebuffer(GL_FRAMEBUFFER, screenTargetHard[drawn_fb]);
     glViewport(0, 0, 512, 512);
+}
+
+void gpu_target_affine(int cache_id) {
+    glBindFramebuffer(GL_FRAMEBUFFER, tileMapCache[cache_id].target);
+    glViewport(512 * cache_id, 0, 512, 512);
+    gpu_set_scissor(true, 512 * cache_id, 0, 512 * (cache_id + 1), 512);
 }
 
 void gpu_set_scissor(bool enabled, u32 left, u32 top, u32 right, u32 bottom) {
@@ -143,7 +150,9 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
     glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aParams"));
     glVertexAttribPointer(glGetAttribLocation(sAffine, "aParams"), 4, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, avbuf);
 
-    glUniform2f(glGetUniformLocation(sAffine, "uWorldSize"), scx, scy);
+    glUniform1i(glGetUniformLocation(sAffine, "uRepeat"), !over);
+    glUniform1f(glGetUniformLocation(sAffine, "uStartMap"), mapid % AFFINE_CACHE_SIZE);
+    glUniform3f(glGetUniformLocation(sAffine, "uWorldSize"), scx, scy, huge_bg ? 8 / scy : scx);
 
     for (int sub_bg = 0; sub_bg < map_count; sub_bg++) {
         int cache_id = (mapid + sub_bg) % AFFINE_CACHE_SIZE;

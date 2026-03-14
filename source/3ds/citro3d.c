@@ -468,8 +468,13 @@ void gpu_setup_drawing(void) {
 	C3D_CullFace(GPU_CULL_NONE);
 }
 
-void gpu_set_target(Framebuffer target) {
-    C3D_FrameDrawOn(target);
+void gpu_target_screen(int drawn_fb) {
+	C3D_FrameDrawOn(screenTargetHard[drawn_fb]);
+}
+
+void gpu_target_affine(int cache_id) {
+	C3D_FrameDrawOn(tileMapCache[cache_id].target);
+	gpu_set_scissor(false, 0, 0, 0, 0);
 }
 
 void gpu_set_scissor(bool enabled, u32 left, u32 top, u32 right, u32 bottom) {

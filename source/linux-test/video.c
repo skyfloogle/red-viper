@@ -116,13 +116,24 @@ void video_init(void) {
         "varying vec2 vTexCoord;\n"
         "void main() {\n"
         "   gl_Position = vec4(aParams.yx / 256.0 - 1.0, 0.0, 1.0);\n"
-        "   vTexCoord = aParams.wz / 4096.0;\n"
+        "   vTexCoord = aParams.zw / 4096.0;\n"
         "}\n",
-        "uniform sampler2D sTex0, sTex1, sTex2, sTex3, sTex4, sTex5, sTex6, sTex7;\n"
-        "uniform mediump vec2 uWorldSize;\n"
-        "varying mediump vec2 vTexCoord;\n"
+        "uniform sampler2D sTex;\n"
+        "uniform bool uRepeat;\n"
+        "uniform highp float uStartMap;\n"
+        // (fullwidth, height, modwidth)
+        "uniform highp vec3 uWorldSize;\n"
+        "varying highp vec2 vTexCoord;\n"
         "void main() {\n"
-        "   gl_FragColor = texture2D(sTex0, vTexCoord);\n"
+        "   highp vec2 texCoord = vTexCoord;\n"
+        "   if (!uRepeat && mod(texCoord, uWorldSize.xy) != texCoord) {\n"
+                // TODO: overtile
+        "       gl_FragColor = vec4(0.0);\n"
+        "       return;\n"
+        "   }\n"
+        "   texCoord = mod(texCoord, uWorldSize.zy);\n"
+        "   mediump float sub_map = floor(texCoord.x) + floor(texCoord.y) * uWorldSize.x;\n"
+        "   gl_FragColor = texture2D(sTex, (mod(texCoord.yx, 1.0) + vec2((uStartMap + sub_map), 0.0)) * vec2(1.0 / 8.0, 1.0));\n"
         "}\n"
     );
 }
