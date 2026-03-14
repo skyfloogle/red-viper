@@ -148,7 +148,6 @@ void gpu_set_tile_offset(float xoffset, float yoffset) {
 }
 
 static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
-	gpu_set_target(screenTargetHard[drawn_fb]);
 	C3D_BindProgram(&sAffine);
 
 	if (!use_masks) {
@@ -197,8 +196,6 @@ static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures
 			C3D_DrawArrays(GPU_GEOMETRY_PRIM, vbufs[eye] - avbuf, h);
 		}
 	}
-
-	gpu_setup_tile_drawing();
 }
 
 void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, avertex *vbufs[], bool visible[]) {

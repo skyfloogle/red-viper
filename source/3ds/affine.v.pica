@@ -1,4 +1,5 @@
-.constf const1(0.00390625, 0.00390625, 0.000244140625, -1.0)
+; 1/256, -255/256, 1/512, -1
+.constf const1(0.00390625, -0.99609375, 0.000244140625, -1.0)
 
 ; position is transposed
 ; v0: (x1, y1, u1, v1)
@@ -10,9 +11,9 @@
 .entry vmain_affine
 .proc vmain_affine
     ; position: 0..size -> -1..1
-    mov r0, const1.xyxy
+    mov r0, const1.xxxx
     mad r0.xy, r0.xy, v0.xy, const1.ww
-    mad r0.zw, r0.zwzw, v1.xyxy, const1.wwww
+    mad r0.zw, r0.zwzw, v1.xyxy, const1.yyyy
     mov outpos.xyzw, r0.yxwz
     ; texcoord: 0..size -> 0..1
     mul r1.xy, const1.zz, v0.zw

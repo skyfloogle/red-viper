@@ -380,7 +380,7 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 							avcur->x1 = gx;
 							avcur->y1 = gy + y + 256 * eye;
 							avcur->x2 = gx + w;
-							avcur->y2 = gy + y + 1 + 256 * eye;
+							avcur->y2 = gy + y + 256 * eye;
 							avcur->u1 = mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
 							avcur->v1 = my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
 							avcur->u2 = avcur->u1 + (dx * w >> 6);
@@ -440,9 +440,10 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 					vcur += render_affine_cache(mapid + sub_bg, vbuf, vcur, umin, umax, vmin, vmax);
 				}
 
-				gpu_draw_affine((WORLD*)&windows[wnd * 16], umin, vmin, umax, vmax, drawn_fb, vbufs, visible);
 				gpu_set_target(screenTargetHard[drawn_fb]);
+				gpu_draw_affine((WORLD*)&windows[wnd * 16], umin, vmin, umax, vmax, drawn_fb, vbufs, visible);
 			}
+			gpu_setup_tile_drawing();
 		} else {
 			// object world
 			gpu_set_scissor(false, 0, 0, 0, 0);
