@@ -380,26 +380,27 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 							avcur->y1 = gy + y + 256 * eye;
 							avcur->x2 = gx + w;
 							avcur->y2 = gy + y + 256 * eye;
-							avcur->u1 = mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
-							avcur->v1 = my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
-							avcur->u2 = avcur->u1 + (dx * w >> 6);
-							avcur->v2 = avcur->v1 + (dy * w >> 6);
+							avcur->u1 = avcur->u2 = mx + ((eye == 0) != (mp >= 0) ? abs(mp) * dx >> 6 : 0);
+							avcur->v1 = avcur->v2 = my + ((eye == 0) != (mp >= 0) ? abs(mp) * dy >> 6 : 0);
+							avcur->uoff1 = avcur->voff1 = 0;
+							avcur->uoff2 = (dx * w >> 6);
+							avcur->voff2 = (dy * w >> 6);
 							if (umin > (avcur->u1 >> 3))
 								umin = (avcur->u1 >> 3);
-							if (umin > ((avcur->u2) >> 3))
-								umin = ((avcur->u2) >> 3);
+							if (umin > ((avcur->u2 + avcur->uoff2) >> 3))
+								umin = ((avcur->u2 + avcur->uoff2) >> 3);
 							if (umax < (avcur->u1 >> 3))
 								umax = (avcur->u1 >> 3);
-							if (umax < ((avcur->u2) >> 3))
-								umax = ((avcur->u2) >> 3);
+							if (umax < ((avcur->u2 + avcur->uoff2) >> 3))
+								umax = ((avcur->u2 + avcur->uoff2) >> 3);
 							if (vmin > (avcur->v1 >> 3))
 								vmin = (avcur->v1 >> 3);
-							if (vmin > ((avcur->v2) >> 3))
-								vmin = ((avcur->v2) >> 3);
+							if (vmin > ((avcur->v2 + avcur->voff2) >> 3))
+								vmin = ((avcur->v2 + avcur->voff2) >> 3);
 							if (vmax < (avcur->v1 >> 3))
 								vmax = (avcur->v1 >> 3);
-							if (vmax < ((avcur->v2) >> 3))
-								vmax = ((avcur->v2) >> 3);
+							if (vmax < ((avcur->v2 + avcur->voff2) >> 3))
+								vmax = ((avcur->v2 + avcur->voff2) >> 3);
 							avcur++;
 						}
 					}

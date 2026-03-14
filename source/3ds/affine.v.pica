@@ -3,7 +3,9 @@
 
 ; position is transposed
 ; v0: (x1, y1, u1, v1)
-; v1: (x2, y2, u2, v2)
+; v1: (uoff1, voff1) - always zero
+; v2: (x2, y2, u2, v2)
+; v3: (uoff2, voff2)
 
 .out outpos dummy
 .out outtc0 dummy
@@ -13,11 +15,13 @@
     ; position: 0..size -> -1..1
     mov r0, const1.xxxx
     mad r0.xy, r0.xy, v0.xy, const1.ww
-    mad r0.zw, r0.zwzw, v1.xyxy, const1.yyyy
+    mad r0.zw, r0.zwzw, v2.xyxy, const1.yyyy
     mov outpos.xyzw, r0.yxwz
     ; texcoord: 0..size -> 0..1
-    mul r1.xy, const1.zz, v0.zw
-    mul r1.zw, const1.zzzz, v1.zwzw
-    mov outtc0, r1
+    mov r0.xy, v0.zw
+    mov r0.zw, v2.zwzw
+    add r0.zw, r0.zwzw, v3.xyxy
+    mul r0.xyzw, const1.zzzz, r0.xyzw
+    mov outtc0, r0
     end
 .end

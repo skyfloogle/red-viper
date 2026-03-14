@@ -33,8 +33,8 @@ typedef struct {
 } __attribute__((aligned(4))) vertex;
 
 typedef struct {
-	short x1, y1, u1, v1;
-	short x2, y2, u2, v2;
+	short x1, y1, u1, v1, uoff1, voff1;
+	short x2, y2, u2, v2, uoff2, voff2;
 } avertex;
 
 #define VBUF_SIZE 64 * 64 * 2 * 32

@@ -149,6 +149,8 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
 
     glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aParams"));
     glVertexAttribPointer(glGetAttribLocation(sAffine, "aParams"), 4, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, avbuf);
+    glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aOffset"));
+    glVertexAttribPointer(glGetAttribLocation(sAffine, "aOffset"), 2, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, (u8*)avbuf + 8);
 
     glUniform1i(glGetUniformLocation(sAffine, "uRepeat"), !over);
     glUniform1f(glGetUniformLocation(sAffine, "uStartMap"), mapid % AFFINE_CACHE_SIZE);

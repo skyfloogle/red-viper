@@ -113,11 +113,13 @@ void video_init(void) {
 
     sAffine = build_shader(
         "attribute vec4 aParams;\n"
+        "attribute vec2 aOffset;\n"
         "varying vec2 vTexCoord;\n"
         "void main() {\n"
         "   gl_Position = vec4(aParams.yx / 256.0 - 1.0, 0.0, 1.0);\n"
-        "   vTexCoord = aParams.zw / 4096.0;\n"
+        "   vTexCoord = (aParams.zw + aOffset) / 4096.0;\n"
         "}\n",
+
         "uniform sampler2D sTex;\n"
         "uniform bool uRepeat;\n"
         "uniform highp float uStartMap;\n"
