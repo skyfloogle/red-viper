@@ -4,7 +4,7 @@
 #include "video_hard.h"
 #include "v810_mem.h"
 
-GLuint sChar, sFinal;
+GLuint sChar, sFinal, sAffine;
 
 int eye_count = 2;
 
@@ -78,7 +78,7 @@ void video_init(void) {
         "   vec2 realPos = aPosition * (1.0/256.0) - (1.0 - 4.0/256.0) + uOffset;\n"
         "   gl_Position = vec4(realPos.y, realPos.x, 0.0, 1.0);\n"
         "   gl_PointSize = 8.0;\n"
-        "}",
+        "}\n",
 
         "uniform sampler2D sTex;\n"
         "varying mediump vec3 vParams;\n"
@@ -90,7 +90,7 @@ void video_init(void) {
         "   mediump vec2 realCoord = (vParams.xy + vec2(1.0 - tileCoord.x, tileCoord.y)) / vec2(256.0 / 8.0, 512.0 / 8.0);\n"
         "   lowp vec4 color = texture2D(sTex, realCoord);\n"
         "   gl_FragColor = vec4(vPalette * color.xyz, color.w);\n"
-        "}"
+        "}\n"
     );
 
     sFinal = build_shader(
@@ -108,6 +108,21 @@ void video_init(void) {
         "void main() {\n"
         "   mediump vec4 color = texture2D(sTex, vTexCoord);\n"
         "   gl_FragColor = vec4(mix(mix(mix(uPalette[0], uPalette[1], color.x), uPalette[2], color.y), uPalette[3], color.z), 1.0);\n"
+        "}\n"
+    );
+
+    sAffine = build_shader(
+        "attribute vec4 aParams;\n"
+        "varying vec2 vTexCoord;\n"
+        "void main() {\n"
+        "   gl_Position = vec4(aParams.yx / 256.0 - 1.0, 0.0, 1.0);\n"
+        "   vTexCoord = aParams.wz / 4096.0;\n"
+        "}\n",
+        "uniform sampler2D sTex0, sTex1, sTex2, sTex3, sTex4, sTex5, sTex6, sTex7;\n"
+        "uniform mediump vec2 uWorldSize;\n"
+        "varying mediump vec2 vTexCoord;\n"
+        "void main() {\n"
+        "   gl_FragColor = texture2D(sTex0, vTexCoord);\n"
         "}\n"
     );
 }

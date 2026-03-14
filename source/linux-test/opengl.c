@@ -4,16 +4,24 @@
 #include "vb_dsp.h"
 #include "v810_mem.h"
 
+static GLuint transparentPixelTexture;
 static GLuint tileTexture;
 static u16 *tileTextureBuffer;
 GLuint screenTexHard[2];
 GLuint screenTargetHard[2];
 
-extern GLuint sChar, sFinal;
+extern GLuint sChar, sFinal, sAffine;
 
 static float palettes[8][3][3];
 
 void gpu_init(void) {
+    glGenTextures(1, &transparentPixelTexture);
+    glBindTexture(GL_TEXTURE_2D, transparentPixelTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    u8 pixel = 0;
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 1, 1, 0, GL_ALPHA, GL_BYTE, 0);
+
     glGenTextures(1, &tileTexture);
     glBindTexture(GL_TEXTURE_2D, tileTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -37,6 +45,8 @@ void gpu_init(void) {
         glBindTexture(GL_TEXTURE_2D, tileMapCache[i].tex);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
         glGenFramebuffers(1, &tileMapCache[i].target);
         glBindFramebuffer(GL_FRAMEBUFFER, tileMapCache[i].target);
@@ -109,7 +119,54 @@ void gpu_draw_tiles(int first, int count) {
     glDrawArrays(GL_POINTS, first, count);
 }
 
-void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, avertex *vbufs[], bool visible[]) {}
+void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, avertex *vbufs[], bool visible[]) {
+	uint8_t mapid = world->head & 0xf;
+	uint8_t scx_pow = ((world->head >> 10) & 3);
+	uint8_t scy_pow = ((world->head >> 8) & 3);
+	uint8_t map_count_pow = scx_pow + scy_pow;
+	bool huge_bg = map_count_pow > 3;
+	if (huge_bg) map_count_pow = 3;
+	uint8_t scx = 1 << scx_pow;
+	uint8_t scy = 1 << scy_pow;
+	uint8_t map_count = 1 << map_count_pow;
+	mapid &= ~(map_count - 1);
+	bool over = world->head & 0x80;
+	int16_t base_gx = (s16)(world->gx << 6) >> 6;
+	int16_t gp = (s16)(world->gp << 6) >> 6;
+	int16_t gy = world->gy;
+	int16_t w = world->w + 1;
+	int16_t h = world->h + 1;
+	int16_t over_tile = world->over & 0x7ff;
+
+    glUseProgram(sAffine);
+
+    glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aParams"));
+    glVertexAttribPointer(glGetAttribLocation(sAffine, "aParams"), 4, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, avbuf);
+
+    glUniform2f(glGetUniformLocation(sAffine, "uWorldSize"), scx, scy);
+
+    for (int sub_bg = 0; sub_bg < map_count; sub_bg++) {
+        int cache_id = (mapid + sub_bg) % AFFINE_CACHE_SIZE;
+        glActiveTexture(GL_TEXTURE0 + sub_bg);
+        if (tileMapCache[cache_id].bg != mapid + sub_bg || !tileMapCache[cache_id].visible || !visible[sub_bg]) {
+            glBindTexture(GL_TEXTURE_2D, transparentPixelTexture);
+        } else {
+            glBindTexture(GL_TEXTURE_2D, tileMapCache[cache_id].tex);
+        }
+
+        static char *uniformNames[] = {"sTex0", "sTex1", "sTex2", "sTex3", "sTex4", "sTex5", "sTex6", "sTex7"};
+        glUniform1i(glGetUniformLocation(sAffine, uniformNames[sub_bg]), sub_bg);
+    }
+    for (int eye = 0; eye < 2; eye++) {
+        if (vbufs[eye] != NULL) {
+            int gx = base_gx + (eye == 0 ? -gp : gp);
+            
+            // note: transposed
+            gpu_set_scissor(true, 256 * eye + (gy >= 0 ? gy : 0), gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
+            glDrawArrays(GL_LINES, (vbufs[eye] - avbuf) * 2, h * 2);
+        }
+    }
+}
 
 void update_texture_cache_hard(void) {
     int min_updated = 2048, max_updated = -1;
