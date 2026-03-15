@@ -76,7 +76,8 @@ int main(int argc, char* argv[]) {
     drc_init();
     #endif
 
-    strncpy(tVBOpt.ROM_PATH, argv[1], sizeof(tVBOpt.ROM_PATH));
+    strncpy(tVBOpt.ROM_PATH, argv[1], sizeof(tVBOpt.ROM_PATH)-1);
+    tVBOpt.ROM_PATH[sizeof(tVBOpt.ROM_PATH)-1] = 0;
 
     // -m for multiplayer
     for (int i = 0; i < argc; i++) {
