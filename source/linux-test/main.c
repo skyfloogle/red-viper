@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
         video_render(displayed_fb, false);
         SDL_GL_SwapWindow(window);
 
-        // if (tVBOpt.RENDERMODE != RM_CPUONLY) {
+        if (tVBOpt.RENDERMODE != RM_CPUONLY) {
             if (vb_state->tVIPREG.XPCTRL & 0x0002) {
                 if (tDSPCACHE.DDSPDataState[!displayed_fb] != GPU_CLEAR) {
                     memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x8000 * !displayed_fb, 0, 0x6000);
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
                     tDSPCACHE.DDSPDataState[!displayed_fb] = GPU_CLEAR;
                 }
             }
-        // }
+        }
 
         vb_state = &vb_players[0];
 

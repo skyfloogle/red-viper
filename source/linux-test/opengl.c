@@ -391,7 +391,7 @@ void video_soft_to_texture(int displayed_fb) {
             uint16_t *in_fb_ptr = (uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * displayed_fb + x * (256 / 4));
             uint16_t *out_fb = screenTexSoftBuffer + x * 512 + eye * 256;
 
-            for (int y = 0; y < 224; y++) {
+            for (int y = 0; y < 224 / 8; y++) {
                 // black, red, green, blue
                 const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
 
