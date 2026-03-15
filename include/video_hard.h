@@ -46,6 +46,7 @@ extern avertex *avbuf, *avcur;
 #define DOWNLOADED_FRAMEBUFFER_WIDTH 256
 extern uint16_t *rgba4_framebuffers;
 
+void video_hard_init(void);
 
 void gpu_init(void);
 void gpu_clear_screen(int start_eye, int end_eye);

@@ -1,9 +1,55 @@
 
+#include <math.h>
+
 #include "vb_dsp.h"
 #include "v810_mem.h"
+#include "vb_set.h"
 
 bool tileVisible[2048];
 int blankTile;
+
+#define BRIGHTNESS_FACTOR 1.75
+#define GAMMA 0.9
+
+static u8 brightness_lut[256];
+
+static inline u8 clamp255(int x) {
+	return x < 255 ? x : 255;
+}
+
+void setup_brightness_lut(void) {
+	for (int i = 0; i < 256; i++) {
+		brightness_lut[i] = clamp255(pow(((float)i) * BRIGHTNESS_FACTOR / 255, GAMMA) * 255);
+	}
+}
+
+int video_get_colour(int id, int brt_reg) {
+	if (id == 0) {
+		return tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.MTINT[tVBOpt.MULTIID][0] : 0;
+	}
+	int brightness = clamp255(brightness_lut[clamp255(brt_reg)] * (tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.STINT[tVBOpt.MULTIID][id - 1] : 1));
+	int fulltint = tVBOpt.ANAGLYPH ? 0xffffff : tVBOpt.MULTICOL ? tVBOpt.MTINT[tVBOpt.MULTIID][id] : tVBOpt.TINT;
+	int col_tint =
+		((brightness * ((fulltint) & 0xff) / 255)) |
+		((brightness * ((fulltint >> 8) & 0xff) / 255) << 8) |
+		((brightness * ((fulltint >> 16) & 0xff) / 255) << 16);
+	if (tVBOpt.ANAGLYPH || !tVBOpt.MULTICOL) return col_tint;
+
+	int black_brightness = 255 - brightness;
+	int black_tint = tVBOpt.ANAGLYPH ? 0 :
+		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0]) & 0xff) / 255)) |
+		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0] >> 8) & 0xff) / 255) << 8) |
+		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0] >> 16) & 0xff) / 255) << 16);
+	
+	#if DRC_AVAILABLE
+	return __builtin_arm_uqadd8(col_tint, black_tint);
+	#else
+	return ((col_tint + black_tint) & 0xff)
+		| (((col_tint & ~0xff) + (black_tint & ~0xff)) & 0xff00)
+		| (((col_tint & ~0xffff) + (black_tint & ~0xffff)) & 0xff0000)
+		| (((col_tint & ~0xffffff) + (black_tint & ~0xffffff)) & 0xff000000);
+	#endif
+}
 
 int videoProcessingTime(void) {
 	int time = 54688;

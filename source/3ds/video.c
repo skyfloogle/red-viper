@@ -27,13 +27,6 @@
 #define MAX_DEPTH         16
 #define CENTER_OFFSET     (MAX_DEPTH / 2)
 
-static inline u8 clamp255(int x) {
-	return x < 255 ? x : 255;
-}
-
-#define BRIGHTNESS_FACTOR 1.75
-#define GAMMA 0.9
-
 #define USE_SOFT_FLUSH false
 
 // some stuff copied from vb_dsp.c
@@ -125,30 +118,7 @@ static C3D_ProcTexColorLut procTexColorLut;
 uint8_t maxRepeat = 0, minRepeat = 0;
 C3D_Tex columnTableTexture;
 
-u8 brightness_lut[256];
-
 int eye_count = 2;
-
-int video_get_colour(int id, int brt_reg) {
-	if (id == 0) {
-		return tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.MTINT[tVBOpt.MULTIID][0] : 0;
-	}
-	int brightness = clamp255(brightness_lut[clamp255(brt_reg)] * (tVBOpt.MULTICOL && !tVBOpt.ANAGLYPH ? tVBOpt.STINT[tVBOpt.MULTIID][id - 1] : 1));
-	int fulltint = tVBOpt.ANAGLYPH ? 0xffffff : tVBOpt.MULTICOL ? tVBOpt.MTINT[tVBOpt.MULTIID][id] : tVBOpt.TINT;
-	int col_tint =
-		((brightness * ((fulltint) & 0xff) / 255)) |
-		((brightness * ((fulltint >> 8) & 0xff) / 255) << 8) |
-		((brightness * ((fulltint >> 16) & 0xff) / 255) << 16);
-	if (tVBOpt.ANAGLYPH || !tVBOpt.MULTICOL) return col_tint;
-
-	int black_brightness = 255 - brightness;
-	int black_tint = tVBOpt.ANAGLYPH ? 0 :
-		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0]) & 0xff) / 255)) |
-		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0] >> 8) & 0xff) / 255) << 8) |
-		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0] >> 16) & 0xff) / 255) << 16);
-	
-	return __builtin_arm_uqadd8(col_tint, black_tint);
-}
 
 void video_init(void) {
     #define DISPLAY_TRANSFER_FLAGS                                                                     \
@@ -157,9 +127,7 @@ void video_init(void) {
         GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
 
-	for (int i = 0; i < 256; i++) {
-		brightness_lut[i] = clamp255(pow(((float)i) * BRIGHTNESS_FACTOR / 255, GAMMA) * 255);
-	}
+	setup_brightness_lut();
 
     gfxSet3D(true);
 

@@ -161,13 +161,13 @@ extern int eye_count;
 extern bool tileVisible[2048];
 extern int blankTile;
 
-#ifdef __3DS__
-
+void setup_brightness_lut(void);
 int video_get_colour(int id, int brt_reg);
+
+#ifdef __3DS__
 
 // video_hard
 extern C3D_Tex screenTexHard[2];
-void video_hard_init(void);
 void video_hard_render(int drawn_fb, int previous_transfer_count);
 
 // video_soft
