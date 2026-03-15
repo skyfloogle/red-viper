@@ -8,15 +8,14 @@
 #include "v810_mem.h"
 #include "vb_dsp.h"
 #include "drc_core.h"
+#include "vb_sound.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
 
 // dummy
 #include "vb_dsp.h"
-#include "vb_sound.h"
 VB_DSPCACHE tDSPCACHE;
-void video_download_vip(int drawn_fb) {}
 
 #if DRC_AVAILABLE
 #else

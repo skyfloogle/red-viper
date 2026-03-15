@@ -26,6 +26,8 @@ static int g_displayed_fb = 0;
 static int vip_displayed_fb = 0;
 
 void video_render(int displayed_fb, bool on_time) {
+	if (tVBOpt.RENDERMODE == RM_TOCPU) video_download_vip(displayed_fb);
+
 	g_displayed_fb = displayed_fb;
 	vip_displayed_fb = tVBOpt.DOUBLE_BUFFER ? displayed_fb : 0;
 
@@ -71,7 +73,7 @@ void video_flush(bool left_for_both) {
     glUseProgram(sFinal);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, screenTexHard[vip_displayed_fb]);
+    glBindTexture(GL_TEXTURE_2D, tVBOpt.RENDERMODE != RM_TOCPU ? screenTexHard[vip_displayed_fb] : transparentPixelTexture);
     glUniform1i(glGetUniformLocation(sFinal, "sVip"), 0);
 
     glActiveTexture(GL_TEXTURE1);

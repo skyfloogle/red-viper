@@ -214,16 +214,18 @@ void gpu_clear_screen(int start_eye, int end_eye) {
 
 void gpu_setup_drawing(void) {
     for (int i = 0; i < 4; i++) {
-        const float colors[4][3] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+        const float normal_cols[4][3] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+        const float tocpu_cols[4][3] = {{0, 0, 0}, {0, 1.0/16, 0}, {0, 2.0/16}, {0, 3.0/16, 0}};
+        const float (*cols)[3] = (tVBOpt.RENDERMODE != RM_TOCPU) ? normal_cols : tocpu_cols;
         HWORD pal = vb_state->tVIPREG.GPLT[i];
         for (int j = 0; j < 3; j++) {
             pal = pal >> 2;
-            memcpy(palettes[i][j], colors[pal & 3], sizeof(colors[0]));
+            memcpy(palettes[i][j], cols[pal & 3], sizeof(cols[0]));
         }
         pal = vb_state->tVIPREG.JPLT[i];
         for (int j = 0; j < 3; j++) {
             pal = pal >> 2;
-            memcpy(palettes[i + 4][j], colors[pal & 3], sizeof(colors[0]));
+            memcpy(palettes[i + 4][j], cols[pal & 3], sizeof(cols[0]));
         }
     }
 }
@@ -245,8 +247,6 @@ void gpu_setup_tile_drawing(void) {
 void gpu_set_tile_offset(float xoffset, float yoffset) {
     glUniform2f(glGetUniformLocation(sChar, "uOffset"), xoffset, yoffset);
 }
-
-void gpu_init_vip_download(int previous_transfer_count, int start_eye, int end_eye, int drawn_fb) {}
 
 void gpu_target_screen(int drawn_fb) {
     glBindFramebuffer(GL_FRAMEBUFFER, screenTargetHard[drawn_fb]);
@@ -405,4 +405,41 @@ void video_soft_to_texture(int displayed_fb) {
     }
     glBindTexture(GL_TEXTURE_2D, screenTexSoft[displayed_fb]);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 512, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, screenTexSoftBuffer);
+}
+
+
+static bool downloaded;
+
+void gpu_init_vip_download(int previous_transfer_count, int start_eye, int end_eye, int drawn_fb) {
+    downloaded = false;
+}
+
+void video_download_vip(int drawn_fb) {
+	if (tVBOpt.RENDERMODE != RM_TOCPU) return;
+	if (downloaded) return;
+    downloaded = true;
+    glBindFramebuffer(GL_FRAMEBUFFER, screenTargetHard[drawn_fb]);
+    for (int eye = 0; eye < 2; eye++) {
+        glReadPixels(eye * 256, 0, DOWNLOADED_FRAMEBUFFER_WIDTH, 384, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, rgba4_framebuffers);
+        uint32_t *in_fb = (uint32_t*)rgba4_framebuffers;
+		uint32_t *out_fb = (uint32_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
+		for (int x = 0; x < 384; x++) {
+			for (int y = 0; y < 224; y += (32/2)) {
+				uint32_t buf = 0;
+				for (int i = 0; i < (32/4); i++) {
+					uint32_t inbuf = *in_fb++;
+					buf |= (((inbuf & 0xffff) >> 8) | (inbuf >> 22)) << (i*4);
+				}
+				*out_fb++ = buf;
+			}
+			in_fb += (DOWNLOADED_FRAMEBUFFER_WIDTH - 224) / 2;
+			out_fb += (256 - 224) / 4 / sizeof(out_fb[0]);
+		}
+    }
+
+	tDSPCACHE.DDSPDataState[drawn_fb] = CPU_WROTE;
+	for (int i = 0; i < 64; i++) {
+		tDSPCACHE.SoftBufWrote[drawn_fb][i].min = 0;
+		tDSPCACHE.SoftBufWrote[drawn_fb][i].max = 31;
+	}
 }
