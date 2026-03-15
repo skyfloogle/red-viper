@@ -125,6 +125,7 @@ void video_init(void) {
         "uniform highp float uStartMap;\n"
         // (fullwidth, height, modwidth)
         "uniform highp vec3 uWorldSize;\n"
+        "uniform bool uMapVisible[8];\n"
         "varying highp vec2 vTexCoord;\n"
         "void main() {\n"
         "   highp vec2 texCoord = vTexCoord;\n"
@@ -135,6 +136,10 @@ void video_init(void) {
         "   }\n"
         "   texCoord = mod(texCoord, uWorldSize.zy);\n"
         "   mediump float sub_map = floor(texCoord.x) + floor(texCoord.y) * uWorldSize.x;\n"
+        "   if (!uMapVisible[int(sub_map)]) {\n"
+        "       gl_FragColor = vec4(0.0);\n"
+        "       return;\n"
+        "   }\n"
         "   gl_FragColor = texture2D(sTex, (mod(texCoord.yx, 1.0) + vec2((uStartMap + sub_map), 0.0)) * vec2(1.0 / 8.0, 1.0));\n"
         "}\n"
     );

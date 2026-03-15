@@ -152,22 +152,19 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
     glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aOffset"));
     glVertexAttribPointer(glGetAttribLocation(sAffine, "aOffset"), 2, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, (u8*)avbuf + 8);
 
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tileMapCache[0].tex);
+    glUniform1i(glGetUniformLocation(sAffine, "sTex"), 0);
     glUniform1i(glGetUniformLocation(sAffine, "uRepeat"), !over);
     glUniform1f(glGetUniformLocation(sAffine, "uStartMap"), mapid % AFFINE_CACHE_SIZE);
     glUniform3f(glGetUniformLocation(sAffine, "uWorldSize"), scx, scy, huge_bg ? 8 / scy : scx);
-
+    GLint uVisible[8];
     for (int sub_bg = 0; sub_bg < map_count; sub_bg++) {
-        int cache_id = (mapid + sub_bg) % AFFINE_CACHE_SIZE;
-        glActiveTexture(GL_TEXTURE0 + sub_bg);
-        if (tileMapCache[cache_id].bg != mapid + sub_bg || !tileMapCache[cache_id].visible || !visible[sub_bg]) {
-            glBindTexture(GL_TEXTURE_2D, transparentPixelTexture);
-        } else {
-            glBindTexture(GL_TEXTURE_2D, tileMapCache[cache_id].tex);
-        }
-
-        static char *uniformNames[] = {"sTex0", "sTex1", "sTex2", "sTex3", "sTex4", "sTex5", "sTex6", "sTex7"};
-        glUniform1i(glGetUniformLocation(sAffine, uniformNames[sub_bg]), sub_bg);
+		int cache_id = (mapid + sub_bg) % AFFINE_CACHE_SIZE;
+        uVisible[sub_bg] = visible[sub_bg] && tileMapCache[cache_id].bg == mapid + sub_bg && tileMapCache[cache_id].visible;
     }
+    glUniform1iv(glGetUniformLocation(sAffine, "uMapVisible"), map_count, uVisible);
+
     for (int eye = 0; eye < 2; eye++) {
         if (vbufs[eye] != NULL) {
             int gx = base_gx + (eye == 0 ? -gp : gp);
