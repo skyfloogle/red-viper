@@ -3,11 +3,15 @@
 #include "video_hard.h"
 #include "vb_dsp.h"
 #include "v810_mem.h"
+#include "vb_set.h"
 
+GLuint transparentPixelTexture;
 static GLuint tileTexture;
 static u16 *tileTextureBuffer;
 GLuint screenTexHard[2];
 GLuint screenTargetHard[2];
+GLuint screenTexSoft[2];
+static u16 *screenTexSoftBuffer;
 
 GLuint sChar, sFinal, sAffine;
 
@@ -95,24 +99,6 @@ void gpu_init(void) {
         "}\n"
     );
 
-    sFinal = build_shader(
-        "attribute vec4 aPosition;\n"
-        "attribute vec2 aTexCoord;\n"
-        "varying vec2 vTexCoord;\n"
-        "void main() {\n"
-        "   gl_Position = aPosition;\n"
-        "   vTexCoord = aTexCoord;\n"
-        "}\n",
-
-        "uniform sampler2D sTex;\n"
-        "uniform mediump vec3 uPalette[4];\n"
-        "varying mediump vec2 vTexCoord;\n"
-        "void main() {\n"
-        "   mediump vec4 color = texture2D(sTex, vTexCoord);\n"
-        "   gl_FragColor = vec4(mix(mix(mix(uPalette[0], uPalette[1], color.x), uPalette[2], color.y), uPalette[3], color.z), 1.0);\n"
-        "}\n"
-    );
-
     sAffine = build_shader(
         "attribute vec4 aParams;\n"
         "attribute vec2 aOffset;\n"
@@ -147,12 +133,40 @@ void gpu_init(void) {
         "}\n"
     );
 
+    sFinal = build_shader(
+        "attribute vec4 aPosition;\n"
+        "attribute vec2 aTexCoord;\n"
+        "varying vec2 vTexCoord;\n"
+        "void main() {\n"
+        "   gl_Position = aPosition;\n"
+        "   vTexCoord = aTexCoord;\n"
+        "}\n",
+
+        "uniform sampler2D sVip, sSoft;\n"
+        "uniform mediump vec3 uPalette[4];\n"
+        "varying mediump vec2 vTexCoord;\n"
+        "void main() {\n"
+        "   mediump vec4 vip = texture2D(sVip, vTexCoord);\n"
+        "   mediump vec4 soft = texture2D(sSoft, vTexCoord);\n"
+        "   mediump vec4 color = soft.a == 0.0 ? vip : soft;\n"
+        "   gl_FragColor = vec4(mix(mix(mix(uPalette[0], uPalette[1], color.x), uPalette[2], color.y), uPalette[3], color.z), 1.0);\n"
+        "}\n"
+    );
+
+    glGenTextures(1, &transparentPixelTexture);
+    glBindTexture(GL_TEXTURE_2D, transparentPixelTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    u16 pixel = 0;
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, &pixel);
+    
+
     glGenTextures(1, &tileTexture);
     glBindTexture(GL_TEXTURE_2D, tileTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
-    tileTextureBuffer = malloc(256 * 512 * 2);
+    tileTextureBuffer = malloc(256 * 512 * sizeof(tileTextureBuffer[0]));
 
     glGenTextures(2, screenTexHard);
     glGenFramebuffers(2, screenTargetHard);
@@ -164,6 +178,15 @@ void gpu_init(void) {
         glBindFramebuffer(GL_FRAMEBUFFER, screenTargetHard[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screenTexHard[i], 0);
     }
+
+    glGenTextures(2, screenTexSoft);
+    for (int i = 0; i < 2; i++) {
+        glBindTexture(GL_TEXTURE_2D, screenTexSoft[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
+    }
+    screenTexSoftBuffer = malloc(512 * 512 * sizeof(screenTexSoftBuffer[0]));
 
     glGenTextures(1, &tileMapCache[0].tex);
     glGenFramebuffers(1, &tileMapCache[0].target);
@@ -354,4 +377,32 @@ void update_texture_cache_hard(void) {
         glBindTexture(GL_TEXTURE_2D, tileTexture);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, (min_updated / 32) * 8, 256, (max_updated / 32 + 1 - min_updated / 32) * 8, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, tileTextureBuffer + (min_updated / 32 * 256 * 8));
     }
+}
+
+void video_soft_to_texture(int displayed_fb) {
+    if (tDSPCACHE.DDSPDataState[displayed_fb] == CPU_WROTE) {
+        tDSPCACHE.DDSPDataState[displayed_fb] = GPU_WROTE;
+    } else {
+        return;
+    }
+    int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
+    for (int eye = start_eye; eye < start_eye + eye_count; eye++) {
+        for (int x = 0; x < 384; x++) {
+            uint16_t *in_fb_ptr = (uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * displayed_fb + x * (256 / 4));
+            uint16_t *out_fb = screenTexSoftBuffer + x * 512 + eye * 256;
+
+            for (int y = 0; y < 224; y++) {
+                // black, red, green, blue
+                const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
+
+                uint16_t blob = *in_fb_ptr++;
+                for (int i = 0; i < 16 / 2; i++) {
+                    *out_fb++ = colors[blob & 3];
+                    blob >>= 2;
+                }
+            }
+        }
+    }
+    glBindTexture(GL_TEXTURE_2D, screenTexSoft[displayed_fb]);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 512, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, screenTexSoftBuffer);
 }
