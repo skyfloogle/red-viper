@@ -51,7 +51,7 @@ void gpu_init(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512*8, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512*4, 512*2, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
     glBindFramebuffer(GL_FRAMEBUFFER, tileMapCache[0].target);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tileMapCache[0].tex, 0);
 
@@ -107,8 +107,10 @@ void gpu_target_screen(int drawn_fb) {
 
 void gpu_target_affine(int cache_id) {
     glBindFramebuffer(GL_FRAMEBUFFER, tileMapCache[cache_id].target);
-    glViewport(512 * cache_id, 0, 512, 512);
-    gpu_set_scissor(true, 512 * cache_id, 0, 512 * (cache_id + 1), 512);
+    int xoff = cache_id % 4;
+    int yoff = cache_id / 4;
+    glViewport(512 * xoff, 512 * yoff, 512, 512);
+    gpu_set_scissor(true, 512 * xoff, 512 * yoff, 512 * (xoff + 1), 512 * (yoff + 1));
 }
 
 void gpu_set_scissor(bool enabled, u32 left, u32 top, u32 right, u32 bottom) {
