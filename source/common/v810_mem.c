@@ -275,31 +275,31 @@ WORD mem_hw_write(WORD addr, WORD data) {
 
 uint64_t mem_wram_rbyte(WORD addr) {
     uint64_t wait = 0LL << 32;
-    return (WORD)((SBYTE *)(vb_state->V810_VB_RAM.off + (addr & 0x0500ffff)))[0] | wait;
+    return (WORD)((SBYTE *)(vb_state->V810_VB_RAM.pmemory + (addr & 0xffff)))[0] | wait;
 }
 
 uint64_t mem_wram_rhword(WORD addr) {
     uint64_t wait = 0LL << 32;
-    return (WORD)((SHWORD *)(vb_state->V810_VB_RAM.off + (addr & 0x0500fffe)))[0] | wait;
+    return (WORD)((SHWORD *)(vb_state->V810_VB_RAM.pmemory + (addr & 0xfffe)))[0] | wait;
 }
 
 uint64_t mem_wram_rword(WORD addr) {
     uint64_t wait = 0LL << 33;
-    return ((WORD *)(vb_state->V810_VB_RAM.off + (addr & 0x0500fffc)))[0] | wait;
+    return ((WORD *)(vb_state->V810_VB_RAM.pmemory + (addr & 0xfffc)))[0] | wait;
 }
 
 WORD mem_wram_wbyte(WORD addr, WORD data) {
-    ((BYTE *)(vb_state->V810_VB_RAM.off + (addr & 0x0500ffff)))[0] = data;
+    ((BYTE *)(vb_state->V810_VB_RAM.pmemory + (addr & 0xffff)))[0] = data;
     return 0;
 }
 
 WORD mem_wram_whword(WORD addr, WORD data) {
-    ((HWORD *)(vb_state->V810_VB_RAM.off + (addr & 0x0500fffe)))[0] = data;
+    ((HWORD *)(vb_state->V810_VB_RAM.pmemory + (addr & 0xfffe)))[0] = data;
     return 0;
 }
 
 WORD mem_wram_wword(WORD addr, WORD data) {
-    ((WORD *)(vb_state->V810_VB_RAM.off + (addr & 0x0500fffc)))[0] = data;
+    ((WORD *)(vb_state->V810_VB_RAM.pmemory + (addr & 0xfffc)))[0] = data;
     return 0;
 }
 
