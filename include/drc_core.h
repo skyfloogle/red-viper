@@ -33,19 +33,19 @@ enum {
 };
 
 enum {
-    DRC_RELOC_IDIVMOD   = 0,
-    DRC_RELOC_UIDIVMOD  = 1,
-    DRC_RELOC_RBYTE     = 2,
-    DRC_RELOC_RHWORD    = 3,
-    DRC_RELOC_RWORD     = 4,
-    DRC_RELOC_WBYTE     = 5,
-    DRC_RELOC_WHWORD    = 6,
-    DRC_RELOC_WWORD     = 7,
-    DRC_RELOC_BSTR      = 8,
-    DRC_RELOC_REV       = 24,
-    DRC_RELOC_GOLFHACK  = 25,
-    DRC_RELOC_BALLSCALE = 26,
-    DRC_RELOC_BALLSORT  = 27,
+    DRC_RELOC_RBYTE     = 0,
+    DRC_RELOC_RHWORD    = 8,
+    DRC_RELOC_RWORD     = 16,
+    DRC_RELOC_WBYTE     = 24,
+    DRC_RELOC_WHWORD    = 32,
+    DRC_RELOC_WWORD     = 40,
+    DRC_RELOC_BSTR      = 48,
+    DRC_RELOC_IDIVMOD   = 64,
+    DRC_RELOC_UIDIVMOD  = 65,
+    DRC_RELOC_REV       = 66,
+    DRC_RELOC_GOLFHACK  = 67,
+    DRC_RELOC_BALLSCALE = 68,
+    DRC_RELOC_BALLSORT  = 69,
 };
 
 #define END_BLOCK 0xFF

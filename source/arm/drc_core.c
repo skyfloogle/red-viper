@@ -1577,8 +1577,6 @@ static int drc_translateBlock(void) {
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
             case V810_OP_IN_B: // in.b disp16 [reg1], reg2
                 if (arm_reg1 < 4) arm_reg1 = 0;
-                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                LDR_IO(1, 1, DRC_RELOC_RBYTE*4);
                 
                 if (inst_cache[i].imm == 0) {
                     RELOAD_REG1(0);
@@ -1606,6 +1604,11 @@ static int drc_translateBlock(void) {
                     }
                 }
 
+                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
+                AND_I(2, 0, 7, 8);
+                ADD_IS(1, 1, 2, ARM_SHIFT_LSR, 22);
+                LDR_IO(1, 1, DRC_RELOC_RBYTE*4);
+
                 BLX(ARM_COND_AL, 1);
 
                 // Add cycles returned in r1.
@@ -1632,8 +1635,6 @@ static int drc_translateBlock(void) {
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
             case V810_OP_IN_H: // in.h disp16 [reg1], reg2
                 if (arm_reg1 < 4) arm_reg1 = 0;
-                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                LDR_IO(1, 1, DRC_RELOC_RHWORD*4);
 
                 if (inst_cache[i].imm == 0) {
                     RELOAD_REG1(0);
@@ -1660,6 +1661,11 @@ static int drc_translateBlock(void) {
                         SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
                     }
                 }
+
+                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
+                AND_I(2, 0, 7, 8);
+                ADD_IS(1, 1, 2, ARM_SHIFT_LSR, 22);
+                LDR_IO(1, 1, DRC_RELOC_RHWORD*4);
 
                 BLX(ARM_COND_AL, 1);
 
@@ -1687,8 +1693,6 @@ static int drc_translateBlock(void) {
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
             case V810_OP_IN_W: // in.w disp16 [reg1], reg2
                 if (arm_reg1 < 4) arm_reg1 = 0;
-                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                LDR_IO(1, 1, DRC_RELOC_RWORD*4);
 
                 if (inst_cache[i].imm == 0) {
                     RELOAD_REG1(0);
@@ -1715,6 +1719,11 @@ static int drc_translateBlock(void) {
                         SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
                     }
                 }
+
+                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
+                AND_I(2, 0, 7, 8);
+                ADD_IS(1, 1, 2, ARM_SHIFT_LSR, 22);
+                LDR_IO(1, 1, DRC_RELOC_RWORD*4);
 
                 BLX(ARM_COND_AL, 1);
 
@@ -1737,8 +1746,6 @@ static int drc_translateBlock(void) {
             case V810_OP_ST_B:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_B: // out.h reg2, disp16 [reg1]
                 if (arm_reg1 < 4) arm_reg1 = 0;
-                LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
-                LDR_IO(3, 3, DRC_RELOC_WBYTE*4);
 
                 if (inst_cache[i].imm == 0) {
                     RELOAD_REG1(0);
@@ -1770,6 +1777,11 @@ static int drc_translateBlock(void) {
                     MOV_I(1, 0, 0);
                 else
                     RELOAD_REG2(1);
+
+                LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
+                AND_I(2, 0, 7, 8);
+                ADD_IS(3, 3, 2, ARM_SHIFT_LSR, 22);
+                LDR_IO(3, 3, DRC_RELOC_WBYTE*4);
 
                 BLX(ARM_COND_AL, 3);
 
@@ -1786,8 +1798,6 @@ static int drc_translateBlock(void) {
             case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_H: // out.h reg2, disp16 [reg1]
                 if (arm_reg1 < 4) arm_reg1 = 0;
-                LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
-                LDR_IO(3, 3, DRC_RELOC_WHWORD*4);
 
                 if (inst_cache[i].imm == 0) {
                     RELOAD_REG1(0);
@@ -1819,6 +1829,11 @@ static int drc_translateBlock(void) {
                     MOV_I(1, 0, 0);
                 else
                     RELOAD_REG2(1);
+
+                LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
+                AND_I(2, 0, 7, 8);
+                ADD_IS(3, 3, 2, ARM_SHIFT_LSR, 22);
+                LDR_IO(3, 3, DRC_RELOC_WHWORD*4);
 
                 BLX(ARM_COND_AL, 3);
 
@@ -1835,8 +1850,6 @@ static int drc_translateBlock(void) {
             case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_W: // out.h reg2, disp16 [reg1]
                 if (arm_reg1 < 4) arm_reg1 = 0;
-                LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
-                LDR_IO(3, 3, DRC_RELOC_WWORD*4);
 
                 if (inst_cache[i].imm == 0) {
                     RELOAD_REG1(0);
@@ -1868,6 +1881,11 @@ static int drc_translateBlock(void) {
                     MOV_I(1, 0, 0);
                 else
                     RELOAD_REG2(1);
+
+                LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
+                AND_I(2, 0, 7, 8);
+                ADD_IS(3, 3, 2, ARM_SHIFT_LSR, 22);
+                LDR_IO(3, 3, DRC_RELOC_WWORD*4);
 
                 BLX(ARM_COND_AL, 3);
 
