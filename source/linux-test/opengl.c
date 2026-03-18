@@ -124,12 +124,11 @@ void gpu_init(void) {
         "   }\n"
         "   texCoord = mod(texCoord, uWorldSize.zy);\n"
         "   mediump float sub_map = floor(texCoord.x) + floor(texCoord.y) * uWorldSize.x;\n"
-        "   if (!uMapVisible[int(sub_map)]) {\n"
-        "       gl_FragColor = vec4(0.0);\n"
-        "       return;\n"
-        "   }\n"
         "   highp vec2 mapOffset = vec2(mod(floor(uStartMap + sub_map), 4.0), floor((uStartMap + sub_map) / 4.0));\n"
         "   gl_FragColor = texture2D(sTex, (mod(texCoord.yx, 1.0) + mapOffset) * vec2(1.0 / 4.0, 1.0 / 2.0));\n"
+        "   if (!uMapVisible[int(sub_map)]) {\n"
+        "       gl_FragColor = vec4(0.0);\n"
+        "   }\n"
         "}\n"
     );
 
