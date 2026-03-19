@@ -65,7 +65,7 @@
     mov softtc, v1.yz
     ; texcoord shading: (v3.x, 0)
     mov r2, const1
-    mad r1.x, r1.x, r2.x, shading_offset.x
+    mad r1.x, v1.z, r2.x, shading_offset.x
     mov r1.y, const1.w
     mov coltc, r1
     mov vcol, r4
