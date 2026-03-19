@@ -124,13 +124,13 @@ WORD mem_vip_wbyte(WORD addr, WORD data) {
                     if (y < column->min) column->min = y;
                     if (y > column->max) column->max = y;
                 }
+            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
+                tDSPCACHE.ColumnTableInvalid=1;
+            }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
+                tDSPCACHE.ObjDataCacheInvalid=1;
+            } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
+                tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
             }
-        } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
-            tDSPCACHE.ColumnTableInvalid=1;
-        }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
-            tDSPCACHE.ObjDataCacheInvalid=1;
-        } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
-            tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
         }
         ((BYTE *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] = data;
     } else if((addr & 0x7e000) == 0x5e000) {
