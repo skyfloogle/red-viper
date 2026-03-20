@@ -351,17 +351,17 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 							avcur->x1 = gx;
 							avcur->y1 = gy + y + 256 * eye;
 							avcur->x2 = gx + w;
-							avcur->y2 = gy + y + 1 + 256 * eye;
+							avcur->y2 = gy + y + 256 * eye;
 							// we can do just one pass per bg for repeating multimap
 							// because hbias isn't downscaled
 							int u = mx + p;
 							int v = my + y;
 							if (u < umin) umin = u;
 							if (u + w > umax) umax = u + w;
-							avcur->u1 = u * 8;
-							avcur->v1 = v * 8;
-							avcur->u2 = (u + w) * 8;
-							avcur->v2 = v * 8;
+							avcur->u1 = avcur->u2 = u * 8;
+							avcur->v1 = avcur->v2 = v * 8;
+							avcur->uoff1 = avcur->voff1 = avcur->voff2 = 0;
+							avcur->uoff2 = w * 8;
 							avcur++;
 						}
 					} else {
