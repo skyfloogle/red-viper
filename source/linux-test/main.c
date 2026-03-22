@@ -13,10 +13,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
 
-// dummy
-#include "vb_dsp.h"
-VB_DSPCACHE tDSPCACHE;
-
 #if DRC_AVAILABLE
 #else
 int drc_handleInterrupts(WORD cpsr, WORD* PC) { return 0; }

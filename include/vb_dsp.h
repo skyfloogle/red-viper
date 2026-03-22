@@ -84,6 +84,7 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////
 // Keybd Fn's. Had to put it somewhere!
 // Read the Controller
+void input_init(void);
 HWORD V810_RControll(bool reset);
 
 typedef struct {
@@ -133,7 +134,7 @@ int videoProcessingTime(void);
 void video_init(void);
 void video_render(int displayed_fb, bool on_time);
 void video_download_vip(int drawn_fb);
-void video_flush(bool left_for_both);
+void video_flush(bool default_for_both);
 void video_quit(void);
 
 void V810_SetPal(int BRTA, int BRTB, int BRTC);
@@ -168,7 +169,6 @@ int video_get_colour(int id, int brt_reg);
 
 // video_hard
 extern C3D_Tex screenTexHard[2];
-void video_hard_render(int drawn_fb, int previous_transfer_count);
 
 // video_soft
 extern C3D_Tex screenTexSoft[2];
@@ -179,6 +179,7 @@ void video_soft_to_fb(u32 *outbuf, int displayed_fb, int src_eye, bool use_colum
 
 #endif
 
+void video_hard_render(int drawn_fb);
 void video_soft_render(int drawn_fb);
 void update_texture_cache_soft(void);
 

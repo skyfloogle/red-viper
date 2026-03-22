@@ -140,7 +140,7 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 	return vcount;
 }
 
-void video_hard_render(int drawn_fb, int previous_transfer_count) {
+void video_hard_render(int drawn_fb) {
 	gpu_target_screen(drawn_fb);
 
 	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
@@ -499,7 +499,7 @@ void video_hard_render(int drawn_fb, int previous_transfer_count) {
 	}
 
 	if (tVBOpt.RENDERMODE == RM_TOCPU) {
-		gpu_init_vip_download(previous_transfer_count, start_eye, end_eye, drawn_fb);
+		gpu_init_vip_download(start_eye, end_eye, drawn_fb);
 	}
 
 	// invalidate any unused bgmaps

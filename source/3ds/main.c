@@ -72,6 +72,7 @@ int main(void) {
     consoleDebugInit(debugDevice_3DMOO);
 
     video_init();
+    input_init();
     guiInit();
 
     v810_init();

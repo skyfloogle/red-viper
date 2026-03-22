@@ -378,7 +378,7 @@ void update_texture_cache_hard(void) {
     }
 }
 
-void video_soft_to_texture(int displayed_fb) {
+void gpu_soft_to_texture(int displayed_fb) {
     if (tDSPCACHE.DDSPDataState[displayed_fb] == CPU_WROTE) {
         tDSPCACHE.DDSPDataState[displayed_fb] = GPU_WROTE;
     } else {
@@ -409,7 +409,9 @@ void video_soft_to_texture(int displayed_fb) {
 
 static bool downloaded;
 
-void gpu_init_vip_download(int previous_transfer_count, int start_eye, int end_eye, int drawn_fb) {
+void gpu_reset_vip_download(void) {}
+
+void gpu_init_vip_download(int start_eye, int end_eye, int drawn_fb) {
     downloaded = false;
 }
 
@@ -441,4 +443,50 @@ void video_download_vip(int drawn_fb) {
 		tDSPCACHE.SoftBufWrote[drawn_fb][i].min = 0;
 		tDSPCACHE.SoftBufWrote[drawn_fb][i].max = 31;
 	}
+}
+
+void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, 384*2, 224*2);
+    glScissor(0, 0, 384*2, 224*2);
+    glUseProgram(sFinal);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tVBOpt.RENDERMODE != RM_TOCPU ? screenTexHard[vip_displayed_fb] : transparentPixelTexture);
+    glUniform1i(glGetUniformLocation(sFinal, "sVip"), 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, tDSPCACHE.DDSPDataState[displayed_fb] != GPU_CLEAR ? screenTexSoft[displayed_fb] : transparentPixelTexture);
+    glUniform1i(glGetUniformLocation(sFinal, "sSoft"), 1);
+    
+    float colors[4][3] = {
+        {0, 0, 0},
+        {vb_state->tVIPREG.BRTA / 128.0, 0, 0},
+        {vb_state->tVIPREG.BRTB / 128.0, 0, 0},
+        {(vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) / 128.0, 0, 0},
+    };
+    glUniform3fv(glGetUniformLocation(sFinal, "uPalette"), 4, &colors[0][0]);
+
+    GLfloat vPositions[] = {
+        -1, -1,
+        1, -1,
+        -1, 1,
+        1, 1};
+    glVertexAttribPointer(glGetAttribLocation(sFinal, "aPosition"), 2, GL_FLOAT, GL_FALSE, 0, vPositions);
+    glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aPosition"));
+    GLfloat vTexCoords[] = {
+        224.0/512.0, 0,
+        224.0/512.0, 384.0/512.0,
+        0, 0,
+        0, 384.0/512.0};
+    glVertexAttribPointer(glGetAttribLocation(sFinal, "aTexCoord"), 2, GL_FLOAT, GL_FALSE, 0, vTexCoords);
+    glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aTexCoord"));
+
+    gpu_set_opaque(true);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    gpu_set_opaque(false);
+}
+
+void gpu_quit(void) {
+    // TODO
 }
