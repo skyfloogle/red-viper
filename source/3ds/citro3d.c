@@ -42,7 +42,7 @@ static C3D_Tex palette_mask, palette_mask_tocpu;
 
 static C3D_FVec pal1tex[8] = {0}, pal2tex[8] = {0}, pal3col[8] = {0};
 
-C3D_RenderTarget *finalScreen;
+static C3D_RenderTarget *finalScreen[2];
 
 static float *final_vbuf;
 static uint32_t *coltable_vbuf;
@@ -123,6 +123,14 @@ void gpu_init(void) {
 	params.maxLevel = 0;
 	C3D_TexInitWithParams(&tileTexture, NULL, params);
 
+	// We have ten 16-bit 512x512 textures, adding up to 5MB of the available 6MB.
+	// On top of that, we also have one 320x240x3 and two 400x240x4 textures.
+	// The 3DS has two 3MB VRAM banks, and if we just allocate back and forth,
+	// there won't be room in either for the remaining textures.
+	// To make sure we have room in one bank, we allocate a 1MB block of VRAM
+	// and free it after allocating the textures.
+	void *tempAlloc = vramAlloc(1024*1024);
+
 	params.width = 512;
 	params.height = 512;
 	params.format = GPU_RGBA4;
@@ -133,16 +141,14 @@ void gpu_init(void) {
 		screenTargetHard[i] = C3D_RenderTargetCreateFromTex(&screenTexHard[i], GPU_TEXFACE_2D, 0, -1);
 		C3D_RenderTargetClear(screenTargetHard[i], C3D_CLEAR_ALL, 0, 0);
 	}
-
-	params.width = 512;
-	params.height = 512;
-	params.format = GPU_RGBA4;
 	for (int i = 0; i < AFFINE_CACHE_SIZE; i++) {
 		C3D_TexInitWithParams(&tileMapCache[i].tex, NULL, params);
 		tileMapCache[i].target = C3D_RenderTargetCreateFromTex(&tileMapCache[i].tex, GPU_TEXFACE_2D, 0, -1);
 		C3D_RenderTargetClear(tileMapCache[i].target, C3D_CLEAR_ALL, 0xffffffff, 0);
 		tileMapCache[i].bg = -1;
 	}
+
+	vramFree(tempAlloc);
 
 	#define LOAD_MASK(w,h,wp,hp) \
 		Tex3DS_TextureFree(Tex3DS_TextureImport(map ## w ## x ## h ## _t3x, map ## w ## x ## h ## _t3x_size, &affine_masks[wp][hp], NULL, false));
@@ -176,20 +182,15 @@ void gpu_init(void) {
 
 	video_soft_init();
 
-	// The hardware renderer creates 1 * 0.75MB + 8 * 0.5MB framebuffers.
-	// The 3DS has two 3MB VRAM banks, so for this to work, 3 framebuffers must go into one bank.
-	// However, the allocator alternates between banks, so we need to allocate those first,
-	// before even the final render targets.
-	finalScreen = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, -1);
+	finalScreen[0] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, -1);
+	C3D_RenderTargetSetOutput(finalScreen[0], GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
+	finalScreen[1] = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, -1);
+	C3D_RenderTargetSetOutput(finalScreen[1], GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
 
 	// render one frame on the top screen and vsync to update vtotal
 	C3D_FrameBegin(0);
-	C3D_FrameDrawOn(finalScreen);
-	C3D_RenderTargetClear(finalScreen, C3D_CLEAR_COLOR, 0, 0);
-	// citro3d automatically sets the right flags if the top right screen is updated
-	// so manually transfer to left, automatically transfer to right
-	C3D_FrameBufTransfer(&finalScreen->frameBuf, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
-	C3D_RenderTargetSetOutput(finalScreen, GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
+	C3D_FrameDrawOn(finalScreen[0]);
+	C3D_RenderTargetClear(finalScreen[0], C3D_CLEAR_COLOR, 0, 0);
 	C3D_FrameEnd(0);
 	gspWaitForVBlank();
 }
@@ -724,27 +725,9 @@ static void video_flush_hard(bool default_for_both, int displayed_fb, int vip_di
 			C3D_DepthTest(false, GPU_ALWAYS, (src_eye ? tVBOpt.ANAGLYPH_RIGHT : tVBOpt.ANAGLYPH_LEFT) | GPU_WRITE_ALPHA);
 		}
 		float depthOffset = getDepthOffset(default_for_both, dst_eye, tVBOpt.SLIDERMODE);
-
-		// citro3d automatically sets all the right flags if the right eye is updated
-		// so if we're drawing both eyes, manually transfer the left eye
-		// that way they can share a framebuffer
-
-		if (dst_eye == 1 && !tVBOpt.ANAGLYPH) {
-			// we just rendered left eye and we're about to do the right eye
-			// so transfer that manually and automatically transfer the right eye
-			C3D_FrameSplit(0);
-			C3D_FrameBufTransfer(&finalScreen->frameBuf, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
-			previous_transfer_count++;
-			C3D_RenderTargetSetOutput(NULL, GFX_TOP, GFX_LEFT, 0);
-			C3D_RenderTargetSetOutput(finalScreen, GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
-		} else if (dst_eye_count == 1) {
-			// no right eye, so automatically transfer to left
-			C3D_RenderTargetSetOutput(finalScreen, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
-			C3D_RenderTargetSetOutput(NULL, GFX_TOP, GFX_RIGHT, 0);
-		}
-
-		C3D_RenderTargetClear(finalScreen, C3D_CLEAR_ALL, 0, 0);
-		C3D_FrameDrawOn(finalScreen);
+		C3D_RenderTarget *target = finalScreen[dst_eye && !tVBOpt.ANAGLYPH];
+		C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
+		C3D_FrameDrawOn(target);
 		C3D_SetViewport(viewportY, viewportX+depthOffset, VIEWPORT_HEIGHT, VIEWPORT_WIDTH);
 		C3D_FVUnifSet(GPU_GEOMETRY_SHADER, uLoc.shading_offset, (src_eye ? 0.5 : 0) + 1/256.0, 0, 0, 0);
 		C3D_DrawArrays(GPU_GEOMETRY_PRIM, src_eye*96, 96);
