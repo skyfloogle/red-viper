@@ -88,8 +88,6 @@ int main(int argc, char* argv[]) {
         if (ret == 100) break;
     }
 
-    tVBOpt.RENDERMODE = RM_TOGPU;
-
     clearCache();
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO);
@@ -107,6 +105,9 @@ int main(int argc, char* argv[]) {
     sound_init();
 
     video_init();
+
+    // make sure the window shows up if the game doesn't immediately enable drawing
+    SDL_GL_SwapWindow(window);
 
     while (true) {
         int displayed_fb = vb_state->tVIPREG.tDisplayedFB;
@@ -131,8 +132,10 @@ int main(int argc, char* argv[]) {
         //     }
         // }
         // SDL_UpdateWindowSurface(window);
-        video_render(displayed_fb, false);
-        SDL_GL_SwapWindow(window);
+        if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing && (vb_state->tVIPREG.DPCTRL & 0x0002)) {
+            video_render(displayed_fb, false);
+            SDL_GL_SwapWindow(window);
+        }
 
         if (tVBOpt.RENDERMODE != RM_CPUONLY) {
             if (vb_state->tVIPREG.XPCTRL & 0x0002) {
