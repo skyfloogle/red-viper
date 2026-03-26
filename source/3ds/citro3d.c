@@ -214,8 +214,8 @@ void gpu_setup_tile_drawing(void) {
 	memcpy(C3D_FVUnifWritePtr(GPU_GEOMETRY_SHADER, uLoc.pal3col, 8), pal3col, sizeof(pal3col));
 
 	C3D_TexBind(0, &tileTexture);
-	C3D_TexBind(1, &palette_mask);
-	C3D_TexBind(2, &palette_mask);
+	C3D_TexBind(1, tVBOpt.RENDERMODE != RM_TOCPU ? &palette_mask : &palette_mask_tocpu);
+	C3D_TexBind(2, tVBOpt.RENDERMODE != RM_TOCPU ? &palette_mask : &palette_mask_tocpu);
 
 	C3D_TexEnv *env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
