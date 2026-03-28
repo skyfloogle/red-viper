@@ -300,23 +300,6 @@ int main(void) {
                     }
                     C3D_FrameEnd(0);
                 }
-                if (tVBOpt.RENDERMODE != RM_CPUONLY) {
-                    if (vb_state->tVIPREG.XPCTRL & 0x0002) {
-                        if (tDSPCACHE.DDSPDataState[!displayed_fb] != GPU_CLEAR) {
-                            memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x8000 * !displayed_fb, 0, 0x6000);
-                            memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x10000 + 0x8000 * !displayed_fb, 0, 0x6000);
-                            for (int i = 0; i < 64; i++) {
-                                tDSPCACHE.SoftBufWrote[!displayed_fb][i].min = 0xff;
-                                tDSPCACHE.SoftBufWrote[!displayed_fb][i].max = 0;
-                            }
-                            memset(tDSPCACHE.OpaquePixels.u32[!displayed_fb], 0, sizeof(tDSPCACHE.OpaquePixels.u32[!displayed_fb]));
-                            uint32_t fb_size;
-                            uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[!displayed_fb], 0, &fb_size);
-                            memset(out_fb, 0, fb_size);
-                            tDSPCACHE.DDSPDataState[!displayed_fb] = GPU_CLEAR;
-                        }
-                    }
-                }
             } else {
                 // no game graphics, draw menu if possible
                 if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {

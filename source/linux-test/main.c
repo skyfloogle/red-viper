@@ -137,21 +137,6 @@ int main(int argc, char* argv[]) {
             SDL_GL_SwapWindow(window);
         }
 
-        if (tVBOpt.RENDERMODE != RM_CPUONLY) {
-            if (vb_state->tVIPREG.XPCTRL & 0x0002) {
-                if (tDSPCACHE.DDSPDataState[!displayed_fb] != GPU_CLEAR) {
-                    memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x8000 * !displayed_fb, 0, 0x6000);
-                    memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x10000 + 0x8000 * !displayed_fb, 0, 0x6000);
-                    for (int i = 0; i < 64; i++) {
-                        tDSPCACHE.SoftBufWrote[!displayed_fb][i].min = 0xff;
-                        tDSPCACHE.SoftBufWrote[!displayed_fb][i].max = 0;
-                    }
-                    memset(tDSPCACHE.OpaquePixels.u32[!displayed_fb], 0, sizeof(tDSPCACHE.OpaquePixels.u32[!displayed_fb]));
-                    tDSPCACHE.DDSPDataState[!displayed_fb] = GPU_CLEAR;
-                }
-            }
-        }
-
         vb_state = &vb_players[0];
 
         err = v810_run();

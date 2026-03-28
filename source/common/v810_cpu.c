@@ -532,9 +532,28 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
                     vb_state->tVIPREG.XPSTTS |= OVERTIME;
                     interrupts |= TIMEERR;
                 } else {
+                    int drawn_fb = !vb_state->tVIPREG.tDisplayedFB;
                     vb_state->tVIPREG.drawing = true;
-                    vb_state->tVIPREG.XPSTTS = XPEN | ((!vb_state->tVIPREG.tDisplayedFB+1)<<2) | SBOUT;
+                    vb_state->tVIPREG.XPSTTS = XPEN | ((drawn_fb+1)<<2) | SBOUT;
                     vb_state->tVIPREG.rowcount = 0;
+
+                    if (tVBOpt.RENDERMODE != RM_CPUONLY && tVBOpt.RENDERMODE != RM_TOCPU) {
+                        if (tDSPCACHE.DDSPDataState[drawn_fb] != GPU_CLEAR) {
+                            memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x8000 * drawn_fb, 0, 0x6000);
+                            memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x10000 + 0x8000 * drawn_fb, 0, 0x6000);
+                            for (int i = 0; i < 64; i++) {
+                                tDSPCACHE.SoftBufWrote[drawn_fb][i].min = 0xff;
+                                tDSPCACHE.SoftBufWrote[drawn_fb][i].max = 0;
+                            }
+                            memset(tDSPCACHE.OpaquePixels.u32[drawn_fb], 0, sizeof(tDSPCACHE.OpaquePixels.u32[drawn_fb]));
+                            #ifdef __3DS__
+                            uint32_t fb_size;
+                            uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[drawn_fb], 0, &fb_size);
+                            memset(out_fb, 0, fb_size);
+                            #endif
+                            tDSPCACHE.DDSPDataState[drawn_fb] = GPU_CLEAR;
+                        }
+                    }
                 }
             }
         }
