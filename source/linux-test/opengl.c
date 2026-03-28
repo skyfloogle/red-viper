@@ -413,16 +413,18 @@ void gpu_reset_vip_download(void) {}
 
 void gpu_init_vip_download(int start_eye, int end_eye, int drawn_fb) {
     downloaded = false;
+    glBindFramebuffer(GL_FRAMEBUFFER, screenTargetHard[tVBOpt.DOUBLE_BUFFER ? drawn_fb : 0]);
+    for (int eye = start_eye; eye < end_eye; eye++) {
+        glReadPixels(eye * 256, 0, DOWNLOADED_FRAMEBUFFER_WIDTH, 384, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, rgba4_framebuffers + (384 * DOWNLOADED_FRAMEBUFFER_WIDTH * eye));
+    }
 }
 
 void video_download_vip(int drawn_fb) {
 	if (tVBOpt.RENDERMODE != RM_TOCPU) return;
 	if (downloaded) return;
     downloaded = true;
-    glBindFramebuffer(GL_FRAMEBUFFER, screenTargetHard[drawn_fb]);
     for (int eye = 0; eye < 2; eye++) {
-        glReadPixels(eye * 256, 0, DOWNLOADED_FRAMEBUFFER_WIDTH, 384, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, rgba4_framebuffers);
-        uint32_t *in_fb = (uint32_t*)rgba4_framebuffers;
+		uint32_t *in_fb = (uint32_t*)(rgba4_framebuffers + (384 * DOWNLOADED_FRAMEBUFFER_WIDTH) * eye);
 		uint32_t *out_fb = (uint32_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
 		for (int x = 0; x < 384; x++) {
 			for (int y = 0; y < 224; y += (32/2)) {
