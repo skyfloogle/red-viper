@@ -490,10 +490,9 @@ void video_download_vip(int drawn_fb) {
 	if (tVBOpt.RENDERMODE != RM_TOCPU) return;
 	if (downloaded) return;
 	downloaded = true;
-	while (ppfCount < 0) LightEvent_Wait(&transfer_event);
 	int eye = 0;
 	while (eye < 2) {
-		if (ppfCount < eye) LightEvent_Wait(&transfer_event);
+		while (ppfCount <= eye) LightEvent_Wait(&transfer_event);
 		uint32_t *in_fb = (uint32_t*)(rgba4_framebuffers + (384 * DOWNLOADED_FRAMEBUFFER_WIDTH) * eye);
 		uint32_t *out_fb = (uint32_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
 		GSPGPU_FlushDataCache(in_fb, 384*DOWNLOADED_FRAMEBUFFER_WIDTH*2);
