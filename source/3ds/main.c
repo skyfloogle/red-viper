@@ -265,7 +265,8 @@ int main(void) {
                 // pass C3D_FRAME_NONBLOCK to enable frameskip, 0 to disable
                 // it's only needed for 1 second in the mario clash intro afaik
                 // so just bite the bullet and do the frameskip, rather that than slowdown
-                if (C3D_FrameBegin(C3D_FRAME_NONBLOCK)) {
+                // unless double buffer is on, in which case it seems too risky
+                if (C3D_FrameBegin(tVBOpt.DOUBLE_BUFFER ? 0 : C3D_FRAME_NONBLOCK)) {
                     guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
 
                     // Golf hack: switch to software rendering during gameplay.
