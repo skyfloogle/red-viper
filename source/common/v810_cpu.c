@@ -351,7 +351,7 @@ void v810_reset(void) {
         #ifdef __3DS__
         APT_CheckNew3DS(&new_3ds);
         #endif
-        if (new_3ds) tVBOpt.RENDERMODE = RM_CPUONLY;
+        if (new_3ds) tVBOpt.RENDERMODE = RM_TOCPU;
     }
 
     tVBOpt.VIP_OVER_SOFT = (
