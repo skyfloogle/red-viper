@@ -5,8 +5,6 @@
 #include "vb_sound.h"
 #include "vb_types.h"
 
-// TODO: does not work well with fast forwarding
-
 static SDL_AudioDeviceID audioDevice;
 
 bool sound_init_backend(int16_t *wavebufs[]) {
@@ -41,6 +39,10 @@ void sound_resume_backend() {
 }
 
 bool sound_push_backend(int16_t *buf) {
-    SDL_QueueAudio(audioDevice, buf, sizeof(int16_t) * SAMPLE_COUNT * 2);
-    return true;
+    // limit queue size to account for fast forwarding
+    if (SDL_GetQueuedAudioSize(audioDevice) < SAMPLE_COUNT * 4 * (BUF_COUNT / 2)) {
+        SDL_QueueAudio(audioDevice, buf, sizeof(int16_t) * SAMPLE_COUNT * 2);
+        return true;
+    }
+    return false;
 }
