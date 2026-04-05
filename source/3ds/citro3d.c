@@ -21,7 +21,7 @@
 #include "map8x2_t3x.h"
 #include "map8x4_t3x.h"
 
-#define USE_SOFT_FLUSH false
+#define USE_SOFT_FLUSH true
 
 #define TOP_SCREEN_WIDTH  400
 #define TOP_SCREEN_HEIGHT 240
