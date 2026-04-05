@@ -173,8 +173,6 @@ void gpu_init(void) {
 
 	C3D_TexSetFilter(&tileTexture, GPU_NEAREST, GPU_NEAREST);
 
-	C3D_ColorLogicOp(GPU_LOGICOP_COPY);
-
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
 
 	gspSetEventCallback(GSPGPU_EVENT_PPF, ppfCallback, NULL, false);
@@ -826,6 +824,20 @@ void processColumnTable(void) {
 	}
 }
 
+void gpu_blend_antiflicker(void) {
+    C3D_BlendingColor(0x80808080);
+    C3D_AlphaBlend(GPU_BLEND_ADD, 0, GPU_CONSTANT_ALPHA, GPU_ONE_MINUS_CONSTANT_ALPHA, 0, 0);
+}
+
+void gpu_blend_default(void) {
+    C3D_ColorLogicOp(GPU_LOGICOP_COPY);
+}
+
+bool gpu_antiflicker_allowed(void) {
+	// soft flush is incompatible with antiflicker
+	return !USE_SOFT_FLUSH || (tVBOpt.RENDERMODE != RM_CPUONLY && tVBOpt.RENDERMODE != RM_TOCPU);
+}
+
 void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
 	if (!default_for_both) orig_eye = tVBOpt.DEFAULT_EYE;
 	if (eye_count == 2) default_for_both = false;
@@ -833,7 +845,6 @@ void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
 	if (tDSPCACHE.ColumnTableInvalid || (minRepeat != maxRepeat && tDSPCACHE.BrtPALMod))
 		processColumnTable();
 
-	// note: soft flush is also incompatible with antiflicker
 	if (!USE_SOFT_FLUSH || (tVBOpt.RENDERMODE != RM_CPUONLY && tVBOpt.RENDERMODE != RM_TOCPU))
 		video_flush_hard(default_for_both, displayed_fb, vip_displayed_fb);
 	else

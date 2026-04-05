@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
         // }
         // SDL_UpdateWindowSurface(window);
         if(vb_state->tVIPREG.tFrame == 0 && !vb_state->tVIPREG.drawing && (vb_state->tVIPREG.DPCTRL & 0x0002)) {
-            video_render(displayed_fb, false);
+            video_render(displayed_fb, true);
             SDL_GL_SwapWindow(window);
         }
 

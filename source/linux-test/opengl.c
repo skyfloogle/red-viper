@@ -203,7 +203,6 @@ void gpu_init(void) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tileMapCache[0].tex, 0);
 
     glDepthMask(GL_FALSE);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void gpu_clear_screen(int start_eye, int end_eye) {
@@ -447,6 +446,19 @@ void video_download_vip(int drawn_fb) {
 	}
 }
 
+void gpu_blend_antiflicker(void) {
+    glBlendColor(0.5, 0.5, 0.5, 0.5);
+    glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+}
+
+void gpu_blend_default(void) {
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+bool gpu_antiflicker_allowed(void) {
+    return true;
+}
+
 void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, 384*2, 224*2);
@@ -484,9 +496,7 @@ void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
     glVertexAttribPointer(glGetAttribLocation(sFinal, "aTexCoord"), 2, GL_FLOAT, GL_FALSE, 0, vTexCoords);
     glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aTexCoord"));
 
-    gpu_set_opaque(true);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    gpu_set_opaque(false);
 }
 
 void gpu_quit(void) {

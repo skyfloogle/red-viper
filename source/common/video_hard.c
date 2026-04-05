@@ -17,6 +17,7 @@ uint16_t *rgba4_framebuffers;
 
 void video_hard_init(void) {
 	gpu_init();
+	gpu_blend_default();
 
 	vbuf = linearAlloc(sizeof(vertex) * VBUF_SIZE);
 	avbuf = linearAlloc(sizeof(avertex) * AVBUF_SIZE);

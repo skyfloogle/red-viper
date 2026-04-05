@@ -63,5 +63,8 @@ void gpu_draw_tiles(int first, int count);
 void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, avertex *vbufs[], bool visible[]);
 void update_texture_cache_hard(void);
 void gpu_soft_to_texture(int displayed_fb);
+void gpu_blend_antiflicker(void);
+void gpu_blend_default(void);
+bool gpu_antiflicker_allowed(void);
 void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb);
 void gpu_quit(void);
