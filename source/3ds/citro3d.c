@@ -516,9 +516,9 @@ void video_download_vip(int drawn_fb) {
 }
 
 void gpu_soft_to_texture(int displayed_fb) {
-	#if !USE_SOFT_FLUSH
-	video_soft_to_texture(displayed_fb);
-	#endif
+	if (!USE_SOFT_FLUSH || tVBOpt.RENDERMODE == RM_TOGPU) {
+		video_soft_to_texture(displayed_fb);
+	}
 }
 
 void gpu_clear_screen(int start_eye, int end_eye) {
