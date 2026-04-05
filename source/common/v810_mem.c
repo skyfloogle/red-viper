@@ -346,12 +346,12 @@ uint64_t mem_rom_rbyte(WORD addr) {
 
 uint64_t mem_rom_rhword(WORD addr) {
     uint64_t wait = (uint64_t)(2 - (vb_state->tHReg.WCR & 1)) << 32;
-    return (WORD)((SHWORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
+    return (WORD)((SHWORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr & ~1)))[0] | wait;
 }
 
 uint64_t mem_rom_rword(WORD addr) {
     uint64_t wait = (uint64_t)(2LL - (vb_state->tHReg.WCR & 1)) << 33;
-    return ((WORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr)))[0] | wait;
+    return ((WORD *)(V810_ROM1.off + (addr & V810_ROM1.highaddr & ~3)))[0] | wait;
 }
 
 // Memory read functions
