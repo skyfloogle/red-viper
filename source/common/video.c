@@ -37,7 +37,9 @@ void video_render(int displayed_fb, bool on_time) {
 
 	if (tVBOpt.DOUBLE_BUFFER) {
 		if (antiflicker) gpu_blend_antiflicker();
-		video_flush(false);
+		if (antiflicker || (vb_state->tVIPREG.XPCTRL & XPEN) || tDSPCACHE.ColumnTableInvalid || tDSPCACHE.BrtPALMod) {
+			video_flush(false);
+		}
 		if (antiflicker) gpu_blend_default();
 	}
 
@@ -73,7 +75,9 @@ void video_render(int displayed_fb, bool on_time) {
 
     if (!tVBOpt.DOUBLE_BUFFER) {
 		if (antiflicker) gpu_blend_antiflicker();
-		video_flush(false);
+		if (antiflicker || (vb_state->tVIPREG.XPCTRL & XPEN) || tDSPCACHE.ColumnTableInvalid || tDSPCACHE.BrtPALMod) {
+			video_flush(false);
+		}
 		if (antiflicker) gpu_blend_default();
     }
 }
