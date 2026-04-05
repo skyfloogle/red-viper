@@ -345,7 +345,7 @@ void v810_reset(void) {
     // Golf might set this to RM_CPUONLY, so reset it here.
     tVBOpt.RENDERMODE = RM_TOGPU;
 
-    // Software rendering for Test Chamber, only on New 3DS.
+    // VIP download for Test Chamber, only on New 3DS.
     if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) {
         bool new_3ds = true;
         #ifdef __3DS__
