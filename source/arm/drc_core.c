@@ -514,7 +514,7 @@ static void drc_findLastConditionalInst(int pos) {
             case V810_OP_JAL:
                 // nester's funky bowling calls a function to do its busywait read
                 // and it does this several times
-                if (memcmp(tVBOpt.GAME_ID, "01VNFE", 6) == 0 && (
+                if (CHECK_GAMEID("01VNFE") && (
                     inst_cache[i].PC + inst_cache[i].branch_offset == 0x07005326 ||
                     inst_cache[i].PC + inst_cache[i].branch_offset == 0x07001f2c
                 )) break;
@@ -776,27 +776,27 @@ static int drc_translateBlock(void) {
     arm_inst* inst_ptr_start;
     
     // Games with specific hacks; additional explanation follows where each check is used.
-    bool is_waterworld = memcmp(tVBOpt.GAME_ID, "67VWEE", 6) == 0;
-    bool is_virtual_lab = memcmp(tVBOpt.GAME_ID, "AHVJVJ", 6) == 0;
-    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
-    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
-    bool is_baseball_2 = memcmp(tVBOpt.GAME_ID, "7FVVQE", 6) == 0 && V810_ROM1.size >= 0x100000; // size check for memory safety
-    bool is_space_invaders = memcmp(tVBOpt.GAME_ID, "C0VSPJ", 6) == 0;
-    bool is_jack_bros = memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0;
+    bool is_waterworld = CHECK_GAMEID("67VWEE");
+    bool is_virtual_lab = CHECK_GAMEID("AHVJVJ");
+    bool is_golf_us = CHECK_GAMEID("01VVGE");
+    bool is_golf_jp = CHECK_GAMEID("E4VVGJ");
+    bool is_baseball_2 = CHECK_GAMEID("7FVVQE") && V810_ROM1.size >= 0x100000; // size check for memory safety
+    bool is_space_invaders = CHECK_GAMEID("C0VSPJ");
+    bool is_jack_bros = CHECK_GAMEID("EBVJBE") || CHECK_GAMEID("EBVJBJ");
     bool chcw_load_seen = (vb_state->v810_state.S_REG[CHCW] & 2) != 0;
-    bool is_marios_tennis_multiplayer = memcmp(tVBOpt.GAME_ID, "01VMTJ", 6) == 0 &&
+    bool is_marios_tennis_multiplayer = CHECK_GAMEID("01VMTJ") &&
         memcmp((u8*)V810_ROM1.pmemory + (0x1FFDB0 & V810_ROM1.highaddr), "MULTIPLAYER HACK V0.1 BY MARTIN KUJACZYNSKI ", 44) == 0;
 
     // Virtual Bowling and Niko-Chan Battle need their interrupts to run a little slower
     // in order for the samples to play at the right speed.
-    bool is_virtual_bowling = memcmp(tVBOpt.GAME_ID, "E7VVBJ", 6) == 0;
-    bool is_niko_chan = memcmp(tVBOpt.GAME_ID, "8BVTRJ", 6) == 0;
+    bool is_virtual_bowling = CHECK_GAMEID("E7VVBJ");
+    bool is_niko_chan = CHECK_GAMEID("8BVTRJ");
     bool slow_memory = is_virtual_bowling || is_niko_chan ||
         // If memory is too fast, Blox 2's intro jingle doesn't finish.
-        memcmp(tVBOpt.GAME_ID, "CRVB2M", 6) == 0;
+        CHECK_GAMEID("CRVB2M");
 
     // Emulating memory clocks introduces lag to Galactic Pinball's UFO table.
-    bool is_pinball = memcmp(tVBOpt.GAME_ID, "01VGPJ", 6) == 0;
+    bool is_pinball = CHECK_GAMEID("01VGPJ");
 
     bool is_waterworld_sample = is_waterworld && (start_PC == 0x0701b2b2);
 
@@ -1074,7 +1074,7 @@ static int drc_translateBlock(void) {
                 // vertical force doesn't have a tight spinloop like most games, so we can't detect it
                 // it just continuously loops through entities, doing nothing more when each one done
                 // so let's just artificially skip a bunch of time so that the game isn't slow
-                if ((memcmp(tVBOpt.GAME_ID, "01VH3E", 6) == 0 || memcmp(tVBOpt.GAME_ID, "18VH3J", 6) == 0)
+                if ((CHECK_GAMEID("01VH3E") || CHECK_GAMEID("18VH3J"))
                     && inst_cache[i].PC == 0x07000c08
                 ) {
                     MOV_I(0, 1, 25);

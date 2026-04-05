@@ -103,7 +103,7 @@ template<bool copy_alpha> void video_soft_to_texture_inner(int displayed_fb) {
 }
 
 void video_soft_to_texture(int displayed_fb) {
-    if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0 && tVBOpt.RENDERMODE != RM_CPUONLY) {
+    if (CHECK_GAMEID("PRCHMB") && tVBOpt.RENDERMODE != RM_CPUONLY) {
         video_soft_to_texture_inner<true>(displayed_fb);
     } else {
         video_soft_to_texture_inner<false>(displayed_fb);

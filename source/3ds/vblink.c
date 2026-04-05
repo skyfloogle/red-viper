@@ -248,7 +248,7 @@ static void vblink_thread(void*) {
         is_sram = false;
         gen_table();
         tVBOpt.CRC32 = get_crc(size);
-        memcpy(tVBOpt.GAME_ID, (char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
+        tVBOpt.GAME_ID = MAKE_GAMEID((char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)));
         apply_patches();
         v810_reset();
 

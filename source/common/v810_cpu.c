@@ -251,7 +251,7 @@ int v810_load_step(void) {
         // CRC32 Calculations
         gen_table();
         tVBOpt.CRC32 = get_crc(rom_size);
-        memcpy(tVBOpt.GAME_ID, (char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)), 6);
+        tVBOpt.GAME_ID = MAKE_GAMEID((char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)));
 
         // Apply game patches
         apply_patches();
@@ -346,7 +346,7 @@ void v810_reset(void) {
     tVBOpt.RENDERMODE = RM_TOGPU;
 
     // VIP download for Test Chamber, only on New 3DS.
-    if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) {
+    if (CHECK_GAMEID("PRCHMB")) {
         bool new_3ds = true;
         #ifdef __3DS__
         APT_CheckNew3DS(&new_3ds);
@@ -355,18 +355,18 @@ void v810_reset(void) {
     }
 
     tVBOpt.VIP_OVER_SOFT = (
-        memcmp(tVBOpt.GAME_ID, "01VREE", 6) == 0 // Red Alarm (U)
-        || memcmp(tVBOpt.GAME_ID, "E4VREJ", 6) == 0 // Red Alarm (J)
+        CHECK_GAMEID("01VREE") // Red Alarm (U)
+        || CHECK_GAMEID("E4VREJ") // Red Alarm (J)
     );
 
     // Double buffering is more accurate, but adds 1 frame of input lag.
     tVBOpt.DOUBLE_BUFFER =
-        memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0 || // Test Chamber
-        memcmp(tVBOpt.GAME_ID, "01VBHE", 6) == 0 || // Bound High
-        memcmp(tVBOpt.GAME_ID, "EBVJBE", 6) == 0 || // Jack Bros. (U)
-        memcmp(tVBOpt.GAME_ID, "EBVJBJ", 6) == 0 || // Jack Bros. (J)
-        memcmp(tVBOpt.GAME_ID, "01VREE", 6) == 0 || // Red Alarm (U)
-        memcmp(tVBOpt.GAME_ID, "E4VREJ", 6) == 0; // Red Alarm (J)
+        CHECK_GAMEID("PRCHMB") || // Test Chamber
+        CHECK_GAMEID("01VBHE") || // Bound High
+        CHECK_GAMEID("EBVJBE") || // Jack Bros. (U)
+        CHECK_GAMEID("EBVJBJ") || // Jack Bros. (J)
+        CHECK_GAMEID("01VREE") || // Red Alarm (U)
+        CHECK_GAMEID("E4VREJ"); // Red Alarm (J)
 
     #if DRC_AVAILABLE
     drc_reset();

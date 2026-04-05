@@ -532,8 +532,8 @@ int ins_orbsu   (WORD src, WORD dst, WORD len, SWORD offs) {
     }
 
     // Golf hack
-    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
-    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    bool is_golf_us = CHECK_GAMEID("01VVGE");
+    bool is_golf_jp = CHECK_GAMEID("E4VVGJ");
     if (is_golf_us || is_golf_jp) {
         if (vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
             vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
@@ -753,8 +753,8 @@ int ins_andbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     }
 
     // Golf hack
-    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
-    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    bool is_golf_us = CHECK_GAMEID("01VVGE");
+    bool is_golf_jp = CHECK_GAMEID("E4VVGJ");
     if (is_golf_us || is_golf_jp) {
         if (vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
             vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||
@@ -1177,8 +1177,8 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     }
 
     // Golf hack
-    bool is_golf_us = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0;
-    bool is_golf_jp = memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+    bool is_golf_us = CHECK_GAMEID("01VVGE");
+    bool is_golf_jp = CHECK_GAMEID("E4VVGJ");
     if (is_golf_us || is_golf_jp) {
         if (vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x070036d4 : 0x070033cc) ||
             vb_state->v810_state.P_REG[31] == (is_golf_us ? 0x07005888 : 0x07005580) ||

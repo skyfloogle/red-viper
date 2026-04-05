@@ -244,12 +244,12 @@ int main(void) {
         // drawing
         {
             vb_state = &vb_players[my_player_id];
-            bool is_golf = memcmp(tVBOpt.GAME_ID, "01VVGE", 6) == 0 || memcmp(tVBOpt.GAME_ID, "E4VVGJ", 6) == 0;
+            bool is_golf = CHECK_GAMEID("01VVGE") || CHECK_GAMEID("E4VVGJ");
 
             // frameskip can cause bugs in golf when transitioning from VIP to software rendering
             if (is_golf) just_lagged = false;
             // frameskip causes visual glitches
-            if (memcmp(tVBOpt.GAME_ID, "PRCHMB", 6) == 0) just_lagged = false;
+            if (CHECK_GAMEID("PRCHMB")) just_lagged = false;
 
             // forcefully disable antiflicker if software rendering is in use
             // because we can't easily delay the fb update until afterwards

@@ -121,7 +121,7 @@ typedef struct VB_OPT {
     char *PROG_NAME; // Path\Name of program
     char HOME_PATH[240];
     unsigned long CRC32; // CRC32 of ROM
-    char  GAME_ID[6];
+    int   GAME_ID;
     bool  PERF_INFO;
     bool  VSYNC;
     bool  N3DS_SPEEDUP;
@@ -139,6 +139,9 @@ typedef struct VB_OPT {
     bool  DOUBLE_BUFFER;
     BYTE  INPUT_BUFFER; // for multiplayer
 } VB_OPT;
+
+#define MAKE_GAMEID(s) ((s)[0] ^ ((s)[1] << 5) ^ ((s)[2] << 10) ^ ((s)[3] << 15) ^ ((s)[4] << 20) ^ ((s)[5] << 25))
+#define CHECK_GAMEID(s) (tVBOpt.GAME_ID == MAKE_GAMEID(s))
 
 void setCustomMappingDefaults(void);
 void setDefaults(void);
