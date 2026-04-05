@@ -4149,7 +4149,7 @@ void guiUpdate(float total_time, float drc_time) {
 
     C2D_Flush();
 
-    C3D_ColorLogicOp(GPU_LOGICOP_COPY);
+    gpu_blend_default();
 }
 
 bool guiShouldPause(void) {
