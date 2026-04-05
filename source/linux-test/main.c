@@ -73,6 +73,11 @@ int main(int argc, char* argv[]) {
 
     strncpy(tVBOpt.ROM_PATH, argv[1], sizeof(tVBOpt.ROM_PATH)-1);
     tVBOpt.ROM_PATH[sizeof(tVBOpt.ROM_PATH)-1] = 0;
+    strncpy(tVBOpt.RAM_PATH, argv[1], sizeof(tVBOpt.RAM_PATH)-1);
+    tVBOpt.RAM_PATH[sizeof(tVBOpt.RAM_PATH)-1] = 0;
+    if (strrchr(tVBOpt.RAM_PATH, '.')) {
+        strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
+    }
 
     // -m for multiplayer
     for (int i = 0; i < argc; i++) {
