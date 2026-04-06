@@ -16,11 +16,6 @@ static int g_displayed_fb = 0;
 static int vip_displayed_fb = 0;
 
 void video_render(int displayed_fb, bool on_time) {
-	// if we're swapping fb's and we haven't downloaded, do so now
-	if (tVBOpt.RENDERMODE == RM_TOCPU && vb_state->tVIPREG.XPCTRL & XPEN) {
-		video_download_vip(displayed_fb);
-	}
-
     gpu_reset_vip_download();
 
 	bool antiflicker = gpu_antiflicker_allowed() && tVBOpt.ANTIFLICKER && on_time;

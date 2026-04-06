@@ -639,6 +639,10 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
                 // pre-0.9.7 behaviour
                 vb_state->tVIPREG.frametime = 137216;
             }
+            // if we're swapping fb's and we haven't downloaded, do so now
+            if (tVBOpt.RENDERMODE == RM_TOCPU) {
+                video_download_vip(vb_state->tVIPREG.tDisplayedFB);
+            }
         }
 
         sound_update(cycles);
