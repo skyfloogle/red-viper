@@ -347,11 +347,7 @@ void v810_reset(void) {
 
     // VIP download for Test Chamber, only on New 3DS.
     if (CHECK_GAMEID("PRCHMB")) {
-        bool new_3ds = true;
-        #ifdef __3DS__
-        APT_CheckNew3DS(&new_3ds);
-        #endif
-        if (new_3ds) tVBOpt.RENDERMODE = RM_TOCPU;
+        tVBOpt.RENDERMODE = RM_TOCPU;
     }
 
     tVBOpt.VIP_OVER_SOFT = (
