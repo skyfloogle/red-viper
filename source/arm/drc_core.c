@@ -793,7 +793,9 @@ static int drc_translateBlock(void) {
     bool is_niko_chan = CHECK_GAMEID("8BVTRJ");
     bool slow_memory = is_virtual_bowling || is_niko_chan ||
         // If memory is too fast, Blox 2's intro jingle doesn't finish.
-        CHECK_GAMEID("CRVB2M");
+        CHECK_GAMEID("CRVB2M") ||
+        // Artificially slow down Test Chamber to keep it within the o3DS frame budget.
+        CHECK_GAMEID("PRCHMB");
 
     // Emulating memory clocks introduces lag to Galactic Pinball's UFO table.
     bool is_pinball = CHECK_GAMEID("01VGPJ");

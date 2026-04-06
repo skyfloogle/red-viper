@@ -1176,6 +1176,9 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
         }
     }
 
+    // Slow down Test Chamber emulation to improve 3DS performance
+    if (CHECK_GAMEID("PRCHMB")) cycles *= 2;
+
     // Golf hack
     bool is_golf_us = CHECK_GAMEID("01VVGE");
     bool is_golf_jp = CHECK_GAMEID("E4VVGJ");

@@ -19,6 +19,7 @@
 #include "utils.h"
 #include "vblink.h"
 #include "multiplayer.h"
+#include "video_hard.h"
 
 char rom_path[256] = "sdmc:/vb/";
 char rom_name[128];
@@ -245,11 +246,12 @@ int main(void) {
         {
             vb_state = &vb_players[my_player_id];
             bool is_golf = CHECK_GAMEID("01VVGE") || CHECK_GAMEID("E4VVGJ");
+            bool is_test_chamber = CHECK_GAMEID("PRCHMB");
 
             // frameskip can cause bugs in golf when transitioning from VIP to software rendering
             if (is_golf) just_lagged = false;
             // frameskip causes visual glitches
-            if (CHECK_GAMEID("PRCHMB")) just_lagged = false;
+            if (is_test_chamber) just_lagged = false;
 
             // forcefully disable antiflicker if software rendering is in use
             // because we can't easily delay the fb update until afterwards
@@ -286,6 +288,36 @@ int main(void) {
                                 tVBOpt.RENDERMODE = RM_TOGPU;
                                 for (int i = 0; i < 3; i++) {
                                     memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + (0x8000 * i), 0, 0x6000);
+                                }
+                            }
+                        }
+                    }
+                    // Test Chamber hack: switch to VIP downloading during gameplay.
+                    // Otherwise, the intro and ending will slow down.
+                    if (is_test_chamber) {
+                        WORLD *worlds = (WORLD *)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
+                        // Spot that we're in the emulator tester.
+                        bool vip_download = worlds[30].head == 0x40;
+                        if (!vip_download) {
+                            // We assume we're in gameplay if there are affine worlds.
+                            for (int i = 31; i >= 0; i--) {
+                                if (worlds[i].head & 0x40)
+                                    break;
+                                if (!(worlds[i].head & 0xc000))
+                                    continue;
+                                if ((worlds[i].head & 0x3000) == 0x2000) {
+                                    vip_download = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (vip_download) {
+                            tVBOpt.RENDERMODE = RM_TOCPU;
+                        } else {
+                            if (tVBOpt.RENDERMODE != RM_TOGPU) {
+                                tVBOpt.RENDERMODE = RM_TOGPU;
+                                for (int i = 0; i < 2; i++) {
+                                    C3D_RenderTargetClear(screenTargetHard[i], C3D_CLEAR_COLOR, 0, 0);
                                 }
                             }
                         }
