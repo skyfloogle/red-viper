@@ -37,8 +37,10 @@ VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 CFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CPPFILES:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-OFILES	:=	$(addsuffix .o,$(BINFILES)) \
-			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+OFILES	:=	$(addprefix $(BUILD)/, \
+			$(addsuffix .o,$(BINFILES)) \
+			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o))
+
 INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
 			-I$(CURDIR)/$(BUILD)
@@ -57,20 +59,20 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -g
 
 release testing debug slowdebug: $(BUILD) $(OUTPUT).elf
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $(DEPSDIR)/$@
+$(BUILD)/%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $(DEPSDIR)/$@
+$(BUILD)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-%.o: %.s
-	$(CC) $(CFLAGS) -c $< -o $(DEPSDIR)/$@
+$(BUILD)/%.o: %.s
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 
 $(OUTPUT).elf: $(OFILES)
-	$(CC) $(CFLAGS) -o $@ $(BUILD)/*.o $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 clean:
 	@rm -rf build $(OUTPUT).elf
