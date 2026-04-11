@@ -21,8 +21,6 @@
 #include "map8x2_t3x.h"
 #include "map8x4_t3x.h"
 
-#define USE_SOFT_FLUSH true
-
 #define TOP_SCREEN_WIDTH  400
 #define TOP_SCREEN_HEIGHT 240
 #define VIEWPORT_WIDTH    384
@@ -516,7 +514,7 @@ void video_download_vip(int drawn_fb) {
 }
 
 void gpu_soft_to_texture(int displayed_fb) {
-	if (!USE_SOFT_FLUSH || tVBOpt.RENDERMODE == RM_TOGPU) {
+	if (!tVBOpt.SOFT_FLUSH || tVBOpt.RENDERMODE == RM_TOGPU) {
 		video_soft_to_texture(displayed_fb);
 	}
 }
@@ -835,7 +833,7 @@ void gpu_blend_default(void) {
 
 bool gpu_antiflicker_allowed(void) {
 	// soft flush is incompatible with antiflicker
-	return (!USE_SOFT_FLUSH || (tVBOpt.RENDERMODE != RM_CPUONLY && tVBOpt.RENDERMODE != RM_TOCPU))
+	return (!tVBOpt.SOFT_FLUSH || (tVBOpt.RENDERMODE != RM_CPUONLY && tVBOpt.RENDERMODE != RM_TOCPU))
 		// tocpu with double buffering off also seems incompatible for some reason
 		&& !(!tVBOpt.DOUBLE_BUFFER && tVBOpt.RENDERMODE == RM_TOCPU);
 }
@@ -847,7 +845,7 @@ void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
 	if (tDSPCACHE.ColumnTableInvalid || (minRepeat != maxRepeat && tDSPCACHE.BrtPALMod))
 		processColumnTable();
 
-	if (!USE_SOFT_FLUSH || (tVBOpt.RENDERMODE != RM_CPUONLY && tVBOpt.RENDERMODE != RM_TOCPU))
+	if (!tVBOpt.SOFT_FLUSH || (tVBOpt.RENDERMODE != RM_CPUONLY && tVBOpt.RENDERMODE != RM_TOCPU))
 		video_flush_hard(default_for_both, displayed_fb, vip_displayed_fb);
 	else
 		video_flush_soft(default_for_both, displayed_fb);
