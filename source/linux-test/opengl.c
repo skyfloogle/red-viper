@@ -1,5 +1,7 @@
 #include <GLES2/gl2.h>
 
+#include <SDL2/SDL.h>
+
 #include "video_hard.h"
 #include "vb_dsp.h"
 #include "v810_mem.h"
@@ -16,6 +18,8 @@ static u16 *screenTexSoftBuffer;
 GLuint sChar, sFinal, sAffine;
 
 static float palettes[8][3][3];
+
+extern SDL_Window *window;
 
 static GLuint build_shader(const char *vertex_source, const char *fragment_source) {
     GLint compiled, infoLen;
@@ -497,6 +501,8 @@ void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
     glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aTexCoord"));
 
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    SDL_GL_SwapWindow(window);
 }
 
 void gpu_quit(void) {
