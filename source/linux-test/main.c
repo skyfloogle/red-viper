@@ -93,7 +93,13 @@ int main(int argc, char* argv[]) {
 
     clearCache();
 
+    char *game_name = strrchr(tVBOpt.ROM_PATH, '/');
+    if (game_name == NULL) game_name = tVBOpt.ROM_PATH;
+    else game_name++;
+
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO);
+    SDL_SetHint(SDL_HINT_APP_NAME, "Red Viper");
+    SDL_SetHint(SDL_HINT_AUDIO_DEVICE_STREAM_NAME, game_name);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
