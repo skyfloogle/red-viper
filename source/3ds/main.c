@@ -297,15 +297,15 @@ int main(void) {
                     if (is_test_chamber) {
                         WORLD *worlds = (WORLD *)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
                         // Spot that we're in the emulator tester.
-                        bool vip_download = worlds[30].head == 0x40;
+                        bool vip_download = worlds[30].end;
                         if (!vip_download) {
                             // We assume we're in gameplay if there are affine worlds.
                             for (int i = 31; i >= 0; i--) {
-                                if (worlds[i].head & 0x40)
+                                if (worlds[i].end)
                                     break;
-                                if (!(worlds[i].head & 0xc000))
+                                if (worlds[i].on == 0)
                                     continue;
-                                if ((worlds[i].head & 0x3000) == 0x2000) {
+                                if (worlds[i].bgm == 2) {
                                     vip_download = true;
                                     break;
                                 }

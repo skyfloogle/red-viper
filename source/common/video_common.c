@@ -56,17 +56,16 @@ int videoProcessingTime(void) {
 	WORLD *worlds = (WORLD*)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
 	int object_group_id = 3;
 	for (int wrld = 31; wrld >= 0; wrld--) {
-		if (worlds[wrld].head & 0x40) {
-			// END
+		if (worlds[wrld].end) {
 			time += 308;
 			break;
 		}
-		if ((worlds[wrld].head & 0xc000) == 0) {
+		if (worlds[wrld].on == 0) {
 			// dummy world
 			time += 561;
 			continue;
 		}
-		if ((worlds[wrld].head & 0x3000) != 0x3000) {
+		if (worlds[wrld].bgm != 3) {
 			// background world
 			int w = (worlds[wrld].w & 0x1fff) + 1;
 			int h = worlds[wrld].h + 1;
@@ -77,8 +76,8 @@ int videoProcessingTime(void) {
 
 			if (gy > 0) time += (gy < 28 ? gy : 28) * 5;
 
-			switch (worlds[wrld].head & 0x3000) {
-				case 0x0000: {
+			switch (worlds[wrld].bgm) {
+				case 0: {
 					// normal world
 					time += 880;
 					int wstart = mx - abs(mp);
@@ -115,7 +114,7 @@ int videoProcessingTime(void) {
 					}
 					break;
 				}
-				case 0x1000: {
+				case 1: {
 					// h-bias world
 					s16 *params = (s16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000 + worlds[wrld].param * 2);
 					time += 880;
@@ -150,7 +149,7 @@ int videoProcessingTime(void) {
 					}
 					break;
 				}
-				case 0x2000: {
+				case 2: {
 					// affine world
 					time += 908;
 					for (int y = 0; y < 224; y += 8) {

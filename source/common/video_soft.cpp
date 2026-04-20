@@ -308,13 +308,13 @@ void video_soft_render(int drawn_fb) {
     }
     WORLD *worlds = (WORLD *)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
     for (int wrld = 31; wrld >= 0; wrld--) {
-        if (worlds[wrld].head & 0x40)
+        if (worlds[wrld].end)
             break;
-        if (!(worlds[wrld].head & 0xc000))
+        if (worlds[wrld].on == 0)
             continue;
 
         // set softbuf modified area for background worlds
-        if ((worlds[wrld].head & 0x3000) != 0x3000) {
+        if (worlds[wrld].bgm != 3) {
             int16_t base_gx = (s16)(worlds[wrld].gx << 6) >> 6;
             int16_t gp = (s16)(worlds[wrld].gp << 6) >> 6;
             int16_t gy = worlds[wrld].gy;
@@ -323,11 +323,11 @@ void video_soft_render(int drawn_fb) {
             int left_gx = base_gx - gp;
             int right_gx = base_gx + gp;
             int min_gx, max_gx;
-            if ((worlds[wrld].head & 0xc000) == 0xc000) {
+            if (worlds[wrld].on == 0b11) {
                 min_gx = left_gx < right_gx ? left_gx : right_gx;
                 max_gx = left_gx > right_gx ? left_gx : right_gx;
             } else {
-                min_gx = max_gx = worlds[wrld].head & 0x8000 ? left_gx : right_gx;
+                min_gx = max_gx = worlds[wrld].on & 2 ? left_gx : right_gx;
             }
             for (int x = min_gx & ~7; x < max_gx + abs(gp) + w && x < 384; x += 8) {
                 if (x < 0) continue;
@@ -342,16 +342,16 @@ void video_soft_render(int drawn_fb) {
             }
         }
         
-        if ((worlds[wrld].head & 0x3000) == 0) {
+        if (worlds[wrld].bgm == 0) {
             // normal world
             for (int eye = 0; eye < 2; eye++) {
-                if (!(worlds[wrld].head & (0x8000 >> eye)))
+                if (!(worlds[wrld].on & (2 >> eye)))
                     continue;
                 uint16_t *fb = (uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
                 int16_t gy = worlds[wrld].gy;
                 int16_t my = (s16)(worlds[wrld].my << 3) >> 3;
                 int16_t h = worlds[wrld].h + 1;
-                bool over = worlds[wrld].head & 0x80;
+                bool over = worlds[wrld].is_over;
                 if ((gy & 7) || (my & 7) || (h & 7)) {
                     if (over)
                         render_normal_world<false, true>(fb, &worlds[wrld], eye, drawn_fb);
@@ -364,12 +364,12 @@ void video_soft_render(int drawn_fb) {
                         render_normal_world<true, false>(fb, &worlds[wrld], eye, drawn_fb);
                 }
             }
-        } else if ((worlds[wrld].head & 0x3000) == 0x1000) {
+        } else if (worlds[wrld].bgm == 1) {
             // h-bias world
             // TODO
-        } else if ((worlds[wrld].head & 0x3000) == 0x2000) {
+        } else if (worlds[wrld].bgm == 2) {
             // affine world
-            bool over = worlds[wrld].head & 0x80;
+            bool over = worlds[wrld].is_over;
             if (over) {
                 render_affine_world<true>(&worlds[wrld], drawn_fb);
             } else {

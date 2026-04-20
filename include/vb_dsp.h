@@ -88,11 +88,24 @@ void input_init(void);
 HWORD V810_RControll(bool reset);
 
 typedef struct {
-    u16 head;
+    union {
+        u16 head;
+        struct {
+            u8 bg_map_base: 4;
+            u8: 2;
+            bool end: 1;
+            bool is_over: 1;
+            u8 scy: 2;
+            u8 scx: 2;
+            u8 bgm : 2;
+            u8 on : 2;
+        };
+    };
     s16 gx, gp, gy, mx, mp, my;
     u16 w, h, param, over;
     u16 _pad[5];
 } WORLD;
+static_assert(sizeof(WORLD) == 32);
 
 // DPSTTS / DPCTRL
 #define DPRST   0x0001

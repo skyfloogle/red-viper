@@ -164,22 +164,22 @@ void video_hard_render(int drawn_fb) {
 
 	gpu_setup_tile_drawing();
 
-	u16 *windows = (u16 *)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
+	WORLD *worlds = (WORLD *)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
 
 	uint8_t object_group_id = 3;
 
-	for (int8_t wnd = 31; wnd >= 0; wnd--) {
-		if (windows[wnd * 16] & 0x40)
+	for (int8_t wrld = 31; wrld >= 0; wrld--) {
+		if (worlds[wrld].end)
 			break;
-		if (!(windows[wnd * 16] & 0xc000))
+		if (worlds[wrld].on == 0)
 			continue;
 		int vcount = 0;
 
-		if ((windows[wnd * 16] & 0x3000) != 0x3000) {
+		if (worlds[wrld].bgm != 3) {
 			// background world
-			uint8_t mapid = windows[wnd * 16] & 0xf;
-			uint8_t scx_pow = ((windows[wnd * 16] >> 10) & 3);
-			uint8_t scy_pow = ((windows[wnd * 16] >> 8) & 3);
+			uint8_t mapid = worlds[wrld].bg_map_base;
+			uint8_t scx_pow = worlds[wrld].scx;
+			uint8_t scy_pow = worlds[wrld].scy;
 			uint8_t map_count_pow = scx_pow + scy_pow;
 			bool huge_bg = map_count_pow > 3;
 			if (huge_bg) map_count_pow = 3;
@@ -187,22 +187,22 @@ void video_hard_render(int drawn_fb) {
 			uint8_t scy = 1 << scy_pow;
 			uint8_t map_count = 1 << map_count_pow;
 			mapid &= ~(map_count - 1);
-			bool over = windows[wnd * 16] & 0x80;
-			int16_t base_gx = (s16)(windows[wnd * 16 + 1] << 6) >> 6;
-			int16_t gp = (s16)(windows[wnd * 16 + 2] << 6) >> 6;
-			int16_t gy = windows[wnd * 16 + 3];
-			int16_t base_mx = (s16)(windows[wnd * 16 + 4] << 3) >> 3;
-			int16_t mp = (s16)(windows[wnd * 16 + 5] << 1) >> 1;
-			int16_t my = (s16)(windows[wnd * 16 + 6] << 3) >> 3;
-			int16_t w = windows[wnd * 16 + 7] + 1;
-			int16_t h = windows[wnd * 16 + 8] + 1;
-			int16_t over_tile = windows[wnd * 16 + 10] & 0x7ff;
+			bool over = worlds[wrld].is_over;
+			int16_t base_gx = (s16)(worlds[wrld].gx << 6) >> 6;
+			int16_t gp = (s16)(worlds[wrld].gp << 6) >> 6;
+			int16_t gy = worlds[wrld].gy;
+			int16_t base_mx = (s16)(worlds[wrld].mx << 3) >> 3;
+			int16_t mp = (s16)(worlds[wrld].mp << 1) >> 1;
+			int16_t my = (s16)(worlds[wrld].my << 3) >> 3;
+			int16_t w = worlds[wrld].w + 1;
+			int16_t h = worlds[wrld].h + 1;
+			int16_t over_tile = worlds[wrld].over & 0x7ff;
 
 			u16 *tilemap = (u16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000);
 
 			if (h == 0) continue;
 
-			if ((windows[wnd * 16] & 0x3000) == 0) {
+			if (worlds[wrld].bgm == 0) {
 				// normal world
 				vertex *vstart = vcur;
 				vcount = 0;
@@ -270,7 +270,7 @@ void video_hard_render(int drawn_fb) {
 
 				if (vcount != 0) {
 					for (int eye = start_eye; eye < end_eye; eye++) {
-						if (!(windows[wnd * 16] & (0x8000 >> eye)))
+						if (!(worlds[wrld].on & (2 >> eye)))
 							continue;
 						int gx = base_gx;
 						int mx = base_mx;
@@ -298,7 +298,7 @@ void video_hard_render(int drawn_fb) {
 				}
 			} else {
 				// hbias or affine world
-				u16 param_base = windows[wnd * 16 + 9];
+				u16 param_base = worlds[wrld].param;
 				s16 *params = (s16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
 
 				int full_w = 512 * scx;
@@ -306,7 +306,7 @@ void video_hard_render(int drawn_fb) {
 
 				// initial bounds calculation setup
 				int umin, vmin, umax, vmax;
-				if ((windows[wnd * 16] & 0x3000) == 0x1000) {
+				if (worlds[wrld].bgm == 1) {
 					// h-bias
 					vmin = my;
 					vmax = my + h;
@@ -321,7 +321,7 @@ void video_hard_render(int drawn_fb) {
 				int vbuf_count = 0;
 				avertex *vbufs[2] = {NULL, NULL};
 				for (int eye = start_eye; eye < end_eye; eye++) {
-					if (!(windows[wnd * 16] & (0x8000 >> eye)))
+					if (!(worlds[wrld].on & (2 >> eye)))
 						continue;
 
 					vbufs[eye] = avcur;
@@ -336,7 +336,7 @@ void video_hard_render(int drawn_fb) {
 						gx += gp;
 						mx += mp;
 					}
-					if ((windows[wnd * 16] & 0x3000) == 0x1000) {
+					if (worlds[wrld].bgm == 1) {
 						// hbias
 
 						if (avcur + h >= avbuf + AVBUF_SIZE) {
@@ -442,7 +442,7 @@ void video_hard_render(int drawn_fb) {
 				}
 
 				gpu_target_screen(drawn_fb);
-				gpu_draw_affine((WORLD*)&windows[wnd * 16], umin, vmin, umax, vmax, drawn_fb, vbufs, visible);
+				gpu_draw_affine(&worlds[wrld], umin, vmin, umax, vmax, drawn_fb, vbufs, visible);
 			}
 			gpu_setup_tile_drawing();
 		} else {
