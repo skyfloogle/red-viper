@@ -8,6 +8,7 @@
 extern "C" {
 #endif
 
+#include <assert.h>
 #include "vb_types.h"
 
 #ifdef __3DS__
