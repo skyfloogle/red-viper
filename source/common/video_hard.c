@@ -71,11 +71,11 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 	int uumax = umax & 0x1f8;
 	int vvmax = vmax & 0x1f8;
 
-	if (umax - umin >= 512) {
+	if ((umax & ~7) - (umin & ~7) >= 512) {
 		uumin = 0;
 		uumax = 511;
 	}
-	if (vmax - vmin >= 512) {
+	if ((vmax & ~7) - (vmin & ~7) >= 512) {
 		vvmin = 0;
 		vvmax = 511;
 	}
