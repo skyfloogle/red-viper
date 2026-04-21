@@ -121,8 +121,6 @@ char * get_savestate_path(int state, bool write) {
     return NULL;
 }
 
-#ifdef __3DS__
-
 bool emulation_hasstate(int state) {
     char *sspath = get_savestate_path(state, false);
     if (sspath == NULL) return false;
@@ -485,11 +483,13 @@ int emulation_lstate(int state) {
         }
     }
 
+    #ifdef __3DS__
     clearCache();
     C3D_FrameBegin(0);
     video_render((vb_state->tVIPREG.tDisplayedFB) % 2, false);
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     C3D_FrameEnd(0);
+    #endif
 
     guiop = AKILL;
     return 0;
@@ -498,4 +498,3 @@ int emulation_lstate(int state) {
     fclose(state_file);
     return 1;
 }
-#endif
