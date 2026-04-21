@@ -40,7 +40,7 @@ static C3D_Tex palette_mask, palette_mask_tocpu;
 
 static C3D_FVec pal1tex[8] = {0}, pal2tex[8] = {0}, pal3col[8] = {0};
 
-static C3D_RenderTarget *finalScreen[2];
+C3D_RenderTarget *finalScreen[2];
 
 static float *final_vbuf;
 static uint32_t *coltable_vbuf;

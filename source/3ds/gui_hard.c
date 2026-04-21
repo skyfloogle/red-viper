@@ -94,6 +94,8 @@ void drawTouchControls(int inputs);
 bool old_2ds = false;
 bool any_2ds = false;
 
+extern C3D_RenderTarget *finalScreen[2];
+
 static C3D_RenderTarget *screen;
 
 static C2D_TextBuf static_textbuf;
@@ -827,6 +829,7 @@ static void game_menu(int initial_button) {
                 // clear screen buffer
                 for (int i = 0; i < 2; i++) {
                     C2D_TargetClear(screenTargetHard[i], 0);
+                    C2D_TargetClear(finalScreen[i], 0);
                 }
                 C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
                 video_flush(true);
@@ -895,6 +898,7 @@ static void multiplayer_menu(int initial_button) {
                 // clear screen buffer
                 for (int i = 0; i < 2; i++) {
                     C2D_TargetClear(screenTargetHard[i], 0);
+                    C2D_TargetClear(finalScreen[i], 0);
                 }
                 C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
                 video_flush(true);
@@ -972,6 +976,7 @@ static void multiplayer_wait_for_peer(void) {
                     // clear screen buffer
                     for (int i = 0; i < 2; i++) {
                         C2D_TargetClear(screenTargetHard[i], 0);
+                        C2D_TargetClear(finalScreen[i], 0);
                     }
                     video_flush(true);
                     guiop = AKILL | VBRESET;
@@ -1329,6 +1334,7 @@ static bool rom_loader(char *message) {
         // clear screen buffer
         for (int i = 0; i < 2; i++) {
             C2D_TargetClear(screenTargetHard[i], 0);
+            C2D_TargetClear(finalScreen[i], 0);
         }
         tDSPCACHE.DDSPDataState[0] = tDSPCACHE.DDSPDataState[1] = GPU_CLEAR;
         for (int i = 0; i < 2; i++) {
