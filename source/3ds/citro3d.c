@@ -594,7 +594,7 @@ void gpu_draw_tiles(int first, int count) {
 
 extern bool any_2ds;
 
-float getDepthOffset(bool default_for_both, int eye, bool full_parallax) {
+static float getDepthOffset(bool default_for_both, int eye, bool full_parallax) {
 	if (tVBOpt.ANAGLYPH && any_2ds) {
 		int depth = tVBOpt.ANAGLYPH_DEPTH;
 		return (eye == 0) ? depth : -depth;
