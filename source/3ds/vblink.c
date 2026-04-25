@@ -245,6 +245,10 @@ static void vblink_thread(void*) {
 
         V810_ROM1.size = size;
         V810_ROM1.highaddr = 0x7000000 + size - 1;
+        // fill the rest of the address space with copies of the rom
+        for (int i = V810_ROM1.size; i < MAX_ROM_SIZE; i += V810_ROM1.size) {
+            memcpy(V810_ROM1.pmemory + i, V810_ROM1.pmemory, V810_ROM1.size);
+        }
         is_sram = false;
         gen_table();
         tVBOpt.CRC32 = get_crc(size);

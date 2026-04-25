@@ -80,6 +80,7 @@ extern int my_player_id;
 extern int emulated_player_id;
 
 extern V810_MEMORYFETCH V810_ROM1;
+#define MAX_ROM_SIZE 0x1000000
 
 extern int is_sram; //Flag if writes to sram...
 

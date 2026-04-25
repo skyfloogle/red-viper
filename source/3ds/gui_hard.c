@@ -1777,6 +1777,10 @@ static void multiplayer_dlplay(void) {
             ship_packet(send_packet);
         }
         if (size_received && dlplay_progress == V810_ROM1.size) {
+            // fill the rest of the address space with copies of the rom
+            for (int i = V810_ROM1.size; i < MAX_ROM_SIZE; i += V810_ROM1.size) {
+                memcpy(V810_ROM1.pmemory + i, V810_ROM1.pmemory, V810_ROM1.size);
+            }
             tVBOpt.RAM_PATH[0] = 0;
             game_running = true;
             is_sram = false;

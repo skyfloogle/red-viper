@@ -3,6 +3,7 @@
 
 #include "vb_types.h"
 #include "arm_emit.h"
+#include "v810_mem.h"
 
 #if __ARM_ARCH >= 6 && __arm__
 #define DRC_AVAILABLE true
@@ -10,7 +11,6 @@
 #define DRC_AVAILABLE false
 #endif
 
-#define MAX_ROM_SIZE 0x1000000
 #define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
 #define CACHE_SIZE  0x200000
 #define MAX_V810_INST 8192
