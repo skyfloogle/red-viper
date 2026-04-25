@@ -355,8 +355,9 @@ void v810_reset(void) {
     }
 
     // Don't soft flush for Golf, as that's mostly partial updates.
-    // Do soft flush for Test Chamber, as that's all full updates.
-    tVBOpt.SOFT_FLUSH = CHECK_GAMEID("PRCHMB");
+    // I'd like to soft flush for Test Chamber, as that's all full updates.
+    // Unfortunately, there's still some instability, especially in anaglyph mode.
+    // tVBOpt.SOFT_FLUSH = CHECK_GAMEID("PRCHMB");
 
     tVBOpt.VIP_OVER_SOFT = (
         CHECK_GAMEID("01VREE") // Red Alarm (U)
