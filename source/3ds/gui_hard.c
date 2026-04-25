@@ -12,6 +12,7 @@
 #include "drc_core.h"
 #include "vb_dsp.h"
 #include "vb_gui.h"
+#include "rcheevos_integration.h"
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_sound.h"
@@ -490,6 +491,10 @@ static Button options_buttons[] = {
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
     #define OPTIONS_DEBUG 11
     {.str="Save debug info", .x=170, .y=208, .w=150, .h=32},
+    #define OPTIONS_RA_LOGIN 12
+    {.str="RA Login", .x=56, .y=208, .w=108, .h=32},
+    #define OPTIONS_RA_HARDCORE 13
+    {.str="Hardcore", .x=56, .y=176, .w=208, .h=28, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
 };
 
 static void video_settings(int initial_button);
@@ -805,6 +810,7 @@ static void game_menu(int initial_button) {
     if (!tVBOpt.FORWARDER && (hidKeysDown() & KEY_Y)) [[gnu::musttail]] return vblink();
     switch (button) {
         case MAIN_MENU_LOAD_ROM:
+            ra_unload_game();
             guiop = AKILL | VBRESET;
             if (rom_loader(NULL)) return;
             else [[gnu::musttail]] return main_menu(MAIN_MENU_LOAD_ROM);
@@ -2966,6 +2972,14 @@ static void options(int initial_button) {
             options_buttons[OPTIONS_RESET_TO_GLOBAL].hidden = true;
         }
     }
+    /* RetroAchievements: update button label based on login state */
+    if (ra_is_logged_in()) {
+        options_buttons[OPTIONS_RA_LOGIN].str = "RA Logout";
+    } else {
+        options_buttons[OPTIONS_RA_LOGIN].str = "RA Login";
+    }
+    options_buttons[OPTIONS_RA_HARDCORE].toggle = ra_get_hardcore_enabled();
+    options_buttons[OPTIONS_RA_HARDCORE].hidden = !ra_is_logged_in();
     LOOP_BEGIN(options_buttons, initial_button);
     LOOP_END(options_buttons);
     switch (button) {
@@ -3003,6 +3017,33 @@ static void options(int initial_button) {
             loadFileOptions();
             if (game_running) loadGameOptions();
             [[gnu::musttail]] return options(OPTIONS_BACK);
+
+case OPTIONS_RA_LOGIN:
+            if (ra_is_logged_in()) {
+                ra_logout();
+            } else {
+                char ra_user[64] = {0};
+                char ra_pass[64] = {0};
+                SwkbdState swkbd;
+                swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, 63);
+                swkbdSetHintText(&swkbd, "RA Username");
+                if (swkbdInputText(&swkbd, ra_user, sizeof(ra_user))
+                        == SWKBD_BUTTON_RIGHT) {
+                    swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, 63);
+                    swkbdSetHintText(&swkbd, "RA Password");
+                    swkbdSetPasswordMode(&swkbd, SWKBD_PASSWORD_HIDE_DELAY);
+                    if (swkbdInputText(&swkbd, ra_pass, sizeof(ra_pass))
+                            == SWKBD_BUTTON_RIGHT) {
+                        ra_login_with_password(ra_user, ra_pass);
+                    }
+                }
+            }
+            [[gnu::musttail]] return options(OPTIONS_RA_LOGIN);
+
+case OPTIONS_RA_HARDCORE:
+            ra_set_hardcore_enabled(!ra_get_hardcore_enabled());
+            [[gnu::musttail]] return options(OPTIONS_RA_HARDCORE);
+
     }
 }
 
@@ -3220,6 +3261,9 @@ static void savestate_menu(int initial_button, int selected_state) {
                 [[gnu::musttail]] return savestate_confirm("Save complete!", SAVE_SAVESTATE, selected_state);
             }
         case LOAD_SAVESTATE:
+            if (!ra_allow_load_state()) {
+                break;
+            }
             if (emulation_lstate(selected_state) != 0) {
                 [[gnu::musttail]] return savestate_error("Could not load state", LOAD_SAVESTATE, selected_state);
             } else {
@@ -3331,6 +3375,7 @@ static bool load_rom(char *rom_message) {
         game_running = true;
         loadGameOptions();
         last_savestate = 0;
+        ra_load_game();
         return true;
     } else {
         game_running = false;
@@ -4050,7 +4095,8 @@ void guiUpdate(float total_time, float drc_time) {
     if (replay_playing() != last_replay) shouldRedrawMenu = true;
     last_replay = replay_playing();
 
-    if (!shouldRedrawMenu && !tVBOpt.PERF_INFO && !tVBOpt.INPUTS)
+    if (!shouldRedrawMenu && !tVBOpt.PERF_INFO && !tVBOpt.INPUTS
+        && !ra_has_popup())
         return;
 
     // unclear why this is necessary, but omitting it can lead to weird graphical glitches
@@ -4154,6 +4200,31 @@ void guiUpdate(float total_time, float drc_time) {
             if ((1<<i) == VB_KEY_START)  C2D_DrawCircleSolid(320/2-6,  28, 0, 2, cols[mods[i]]);
             if ((1<<i) == VB_KEY_L)      C2D_DrawCircleSolid(320/2-8,  12, 0, 2, cols[mods[i]]);
             if ((1<<i) == VB_KEY_R)      C2D_DrawCircleSolid(320/2+8,  12, 0, 2, cols[mods[i]]);
+        }
+    }
+
+    /* RetroAchievements popup overlay */
+    {
+        ra_popup_t popup;
+        if (ra_get_popup(&popup)) {
+            C2D_DrawRectSolid(0, 200, 0, 320, 40,
+                C2D_Color32(0, 0, 0, 180));
+
+            C2D_Text popup_title_text, popup_desc_text;
+            C2D_TextBufClear(dynamic_textbuf);
+            C2D_TextParse(&popup_title_text, dynamic_textbuf,
+                popup.title);
+            C2D_TextOptimize(&popup_title_text);
+            C2D_TextParse(&popup_desc_text, dynamic_textbuf,
+                popup.description);
+            C2D_TextOptimize(&popup_desc_text);
+
+            C2D_DrawText(&popup_title_text,
+                C2D_AlignCenter | C2D_WithColor,
+                160, 202, 0, 0.5f, 0.5f, TINT_COLOR);
+            C2D_DrawText(&popup_desc_text,
+                C2D_AlignCenter | C2D_WithColor,
+                160, 218, 0, 0.45f, 0.45f, TINT_COLOR);
         }
     }
 
