@@ -174,10 +174,6 @@ int v810_load_init(void) {
     ok:
     V810_ROM1.size = rom_size;
     V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
-    // fill the rest of the address space with copies of the rom
-    for (int i = V810_ROM1.size; i < MAX_ROM_SIZE; i += V810_ROM1.size) {
-        memcpy(V810_ROM1.pmemory + i, V810_ROM1.pmemory, V810_ROM1.size);
-    }
 
     load_sram = fopen(tVBOpt.RAM_PATH, "rb");
     if (load_sram) {
@@ -248,6 +244,11 @@ int v810_load_step(void) {
     }
     if (load_pos >= all_size) {
         // final setup
+
+        // fill the rest of the address space with copies of the rom
+        for (int i = V810_ROM1.size; i < MAX_ROM_SIZE; i += V810_ROM1.size) {
+            memcpy(V810_ROM1.pmemory + i, V810_ROM1.pmemory, V810_ROM1.size);
+        }
 
         // If we need to save, we'll find out later
         is_sram = false;
