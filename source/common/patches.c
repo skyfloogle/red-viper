@@ -11,6 +11,44 @@ typedef struct {
 } Patch;
 
 static const Patch patches[] = {
+    // Jack Bros.expects CPU and VIP timings to line up in a certain
+    // way during level transitions.
+    // A flag at address 050000c0 is set during multiple tile copies,
+    // blocking VRAM updates. The flag takes two XPENDs to clear.
+    // Very precise delays are set up in-between the tile copies,
+    // presumably to line up closely with how long the CPU takes to do
+    // the tile copy and how long the VIP takes to render the scene.
+    // It is not clear which combination of durations produces the same
+    // result as when the game is played on original hardware.
+    // With the current state of emulation, it will miss several beats
+    // and display the next transition for 1 frame at the end of the
+    // transition.
+    // Some areas in Dragon's Belly take longer to copy, so adding 1
+    // frame of delay isn't enough to prevent glitches.
+    // Therefore, I add a delay of 2 frames to get them to line up well
+    // enough that it at least doesn't produce those visual bugs.
+    {
+        .gameid = "EBVJBE",
+        .address = 0x13714,
+        .size = 2,
+        .original = (const uint8_t[]){
+            0x21, 0x40, // mov 1,r1
+        },
+        .patched = (const uint8_t[]){
+            0x23, 0x40, // mov 3,r1
+        },
+    },
+    {
+        .gameid = "EBVJBJ",
+        .address = 0x136e2,
+        .size = 2,
+        .original = (const uint8_t[]){
+            0x21, 0x40, // mov 1,r1
+        },
+        .patched = (const uint8_t[]){
+            0x23, 0x40, // mov 3,r1
+        },
+    },
     // Innsmouth no Yakata does a lot during its busywait that can be skipped.
     {
         .gameid = "8FVIMJ",
