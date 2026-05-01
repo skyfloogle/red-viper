@@ -341,17 +341,17 @@ WORD mem_sram_wword(WORD addr, WORD data) {
 
 uint64_t mem_rom_rbyte(WORD addr) {
     uint64_t wait = (uint64_t)(2 - (vb_state->tHReg.WCR & 1)) << 32;
-    return (WORD)((SBYTE *)(V810_ROM1.off + (addr & 0x7ffffff)))[0] | wait;
+    return (WORD)((SBYTE *)(V810_ROM1.off + (addr & (0x07000000 | (MAX_ROM_SIZE - 1)))))[0] | wait;
 }
 
 uint64_t mem_rom_rhword(WORD addr) {
     uint64_t wait = (uint64_t)(2 - (vb_state->tHReg.WCR & 1)) << 32;
-    return (WORD)((SHWORD *)(V810_ROM1.off + (addr & 0x7fffffe)))[0] | wait;
+    return (WORD)((SHWORD *)(V810_ROM1.off + (addr & (0x07000000 | (MAX_ROM_SIZE - 1)) & ~1)))[0] | wait;
 }
 
 uint64_t mem_rom_rword(WORD addr) {
     uint64_t wait = (uint64_t)(2LL - (vb_state->tHReg.WCR & 1)) << 33;
-    return ((WORD *)(V810_ROM1.off + (addr & 0x7fffffc)))[0] | wait;
+    return ((WORD *)(V810_ROM1.off + (addr & (0x07000000 | (MAX_ROM_SIZE - 1)) & ~3)))[0] | wait;
 }
 
 // Memory read functions
