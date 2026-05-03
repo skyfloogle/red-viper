@@ -8,16 +8,16 @@ jobs:
     container: devkitpro/devkitarm
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: build Red Viper
         run: git config --global --add safe.directory $PWD && make release
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: red-viper.cia
           path: red-viper.cia
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: red-viper.3dsx
           path: red-viper.3dsx
@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: sudo apt update && sudo apt install libminizip-dev libsdl2-dev -y
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: build Red Viper
@@ -43,7 +43,7 @@ jobs:
         run: dpkg --add-architecture armhf && apt update && apt install zlib1g-dev:armhf libminizip-dev:armhf libsdl2-dev:armhf -y
       - name: Install ARM toolchain
         run: apt install git make gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf -y
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: build Red Viper
