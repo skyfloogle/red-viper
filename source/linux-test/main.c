@@ -1,3 +1,4 @@
+#include <SDL2/SDL_hints.h>
 #include <stdio.h>
 #include <unistd.h>
 #include "stdlib.h"
@@ -12,6 +13,11 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
+
+// in case we're using weirdly old sdl
+#ifndef SDL_HINT_APP_NAME
+#define SDL_HINT_APP_NAME SDL_HINT_AUDIO_DEVICE_APP_NAME
+#endif
 
 #if DRC_AVAILABLE
 #else
@@ -154,7 +160,7 @@ int main(int argc, char* argv[]) {
             printf("Error code %d\n", err);
             return 1;
         }
-        
+
         if (!tVBOpt.FASTFORWARD) {
             int remaining = 20 - (SDL_GetTicks() - lasttime);
             if (remaining > 0) {
