@@ -74,11 +74,6 @@ typedef struct {
 	bool	CharacterCache[2048];	//Character chace
     DDSPSTATE DDSPDataState[2];     // Direct DisplayDraws True
     SOFTBOUND SoftBufWrote[2][64];
-    union {
-        BYTE u8[2][2][384*256];
-        HWORD u16[2][2][384*256/2];
-        WORD u32[2][2][384*256/4];
-    } OpaquePixels;
     bool    ColumnTableInvalid;     // Column Table is invalid
 } VB_DSPCACHE;
 

@@ -339,7 +339,7 @@ void v810_reset(void) {
 
         vb_state->tHReg.hwRead = 0;
     }
-    
+
     emulated_player_id = 0;
     emulating_self = emulated_player_id == my_player_id;
     vb_state = &vb_players[emulated_player_id];
@@ -551,7 +551,6 @@ static int serviceDisplayInt(unsigned int cycles, WORD PC) {
                                 tDSPCACHE.SoftBufWrote[drawn_fb][i].min = 0xff;
                                 tDSPCACHE.SoftBufWrote[drawn_fb][i].max = 0;
                             }
-                            memset(tDSPCACHE.OpaquePixels.u32[drawn_fb], 0, sizeof(tDSPCACHE.OpaquePixels.u32[drawn_fb]));
                             #ifdef __3DS__
                             uint32_t fb_size;
                             uint32_t *out_fb = (uint32_t*)C3D_Tex2DGetImagePtr(&screenTexSoft[drawn_fb], 0, &fb_size);
