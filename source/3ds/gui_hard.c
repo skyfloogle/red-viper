@@ -756,7 +756,7 @@ static void first_menu(int initial_button) {
         if (access(tVBOpt.HOME_PATH, F_OK)) mkdir(tVBOpt.HOME_PATH, 0777);
         snprintf(tVBOpt.RAM_PATH, sizeof(tVBOpt.RAM_PATH), "%s/saves/", tVBOpt.HOME_PATH);
         if (access(tVBOpt.RAM_PATH, F_OK)) mkdir(tVBOpt.RAM_PATH, 0777);
-        strlcat(tVBOpt.RAM_PATH, filename, sizeof(tVBOpt.RAM_PATH));
+        strncat(tVBOpt.RAM_PATH, filename, sizeof(tVBOpt.RAM_PATH) - 1);
         char *extension = strrchr(tVBOpt.RAM_PATH, '.');
         if (!extension) goto no_forwarder;
         strcpy(extension, ".ram");

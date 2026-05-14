@@ -233,7 +233,8 @@ static int handler(void* user, const char* section, const char* name,
     } else if (MATCH("vbopt", "vip_overclock")) {
         pconfig->VIP_OVERCLOCK = atoi(value);
     } else if (MATCH("vbopt", "homepath")) {
-        strlcpy(pconfig->HOME_PATH, value, sizeof(pconfig->HOME_PATH));
+        strncpy(pconfig->HOME_PATH, value, sizeof(pconfig->HOME_PATH));
+        pconfig->HOME_PATH[sizeof(pconfig->HOME_PATH)-1] = 0;
         // remove trailing slash
         char *last_slash = strrchr(pconfig->HOME_PATH, '/');
         if (last_slash != NULL && last_slash[1] == 0)
@@ -451,7 +452,7 @@ static char *getGameIniPath(void) {
         if (mkdir(inipath, 0777)) return NULL;
     }
     // $HOME/configs/game.ini
-    strlcat(inipath, last_slash, sizeof(inipath) - strlen(inipath));
+    strncat(inipath, last_slash, sizeof(inipath) - strlen(inipath) - 1);
     char *end = strrchr(inipath, '.');
     if (!end) end = inipath + strlen(inipath);
     // vague bounds check
