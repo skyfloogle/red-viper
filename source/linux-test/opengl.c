@@ -38,7 +38,7 @@ static GLuint build_shader(const char *vertex_source, const char *fragment_sourc
             free(infoLog);
         }
     }
-    
+
     GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fshader, 1, &fragment_source, NULL);
     glCompileShader(fshader);
@@ -162,7 +162,7 @@ void gpu_init(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     u16 pixel = 0;
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, &pixel);
-    
+
 
     glGenTextures(1, &tileTexture);
     glBindTexture(GL_TEXTURE_2D, tileTexture);
@@ -320,7 +320,7 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
     for (int eye = 0; eye < 2; eye++) {
         if (vbufs[eye] != NULL) {
             int gx = base_gx + (eye == 0 ? -gp : gp);
-            
+
             // note: transposed
             gpu_set_scissor(true, 256 * eye + (gy >= 0 ? gy : 0), gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
             glDrawArrays(GL_LINES, (vbufs[eye] - avbuf) * 2, h * 2);
@@ -390,17 +390,17 @@ void gpu_soft_to_texture(int displayed_fb) {
     int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
     for (int eye = start_eye; eye < start_eye + eye_count; eye++) {
         for (int x = 0; x < 384; x++) {
-            uint16_t *in_fb_ptr = (uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * displayed_fb + x * (256 / 4));
-            uint16_t *out_fb = screenTexSoftBuffer + x * 512 + eye * 256;
+            uint32_t *in_fb_ptr = (uint32_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * displayed_fb + x * (256 / 4));
+            uint32_t *out_fb = (uint32_t*)(screenTexSoftBuffer + x * 512 + eye * 256);
 
-            for (int y = 0; y < 224 / 8; y++) {
+            for (int y = 0; y < 224 / 16; y++) {
                 // black, red, green, blue
                 const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
 
-                uint16_t blob = *in_fb_ptr++;
-                for (int i = 0; i < 16 / 2; i++) {
-                    *out_fb++ = colors[blob & 3];
-                    blob >>= 2;
+                uint32_t blob = *in_fb_ptr++;
+                for (int i = 0; i < 32 / 4; i++) {
+                    *out_fb++ = colors[blob & 3] | ((uint32_t)colors[(blob >> 2) & 3] << 16);
+                    blob >>= 4;
                 }
             }
         }
@@ -476,7 +476,7 @@ void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, tDSPCACHE.DDSPDataState[displayed_fb] != GPU_CLEAR ? screenTexSoft[displayed_fb] : transparentPixelTexture);
     glUniform1i(glGetUniformLocation(sFinal, "sSoft"), 1);
-    
+
     float colors[4][3] = {
         {0, 0, 0},
         {vb_state->tVIPREG.BRTA / 128.0, 0, 0},
