@@ -127,4 +127,8 @@ WORD mem_wbyte(WORD addr, WORD data);
 WORD mem_whword(WORD addr, WORD data);
 WORD mem_wword(WORD addr, WORD data);
 
+// Direct access functions
+void *mem_read(WORD addr, WORD len);
+void *mem_write(WORD addr, WORD len);
+
 #endif

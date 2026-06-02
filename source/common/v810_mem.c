@@ -24,27 +24,96 @@ uint64_t mem_nop(void) {
     return 0;
 }
 
+static void *mem_vip_addr(WORD addr, WORD len) {
+    // VIP memory is 0x80000 in size.
+    addr &= 0x7ffff;
+    // Half of this is contiguous memory, so if we cross over a half, bail.
+    if ((addr & 0x3ffff) + len - 1 != ((addr + len - 1) & 0x3ffff)) return NULL;
+    if (!(addr & 0x40000)) {
+        // Things get annoying if I let people copy across framebuffer/tiles.
+        if ((addr & 0x7fff) + len - 1 != ((addr + len - 1) & 0x7fff)) return NULL;
+        if ((addr & 0x7fff) < 0x6000 && ((addr + len - 1) & 0x7fff) >= 0x6000) return NULL;
+        return (void*)vb_state->V810_DISPLAY_RAM.off + addr;
+    } else if (addr < 0x78000) {
+        // Either unmapped or registers.
+        return NULL;
+    } else {
+        // Mirroring the tile data.
+        // Don't allow crossing sections since they're not actually contiguous.
+        if ((addr & 0x1fff) + len - 1 != ((addr + len - 1) & 0x1fff)) return NULL;
+        if (addr < 0x0007A000)
+            return (void*)(vb_state->V810_DISPLAY_RAM.off + (addr - 0x00078000 + 0x00006000));
+        else if (addr < 0x0007C000)
+            return (void*)(vb_state->V810_DISPLAY_RAM.off + (addr - 0x0007A000 + 0x0000E000));
+        else if(addr < 0x0007E000)
+            return (void*)(vb_state->V810_DISPLAY_RAM.off + (addr - 0x0007C000 + 0x00016000));
+        else
+            return (void*)(vb_state->V810_DISPLAY_RAM.off + (addr - 0x0007E000 + 0x0001E000));
+    }
+}
+
+static void *mem_vip_read(WORD addr, WORD len) {
+    if ((addr & 0x70000) < BGMAP_OFFSET
+        && ((addr & 0x6000) != 0x6000
+            || (addr & 0x6000) + len - 1 != ((addr + len - 1) & 0x6000))
+        && !vb_state->tVIPREG.drawing) video_download_vip(!vb_state->tVIPREG.tDisplayedFB);
+    return mem_vip_addr(addr, len);
+}
+
+static void *mem_vip_write(WORD addr, WORD len) {
+    void *mem = mem_vip_read(addr, len);
+    if (mem == NULL) return NULL;
+    if (emulating_self) {
+        addr = mem - (void*)vb_state->V810_DISPLAY_RAM.pmemory;
+        if (addr < BGMAP_OFFSET) {
+            if ((addr & 0x6000) == 0x6000) {
+                for(int i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
+                tDSPCACHE.ObjDataCacheInvalid=1;
+                tDSPCACHE.CharCacheInvalid=1;
+                int start_tile_addr = ((addr & 0x1fff) | ((addr & 0x18000) >> 2));
+                for (int t = start_tile_addr >> 4; t <= (start_tile_addr + len - 1) >> 4; t++) {
+                    tDSPCACHE.CharacterCache[t] = true;
+                }
+            } else {
+                if (!vb_state->tVIPREG.drawing) video_download_vip(!vb_state->tVIPREG.tDisplayedFB);
+                tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
+                SOFTBOUND *colmin = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
+                SOFTBOUND *colmax = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][((addr+len-1)>>9)&63];
+                int ymin = (addr>>1) & 31;
+                int ymax = ((addr+len-1)>>1) & 31;
+                if (ymin < colmin->min) colmin->min = ymin;
+                if (ymax > colmax->max) colmax->max = ymax;
+                if (colmin != colmax) {
+                    colmin->max = 31;
+                    colmax->min = 0;
+                }
+            }
+        } else {
+            if (addr + len > BGMAP_OFFSET && addr < BGMAP_OFFSET+(14*BGMAP_SIZE)) {
+                for (int i = (addr-BGMAP_OFFSET)/BGMAP_SIZE; i < (addr+len-BGMAP_OFFSET)/BGMAP_SIZE; i++) {
+                    tDSPCACHE.BGCacheInvalid[i] = true;
+                }
+            }
+            if (addr + len > COLTABLE_OFFSET && addr < OBJ_OFFSET) {
+                tDSPCACHE.ColumnTableInvalid = true;
+            }
+            if (addr + len > OBJ_OFFSET) {
+                tDSPCACHE.ObjDataCacheInvalid = true;
+            }
+        }
+    }
+    return mem;
+}
+
 uint64_t mem_vip_rbyte(WORD addr) {
     uint64_t wait;
-    addr &= 0x7ffff;
-    if(!(addr & 0x40000)) {
-        if (addr < BGMAP_OFFSET && (addr & 0x6000) != 0x6000 && !vb_state->tVIPREG.drawing) video_download_vip(!vb_state->tVIPREG.tDisplayedFB);
+    SBYTE *mem = (SBYTE*)mem_vip_read(addr, 1);
+    if (mem != NULL) {
         wait = 4LL << 32;
-        return (WORD)((SBYTE *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] | wait;
-    } else if((addr & 0x7e000) == 0x5e000) {
+        return (WORD)*mem | wait;
+    } else if ((addr & 0x7e000) == 0x5e000) {
         wait = 1LL << 32;
         return (WORD)vipcreg_rbyte(addr) | wait;
-        // Mirror the Chr ram table to 078000-07FFFF
-    } else if(addr >= 0x00078000) {
-        wait = 4LL << 32;
-        if(addr < 0x0007A000) //CHR 0-511
-            return (WORD)((SBYTE *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0] | wait;
-        else if(addr < 0x0007C000) //CHR 512-1023
-            return (WORD)((SBYTE *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x0007A000 + 0x0000E000)))[0] | wait;
-        else if(addr < 0x0007E000) //CHR 1024-1535
-            return (WORD)((SBYTE *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x0007C000 + 0x00016000)))[0] | wait;
-        else //CHR 1536-2047
-            return (WORD)((SBYTE *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x0007E000 + 0x0001E000)))[0] | wait;
     } else {
         // unmapped
         return 0;
@@ -53,25 +122,14 @@ uint64_t mem_vip_rbyte(WORD addr) {
 
 uint64_t mem_vip_rhword(WORD addr) {
     uint64_t wait;
-    addr &= 0x7fffe;
-    if(!(addr & 0x40000)) {
-        if (addr < BGMAP_OFFSET && (addr & 0x6000) != 0x6000 && !vb_state->tVIPREG.drawing) video_download_vip(!vb_state->tVIPREG.tDisplayedFB);
+    addr &= ~1;
+    SHWORD *mem = (SHWORD*)mem_vip_read(addr, 2);
+    if (mem != NULL) {
         wait = 4LL << 32;
-        return (WORD)((SHWORD *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] | wait;
-    } else if((addr & 0x7e000) == 0x5e000) {
+        return (WORD)*mem | wait;
+    } else if ((addr & 0x7e000) == 0x5e000) {
         wait = 1LL << 32;
         return (WORD)vipcreg_rhword(addr) | wait;
-        // Mirror the Chr ram table to 078000-07FFFF
-    } else if(addr >= 0x00078000) {
-        wait = 4LL << 32;
-        if(addr < 0x0007A000) //CHR 0-511
-            return (WORD)((SHWORD *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0] | wait;
-        else if(addr < 0x0007C000) //CHR 512-1023
-            return (WORD)((SHWORD *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x0007A000 + 0x0000E000)))[0] | wait;
-        else if(addr < 0x0007E000) //CHR 1024-1535
-            return (WORD)((SHWORD *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x0007C000 + 0x00016000)))[0] | wait;
-        else //CHR 1536-2047
-            return (WORD)((SHWORD *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x0007E000 + 0x0001E000)))[0] | wait;
     } else {
         // unmapped
         return 0;
@@ -80,25 +138,14 @@ uint64_t mem_vip_rhword(WORD addr) {
 
 uint64_t mem_vip_rword(WORD addr) {
     uint64_t wait;
-    addr &= 0x7fffc;
-    if(!(addr & 0x40000)) {
-        if (addr < BGMAP_OFFSET && (addr & 0x6000) != 0x6000 && !vb_state->tVIPREG.drawing) video_download_vip(!vb_state->tVIPREG.tDisplayedFB);
+    addr &= ~3;
+    SWORD *mem = (SWORD*)mem_vip_read(addr, 4);
+    if (mem != NULL) {
         wait = 4LL << 33;
-        return ((WORD *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] | wait;
-    } else if((addr & 0x7e000) == 0x5e000) {
+        return (WORD)*mem | wait;
+    } else if ((addr & 0x7e000) == 0x5e000) {
         wait = 1LL << 33;
-        return vipcreg_rword(addr) | wait;
-        // Mirror the Chr ram table to 078000-07FFFF
-    } else  if(addr >= 0x00078000) {
-        wait = 4LL << 33;
-        if(addr < 0x0007A000) //CHR 0-511
-            return ((WORD *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x00078000 + 0x00006000)))[0] | wait;
-        else if(addr < 0x0007C000) //CHR 512-1023
-            return ((WORD *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x0007A000 + 0x0000E000)))[0] | wait;
-        else if(addr < 0x0007E000) //CHR 1024-1535
-            return ((WORD *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x0007C000 + 0x00016000)))[0] | wait;
-        else //CHR 1536-2047
-            return ((WORD *)(vb_state->V810_DISPLAY_RAM.off + (addr-0x0007E000 + 0x0001E000)))[0] | wait;
+        return (WORD)vipcreg_rword(addr) | wait;
     } else {
         // unmapped
         return 0;
@@ -106,155 +153,33 @@ uint64_t mem_vip_rword(WORD addr) {
 }
 
 WORD mem_vip_wbyte(WORD addr, WORD data) {
-    addr &= 0x7ffff;
-    if(!(addr & 0x40000)) {
-        if (emulating_self) {
-            if(addr < BGMAP_OFFSET) {
-                //Kill it if writes to Char Table
-                if((addr & 0x6000) == 0x6000) {
-                    for(int i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
-                    tDSPCACHE.ObjDataCacheInvalid=1;
-                    tDSPCACHE.CharCacheInvalid=1;
-                    tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
-                } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
-                    if (!vb_state->tVIPREG.drawing) video_download_vip(!vb_state->tVIPREG.tDisplayedFB);
-                    tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
-                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
-                    int y = (addr>>1) & 31;
-                    if (y < column->min) column->min = y;
-                    if (y > column->max) column->max = y;
-                }
-            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
-                tDSPCACHE.ColumnTableInvalid=1;
-            }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
-                tDSPCACHE.ObjDataCacheInvalid=1;
-            } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
-                tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
-            }
-        }
-        ((BYTE *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] = data;
-    } else if((addr & 0x7e000) == 0x5e000) {
+    BYTE *mem = (BYTE*)mem_vip_write(addr, 1);
+    if (mem != NULL) {
+        *mem = data;
+    } else if ((addr & 0x7e000) == 0x5e000) {
         vipcreg_wbyte(addr, data);
-        // Mirror the Chr ram table to 078000-07FFFF
-    } else if(addr >= 0x00078000) {
-        if(addr < 0x0007A000) //CHR 0-511
-            ((BYTE *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x00078000) + 0x00006000)))[0] = data;
-        else if(addr < 0x0007C000) //CHR 512-1023
-            ((BYTE *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007A000) + 0x0000E000)))[0] = data;
-        else if(addr < 0x0007E000) //CHR 1024-1535
-            ((BYTE *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007C000) + 0x00016000)))[0] = data;
-        else //CHR 1536-2047
-            ((BYTE *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007E000) + 0x0001E000)))[0] = data;
-        if (emulating_self) {
-            //Invalidate, writes to Char table
-            for(int i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
-            tDSPCACHE.ObjDataCacheInvalid=1;
-            tDSPCACHE.CharCacheInvalid=1;
-            tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
-        }
     }
     return 1;
 }
 
 WORD mem_vip_whword(WORD addr, WORD data) {
-    addr &= 0x7fffe;
-    if(!(addr & 0x40000)) {
-        if (emulating_self) {
-            if(addr < BGMAP_OFFSET) { //Kill it if writes to Char Table
-                //Kill it if writes to Char Table
-                if((addr & 0x6000) == 0x6000) {
-                    for(int i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
-                    tDSPCACHE.ObjDataCacheInvalid=1;
-                    tDSPCACHE.CharCacheInvalid=1;
-                    tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
-                } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
-                    if (!vb_state->tVIPREG.drawing) video_download_vip(!vb_state->tVIPREG.tDisplayedFB);
-                    tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
-                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
-                    int y = (addr>>1) & 31;
-                    if (y < column->min) column->min = y;
-                    if (y > column->max) column->max = y;
-                }
-            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
-                tDSPCACHE.ColumnTableInvalid=1;
-            }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
-                tDSPCACHE.ObjDataCacheInvalid=1;
-            } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
-                tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
-            }
-        }
-        ((HWORD *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] = data;
-    } else if((addr & 0x7e000) == 0x5e000) {
+    addr &= ~1;
+    HWORD *mem = (HWORD*)mem_vip_write(addr, 2);
+    if (mem != NULL) {
+        *mem = data;
+    } else if ((addr & 0x7e000) == 0x5e000) {
         vipcreg_whword(addr, data);
-        // Mirror the Chr ram table to 078000-07FFFF
-    } else if(addr >= 0x00078000) {
-        if(addr < 0x0007A000) //CHR 0-511
-            ((HWORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x00078000) + 0x00006000)))[0] = data;
-        else if(addr < 0x0007C000) //CHR 512-1023
-            ((HWORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007A000) + 0x0000E000)))[0] = data;
-        else if(addr < 0x0007E000) //CHR 1024-1535
-            ((HWORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007C000) + 0x00016000)))[0] = data;
-        else //CHR 1536-2047
-            ((HWORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007E000) + 0x0001E000)))[0] = data;
-        if (emulating_self) {
-            //Invalidate, writes to Char table
-            for(int i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
-            tDSPCACHE.ObjDataCacheInvalid=1;
-            tDSPCACHE.CharCacheInvalid=1;
-            tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
-        }
     }
     return 1;
 }
 
 WORD mem_vip_wword(WORD addr, WORD data) {
-    addr &= 0x7fffc;
-    if(!(addr & 0x40000)) {
-        if (emulating_self) {
-            if(addr < BGMAP_OFFSET) { //Kill it if writes to Char Table
-                //Kill it if writes to Char Table
-                if((addr & 0x6000) == 0x6000) {
-                    for(int i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
-                    tDSPCACHE.ObjDataCacheInvalid=1;
-                    tDSPCACHE.CharCacheInvalid=1;
-                    tDSPCACHE.CharacterCache[((addr & 0x1fff) | ((addr & 0x18000) >> 2)) >> 4] = true;
-                } else { //Direct Mem Writes, darn thoes fragmented memorys!!!
-                    if (!vb_state->tVIPREG.drawing) video_download_vip(!vb_state->tVIPREG.tDisplayedFB);
-                    tDSPCACHE.DDSPDataState[(addr>>15)&1] = CPU_WROTE;
-                    SOFTBOUND *column = &tDSPCACHE.SoftBufWrote[(addr>>15)&1][(addr>>9)&63];
-                    int y = (addr>>1) & 31;
-                    if (y < column->min) column->min = y;
-                    y++; // 32-bit write covers two tiles, so add 1 for the max calc
-                    if (y > column->max) column->max = y;
-                }
-            } else if (addr >= COLTABLE_OFFSET && addr < OBJ_OFFSET) {
-                tDSPCACHE.ColumnTableInvalid=1;
-            }else if((addr >=OBJ_OFFSET)&&(addr < (OBJ_OFFSET+(OBJ_SIZE*1024)))) { //Writes to Obj Table
-                tDSPCACHE.ObjDataCacheInvalid=1;
-            } else if((addr >=BGMAP_OFFSET)&&(addr < (BGMAP_OFFSET+(14*BGMAP_SIZE)))) { //Writes to BGMap Table
-                tDSPCACHE.BGCacheInvalid[((addr-BGMAP_OFFSET)/BGMAP_SIZE)]=1;
-            }
-        }
-        ((WORD *)(vb_state->V810_DISPLAY_RAM.off + addr))[0] = data;
-    } else if((addr & 0x7e000) == 0x5e000) {
+    addr &= ~3;
+    WORD *mem = (WORD*)mem_vip_write(addr, 4);
+    if (mem != NULL) {
+        *mem = data;
+    } else if ((addr & 0x7e000) == 0x5e000) {
         vipcreg_wword(addr, data);
-        // Mirror the Chr ram table to 078000-07FFFF
-    } else if(addr >= 0x00078000) {
-        if(addr < 0x0007A000)  //CHR 0-511
-            ((WORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x00078000) + 0x00006000)))[0] = data;
-        else if(addr < 0x0007C000) //CHR 512-1023
-            ((WORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007A000) + 0x0000E000)))[0] = data;
-        else if(addr < 0x0007E000) //CHR 1024-1535
-            ((WORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007C000) + 0x00016000)))[0] = data;
-        else      //CHR 1536-2047
-            ((WORD *)(vb_state->V810_DISPLAY_RAM.off + ((addr-0x0007E000) + 0x0001E000)))[0] = data;
-        if (emulating_self) {
-            //Invalidate, writes to Char table
-            for(int i=0;i<14;i++) tDSPCACHE.BGCacheInvalid[i]=1;
-            tDSPCACHE.ObjDataCacheInvalid=1;
-            tDSPCACHE.CharCacheInvalid=1;
-            tDSPCACHE.CharacterCache[(addr - 0x78000) >> 4] = true;
-        }
     }
     return 2;
 }
@@ -271,6 +196,12 @@ uint64_t mem_hw_read(WORD addr) {
 
 WORD mem_hw_write(WORD addr, WORD data) {
     return hcreg_wbyte(addr & 0x3c, data);
+}
+
+static void *mem_wram_addr(WORD addr, WORD len) {
+    addr &= 0xffff;
+    if (addr + len > 0x10000) return NULL;
+    return (void*)vb_state->V810_VB_RAM.pmemory + addr;
 }
 
 uint64_t mem_wram_rbyte(WORD addr) {
@@ -301,6 +232,13 @@ WORD mem_wram_whword(WORD addr, WORD data) {
 WORD mem_wram_wword(WORD addr, WORD data) {
     ((WORD *)(vb_state->V810_VB_RAM.off + (addr & 0x0500fffc)))[0] = data;
     return 0;
+}
+
+static void *mem_sram_addr(WORD addr, WORD len) {
+    is_sram = 1;
+    addr &= vb_state->V810_GAME_RAM.highaddr;
+    if (addr + len - 1 != ((addr + len - 1) & vb_state->V810_GAME_RAM.highaddr)) return NULL;
+    return (void*)vb_state->V810_GAME_RAM.off + addr;
 }
 
 uint64_t mem_sram_rbyte(WORD addr) {
@@ -337,6 +275,12 @@ WORD mem_sram_wword(WORD addr, WORD data) {
     is_sram = 1;
     ((WORD *)(vb_state->V810_GAME_RAM.off + (addr & vb_state->V810_GAME_RAM.highaddr & ~3)))[0] = data;
     return 0;
+}
+
+static void *mem_rom_read(WORD addr, WORD len) {
+    addr &= MAX_ROM_SIZE - 1;
+    if (addr + len - 1 != ((addr + len - 1) & (MAX_ROM_SIZE - 1))) return NULL;
+    return (void*)V810_ROM1.pmemory + addr;
 }
 
 uint64_t mem_rom_rbyte(WORD addr) {
@@ -408,6 +352,16 @@ uint64_t mem_rword(WORD addr) {
     }// End switch on address
 }
 
+void *mem_read(WORD addr, WORD len) {
+    switch ((addr&0x7000000)){
+        case 0x7000000: return mem_rom_read(addr, len);
+        case 0: return mem_vip_read(addr, len);
+        case 0x5000000: return mem_wram_addr(addr, len);
+        case 0x6000000: return mem_sram_addr(addr, len);
+        default: return NULL;
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 //Memory Write Func
 WORD mem_wbyte(WORD addr, WORD data) {
@@ -460,6 +414,15 @@ WORD mem_wword(WORD addr, WORD data) {
         return mem_hw_write(addr, data);
     default:
         return mem_nop();
+    }
+}
+
+void *mem_write(WORD addr, WORD len) {
+    switch ((addr&0x7000000)){
+        case 0: return mem_vip_write(addr, len);
+        case 0x5000000: return mem_wram_addr(addr, len);
+        case 0x6000000: return mem_sram_addr(addr, len);
+        default: return NULL;
     }
 }
 
