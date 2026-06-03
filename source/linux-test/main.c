@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
 
         //             // we need to have these caches during rendering
         //             tDSPCACHE.CharCacheInvalid = false;
-        //             memset(tDSPCACHE.BGCacheInvalid, 0, sizeof(tDSPCACHE.BGCacheInvalid));
+        //             tDSPCACHE.BGCacheInvalid = 0;
         //             memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
         //         }
 

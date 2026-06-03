@@ -56,6 +56,10 @@ typedef struct {
     u8 min, max;
 } SOFTBOUND;
 
+// Disable caches we don't need without removing them from the codebase
+// #define NEED_BG_CACHE
+// #define NEED_OBJ_DATA_CACHE
+
 // Struct to encapsulate all the Cache Stuff... I know its not necesary
 // But it helps me contain the ever spreading cache
 typedef struct {
@@ -65,10 +69,14 @@ typedef struct {
     BYTE    ObjPAL[4][4];           // Obj Pallet
     bool    BrtPALMod;              // Britness for Pallet Changed
 
+    #ifdef NEED_OBJ_DATA_CACHE
     bool    ObjDataCacheInvalid;    // Object Cache Is invalid
+    #endif
 
     bool    ObjCacheInvalid;        // Object Cache Is invalid
-    bool    BGCacheInvalid[14];     // Object Cache Is invalid
+    #ifdef NEED_BG_CACHE
+    HWORD   BGCacheInvalid;
+    #endif
 	bool	CharCacheInvalid;
     bool    CharCacheForceInvalid;
 	bool	CharacterCache[2048];	//Character chace

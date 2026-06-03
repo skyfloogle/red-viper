@@ -77,7 +77,9 @@ void video_render(int displayed_fb, bool on_time) {
 
 		// we need to have these caches during rendering
 		tDSPCACHE.CharCacheInvalid = false;
-		memset(tDSPCACHE.BGCacheInvalid, 0, sizeof(tDSPCACHE.BGCacheInvalid));
+		#ifdef NEED_BG_CACHE
+		tDSPCACHE.BGCacheInvalid = 0;
+		#endif
 		memset(tDSPCACHE.CharacterCache, 0, sizeof(tDSPCACHE.CharacterCache));
 	}
 

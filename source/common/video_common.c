@@ -40,7 +40,7 @@ int video_get_colour(int id, int brt_reg) {
 		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0]) & 0xff) / 255)) |
 		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0] >> 8) & 0xff) / 255) << 8) |
 		((black_brightness * ((tVBOpt.MTINT[tVBOpt.MULTIID][0] >> 16) & 0xff) / 255) << 16);
-	
+
 	#if DRC_AVAILABLE
 	return __builtin_arm_uqadd8(col_tint, black_tint);
 	#else
@@ -211,10 +211,13 @@ void clearCache(void) {
     tDSPCACHE.BgmPALMod = 1;                // World Palette Changed
     tDSPCACHE.ObjPALMod = 1;                // Obj Palette Changed
     tDSPCACHE.BrtPALMod = 1;                // Britness for Palette Changed
+    #ifdef NEED_OBJ_DATA_CACHE
     tDSPCACHE.ObjDataCacheInvalid = 1;      // Object Cache Is invalid
+    #endif
     tDSPCACHE.ObjCacheInvalid = 1;          // Object Cache Is invalid
-    for(i = 0; i < 14; i++)
-        tDSPCACHE.BGCacheInvalid[i] = 1;    // Object Cache Is invalid
+    #ifdef NEED_BG_CACHE
+    tDSPCACHE.BGCacheInvalid = -1;
+    #endif
     for (i = 0; i < 2; i++) {
 		tDSPCACHE.DDSPDataState[i] = CPU_WROTE; // Direct Screen Draw changed
 		for (int j = 0; j < 64; j++) {
