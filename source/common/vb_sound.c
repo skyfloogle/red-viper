@@ -95,7 +95,7 @@ static void update_buf_with_freq(int ch, int samples) {
 }
 
 void sound_update(uint32_t cycles) {
-    if (!emulating_self) return;
+    if (!likely(emulating_self)) return;
     int remaining_samples = (cycles - sound_state.last_cycles) / CYCLES_PER_SAMPLE;
     if (remaining_samples <= 0) return;
     sound_state.last_cycles += remaining_samples * CYCLES_PER_SAMPLE;
@@ -160,7 +160,7 @@ void sound_update(uint32_t cycles) {
                     }
                 }
             }
-            
+
             // shutoff
             if (--sound_state.shutoff_divider >= 0) goto effects_done;
             sound_state.shutoff_divider += 4;
@@ -233,21 +233,21 @@ void sound_update(uint32_t cycles) {
 
 // technically always u8 but gotta pass u16 because otherwise optimizations break everything
 void sound_write(int addr, uint16_t data) {
-    if (!emulating_self) return;
-    if (addr & 1) return;
+    if (!likely(emulating_self)) return;
+    if (unlikely(addr & 1)) return;
     addr &= ~2;
     sound_state.modulation_lock = 0;
     if (!(addr & 0x400)) {
         // ram writes, these can be declined
         // all ram writes are declined if channel 5 is active
-        if (SNDMEM(S5INT) & 0x80) return;
+        if (unlikely(SNDMEM(S5INT) & 0x80)) return;
         if ((addr & 0x380) < 0x280) {
             // wave ram is declined if any channel is active
-            if ((SNDMEM(S1INT) & 0x80) ||
-                (SNDMEM(S2INT) & 0x80) ||
-                (SNDMEM(S3INT) & 0x80) ||
-                (SNDMEM(S4INT) & 0x80) ||
-                (SNDMEM(S6INT) & 0x80)) return;
+            if (unlikely((SNDMEM(S1INT) & 0x80) ||
+                         (SNDMEM(S2INT) & 0x80) ||
+                         (SNDMEM(S3INT) & 0x80) ||
+                         (SNDMEM(S4INT) & 0x80) ||
+                         (SNDMEM(S6INT) & 0x80))) return;
             changed_sample[(addr >> 7) & 7] = true;
         }
     } else if ((addr & 0x7ff) <= 0x580) {
