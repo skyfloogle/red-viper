@@ -91,7 +91,7 @@ void gpu_init(void) {
 	C3D_ProcTexCombiner(&procTex, false, GPU_PT_U, GPU_PT_U);
 	C3D_ProcTexShift(&procTex, GPU_PT_NONE, GPU_PT_NONE);
 	C3D_ProcTexFilter(&procTex, GPU_PT_NEAREST);
-	
+
 	float linearLutData[129];
 	for (int i = 0; i <= 128; i++) {
 		// reading a 96*2+3 lut from a 256-"pixel" texture
@@ -281,7 +281,7 @@ static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures
 	for (int eye = 0; eye < 2; eye++) {
 		if (vbufs[eye] != NULL) {
 			int gx = base_gx + (eye == 0 ? -gp : gp);
-			
+
 			// note: transposed
 			gpu_set_scissor(true, 256 * eye + (gy >= 0 ? gy : 0), gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
 			C3D_DrawArrays(GPU_GEOMETRY_PRIM, vbufs[eye] - avbuf, h);
@@ -427,11 +427,11 @@ void update_texture_cache_hard(void) {
 				continue;
 			}
 		}
-		
+
 		for (int i = 2; i >= 0; i -= 2) {
 			uint32_t slice1 = tile[i + 1];
 			uint32_t slice2 = tile[i];
-	
+
 			// black, red, green, blue
 			const static uint16_t colors[4] = {0, 0xf00f, 0x0f0f, 0x00ff};
 
@@ -694,7 +694,7 @@ static void video_flush_hard(bool default_for_both, int displayed_fb, int vip_di
 	C3D_TexEnvSrc(env, C3D_RGB, minRepeat == maxRepeat ? GPU_CONSTANT : GPU_PRIMARY_COLOR, GPU_PREVIOUS, GPU_PREVIOUS_BUFFER);
 	C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_B);
 	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
-	
+
 	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
 	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
 
@@ -727,7 +727,7 @@ static void video_flush_hard(bool default_for_both, int displayed_fb, int vip_di
 		C3D_FVUnifSet(GPU_GEOMETRY_SHADER, uLoc.shading_offset, (src_eye ? 0.5 : 0) + 1/256.0, 0, 0, 0);
 		C3D_DrawArrays(GPU_GEOMETRY_PRIM, src_eye*96, 96);
 	}
-	
+
 	if (tVBOpt.ANAGLYPH) {
 		C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
 	}
@@ -755,7 +755,7 @@ static void video_flush_soft(bool default_for_both, int displayed_fb) {
 	};
 
 	bool use_column_table = minRepeat != maxRepeat;
-	
+
 	int viewportX = (TOP_SCREEN_WIDTH - VIEWPORT_WIDTH) / 2;
 	int viewportY = (TOP_SCREEN_HEIGHT - VIEWPORT_HEIGHT) / 2;
 

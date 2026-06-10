@@ -36,4 +36,3 @@ extern int  ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs);
 extern WORD ins_rev(WORD n);   //Undocumented opcode REV (non-FPU)
 
 #endif
-

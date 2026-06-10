@@ -898,7 +898,7 @@ int ins_xorbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
-    
+
     if (len == 0) { // type 6
         vb_state->v810_state.P_REG[30] = src;
         vb_state->v810_state.P_REG[29] = dst;
@@ -1101,7 +1101,7 @@ int ins_movbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
-    
+
     if (len == 0) { // type 6
         vb_state->v810_state.P_REG[30] = src;
         vb_state->v810_state.P_REG[29] = dst;
@@ -1325,7 +1325,7 @@ int ins_ornbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
-    
+
     if (len == 0) { // type 6
         vb_state->v810_state.P_REG[30] = src;
         vb_state->v810_state.P_REG[29] = dst;
@@ -1527,7 +1527,7 @@ int ins_andnbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
-    
+
     if (len == 0) { // type 6
         vb_state->v810_state.P_REG[30] = src;
         vb_state->v810_state.P_REG[29] = dst;
@@ -1729,7 +1729,7 @@ int ins_xornbsu (WORD src, WORD dst, WORD len, SWORD offs) {
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
-    
+
     if (len == 0) { // type 6
         vb_state->v810_state.P_REG[30] = src;
         vb_state->v810_state.P_REG[29] = dst;
@@ -1932,7 +1932,7 @@ int ins_notbsu  (WORD src, WORD dst, WORD len, SWORD offs) {
     WORD dstoff = (offs >> 5) & 31;
     WORD dstbuf;
     bool optimized = false;
-    
+
     if (len == 0) { // type 6
         vb_state->v810_state.P_REG[30] = src;
         vb_state->v810_state.P_REG[29] = dst;

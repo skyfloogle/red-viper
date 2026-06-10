@@ -536,7 +536,7 @@ static Button anaglyph_settings_buttons[] = {
     {.x=50, .y=16+24*6, .w=80, .h=20, .colour=0xFFFF00},
     #define ANAGLYPH_LEFT_WHITE 7
     {.x=50, .y=16+24*7, .w=80, .h=20, .colour=0xFFFFFF},
-    
+
     #define ANAGLYPH_RIGHT_OFF 8
     {.x=176, .y=16+24*0, .w=80, .h=20, .colour=0x404040},
     #define ANAGLYPH_RIGHT_RED 9
@@ -717,7 +717,7 @@ static void draw_logo(void) {
     vb_state->tVIPREG.BRTC = 145 - vb_state->tVIPREG.BRTA - vb_state->tVIPREG.BRTB;
 	memset((u8*)vb_state->V810_DISPLAY_RAM.off + 0x3dc00, 0, 0x400);
     tDSPCACHE.ColumnTableInvalid = true;
-    
+
     for (int i = 0; i < 2; i++) {
         C2D_SceneBegin(screenTargetHard[i]);
         C2D_ViewScale(-1, -1);
@@ -904,7 +904,7 @@ static void multiplayer_menu(int initial_button) {
                 video_flush(true);
                 C3D_FrameEnd(0);
                 guiop = AKILL | VBRESET;
-                
+
                 while (wait_for_free_send_slot(1000000000)) {
                     if (udsWaitConnectionStatusEvent(false, false)) {
                         udsConnectionStatus status;
@@ -1243,7 +1243,7 @@ static bool rom_loader(char *message) {
                 // limit otherwise
                 if (cursor < 0) cursor = 0;
                 if (cursor >= entry_count) cursor = entry_count-1;
-                
+
                 int temp = (cursor-1) * entry_height;
                 if (scroll_pos > temp) scroll_pos = temp;
 
@@ -1493,7 +1493,7 @@ static void multiplayer_forwarder_crc32_mismatch(NetAppData *appdata) {
     C2D_Text their_crc32_text;
 
     appdata->rom_name[sizeof(appdata->rom_name) - 1] = 0;
-    
+
     C2D_TextBufClear(dynamic_textbuf);
 
     snprintf(buf, sizeof(buf), "Their game: %s", appdata->rom_name);
@@ -1653,7 +1653,7 @@ static void multiplayer_prepare_join(int initial_button) {
     NetAppData appdata;
     udsGetApplicationData(&appdata, sizeof(appdata), NULL);
     appdata.rom_name[sizeof(appdata.rom_name) - 1] = 0;
-    
+
     C2D_TextBufClear(dynamic_textbuf);
 
     snprintf(buf, sizeof(buf), "Their game: %s", appdata.rom_name);
@@ -2316,7 +2316,7 @@ static void touchscreen_settings() {
                     dest_x = tVBOpt.TOUCH_PADX - PAD_RAD - PAUSE_RAD;
                 if (dest_x > 192)
                     dest_x = 192;
-                if (dest_x < 80 + PAUSE_RAD) 
+                if (dest_x < 80 + PAUSE_RAD)
                     dest_x = 80 + PAUSE_RAD;
                 tVBOpt.PAUSE_RIGHT = dest_x;
             } else if (dragging != 0) {
@@ -2664,7 +2664,7 @@ static void multicolour_wheel(int palette_id, int colour_id) {
     const int scale_range = 3;
 
     bool dragging_scale = 0;
-    
+
     multicolour_wheel_buttons[MULTIWHEEL_SCALE].hidden = colour_id == 0;
 
     LOOP_BEGIN(multicolour_wheel_buttons, 0);
@@ -2684,7 +2684,7 @@ static void multicolour_wheel(int palette_id, int colour_id) {
         if (colour_id != 0) {
             touchPosition touch_pos;
             hidTouchRead(&touch_pos);
-            
+
             if ((hidKeysDown() & KEY_TOUCH)) {
                 if ((unsigned)(touch_pos.px - (scale_x)) < scale_width &&
                     abs((int)(touch_pos.py - scale_y)) < scale_height
@@ -3208,7 +3208,7 @@ static void savestate_menu(int initial_button, int selected_state) {
     LOOP_END(savestate_buttons);
 
     last_savestate = selected_state;
-    
+
     switch(button) {
         case SAVESTATE_BACK:
             [[gnu::musttail]] return main_menu(MAIN_MENU_SAVESTATES);
@@ -3358,7 +3358,7 @@ static inline int handle_buttons(Button buttons[], int count) {
     int ret = -1;
     touchPosition touch_pos;
     hidTouchRead(&touch_pos);
-    
+
     // d-pad input
     u32 kDown = hidKeysDown();
     if ((kDown & (KEY_UP | KEY_DOWN | KEY_LEFT | KEY_RIGHT)) && !buttonLock)
@@ -3630,10 +3630,10 @@ void guiInit(void) {
     STATIC_TEXT(&text_custom_3ds_button_CPAD_DOWN, "\uE077\uE01C")
     STATIC_TEXT(&text_custom_3ds_button_CPAD_LEFT, "\uE077\uE01A")
     STATIC_TEXT(&text_custom_3ds_button_CPAD_RIGHT, "\uE077\uE019")
-    STATIC_TEXT(&text_custom_3ds_button_CSTICK_UP, "\uE04A\uE01B")     
-    STATIC_TEXT(&text_custom_3ds_button_CSTICK_DOWN, "\uE04A\uE01C")     
-    STATIC_TEXT(&text_custom_3ds_button_CSTICK_LEFT, "\uE04A\uE01A")     
-    STATIC_TEXT(&text_custom_3ds_button_CSTICK_RIGHT, "\uE04A\uE019")     
+    STATIC_TEXT(&text_custom_3ds_button_CSTICK_UP, "\uE04A\uE01B")
+    STATIC_TEXT(&text_custom_3ds_button_CSTICK_DOWN, "\uE04A\uE01C")
+    STATIC_TEXT(&text_custom_3ds_button_CSTICK_LEFT, "\uE04A\uE01A")
+    STATIC_TEXT(&text_custom_3ds_button_CSTICK_RIGHT, "\uE04A\uE019")
     STATIC_TEXT(&text_custom_3ds_button_A, "\uE000")
     STATIC_TEXT(&text_custom_3ds_button_X, "\uE002")
     STATIC_TEXT(&text_custom_3ds_button_B, "\uE001")
@@ -4099,7 +4099,7 @@ void guiUpdate(float total_time, float drc_time) {
             C2D_DrawRectSolid(13, 25, 0, 6, 2, col_line);
         }
     }
-    
+
     draw_status_bar(total_time, drc_time);
 
     if (save_thread) C2D_DrawText(&text_saving, C2D_AlignLeft, 0, 224, 0, 0.5, 0.5);

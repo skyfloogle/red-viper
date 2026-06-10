@@ -70,7 +70,7 @@ static inline void new_data_proc_imm_shift(BYTE cond, BYTE opcode, BYTE s, BYTE 
             shift,
             Rm
     };
-    
+
     inst_ptr++;
 }
 

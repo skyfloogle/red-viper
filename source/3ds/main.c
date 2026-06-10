@@ -65,7 +65,7 @@ int main(void) {
     setDefaults();
     if (loadFileOptions() < 0)
         saveFileOptions();
-    
+
     vblink_init();
 
     drc_init();

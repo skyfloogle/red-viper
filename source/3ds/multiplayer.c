@@ -139,7 +139,7 @@ Result create_network(void) {
     char *lastdot = strrchr(appdata.rom_name, '.');
     if (lastdot) *lastdot = 0;
     udsSetApplicationData(&appdata, sizeof(appdata));
-    
+
     if (R_SUCCEEDED(res)) {
         init_ids();
     }

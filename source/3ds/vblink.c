@@ -49,7 +49,7 @@ int vblink_open(void) {
     int flags = fcntl(listenfd, F_GETFL);
     if (flags == -1) return errno;
     if (fcntl(listenfd, F_SETFL, flags | O_NONBLOCK) == -1) return errno;
-    
+
     datafd = -1;
 
     svcClearEvent(vblink_event);

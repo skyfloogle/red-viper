@@ -5,19 +5,19 @@
  * (the V810 instruction decoding) is based on Reality Boy's interpreter and
  * was written by David Tucker. For more information on the original license,
  * check the README.
- * 
+ *
  * Copyright (c) 2015 danielps
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -112,7 +112,7 @@ static BYTE drc_getPhysReg(BYTE vb_reg, WORD reg_map) {
 static bool is_byte_getter(WORD start_PC) {
     static BYTE byte_getter_func[] = {
         0x46, 0xc1, 0x00, 0x00, // ld.b [r6], r10
-        0x1f, 0x18,             // jmp  [lp] 
+        0x1f, 0x18,             // jmp  [lp]
     };
     BYTE* dest = (BYTE*)V810_ROM1.off + start_PC;
     return !memcmp(dest, byte_getter_func, sizeof(byte_getter_func));
@@ -121,7 +121,7 @@ static bool is_byte_getter(WORD start_PC) {
 static bool is_hword_getter(WORD start_PC) {
     static BYTE hword_getter_func[] = {
         0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
-        0x1f, 0x18,             // jmp  [lp] 
+        0x1f, 0x18,             // jmp  [lp]
     };
     static BYTE hword_getter_jr_func[] = {
         0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
@@ -222,7 +222,7 @@ static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
                             }
                         }
                     }
-                    
+
                     potentiallyDone = true;
                     break;
                 }
@@ -257,7 +257,7 @@ static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
                 } else if (branch_addr > end_PC) {
                     end_PC = branch_addr;
                 }
-                
+
                 if (opcode == V810_OP_BR) {
                     potentiallyDone = true;
                 }
@@ -426,7 +426,7 @@ void baseball2_scaling(WORD in_img, WORD out_img, WORD scale_fixed) {
             out_unpacked[y][x] = in_unpacked[scaled_y][scaled_x];
         }
     }
-    
+
     // Re-pack into output
     for (int ty = 0; ty < 4; ty++) {
         for (int tx = 0; tx < 4; tx++) {
@@ -634,7 +634,7 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
                 // inlining
                 static BYTE hword_getter_func[] = {
                     0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
-                    0x1f, 0x18,             // jmp  [lp] 
+                    0x1f, 0x18,             // jmp  [lp]
                 };
                 static BYTE hword_getter_jr_func[] = {
                     0x46, 0xc5, 0x00, 0x00, // ld.h [r6], r10
@@ -714,7 +714,7 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
                 cur_PC += 2;
                 break;
         }
-        
+
         cur_PC += am_size_table[optable[inst_cache[i].opcode].addr_mode];
         block->cycles += opcycle[inst_cache[i].opcode];
 
@@ -774,7 +774,7 @@ static int drc_translateBlock(void) {
     bool reg2_modified;
     // The value of inst_ptr at the start of a V810 instruction
     arm_inst* inst_ptr_start;
-    
+
     // Games with specific hacks; additional explanation follows where each check is used.
     bool is_waterworld = CHECK_GAMEID("67VWEE");
     bool is_virtual_lab = CHECK_GAMEID("AHVJVJ");
@@ -878,7 +878,7 @@ static int drc_translateBlock(void) {
         } else if(r != arm_reg2) { \
             MOV(r, arm_reg2); \
         }
-    
+
     #define LOAD_REG(arm,vb) \
         if (!phys_regs[vb]) LDR_IO(arm, 11, offsetof(cpu_state, P_REG[vb])); \
         else MOV(arm, phys_regs[vb]);
@@ -898,7 +898,7 @@ static int drc_translateBlock(void) {
         inst_ptr_start = inst_ptr;
         cycles += opcycle[inst_cache[i].opcode];
 
-    
+
         // Golf hack: this function clears the screen, so we should do the same
         if (unlikely((is_golf_us && inst_cache[i].PC == 0x0700ca64) ||
                     (is_golf_jp && inst_cache[i].PC == 0x0701602a))) {
@@ -1579,7 +1579,7 @@ static int drc_translateBlock(void) {
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
             case V810_OP_IN_B: // in.b disp16 [reg1], reg2
                 if (arm_reg1 < 4) arm_reg1 = 0;
-                
+
                 if (inst_cache[i].imm == 0) {
                     RELOAD_REG1(0);
                 } else if ((short)inst_cache[i].imm > 0) {

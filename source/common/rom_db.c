@@ -107,6 +107,3 @@ unsigned long get_crc(int romSize)    /* calculate the crc value */
 
     return( crc^0xFFFFFFFF );
 }
-
-
-

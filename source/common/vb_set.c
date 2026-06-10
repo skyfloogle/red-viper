@@ -431,7 +431,7 @@ static int handler(void* user, const char* section, const char* name,
         pconfig->STINT[3][1] = atof(value);
     } else if (MATCH("palette3", "scale3")) {
         pconfig->STINT[3][2] = atof(value);
-        
+
     } else {
         return 1;  // unknown section/name, ignore
     }
@@ -506,7 +506,7 @@ int loadGameOptions(void) {
         else cppExit();
     }
     #endif
-    
+
     return ret;
 }
 

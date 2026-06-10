@@ -247,7 +247,7 @@ int emulation_lstate(int state) {
     //Load VIP registers
     V810_VIPREGDAT new_vipreg = {0};
     READ_VAR(size);
-    
+
     if (ver < 2) {
         if (size == 64) {
             // support <=0.9.6 savestates

@@ -367,7 +367,7 @@ static void iruserThreadFunc(void* param) {
 
             cPos.dx = (s16)((float)(s16)(input_response.pad_x - calibration_data.x_offset) * calibration_data.x_scale) / 8;
             cPos.dy = (s16)((float)(s16)(input_response.pad_y - calibration_data.y_offset) * calibration_data.y_scale) / 8;
-            
+
             u32 keys = 0;
             if (!input_response.r_up) keys |= KEY_R;
             if (!input_response.zl_up) keys |= KEY_ZL;
@@ -425,7 +425,7 @@ static u32 iruserReadPacket(void *out, u32 out_len)
         if (cursor == start) cursor = end;
         cursor--;
     }
-    
+
     int len_to_read = content_length <= out_len ? content_length : out_len;
 
     for (int i = 0; i < len_to_read; i++) {
@@ -454,7 +454,7 @@ static Result __IRUSER_FinalizeIrnop(void)
     u32 *cmdbuf = getThreadCommandBuffer();
 
     cmdbuf[0] = IPC_MakeHeader(0x2,0,0); // 0x20000
-    
+
     if(R_FAILED(ret = svcSendSyncRequest(iruserHandle)))return ret;
     ret = (Result)cmdbuf[1];
 
@@ -467,7 +467,7 @@ static Result __IRUSER_ClearReceiveBuffer(void)
     u32 *cmdbuf = getThreadCommandBuffer();
 
     cmdbuf[0] = IPC_MakeHeader(0x3,0,0); // 0x30000
-    
+
     if(R_FAILED(ret = svcSendSyncRequest(iruserHandle)))return ret;
     ret = (Result)cmdbuf[1];
 
@@ -480,7 +480,7 @@ static Result __IRUSER_ClearSendBuffer(void)
     u32 *cmdbuf = getThreadCommandBuffer();
 
     cmdbuf[0] = IPC_MakeHeader(0x4,0,0); // 0x40000
-    
+
     if(R_FAILED(ret = svcSendSyncRequest(iruserHandle)))return ret;
     ret = (Result)cmdbuf[1];
 
@@ -494,7 +494,7 @@ static Result __IRUSER_RequireConnection(u8 deviceId)
 
     cmdbuf[0] = IPC_MakeHeader(0x6,1,0); // 0x60040
     cmdbuf[1] = deviceId;
-    
+
     if(R_FAILED(ret = svcSendSyncRequest(iruserHandle)))return ret;
     ret = (Result)cmdbuf[1];
 
@@ -507,7 +507,7 @@ static Result __IRUSER_Disconnect(void)
     u32 *cmdbuf = getThreadCommandBuffer();
 
     cmdbuf[0] = IPC_MakeHeader(0x9,0,0); // 0x90000
-    
+
     if(R_FAILED(ret = svcSendSyncRequest(iruserHandle)))return ret;
     ret = (Result)cmdbuf[1];
 
@@ -520,7 +520,7 @@ static Result __IRUSER_GetReceiveEvent(Handle *out)
     u32 *cmdbuf = getThreadCommandBuffer();
 
     cmdbuf[0] = IPC_MakeHeader(0xA,0,0); // 0xA0000
-    
+
     if(R_FAILED(ret = svcSendSyncRequest(iruserHandle)))return ret;
     ret = (Result)cmdbuf[1];
 
@@ -535,10 +535,10 @@ static Result __IRUSER_GetConnectionStatusEvent(Handle *out)
     u32 *cmdbuf = getThreadCommandBuffer();
 
     cmdbuf[0] = IPC_MakeHeader(0xC,0,0); // 0xC0000
-    
+
     if(R_FAILED(ret = svcSendSyncRequest(iruserHandle)))return ret;
     ret = (Result)cmdbuf[1];
-    
+
     *out = (Handle)cmdbuf[3];
 
     return ret;
@@ -553,7 +553,7 @@ static Result __IRUSER_SendIrnop(const void *buffer, u32 size)
     cmdbuf[1] = size;
     cmdbuf[2] = (size << 14) | 2;
     cmdbuf[3] = (u32)buffer;
-    
+
     if(R_FAILED(ret = svcSendSyncRequest(iruserHandle)))return ret;
     ret = (Result)cmdbuf[1];
 
@@ -567,7 +567,7 @@ static Result __IRUSER_InitializeIrnopShared
 {
     Result ret = 0;
     u32 *cmdbuf = getThreadCommandBuffer();
-    
+
     cmdbuf[0] = IPC_MakeHeader(0x18,6,2); // 0x180182
     cmdbuf[1] = shared_buff_size;
     cmdbuf[2] = recv_buff_size;
@@ -591,7 +591,7 @@ static Result __IRUSER_ReleaseSharedData(u32 count)
 
     cmdbuf[0] = IPC_MakeHeader(0x19,1,0); // 0x190040
     cmdbuf[1] = count;
-    
+
     if(R_FAILED(ret = svcSendSyncRequest(iruserHandle)))return ret;
     ret = (Result)cmdbuf[1];
 

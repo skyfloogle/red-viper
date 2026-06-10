@@ -49,13 +49,13 @@ void n3ds_shaders_init(void)
         return;
 
     initialized = true;
-    
+
     if (yatt_init_shader_binaries(&shader_binary, 1) != YATT_OK)
         svcBreak(USERBREAK_PANIC);
 
     if (yatt_init_shader_programs(shader_programs, ARRAY_COUNT(shader_programs)) != YATT_OK)
         svcBreak(USERBREAK_PANIC);
-    
+
     if (yatt_parse_shader_uniforms(uniforms, shader_programs, ARRAY_COUNT(uniforms), ARRAY_COUNT(shader_programs)) != YATT_OK)
         svcBreak(USERBREAK_PANIC);
 }

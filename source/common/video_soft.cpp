@@ -341,7 +341,7 @@ void video_soft_render(int drawn_fb) {
                 if (column->max < max) column->max = max;
             }
         }
-        
+
         if (worlds[wrld].bgm == 0) {
             // normal world
             for (int eye = 0; eye < 2; eye++) {
@@ -418,7 +418,7 @@ void video_soft_render(int drawn_fb) {
                         x -= jp;
                     else
                         x += jp;
-                    
+
                     for (int bpx = 0; bpx < 8; bpx++) {
                         if (x + bpx < 0) continue;
                         if (x + bpx >= 384) break;
@@ -426,7 +426,7 @@ void video_soft_render(int drawn_fb) {
                         int value = get_tile_column(tileid, vb_state->tVIPREG.JPLT[palette], px, (cw3 & 0x1000) != 0);
                         uint16_t mask = get_tile_mask(tileid, px, (cw3 & 0x1000) != 0);
                         if (mask == 0xffff) continue;
-                        
+
                         uint16_t *out_word = &fb[((y) >> 3) + ((x + bpx) * 256 / 8)];
                         if (y >= 0) {
                             *out_word = (*out_word & ((mask << ((y & 7) * 2)) | ((u16)-1 >> (16 - (y & 7) * 2)))) | (value << ((y & 7) * 2));

@@ -47,7 +47,7 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 		cache->vmin = vmin;
 	if (cache->vmax < vmax || !cache->used)
 		cache->vmax = vmax;
-	
+
 	// increase old bounds if current bounds are bigger or if cache was forcefully invalidated
 	if (cache->lumin > umin || force_redraw)
 		cache->lumin = umin;
@@ -493,7 +493,7 @@ void video_hard_render(int drawn_fb) {
 				}
 			}
 			object_group_id = (object_group_id - 1) & 3;
-			
+
 			if (vcur - vbuf > VBUF_SIZE) dprintf(0, "VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
 			gpu_draw_tiles(vcur - vbuf - vcount, vcount);
 		}
