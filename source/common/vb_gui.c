@@ -15,6 +15,8 @@
 #include "vb_set.h"
 #include "vb_sound.h"
 
+#include "rcheevos_integration.h"
+
 #ifdef __3DS__
 #define GUI_STUB(void) { \
     consoleClear(); \
@@ -206,7 +208,12 @@ int emulation_sstate(int state) {
     return 1;
 }
 
-int emulation_lstate(int state) {
+int emulation_lstate(int state) {  
+/* Hardcore mode: block loading savestates */
+    if (!ra_allow_load_state()) {
+        return -1;
+    }
+
     int i;
     int ret;
     uint32_t size;

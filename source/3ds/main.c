@@ -21,6 +21,8 @@
 #include "multiplayer.h"
 #include "video_hard.h"
 
+#include "rcheevos_integration.h"
+
 char rom_path[256] = "sdmc:/vb/";
 char rom_name[128];
 
@@ -79,6 +81,8 @@ int main(void) {
     v810_init();
 
     sound_init();
+
+    ra_init();
 
     if (is_citra) {
         tVBOpt.VSYNC = false;
@@ -396,6 +400,8 @@ int main(void) {
         osTickCounterStart(&drcTickCounter);
         err = v810_run();
         osTickCounterUpdate(&drcTickCounter);
+        ra_do_frame();
+        ra_tick_popup();
         if (err) {
             showError(err);
             do {
@@ -438,6 +444,7 @@ int main(void) {
 
     // home menu, so try and save
     save_sram();
+    ra_shutdown();
 
 exit:
     aptUnhook(&cookie);

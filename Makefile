@@ -36,15 +36,18 @@ include $(DEVKITARM)/3ds_rules
 #     - icon.png
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
-TARGET		:=	$(notdir $(CURDIR))
-BUILD		:=	build
-SOURCES		:=	source/common source/arm source/3ds source/common/inih source/3ds/yattlib-3d/src
-DATA		:=	data
-INCLUDES	:=	include source/common/inih source/3ds/yattlib-3d/include
-GRAPHICS	:=	gfx gfx/maps
-GFXBUILD	:=	$(BUILD)
-ROMFS		:=	romfs
-#GFXBUILD	:=	$(ROMFS)/gfx
+TARGET      :=  $(notdir $(CURDIR))
+BUILD       :=  build
+SOURCES     :=  source/common source/arm source/3ds source/common/inih source/3ds/yattlib-3d/src \
+				source/common/rcheevos/src source/common/rcheevos/src/rcheevos \
+				source/common/rcheevos/src/rapi source/common/rcheevos/src/rhash
+DATA        :=  data
+INCLUDES    :=  include source/common/inih source/3ds/yattlib-3d/include \
+				source/common/rcheevos/include
+GRAPHICS    :=  gfx gfx/maps
+GFXBUILD    :=  $(BUILD)
+ROMFS       :=  romfs
+#GFXBUILD   :=  $(ROMFS)/gfx
 
 include $(TOPDIR)/resources/AppInfo
 
@@ -61,25 +64,27 @@ ICON := icon.png
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
+ARCH    :=  -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
 GIT_HASH := $(shell git log -1 --pretty=format:"%h")
 FULL_VERSION := "$(VERSION) - $(GIT_HASH)"
 
-CFLAGS	:=	-g -Wall -Wno-format-truncation -Werror -O3 -mword-relocations -Wswitch \
+CFLAGS  :=  -g -Wall -Wno-format-truncation -Werror -O3 -mword-relocations -Wswitch \
 			-Wno-unused-variable \
+			-Wno-error=format= \
+			-Wno-error=incompatible-pointer-types \
 			-ffunction-sections \
 			-DVERSION=\"$(FULL_VERSION)\" \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -D__3DS__ $(EXTRA_CFLAGS)
+CFLAGS  +=  $(INCLUDE) -D__3DS__ $(EXTRA_CFLAGS)
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
+CXXFLAGS    := $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
-ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+ASFLAGS :=  -g $(ARCH)
+LDFLAGS =   -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lcitro2d -lcitro3d -lctru -lm -lminizip -lz
+LIBS    := -lcitro2d -lcitro3d -lctru -lm -lminizip -lz
 
 ifeq ($(OS),Windows_NT)
 	MAKEROM = $(TOPDIR)/tools/makerom.exe
@@ -100,7 +105,7 @@ endif
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:= $(CTRULIB) $(PORTLIBS)
+LIBDIRS := $(CTRULIB) $(PORTLIBS)
 
 
 #---------------------------------------------------------------------------------
@@ -110,58 +115,58 @@ LIBDIRS	:= $(CTRULIB) $(PORTLIBS)
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
 
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
-export TOPDIR	:=	$(CURDIR)
+export OUTPUT   :=  $(CURDIR)/$(TARGET)
+export TOPDIR   :=  $(CURDIR)
 
-export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
+export VPATH    :=  $(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 			$(foreach dir,$(GRAPHICS),$(CURDIR)/$(dir)) \
 			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
 
-export DEPSDIR	:=	$(CURDIR)/$(BUILD)
+export DEPSDIR  :=  $(CURDIR)/$(BUILD)
 
-CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
-SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-PICAFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.v.pica)))
-SHLISTFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.shlist)))
-GFXFILES	:=	$(foreach dir,$(GRAPHICS),$(notdir $(wildcard $(dir)/*.t3s)))
-BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+CFILES      :=  $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES    :=  $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+SFILES      :=  $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+PICAFILES   :=  $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.v.pica)))
+SHLISTFILES :=  $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.shlist)))
+GFXFILES    :=  $(foreach dir,$(GRAPHICS),$(notdir $(wildcard $(dir)/*.t3s)))
+BINFILES    :=  $(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(CPPFILES)),)
 #---------------------------------------------------------------------------------
-	export LD	:=	$(CC)
+	export LD   :=  $(CC)
 #---------------------------------------------------------------------------------
 else
 #---------------------------------------------------------------------------------
-	export LD	:=	$(CXX)
+	export LD   :=  $(CXX)
 #---------------------------------------------------------------------------------
 endif
 #---------------------------------------------------------------------------------
 
-export T3XFILES		:=	$(GFXFILES:.t3s=.t3x)
+export T3XFILES     :=  $(GFXFILES:.t3s=.t3x)
 
-export OFILES_SOURCES 	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+export OFILES_SOURCES   :=  $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
 
-export OFILES_BIN	:=	$(addsuffix .o,$(BINFILES)) \
+export OFILES_BIN   :=  $(addsuffix .o,$(BINFILES)) \
 			$(PICAFILES:.v.pica=.shbin.o) $(SHLISTFILES:.shlist=.shbin.o) \
 			$(if $(filter $(BUILD),$(GFXBUILD)),$(addsuffix .o,$(T3XFILES)))
 
 export OFILES := $(OFILES_BIN) $(OFILES_SOURCES)
 
-export HFILES	:=	$(PICAFILES:.v.pica=_shbin.h) $(SHLISTFILES:.shlist=_shbin.h) \
+export HFILES   :=  $(PICAFILES:.v.pica=_shbin.h) $(SHLISTFILES:.shlist=_shbin.h) \
 			$(addsuffix .h,$(subst .,_,$(BINFILES))) \
 			$(GFXFILES:.t3s=.h)
 
-export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+export INCLUDE  :=  $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
 			-I$(CURDIR)/$(BUILD)
 
-export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+export LIBPATHS :=  $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
-export _3DSXDEPS	:=	$(if $(NO_SMDH),,$(OUTPUT).smdh)
+export _3DSXDEPS    :=  $(if $(NO_SMDH),,$(OUTPUT).smdh)
 
 ifeq ($(strip $(ICON)),)
 	icons := $(wildcard *.png)
@@ -188,10 +193,10 @@ endif
 
 #---------------------------------------------------------------------------------
 all: release
-release:	export EXTRA_CFLAGS := -O3 -DDEBUGLEVEL=0
-testing:	export EXTRA_CFLAGS := -O3 -DDEBUGLEVEL=1
-debug:		export EXTRA_CFLAGS := -g -O0 -DDEBUGLEVEL=2
-slowdebug:	export EXTRA_CFLAGS := -g -O0 -DDEBUGLEVEL=3
+release:    export EXTRA_CFLAGS := -O3 -DDEBUGLEVEL=0
+testing:    export EXTRA_CFLAGS := -O3 -DDEBUGLEVEL=1
+debug:      export EXTRA_CFLAGS := -g -O0 -DDEBUGLEVEL=2
+slowdebug:  export EXTRA_CFLAGS := -g -O0 -DDEBUGLEVEL=3
 
 release testing debug slowdebug:
 	@mkdir -p $(BUILD) $(GFXBUILD)
@@ -204,7 +209,7 @@ clean:
 
 
 #---------------------------------------------------------------------------------
-$(GFXBUILD)/%.t3x	$(BUILD)/%.h	:	%.t3s
+$(GFXBUILD)/%.t3x   $(BUILD)/%.h    :   %.t3s
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@tex3ds -i $< -H $(BUILD)/$*.h -d $(DEPSDIR)/$*.d -o $(GFXBUILD)/$*.t3x
@@ -217,13 +222,13 @@ else
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(NO_SMDH)),)
 .PHONY: all
-all	:	$(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).cia
+all :   $(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).cia
 endif
-$(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
+$(OUTPUT).3dsx  :   $(OUTPUT).elf $(_3DSXDEPS)
 
 $(OFILES_SOURCES) : $(HFILES)
 
-$(OUTPUT).elf	:	$(OFILES) $(ROMFS_T3XFILES)
+$(OUTPUT).elf   :   $(OFILES) $(ROMFS_T3XFILES)
 
 banner.bnr: $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.wav
 	$(BANNERTOOL) makebanner -i $(TOPDIR)/resources/banner.png -a $(TOPDIR)/resources/audio.wav -o banner.bnr
@@ -242,14 +247,14 @@ $(OUTPUT).cia: banner.bnr icon.icn cia.rsf $(OUTPUT).elf $(TOPDIR)/$(ROMFS)/*
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
 #---------------------------------------------------------------------------------
-%.bin.o	%_bin.h :	%.bin
+%.bin.o %_bin.h :   %.bin
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)
 
 #---------------------------------------------------------------------------------
-.PRECIOUS	:	%.t3x
-%.t3x.o	%_t3x.h :	%.t3x
+.PRECIOUS   :   %.t3x
+%.t3x.o %_t3x.h :   %.t3x
 #---------------------------------------------------------------------------------
 	@$(bin2o)
 
