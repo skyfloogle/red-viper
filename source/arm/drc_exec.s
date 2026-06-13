@@ -129,14 +129,13 @@ postexec:
 .globl drc_handleInterrupts
 .type drc_executeBlock, %function
 drc_handleInterrupts:
-    push    {r4, r5, lr}
+    push    {r4, lr}
 
     mov     r4, r0
-    mov     r5, r1
 
     @ Save flags and PC
     str     r4, [r11, #state_flags]
-    str     r5, [r11, #state_pc]
+    str     r1, [r11, #state_pc]
 
     @ cycles += cuef - (cuep - r10)
     @ cuef = cuep = cuep - r10
@@ -159,12 +158,12 @@ drc_handleInterrupts:
 ret_to_block:
     @ Return to the block
     mov     r0, r4
-    pop     {r4, r5, pc}
+    pop     {r4, pc}
 
 exit_block:
     @ Restore CPSR
     msr     cpsr_f, r4
 
     @ Exit the block ignoring linked return address
-    pop     {r4, r5}
+    pop     {r4}
     pop     {r0, pc}
