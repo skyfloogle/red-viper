@@ -49,9 +49,6 @@
 #include "vb_set.h"
 #include "vb_types.h"
 
-#include "arm_emit.h"
-#include "arm_codegen.h"
-
 #include "replay.h"
 
 #include "vb_dsp.h"
@@ -60,54 +57,14 @@ HWORD* rom_block_map;
 HWORD* rom_entry_map;
 BYTE* rom_data_code_map;
 BYTE reg_usage[32];
-WORD* cache_start;
-WORD* cache_pos;
+drc_unit* cache_start;
+drc_unit* cache_pos;
 exec_block* block_ptr_start;
 int block_pos = 1;
 
-static v810_instruction *inst_cache;
-static arm_inst *trans_cache;
-arm_inst *inst_ptr;
-
-static WORD* drc_getEntry(WORD loc, exec_block **p_block);
-
-// Maps the most used registers in the block to V810 registers
-static void drc_mapRegs(exec_block* block) {
-    int i, j, max, max_pos;
-
-    block->reg_map = 0;
-
-    for (i = 0; i < ARM_NUM_CACHE_REGS; i++) {
-        max = max_pos = 0;
-        // We don't care about P_REG[0] because it will always be 0 and it will
-        // be optimized out
-        for (j = 1; j < 32; j++) {
-            if (reg_usage[j] > max) {
-                max_pos = j;
-                max = reg_usage[j];
-            }
-        }
-        block->reg_map |= max_pos << (5 * i);
-        if (max)
-            reg_usage[(block->reg_map >> (5 * i)) & 0x1f] = 0;
-        else
-            // Use P_REG[0] as a placeholder if the register isn't
-            // used in the block
-            block->reg_map &= ~(0x1f << (5 * i));
-    }
-}
-
-// Gets the ARM register corresponding to a cached V810 register
-static BYTE drc_getPhysReg(BYTE vb_reg, WORD reg_map) {
-    int i;
-    for (i = 0; i < ARM_NUM_CACHE_REGS; i++) {
-        if (((reg_map >> (i * 5)) & 0x1f) == vb_reg) {
-            // The first usable register will be r4
-            return (BYTE) (i + ARM_CACHE_REG_START);
-        }
-    }
-    return 0;
-}
+v810_instruction *inst_cache;
+static ir_inst *trans_cache;
+ir_inst *inst_ptr;
 
 static bool is_byte_getter(WORD start_PC) {
     static BYTE byte_getter_func[] = {
@@ -812,7 +769,7 @@ static int drc_translateBlock(void) {
     bool reg1_modified;
     bool reg2_modified;
     // The value of inst_ptr at the start of a V810 instruction
-    arm_inst* inst_ptr_start;
+    ir_inst* inst_ptr_start;
 
     // Games with specific hacks; additional explanation follows where each check is used.
     bool is_waterworld = CHECK_GAMEID("67VWEE");
@@ -872,59 +829,12 @@ static int drc_translateBlock(void) {
         drc_findWaterworldBusywait(num_v810_inst);
 
     // Second pass: map the most used V810 registers to ARM registers
-    drc_mapRegs(block);
-    phys_regs[0] = 0;
-    for (i = 1; i < 32; i++)
-        phys_regs[i] = drc_getPhysReg(i, block->reg_map);
+    drc_prepare(block);
 
     inst_ptr = &trans_cache[0];
 #ifdef LITERAL_POOL
     pool_ptr = pool_cache_start;
 #endif
-
-    #define LOAD_REG1() \
-        if (arm_reg1 < 4) { \
-            if (inst_cache[i].reg1) \
-                LDR_IO(arm_reg1, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg1])); \
-            else \
-                MOV_I(arm_reg1, 0, 0); \
-        }
-
-    #define RELOAD_REG1(r) \
-        if (arm_reg1 < 4) { \
-            if (inst_cache[i].reg1) \
-                LDR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg1])); \
-            else \
-                MOV_I(r, 0, 0); \
-        } else if (r != arm_reg1) { \
-            MOV(r, arm_reg1); \
-        }
-
-    #define LOAD_REG2() \
-        if (arm_reg2 < 4) { \
-            if (inst_cache[i].reg2) \
-                LDR_IO(arm_reg2, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2])); \
-            else \
-                MOV_I(arm_reg2, 0, 0); \
-        }
-
-    #define RELOAD_REG2(r) \
-        if (arm_reg2 < 4) { \
-            if (inst_cache[i].reg2) \
-                LDR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2])); \
-            else \
-                MOV_I(r, 0, 0); \
-        } else if(r != arm_reg2) { \
-            MOV(r, arm_reg2); \
-        }
-
-    #define LOAD_REG(arm,vb) \
-        if (!phys_regs[vb]) LDR_IO(arm, 11, offsetof(cpu_state, P_REG[vb])); \
-        else MOV(arm, phys_regs[vb]);
-
-    #define SAVE_REG2(r) \
-        if (arm_reg2 < 4) STR_IO(r, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2])); \
-        else if(arm_reg2 != r) MOV(arm_reg2, r);
 
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
@@ -941,9 +851,7 @@ static int drc_translateBlock(void) {
         // Golf hack: this function clears the screen, so we should do the same
         if (unlikely((is_golf_us && inst_cache[i].PC == 0x0700ca64) ||
                     (is_golf_jp && inst_cache[i].PC == 0x0701602a))) {
-            LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-            LDR_IO(2, 2, DRC_RELOC_GOLFHACK*4);
-            BLX(ARM_COND_AL, 2);
+            drc_golf_hack();
         }
 
         // In Virtual League Baseball 2's overhead view, the draw order of the
@@ -951,12 +859,10 @@ static int drc_translateBlock(void) {
         // object, and every swap in the sort swaps the entire set of 32 bytes.
         // Replace with code that sorts the same array much more efficiently.
         if (unlikely(is_baseball_2 && inst_cache[i].PC == 0x07007428)) {
-            LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-            LDR_IO(2, 2, DRC_RELOC_BALLSORT*4);
-            BLX(ARM_COND_AL, 2);
+            drc_ballsort();
             // skip to after sorting code
             inst_cache[i].branch_offset = 0x070074b8 - 0x07007428;
-            B(ARM_COND_AL, 0);
+            drc_jump_short(&inst_cache[i]);
         }
 
         // Waterworld hack: slow down the sample at the start.
@@ -976,140 +882,61 @@ static int drc_translateBlock(void) {
         // LDW_I(0, inst_cache[i].PC);
         // STR_IO(0, 11, offsetof(cpu_state, PC));
 
-        reg1_modified = false;
-        reg2_modified = false;
-        unmapped_registers = false;
-        next_available_reg = 2;
-        arm_reg1 = 0;
-        arm_reg2 = 0;
-
-        // Map V810 registers and preload them if unmapped
-        if (inst_cache[i].reg1 != 0xFF) {
-            arm_reg1 = phys_regs[inst_cache[i].reg1];
-            if (!arm_reg1) {
-                unmapped_registers = true;
-                arm_reg1 = next_available_reg++;
-            }
-        }
-
-        if (inst_cache[i].reg2 != 0xFF) {
-            arm_reg2 = phys_regs[inst_cache[i].reg2];
-            if (!arm_reg2) {
-                unmapped_registers = true;
-                arm_reg2 = next_available_reg++;
-            }
-        }
-
-        if (inst_cache[i].save_flags) {
-            MRS(0);
-            PUSH(1<<0);
-        }
-
         switch (inst_cache[i].opcode) {
             case V810_OP_JMP: // jmp [reg1]
-                LOAD_REG1();
-                STR_IO(arm_reg1, 11, offsetof(cpu_state, PC));
-                ADDCYCLES();
-                POP(1 << 15);
+                drc_add_cycles(&cycles);
+                drc_jmp(&inst_cache[i]);
                 break;
             case V810_OP_JR: // jr imm26
                 if (abs(inst_cache[i].branch_offset) < 1024) {
                     if (inst_cache[i].busywait) {
-                        HALT(inst_cache[i].PC + inst_cache[i].branch_offset);
+                        drc_halt(inst_cache[i].PC + inst_cache[i].branch_offset, &cycles);
                     } else {
                         if (inst_cache[i].branch_offset <= 0) {
-                            HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
+                            drc_handle_interrupts(inst_cache[i].PC + inst_cache[i].branch_offset, &cycles);
                         } else {
-                            ADDCYCLES();
+                            drc_add_cycles(&cycles);
                         }
-                        B(ARM_COND_AL, 0);
+                        drc_jump_short(&inst_cache[i]);
                     }
                 } else {
-                    ADDCYCLES();
-                    LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
-                    // Save the new PC
-                    STR_IO(0, 11, offsetof(cpu_state, PC));
-                    POP(1 << 15);
+                    drc_add_cycles(&cycles);
+                    drc_jump_long(&inst_cache[i]);
                 }
                 break;
             case V810_OP_JAL: // jal disp26
             {
-                arm_inst *branch_to_tweak = NULL;
-                if (unlikely(is_baseball_2 && inst_cache[i].PC + inst_cache[i].branch_offset == 0x070077ca)) {
-                    // In the overhead view in Virtual League Baseball 2,
-                    // the fielders are scaled in software.
-                    // This algorithm is slow when recompiled, so we override it
-                    // with a faster native implementation.
-
-                    // Verify that our values make sense, otherwise revert to original
-                    LOAD_REG(0, 17);
-                    LOAD_REG(1, 18);
-                    MOV_IS(2, 0, ARM_SHIFT_LSR, 20);
-                    CMP_I(2, 0x70, 0);
-                    Boff(ARM_COND_NE, 9);
-                    MOV_IS(2, 1, ARM_SHIFT_LSR, 16);
-                    CMP_I(2, 0x5, 24);
-                    Boff(ARM_COND_NE, 6);
-                    // Do HLE
-                    LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
-                    LDR_IO(3, 3, DRC_RELOC_BALLSCALE*4);
-                    LOAD_REG(2, 19);
-                    BLX(ARM_COND_AL, 3);
-                    branch_to_tweak = inst_ptr;
-                    Boff(ARM_COND_AL, 0);
-                }
                 if (is_space_invaders && inst_cache[i].PC == 0x07007fb6) {
                     // Make sure the Space Invaders intro FMV runs at the correct speed (ish).
                     // Value determined through trial and error.
                     // Correct for intro video, but attract video is very slightly slow.
                     cycles += 24;
                 }
+                drc_add_cycles(&cycles);
 
-                LDW_I(0, inst_cache[i].PC + inst_cache[i].branch_offset);
-                LDW_I(1, inst_cache[i].PC + 4);
-                // Save the new PC
-                STR_IO(0, 11, offsetof(cpu_state, PC));
-                // Link the return address
-                if (phys_regs[31])
-                    MOV(phys_regs[31], 1);
-                else
-                    STR_IO(1, 11, offsetof(cpu_state, P_REG[31]));
-                ADDCYCLES();
-                POP(1 << 15);
+                bool ballscale = is_baseball_2 && inst_cache[i].PC + inst_cache[i].branch_offset == 0x070077ca;
+
+                if (unlikely(ballscale)) {
+                    // In the overhead view in Virtual League Baseball 2,
+                    // the fielders are scaled in software.
+                    // This algorithm is slow when recompiled, so we override it
+                    // with a faster native implementation.
+                    drc_ballscale_start();
+                }
+
+                drc_link_reg(&inst_cache[i]);
+                drc_jump_long(&inst_cache[i]);
                 // fix the skip if needed
-                if (branch_to_tweak) branch_to_tweak->b_bl.imm = inst_ptr - branch_to_tweak - 2;
+                if (unlikely(ballscale)) drc_ballscale_end();
                 break;
             }
             case V810_OP_RETI:
-                LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
-                TST_I(0, PSW_NP >> 8, 24);
-                // ldrne r1, S_REG[FEPC]
-                new_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 1, offsetof(cpu_state, S_REG[FEPC]));
-                // ldrne r2, S_REG[FEPSW]
-                new_ldst_imm_off(ARM_COND_NE, 1, 1, 0, 0, 1, 11, 2, offsetof(cpu_state, S_REG[FEPSW]));
-                // ldreq r1, S_REG[EIPC]
-                new_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 1, offsetof(cpu_state, S_REG[EIPC]));
-                // ldreq r2, S_REG[EIPSW]
-                new_ldst_imm_off(ARM_COND_EQ, 1, 1, 0, 0, 1, 11, 2, offsetof(cpu_state, S_REG[EIPSW]));
-
-                STR_IO(1, 11, offsetof(cpu_state, PC));
-                STR_IO(2, 11, offsetof(cpu_state, S_REG[PSW]));
-
-                ADDCYCLES();
-
-                // restore flags and handle any lingering interrupts
-                LDR_IO(0, 11, offsetof(cpu_state, except_flags));
-                LDR_IO(2, 11, offsetof(cpu_state, irq_handler));
-                STR_IO(0, 11, offsetof(cpu_state, flags));
-                BLX(ARM_COND_AL, 2);
-
-                // if we didn't exit already, restore state
-                MSR(0);
-                POP(1 << 15);
+                drc_add_cycles(&cycles);
+                drc_reti();
                 break;
             case V810_OP_BR:
                 if (inst_cache[i].branch_offset == 0) {
-                    HALT(inst_cache[i].PC);
+                    drc_halt(inst_cache[i].PC, &cycles);
                     break;
                 }
                 // vertical force doesn't have a tight spinloop like most games, so we can't detect it
@@ -1118,10 +945,9 @@ static int drc_translateBlock(void) {
                 if ((CHECK_GAMEID("01VH3E") || CHECK_GAMEID("18VH3J"))
                     && inst_cache[i].PC == 0x07000c08
                 ) {
-                    MOV_I(0, 1, 25);
-                    ADD(10, 10, 0);
-                    HANDLEINT(inst_cache[i].PC + inst_cache[i].branch_offset);
-                    B(ARM_COND_AL, 0);
+                    drc_vertical_force_hack();
+                    drc_handle_interrupts(inst_cache[i].PC + inst_cache[i].branch_offset, &cycles);
+                    drc_jump_short(&inst_cache[i]);
                     break;
                 }
             case V810_OP_BV:
@@ -1136,9 +962,10 @@ static int drc_translateBlock(void) {
             case V810_OP_BP:
             case V810_OP_BGE:
             case V810_OP_BGT:
-                arm_cond = cond_map[inst_cache[i].opcode & 0xF];
+            case V810_OP_BNH:
+            case V810_OP_BH:
                 if (inst_cache[i].busywait) {
-                    BUSYWAIT(arm_cond, inst_cache[i].PC + inst_cache[i].branch_offset);
+                    drc_busywait(&inst_cache[i], &cycles);
                 } else {
                     // If we just got back from a JAL, an interrupt check already happened, so don't bother.
                     if (inst_cache[i].branch_offset <= 0 && (inst_cache[i].is_branch_target || (i > 0 && inst_cache[i-1].opcode != V810_OP_JAL))) {
@@ -1157,512 +984,101 @@ static int drc_translateBlock(void) {
                         if (is_jack_bros && !chcw_load_seen) {
                             cycles += 20;
                         }
-                        HANDLEINT(inst_cache[i].PC);
+                        drc_handle_interrupts(inst_cache[i].PC, &cycles);
                     } else {
-                        ADDCYCLES();
+                        drc_add_cycles(&cycles);
                     }
-                    B(arm_cond, 0);
+                    drc_branch(&inst_cache[i]);
                 }
                 // branch not taken, so it only took 1 cycle
-                SUB_I(10, 10, 2, 0);
-                break;
-            // Special case: bnh and bh can't be directly translated to ARM
-            case V810_OP_BNH:
-                if (inst_cache[i].busywait) {
-                    BUSYWAIT_BNH(inst_cache[i].PC + inst_cache[i].branch_offset);
-                } else {
-                    if (inst_cache[i].branch_offset <= 0) {
-                        HANDLEINT(inst_cache[i].PC);
-                    } else {
-                        ADDCYCLES();
-                    }
-                    // Branch if C == 1 or Z == 1
-                    B(ARM_COND_CS, 0);
-                    B(ARM_COND_EQ, 0);
-                }
-                // branch not taken, so it only took 1 cycle
-                SUB_I(10, 10, 2, 0);
-                break;
-            case V810_OP_BH:
-                if (inst_cache[i].busywait) {
-                    BUSYWAIT_BH(inst_cache[i].PC + inst_cache[i].branch_offset);
-                } else {
-                    if (inst_cache[i].branch_offset <= 0) {
-                        HANDLEINT(inst_cache[i].PC);
-                    } else {
-                        ADDCYCLES();
-                    }
-                    // Branch if C == 0 and Z == 0
-                    Boff(ARM_COND_CS, 3);
-                    Boff(ARM_COND_EQ, 2);
-                    B(ARM_COND_AL, 0);
-                }
-                // branch not taken, so it only took 1 cycle
-                SUB_I(10, 10, 2, 0);
+                drc_subtract_cycles_runtime(2);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
-                // we need to check if it's 0 to avoid UB with ctz and clz
-                if (inst_cache[i].imm != 0) {
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int neg_ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
-                    int neg_clz = __builtin_clz(-inst_cache[i].imm << 16);
-                    int cto = __builtin_ctz(~inst_cache[i].imm) & ~1;
-                    int clo = __builtin_clz(~inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    int neg_width = (16 - neg_clz) - neg_ctz;
-                    int inv_width = (16 - clo) - cto;
-                    if (width <= 8) {
-                        // normal
-                        if (inst_cache[i].reg1 != 0) {
-                            LOAD_REG1();
-                            ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, 16 - ctz);
-                        } else {
-                            MOV_I(arm_reg2, inst_cache[i].imm >> ctz, 16 - ctz);
-                        }
-                    } else if ((inst_cache[i].imm & 0x8000) && neg_width <= 8 && inst_cache[i].reg1 != 0) {
-                        // negative
-                        LOAD_REG1();
-                        SUB_I(arm_reg2, arm_reg1, -(inst_cache[i].imm >> neg_ctz) & 0xff, 16 - neg_ctz);
-                    } else {
-                        // full-size
-                        if (inst_cache[i].reg1 != 0) {
-                            LOAD_REG1();
-                            ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> 8, 8);
-                        } else {
-                            MOV_I(arm_reg2, inst_cache[i].imm >> 8, 8);
-                        }
-                        ADD_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 16);
-                    }
-                    reg2_modified = true;
-                } else {
-                    // it's just a mov at this point
-                    RELOAD_REG1(arm_reg2);
-                    if (arm_reg1 != arm_reg2) reg2_modified = true;
-                }
-
+                drc_movhi(&inst_cache[i]);
                 break;
             case V810_OP_MOVEA: // movea imm16, reg1, reg2
-                // we need to check if it's 0 to avoid UB with ctz and clz
-                if (inst_cache[i].imm != 0) {
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int neg_ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
-                    int neg_clz = __builtin_clz(-inst_cache[i].imm << 16);
-                    int cto = __builtin_ctz(~inst_cache[i].imm) & ~1;
-                    int clo = __builtin_clz(~inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    int neg_width = (16 - neg_clz) - neg_ctz;
-                    int inv_width = (16 - clo) - cto;
-                    if (!(inst_cache[i].imm & 0x8000) && width <= 8) {
-                        // normal
-                        if (inst_cache[i].reg1 != 0) {
-                            LOAD_REG1();
-                            ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                        } else {
-                            MOV_I(arm_reg2, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                        }
-                    } else if ((inst_cache[i].imm & 0x8000) && neg_width <= 8 && inst_cache[i].reg1 != 0) {
-                        // negative, with alt register
-                        LOAD_REG1();
-                        SUB_I(arm_reg2, arm_reg1, (-inst_cache[i].imm & 0xffff) >> neg_ctz, (32 - neg_ctz) & 31);
-                    } else if (inst_cache[i].imm == 0xFFFF || ((inst_cache[i].imm & 0x8000) && inv_width <= 8)) {
-                        // inverted
-                        if (inst_cache[i].reg1 != 0) {
-                            LOAD_REG1();
-                            MVN_I(0, ((~inst_cache[i].imm) & 0xffff) >> cto, (32 - cto) & 31);
-                            ADD(arm_reg2, arm_reg1, 0);
-                        } else {
-                            MVN_I(arm_reg2, ((~inst_cache[i].imm & 0xffff) >> cto), (32 - cto) & 31);
-                        }
-                    } else if ((inst_cache[i].imm & 0x8000) && neg_width <= 8 && inst_cache[i].reg1 == 0) {
-                        // negative, with zero register
-                        LOAD_REG1();
-                        SUB_I(arm_reg2, arm_reg1, (-inst_cache[i].imm & 0xffff) >> neg_ctz, (32 - neg_ctz) & 31);
-                    } else {
-                        if (!(inst_cache[i].imm & 0x8000)) {
-                            if (inst_cache[i].reg1 != 0) {
-                                LOAD_REG1();
-                                ADD_I(arm_reg2, arm_reg1, inst_cache[i].imm >> 8, 24);
-                            } else {
-                                MOV_I(arm_reg2, inst_cache[i].imm >> 8, 24);
-                            }
-                            ADD_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 0);
-                        } else {
-                            LOAD_REG1();
-                            SUB_I(arm_reg2, arm_reg1, (-inst_cache[i].imm & 0xffff) >> 8, 24);
-                            SUB_I(arm_reg2, arm_reg2, -inst_cache[i].imm & 0xff, 0);
-                        }
-                    }
-                    reg2_modified = true;
-                } else {
-                    // it's just a mov at this point
-                    RELOAD_REG1(arm_reg2);
-                    if (arm_reg1 != arm_reg2) reg2_modified = true;
-                }
+                drc_movea(&inst_cache[i]);
                 break;
             case V810_OP_MOV: // mov reg1, reg2
-                RELOAD_REG1(arm_reg2);
-                if (arm_reg1 != arm_reg2) reg2_modified = true;
+                drc_mov(&inst_cache[i]);
                 break;
             case V810_OP_ADD: // add reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                ADDS(arm_reg2, arm_reg2, arm_reg1);
-                reg2_modified = true;
+                drc_add(&inst_cache[i]);
                 break;
             case V810_OP_SUB: // sub reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                SUBS(arm_reg2, arm_reg2, arm_reg1);
-                INV_CARRY();
-                reg2_modified = true;
+                drc_sub(&inst_cache[i]);
                 break;
             case V810_OP_CMP: // cmp reg1, reg2
-                LOAD_REG2();
-                if (inst_cache[i].reg1 == 0) {
-                    CMP_I(arm_reg2, 0, 0);
-                } else {
-                    LOAD_REG1();
-                    if (inst_cache[i].reg2 == 0)
-                        RSBS_I(0, arm_reg1, 0, 0);
-                    else
-                        CMP(arm_reg2, arm_reg1);
-                }
-                INV_CARRY();
+                drc_cmp(&inst_cache[i]);
                 break;
             case V810_OP_SHL: // shl reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                MOV(0, arm_reg1);
-                AND_I(0, 0, 0x1F, 0);
-                LSLS(arm_reg2, arm_reg2, 0);
-                reg2_modified = true;
+                drc_shl(&inst_cache[i]);
                 break;
             case V810_OP_SHR: // shr reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                MOV(0, arm_reg1);
-                AND_I(0, 0, 0x1F, 0);
-                LSRS(arm_reg2, arm_reg2, 0);
-                reg2_modified = true;
+                drc_shr(&inst_cache[i]);
                 break;
             case V810_OP_SAR: // sar reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                MOV(0, arm_reg1);
-                AND_I(0, 0, 0x1F, 0);
-                ASRS(arm_reg2, arm_reg2, 0);
-                reg2_modified = true;
+                drc_sar(&inst_cache[i]);
                 break;
             case V810_OP_MUL: // mul reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                SMULLS(arm_reg2, inst_cache->reg2 != 30 ? phys_regs[30] : 0, arm_reg2, arm_reg1);
-                // If the 30th register isn't being used in the block, the high
-                // word of the multiplication will be in r0 (because
-                // phys_regs[30] == 0) and we'll have to save it manually
-                if (!phys_regs[30]) {
-                    STR_IO(0, 11, offsetof(cpu_state, P_REG[30]));
-                }
-                reg2_modified = true;
+                drc_mul(&inst_cache[i]);
                 break;
             case V810_OP_MULU: // mul reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                UMULLS(arm_reg2, inst_cache->reg2 != 30 ? phys_regs[30] : 0, arm_reg2, arm_reg1);
-                if (!phys_regs[30]) {
-                    STR_IO(0, 11, offsetof(cpu_state, P_REG[30]));
-                }
-                reg2_modified = true;
+                drc_mulu(&inst_cache[i]);
                 break;
             case V810_OP_DIV: // div reg1, reg2
-                // reg2/reg1 -> reg2 (r0)
-                // reg2%reg1 -> r30 (r1)
-
-                // load function and save flags (interleaved)
-                MRS(0);
-                LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-                PUSH(1 << 0);
-                LDR_IO(2, 2, DRC_RELOC_IDIVMOD*4);
-
-                RELOAD_REG2(0);
-                RELOAD_REG1(1);
-                BLX(ARM_COND_AL, 2);
-
-                if (inst_cache[i].reg2 != 30) {
-                    if (!phys_regs[30])
-                        STR_IO(1, 11, offsetof(cpu_state, P_REG[30]));
-                    else
-                        MOV(phys_regs[30], 1);
-                }
-                SAVE_REG2(0);
-
-                // restore flags
-                POP(1 << 1);
-                MSR(1);
-
-                // flags
-                ORRS(0, 0, 0);
-
+                drc_div(&inst_cache[i]);
                 break;
             case V810_OP_DIVU: // divu reg1, reg2
-                // reg2/reg1 -> reg2 (r0)
-                // reg2%reg1 -> r30 (r1)
-
-                // load function and save flags (interleaved)
-                MRS(0);
-                LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
-                PUSH(1 << 0);
-                LDR_IO(2, 2, DRC_RELOC_UIDIVMOD*4);
-
-                RELOAD_REG2(0);
-                RELOAD_REG1(1);
-                BLX(ARM_COND_AL, 2);
-
-                if (inst_cache[i].reg2 != 30) {
-                    if (!phys_regs[30])
-                        STR_IO(1, 11, offsetof(cpu_state, P_REG[30]));
-                    else
-                        MOV(phys_regs[30], 1);
-                }
-                SAVE_REG2(0);
-
-                // restore flags
-                POP(1 << 1);
-                MSR(1);
-
-                // flags
-                ORRS(0, 0, 0);
-
+                drc_divu(&inst_cache[i]);
                 break;
             case V810_OP_OR: // or reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                ORRS(arm_reg2, arm_reg2, arm_reg1);
-                reg2_modified = true;
+                drc_or(&inst_cache[i]);
                 break;
             case V810_OP_AND: // and reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                ANDS(arm_reg2, arm_reg2, arm_reg1);
-                reg2_modified = true;
+                drc_and(&inst_cache[i]);
                 break;
             case V810_OP_XOR: // xor reg1, reg2
-                LOAD_REG1();
-                LOAD_REG2();
-                EORS(arm_reg2, arm_reg2, arm_reg1);
-                reg2_modified = true;
+                drc_xor(&inst_cache[i]);
                 break;
             case V810_OP_NOT: // not reg1, reg2
-                LOAD_REG1();
-                MVNS(arm_reg2, arm_reg1);
-                reg2_modified = true;
+                drc_not(&inst_cache[i]);
                 break;
             case V810_OP_MOV_I: // mov imm5, reg2
-                if (!(inst_cache[i].imm & 0x10)) {
-                    MOV_I(arm_reg2, inst_cache[i].imm, 0);
-                } else {
-                    MVN_I(arm_reg2, ~sign_5(inst_cache[i].imm), 0);
-                }
-                reg2_modified = true;
+                drc_mov_i(&inst_cache[i]);
                 break;
             case V810_OP_ADD_I: // add imm5, reg2
-                LOAD_REG2();
-                if (!(inst_cache[i].imm & 0x10)) {
-                    ADDS_I(arm_reg2, arm_reg2, inst_cache[i].imm, 0);
-                } else {
-                    MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
-                    ADDS_IS(arm_reg2, arm_reg2, 0, ARM_SHIFT_ASR, 24);
-                }
-                reg2_modified = true;
+                drc_add_i(&inst_cache[i]);
                 break;
             case V810_OP_CMP_I: // cmp imm5, reg2
-                LOAD_REG2();
-                if (!(inst_cache[i].imm & 0x10)) {
-                    CMP_I(arm_reg2, inst_cache[i].imm, 0);
-                } else {
-                    MOV_I(0, (sign_5(inst_cache[i].imm) & 0xFF), 8);
-                    CMP_IS(arm_reg2, 0, ARM_SHIFT_ASR, 24);
-                }
-                INV_CARRY();
-                reg2_modified = true;
+                drc_cmp_i(&inst_cache[i]);
                 break;
             case V810_OP_SHL_I: // shl imm5, reg2
-                LOAD_REG2();
-                // lsl reg2, reg2, #imm5
-                new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_LSL, arm_reg2);
-                reg2_modified = true;
+                drc_shl_i(&inst_cache[i]);
                 break;
             case V810_OP_SHR_I: // shr imm5, reg2
-                // arm doesn't do 0-bit immediate right shifts
-                if (inst_cache[i].imm != 0) {
-                    LOAD_REG2();
-                    // lsr reg2, reg2, #imm5
-                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_LSR, arm_reg2);
-                    reg2_modified = true;
-                }
+                drc_shr_i(&inst_cache[i]);
                 break;
             case V810_OP_SAR_I: // sar imm5, reg2
-                // arm doesn't do 0-bit immediate right shifts
-                if (inst_cache[i].imm != 0) {
-                    LOAD_REG2();
-                    // asr reg2, reg2, #imm5
-                    new_data_proc_imm_shift(ARM_COND_AL, ARM_OP_MOV, 1, 0, arm_reg2, inst_cache[i].imm, ARM_SHIFT_ASR, arm_reg2);
-                    reg2_modified = true;
-                }
+                drc_sar_i(&inst_cache[i]);
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
-                if (inst_cache[i].imm == 0 || inst_cache[i].reg1 == 0) {
-                    MOVS_I(arm_reg2, 0, 0);
-                } else if (inst_cache[i].imm == 0xFFFF) {
-                    LOAD_REG1();
-                    BIC_I(arm_reg2, arm_reg1, 0xff, 8);
-                    BICS_I(arm_reg2, arm_reg2, 0xff, 16);
-                } else {
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int cto = __builtin_ctz(~inst_cache[i].imm) & ~1;
-                    int clo = __builtin_clz(~inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    int inv_width = (16 - clo) - cto;
-                    LOAD_REG1();
-                    if (width <= 8) {
-                        ANDS_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else if (inv_width <= 8) {
-                        UXTH(arm_reg2, arm_reg1, 0);
-                        BICS_I(arm_reg2, arm_reg2, (~inst_cache[i].imm & 0xFFFF) >> cto, (32 - cto) & 31);
-                    } else {
-                        MOV_I(0, inst_cache[i].imm >> 8, 24);
-                        ORR_I(0, 0, inst_cache[i].imm & 0xFF, 0);
-                        ANDS(arm_reg2, arm_reg1, 0);
-                    }
-                }
-                reg2_modified = true;
+                drc_andi(&inst_cache[i]);
                 break;
             case V810_OP_XORI: // xori imm16, reg1, reg2
-                LOAD_REG1();
-                if (inst_cache[i].imm != 0) {
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        EORS_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else {
-                        EOR_I(arm_reg2, arm_reg1, inst_cache[i].imm >> 8, 24);
-                        EORS_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 0);
-                    }
-                    reg2_modified = true;
-                } else {
-                    // it's effectively a mov with flags at this point
-                    MOVS(arm_reg2, arm_reg1);
-                    if (arm_reg1 != arm_reg2) reg2_modified = true;
-                }
+                drc_xori(&inst_cache[i]);
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
-                LOAD_REG1();
-                if (inst_cache[i].imm != 0) {
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        ORRS_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else {
-                        ORR_I(arm_reg2, arm_reg1, inst_cache[i].imm >> 8, 24);
-                        ORRS_I(arm_reg2, arm_reg2, inst_cache[i].imm & 0xFF, 0);
-                    }
-                    reg2_modified = true;
-                } else {
-                    // it's effectively a mov with flags at this point
-                    MOVS(arm_reg2, arm_reg1);
-                    if (arm_reg1 != arm_reg2) reg2_modified = true;
-                }
+                drc_ori(&inst_cache[i]);
                 break;
             case V810_OP_ADDI: // addi imm16, reg1, reg2
-                LOAD_REG1();
-                if (inst_cache[i].imm != 0) {
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (clz != 0 && width <= 8) {
-                        ADDS_I(arm_reg2, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else {
-                        if (clz == 0) {
-                            if (inst_cache[i].imm == 0xFFFF) {
-                                MVN_I(0, 0, 0);
-                            } else {
-                                int inv_ctz = __builtin_ctz(~inst_cache[i].imm) & ~1;
-                                int inv_clz = __builtin_clz(~inst_cache[i].imm << 16);
-                                int inv_width = (16 - inv_clz) - inv_ctz;
-                                if (inv_width <= 8) {
-                                    MVN_I(0, (~inst_cache[i].imm & 0xffff) >> inv_ctz, (32 - inv_ctz) & 31);
-                                } else {
-                                    MVN_I(0, ~inst_cache[i].imm & 0xff, 0);
-                                    BIC_I(0, 0, ~inst_cache[i].imm >> 8, 24);
-                                }
-                            }
-                        } else {
-                            MOV_I(0, (inst_cache[i].imm >> 8), 24);
-                            ORR_I(0, 0, (inst_cache[i].imm & 0xFF), 0);
-                        }
-                        ADDS(arm_reg2, arm_reg1, 0);
-                    }
-                    reg2_modified = true;
-                } else {
-                    // it's effectively a mov with flags at this point
-                    LOAD_REG1();
-                    MOVS(arm_reg2, arm_reg1);
-                    if (arm_reg1 != arm_reg2) reg2_modified = true;
-                }
+                drc_andi(&inst_cache[i]);
                 break;
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
             case V810_OP_IN_B: // in.b disp16 [reg1], reg2
-                if (arm_reg1 < 4) arm_reg1 = 0;
-
-                if (inst_cache[i].imm == 0) {
-                    RELOAD_REG1(0);
-                } else if ((short)inst_cache[i].imm > 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
-                        ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
-                    }
-                } else if ((short)inst_cache[i].imm < 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(-inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
-                    } else {
-                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
-                        SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
-                    }
-                }
-
-                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                AND_I(2, 0, 7, 8);
-                ADD_IS(1, 1, 2, ARM_SHIFT_LSR, 22);
-                LDR_IO(1, 1, DRC_RELOC_RBYTE*4);
-
-                BLX(ARM_COND_AL, 1);
-
-                // Add cycles returned in r1.
-                if (!is_pinball) ADD(10, 10, 1);
+                drc_ld_b(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 2;
-
-                if (inst_cache[i].opcode == V810_OP_IN_B) {
-                    UXTB(arm_reg2, 0, 0);
-                    reg2_modified = true;
-                } else {
-                    SAVE_REG2(0);
-                }
 
                 if (i > 0 && (inst_cache[i - 1].opcode & 0x34) == 0x30 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // load immediately following another load takes 2 cycles instead of 3
@@ -1675,52 +1091,9 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
             case V810_OP_IN_H: // in.h disp16 [reg1], reg2
-                if (arm_reg1 < 4) arm_reg1 = 0;
-
-                if (inst_cache[i].imm == 0) {
-                    RELOAD_REG1(0);
-                } else if ((short)inst_cache[i].imm > 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
-                        ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
-                    }
-                } else if ((short)inst_cache[i].imm < 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(-inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
-                    } else {
-                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
-                        SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
-                    }
-                }
-
-                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                AND_I(2, 0, 7, 8);
-                ADD_IS(1, 1, 2, ARM_SHIFT_LSR, 22);
-                LDR_IO(1, 1, DRC_RELOC_RHWORD*4);
-
-                BLX(ARM_COND_AL, 1);
-
-                // Add cycles returned in r1.
-                if (!is_pinball) ADD(10, 10, 1);
+                drc_ld_h(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 2;
-
-                if (inst_cache[i].opcode == V810_OP_IN_H) {
-                    UXTH(arm_reg2, 0, 0);
-                    reg2_modified = true;
-                } else {
-                    SAVE_REG2(0);
-                }
 
                 if (i > 0 && (inst_cache[i - 1].opcode & 0x34) == 0x30 && (inst_cache[i - 1].opcode & 3) != 2) {
                     // load immediately following another load takes 2 cycles instead of 3
@@ -1733,45 +1106,7 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
             case V810_OP_IN_W: // in.w disp16 [reg1], reg2
-                if (arm_reg1 < 4) arm_reg1 = 0;
-
-                if (inst_cache[i].imm == 0) {
-                    RELOAD_REG1(0);
-                } else if ((short)inst_cache[i].imm > 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
-                        ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
-                    }
-                } else if ((short)inst_cache[i].imm < 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(-inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
-                    } else {
-                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
-                        SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
-                    }
-                }
-
-                LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                AND_I(2, 0, 7, 8);
-                ADD_IS(1, 1, 2, ARM_SHIFT_LSR, 22);
-                LDR_IO(1, 1, DRC_RELOC_RWORD*4);
-
-                BLX(ARM_COND_AL, 1);
-
-                // Add cycles returned in r1.
-                if (!is_pinball) ADD(10, 10, 1);
-
-                SAVE_REG2(0);
+                drc_ld_w(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 4;
 
@@ -1786,45 +1121,7 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_ST_B:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_B: // out.h reg2, disp16 [reg1]
-                if (arm_reg1 < 4) arm_reg1 = 0;
-
-                if (inst_cache[i].imm == 0) {
-                    RELOAD_REG1(0);
-                } else if ((short)inst_cache[i].imm > 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
-                        ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
-                    }
-                } else if ((short)inst_cache[i].imm < 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(-inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
-                    } else {
-                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
-                        SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
-                    }
-                }
-
-                if (inst_cache[i].reg2 == 0)
-                    MOV_I(1, 0, 0);
-                else
-                    RELOAD_REG2(1);
-
-                LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
-                AND_I(2, 0, 7, 8);
-                ADD_IS(3, 3, 2, ARM_SHIFT_LSR, 22);
-                LDR_IO(3, 3, DRC_RELOC_WBYTE*4);
-
-                BLX(ARM_COND_AL, 3);
+                drc_st_b(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 2;
 
@@ -1832,51 +1129,10 @@ static int drc_translateBlock(void) {
                     // with two consecutive stores, the second takes 2 cycles instead of 1
                     cycles += 1;
                 }
-
-                // Add cycles returned in r0.
-                if (!is_pinball) ADD(10, 10, 0);
                 break;
             case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_H: // out.h reg2, disp16 [reg1]
-                if (arm_reg1 < 4) arm_reg1 = 0;
-
-                if (inst_cache[i].imm == 0) {
-                    RELOAD_REG1(0);
-                } else if ((short)inst_cache[i].imm > 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
-                        ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
-                    }
-                } else if ((short)inst_cache[i].imm < 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(-inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
-                    } else {
-                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
-                        SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
-                    }
-                }
-
-                if (inst_cache[i].reg2 == 0)
-                    MOV_I(1, 0, 0);
-                else
-                    RELOAD_REG2(1);
-
-                LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
-                AND_I(2, 0, 7, 8);
-                ADD_IS(3, 3, 2, ARM_SHIFT_LSR, 22);
-                LDR_IO(3, 3, DRC_RELOC_WHWORD*4);
-
-                BLX(ARM_COND_AL, 3);
+                drc_st_h(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 2;
 
@@ -1885,50 +1141,11 @@ static int drc_translateBlock(void) {
                     cycles += 1;
                 }
 
-                // Add cycles returned in r0.
-                if (!is_pinball) ADD(10, 10, 0);
                 break;
             case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_W: // out.h reg2, disp16 [reg1]
-                if (arm_reg1 < 4) arm_reg1 = 0;
+                drc_st_w(&inst_cache[i], !is_pinball);
 
-                if (inst_cache[i].imm == 0) {
-                    RELOAD_REG1(0);
-                } else if ((short)inst_cache[i].imm > 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm >> ctz, (32 - ctz) & 31);
-                    } else {
-                        ADD_I(0, arm_reg1, inst_cache[i].imm & 0xff, 0);
-                        ADD_I(0, 0, inst_cache[i].imm >> 8, 24);
-                    }
-                } else if ((short)inst_cache[i].imm < 0) {
-                    LOAD_REG1();
-                    int ctz = __builtin_ctz(-inst_cache[i].imm) & ~1;
-                    int clz = __builtin_clz(-inst_cache[i].imm << 16);
-                    int width = (16 - clz) - ctz;
-                    if (width <= 8) {
-                        SUB_I(0, arm_reg1, (-inst_cache[i].imm & 0xffff) >> ctz, (32 - ctz) & 31);
-                    } else {
-                        SUB_I(0, arm_reg1, -inst_cache[i].imm & 0xff, 0);
-                        SUB_I(0, 0, (-inst_cache[i].imm >> 8) & 0xff, 24);
-                    }
-                }
-
-                if (inst_cache[i].reg2 == 0)
-                    MOV_I(1, 0, 0);
-                else
-                    RELOAD_REG2(1);
-
-                LDR_IO(3, 11, offsetof(cpu_state, reloc_table));
-                AND_I(2, 0, 7, 8);
-                ADD_IS(3, 3, 2, ARM_SHIFT_LSR, 22);
-                LDR_IO(3, 3, DRC_RELOC_WWORD*4);
-
-                BLX(ARM_COND_AL, 3);
 
                 if (slow_memory) cycles += 4;
 
@@ -1936,9 +1153,6 @@ static int drc_translateBlock(void) {
                     // with two consecutive stores, the second takes 4 cycles instead of 1
                     cycles += 3;
                 }
-
-                // Add cycles returned in r0.
-                if (!is_pinball) ADD(10, 10, 0);
 
                 // if we load the same thing immediately after saving it, skip the loading
                 if (i + 1 < num_v810_inst &&
@@ -1948,321 +1162,62 @@ static int drc_translateBlock(void) {
                 ) {
                     cycles += 5;
                     inst_cache[i].branch_offset = 8;
-                    B(ARM_COND_AL, 0);
+                    drc_jump_short(&inst_cache[i]);
                 }
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
-                // Stores reg2 in vb_state->v810_state.S_REG[regID]
-                LOAD_REG2();
-                STR_IO(arm_reg2, 11, offsetof(cpu_state, S_REG[inst_cache[i].imm]));
                 if (inst_cache[i].imm == CHCW) chcw_load_seen = true;
-                if (inst_cache[i].imm == PSW || inst_cache[i].imm == EIPSW) {
-                    // load status register
-                    if (inst_cache[i].imm == PSW)
-                        MRS(0);
-                    else
-                        LDR_IO(0, 11, offsetof(cpu_state, except_flags));
-                    // clear out condition flags
-                    BIC_I(0, 0, 0xf, 4);
-                    // zero flag
-                    TST_I(arm_reg2, 1, 0);
-                    ORRCC_I(ARM_COND_NE, 0, 1, 2);
-                    // sign flag
-                    TST_I(arm_reg2, 2, 0);
-                    ORRCC_I(ARM_COND_NE, 0, 2, 2);
-                    // overflow flag
-                    TST_I(arm_reg2, 4, 0);
-                    ORRCC_I(ARM_COND_NE, 0, 1, 4);
-                    // carry flag
-                    TST_I(arm_reg2, 8, 0);
-                    ORRCC_I(ARM_COND_NE, 0, 2, 4);
-                    // save status register
-                    if (inst_cache[i].imm == PSW)
-                        MSR(0);
-                    else
-                        STR_IO(0, 11, offsetof(cpu_state, except_flags));
-                }
+                drc_ldsr(&inst_cache[i]);
                 break;
             case V810_OP_STSR: // stsr regID, reg2
-                // Loads vb_state->v810_state.S_REG[regID] into reg2
-                LOAD_REG2();
-                LDR_IO(arm_reg2, 11, offsetof(cpu_state, S_REG[inst_cache[i].imm]));
-                if (inst_cache[i].imm == PSW || inst_cache[i].imm == EIPSW) {
-                    // clear out condition flags
-                    BIC_I(arm_reg2, arm_reg2, 0xf, 0);
-                    // load except flags if relevant
-                    if (inst_cache[i].imm == EIPSW) {
-                        MRS(0);
-                        LDR_IO(1, 11, offsetof(cpu_state, except_flags));
-                        MSR(1);
-                    }
-                    // fill in the actual condition flags
-                    ORRCC_I(ARM_COND_EQ, arm_reg2, 1, 0);
-                    ORRCC_I(ARM_COND_MI, arm_reg2, 2, 0);
-                    ORRCC_I(ARM_COND_VS, arm_reg2, 4, 0);
-                    ORRCC_I(ARM_COND_CS, arm_reg2, 8, 0);
-                    // reload original flags
-                    if (inst_cache[i].imm == EIPSW)
-                        MSR(0);
-                }
-                reg2_modified = true;
+                drc_stsr(&inst_cache[i]);
                 break;
             case V810_OP_SEI: // sei
-                // Set the 12th bit in vb_state->v810_state.S_REG[PSW]
-                LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
-                ORR_I(0, 0, 1, 20);
-                STR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
+                drc_sei(&inst_cache[i]);
                 break;
             case V810_OP_CLI: // cli
-                // Clear the 12th bit in vb_state->v810_state.S_REG[PSW]
-                LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
-                BIC_I(0, 0, 1, 20);
-                STR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
+                drc_cli(&inst_cache[i]);
                 break;
             case V810_OP_SETF: // setf imm5, reg2
-                if ((inst_cache[i].imm & 0xF) == (V810_OP_BNH & 0xF)) {
-                    // C or Z
-                    MOV_I(arm_reg2, 0, 0);
-                    new_data_proc_imm(ARM_COND_EQ, ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
-                    new_data_proc_imm(ARM_COND_CS, ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
-                } else if ((inst_cache[i].imm & 0xF) == (V810_OP_BH & 0xF)) {
-                    // !C and !Z
-                    MOV_I(arm_reg2, 1, 0);
-                    new_data_proc_imm(ARM_COND_EQ, ARM_OP_MOV, 0, 0, arm_reg2, 0, 0);
-                    new_data_proc_imm(ARM_COND_CS, ARM_OP_MOV, 0, 0, arm_reg2, 0, 0);
-                } else {
-                    MOV_I(arm_reg2, 0, 0);
-                    // mov<cond> reg2, 1
-                    new_data_proc_imm(cond_map[inst_cache[i].imm & 0xF], ARM_OP_MOV, 0, 0, arm_reg2, 0, 1);
-                }
-                reg2_modified = true;
+                drc_setf(&inst_cache[i]);
                 break;
             case V810_OP_HALT: // halt
-                HALT(inst_cache[i].PC);
+                drc_halt(inst_cache[i].PC, &cycles);
                 break;
             case V810_OP_BSTR:
-                MOV_I(2, 31, 0);
-                if (inst_cache[i].imm >= 4) {
-                    // non-search, we have a destination
-                    // v810 r26 << 5 -> arm r3
-                    if (!phys_regs[26]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[26]));
-                    AND(3, phys_regs[26], 2);
-                    // v810 r27 -> arm r3
-                    if (!phys_regs[27]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[27]));
-                    AND(0, phys_regs[27], 2);
-                    ORR_IS(3, 0, 3, ARM_SHIFT_LSL, 5);
-
-                    // cycle count << 10 -> arm r3
-                    LDR_IO(0, 11, offsetof(cpu_state, cycles_until_event_partial));
-                    ORR_IS(3, 3, 0, ARM_SHIFT_LSL, 10);
-                } else {
-                    // search, we only have a source
-                    // v810 r27 -> arm r3 lo
-                    if (!phys_regs[27]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[27]));
-                    AND(3, phys_regs[27], 2);
-                }
-
-                // mov r2, ~3
-                new_data_proc_imm(ARM_COND_AL, ARM_OP_MVN, 0, 0, 2, 0, 3);
-                if (inst_cache[i].imm >= 4) {
-                    // non-search, clear the bottom two bits
-                    // v810 r29 & (~3) -> arm r1
-                    if (!phys_regs[29]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[29]));
-                    AND(1, phys_regs[29], 2);
-                } else {
-                    // search, leave as-is
-                    // v810 r29 -> arm r1
-                    if (!phys_regs[29]) LDR_IO(1, 11, offsetof(cpu_state, P_REG[29]));
-                    else MOV(1, phys_regs[29]);
-                }
-
-                // v810 r30 & (~3) -> arm r0
-                if (!phys_regs[30]) LDR_IO(0, 11, offsetof(cpu_state, P_REG[30]));
-                AND(0, phys_regs[30], 2);
-
-                // v810 r28 -> arm r2
-                if (!phys_regs[28]) LDR_IO(2, 11, offsetof(cpu_state, P_REG[28]));
-                else MOV(2, phys_regs[28]);
-
-                // call the function
-                PUSH(1<<5);
-                LDR_IO(5, 11, offsetof(cpu_state, reloc_table));
-                LDR_IO(5, 5, (DRC_RELOC_BSTR+inst_cache[i].imm)*4);
-                BLX(ARM_COND_AL, 5);
-                POP(1<<5);
-
-                // reload registers
-                for (int j = inst_cache[i].imm >= 4 ? 26 : 27; j <= 30; j++)
-                    if (phys_regs[j])
-                        LDR_IO(phys_regs[j], 11, offsetof(cpu_state, P_REG[j]));
-                if (inst_cache[i].imm < 4) {
-                    // zero flag for search
-                    ORRS(0, 0, 0);
-                } else {
-                    // add cycles and check interrupt
-                    ADD(10, 10, 0);
-                    HANDLEINT(inst_cache[i].PC);
-                    int len_reg = phys_regs[28];
-                    if (!len_reg) {
-                        LDR_IO(0, 11, offsetof(cpu_state, P_REG[28]));
-                    }
-                    MRS(1);
-                    CMP_I(len_reg, 0, 0);
-                    Boff(ARM_COND_EQ, 3);
-                    MRS(1);
-                    B(ARM_COND_AL, 0); // branches to start of instruction
-                    MRS(1);
-                }
+                drc_bstr(&inst_cache[i], &cycles);
                 break;
             case V810_OP_FPP:
                 switch (inst_cache[i].imm) {
-                case V810_OP_CVT_WS:
-                    LOAD_REG1();
-                    VMOV_SR(0, arm_reg1);
-                    VCVT_F32_S32(0, 0);
-                    VCMP_F32_0(0);
-                    VMRS();
-                    INV_CARRY();
-                    VMOV_RS(arm_reg2, 0);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_CVT_SW:
-                    LOAD_REG1();
-                    VMOV_SR(0, arm_reg1);
-                    VCVT_S32_F32(0, 0);
-                    VMOV_RS(arm_reg2, 0);
-                    ORRS(arm_reg2, arm_reg2, arm_reg2);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_CMPF_S:
-                    LOAD_REG1();
-                    LOAD_REG2();
-                    VMOV_SR(0, arm_reg1);
-                    VMOV_SR(1, arm_reg2);
-                    VCMP_F32(1, 0);
-                    VMRS();
-                    INV_CARRY();
-                    break;
-                case V810_OP_ADDF_S:
-                    LOAD_REG1();
-                    LOAD_REG2();
-                    VMOV_SR(0, arm_reg1);
-                    VMOV_SR(1, arm_reg2);
-                    VADD_F32(0, 1, 0);
-                    VCMP_F32_0(0);
-                    VMRS();
-                    INV_CARRY();
-                    VMOV_RS(arm_reg2, 0);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_SUBF_S:
-                    LOAD_REG1();
-                    LOAD_REG2();
-                    VMOV_SR(0, arm_reg1);
-                    VMOV_SR(1, arm_reg2);
-                    VSUB_F32(0, 1, 0);
-                    VCMP_F32_0(0);
-                    VMRS();
-                    INV_CARRY();
-                    VMOV_RS(arm_reg2, 0);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_MULF_S:
-                    LOAD_REG1();
-                    LOAD_REG2();
-                    VMOV_SR(0, arm_reg1);
-                    VMOV_SR(1, arm_reg2);
-                    VMUL_F32(0, 1, 0);
-                    VCMP_F32_0(0);
-                    VMRS();
-                    INV_CARRY();
-                    VMOV_RS(arm_reg2, 0);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_DIVF_S:
-                    cycles += 44;
-                    LOAD_REG1();
-                    LOAD_REG2();
-                    VMOV_SR(0, arm_reg1);
-                    VMOV_SR(1, arm_reg2);
-                    VDIV_F32(0, 1, 0);
-                    VCMP_F32_0(0);
-                    VMRS();
-                    INV_CARRY();
-                    VMOV_RS(arm_reg2, 0);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_XB:
-                    cycles += 6;
-                    LOAD_REG2();
-                    REV(0, arm_reg2);
-                    MOV_IS(arm_reg2, arm_reg2, ARM_SHIFT_LSR, 16);
-                    MOV_IS(arm_reg2, arm_reg2, ARM_SHIFT_LSL, 16);
-                    ORR_IS(arm_reg2, arm_reg2, 0, ARM_SHIFT_LSR, 16);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_XH:
-                    cycles += 1;
-                    LOAD_REG2();
-                    MOV_IS(arm_reg2, arm_reg2, ARM_SHIFT_ROR, 16);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_REV:
-                    cycles += 22;
-                    // RBIT would be great here, but that's only in ARMv6T2, so we'll do it manually.
-                    LDR_IO(1, 11, offsetof(cpu_state, reloc_table));
-                    LDR_IO(1, 1, DRC_RELOC_REV*4);
-                    RELOAD_REG1(0);
-                    BLX(ARM_COND_AL, 1);
-                    MOV(arm_reg2, 0);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_TRNC_SW:
-                    LOAD_REG1();
-                    VMOV_SR(0, arm_reg1);
-                    TRUNC(0, 0);
-                    VMOV_RS(arm_reg2, 0);
-                    ORRS(arm_reg2, arm_reg2, arm_reg2);
-                    reg2_modified = true;
-                    break;
-                case V810_OP_MPYHW:
-                    cycles += 9;
-                    LOAD_REG1();
-                    LOAD_REG2();
-                    MOV_IS(0, arm_reg1, ARM_SHIFT_LSL, 15);
-                    MOV_IS(0, 0, ARM_SHIFT_ASR, 15);
-                    MUL(arm_reg2, 0, arm_reg2);
-                    reg2_modified = true;
-                    break;
-                default:
-                    dprintf(0, "[DRC]: Invalid FPU subop 0x%lx\n", inst_cache[i].imm);
-                    NOP();
-                    break;
+                    case V810_OP_DIVF_S:
+                        cycles += 44;
+                        break;
+                    case V810_OP_XB:
+                        cycles += 6;
+                        break;
+                    case V810_OP_XH:
+                        cycles += 1;
+                        break;
+                    case V810_OP_REV:
+                        cycles += 22;
+                        break;
+                    case V810_OP_MPYHW:
+                        cycles += 9;
+                        break;
                 }
+                drc_fpp(&inst_cache[i]);
                 break;
             case V810_OP_NOP:
-                NOP();
+                drc_nop();
                 break;
             case END_BLOCK:
-                POP(1 << 15);
+                drc_end_block();
                 break;
             default:
                 dprintf(0, "[DRC]: %s (0x%x) not implemented\n", optable[inst_cache[i].opcode].opname, inst_cache[i].opcode);
                 // Fill unimplemented instructions with a nop and hope the game still runs
-                NOP();
+                drc_nop();
                 break;
-        }
-
-        if (inst_cache[i].save_flags) {
-            POP(1<<0);
-            MSR(0);
-        }
-
-        if (unmapped_registers) {
-            if (arm_reg1 < 4 && reg1_modified)
-                STR_IO(arm_reg1, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg1]));
-            if (arm_reg2 < 4 && reg2_modified)
-                STR_IO(arm_reg2, 11, offsetof(cpu_state, P_REG[inst_cache[i].reg2]));
         }
 
         if (i + 1 < num_v810_inst) {
@@ -2270,7 +1225,7 @@ static int drc_translateBlock(void) {
                 // virtual lab hack
                 // interrupts don't save registers, and clearing levels relies on
                 // registers getting dirty
-                HALT(0x07002446);
+                drc_halt(0x07002446, &cycles);
             } else if (inst_cache[i+1].opcode == V810_OP_ST_B
                     && inst_cache[i+1].imm == 0x20
                     && inst_cache[i].opcode == V810_OP_MOVEA
@@ -2282,12 +1237,7 @@ static int drc_translateBlock(void) {
                 // if the timer is not zero at this point.
                 // Therefore, we need to handle the interrupt to update it,
                 // so that it doesn't accidentally run an extra time.
-                LDR_IO(2, 11, offsetof(cpu_state, irq_handler));
-                MRS(0);
-                LDW_I(1, inst_cache[i+1].PC);
-                ADD_I(10, 10, cycles & 0xFF, 0);
-                BLX(ARM_COND_AL, 2);
-                MSR(0);
+                drc_bowling_nikochan_hack(&inst_cache[i], cycles);
                 cycles = 0;
             } else if (is_marios_tennis_multiplayer && inst_cache[i + 1].PC == 0x07010442) {
                 // Mario's Tennis multiplayer hack:
@@ -2295,15 +1245,15 @@ static int drc_translateBlock(void) {
                 // Getting out of this loop requires the two systems to be desynced:
                 // one system has to check CC-Rd while the other has CC-Wr off.
                 // To allow them to desync, we place an interrupt check between the writes.
-                HANDLEINT(inst_cache[i + 1].PC);
+                drc_handle_interrupts(inst_cache[i + 1].PC, &cycles);
             } else if (cycles >= 200) {
-                HANDLEINT(inst_cache[i + 1].PC);
+                drc_handle_interrupts(inst_cache[i + 1].PC, &cycles);
             } else if (cycles != 0 && (inst_cache[i + 1].is_branch_target || inst_cache[i + 1].opcode == V810_OP_BSTR)) {
                 // branch target or bitstring instruction coming up
-                ADDCYCLES();
+                drc_add_cycles(&cycles);
             } else if (inst_cache[i + 1].PC > (0xfffffe00 & V810_ROM1.highaddr) && !(inst_cache[i + 1].PC & 0xf)) {
                 // potential interrupt handler coming up
-                ADDCYCLES();
+                drc_add_cycles(&cycles);
             }
         }
 
@@ -2328,14 +1278,14 @@ static int drc_translateBlock(void) {
     num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
 
     // Fourth pass: align to new memory block
-    WORD *cache_ptr = drc_alloc(num_arm_inst);
+    translated_inst *cache_ptr = (translated_inst*)drc_alloc(num_arm_inst * sizeof(translated_inst) / sizeof(drc_unit));
     if (cache_ptr == NULL) {
         err = DRC_ERR_CACHE_FULL;
         goto cleanup;
     }
-    block->phys_offset = cache_ptr;
+    block->phys_offset = (drc_unit*)cache_ptr;
     for (i = 0; i < num_v810_inst; i++) {
-        drc_setEntry(inst_cache[i].PC, cache_ptr + inst_cache[i].start_pos, block);
+        drc_setEntry(inst_cache[i].PC, (drc_unit*)(cache_ptr + inst_cache[i].start_pos), block);
     }
 
     // Fifth pass: assemble and link
@@ -2350,24 +1300,11 @@ static int drc_translateBlock(void) {
                 trans_cache[j].ldst_io.imm = (HWORD) ((trans_cache[j].pool_start + trans_cache[j].pool_pos) - (&block->phys_loc[j + 2]));
             }
 #endif
-            if (trans_cache[j].needs_branch) {
-                WORD v810_dest = inst_cache[i].PC + inst_cache[i].branch_offset;
-                WORD* arm_dest = drc_getEntry(v810_dest, NULL);
-                int arm_offset = (int)(arm_dest - (cache_ptr + j) - 2);
-
-                if (arm_dest == cache_start) {
-                    // Should be fixed, but just in case
-                    dprintf(0, "WARN:can't jump from %lx to %lx\n", inst_cache[i].PC, v810_dest);
-                }
-
-                trans_cache[j].b_bl.imm = arm_offset & 0xffffff;
-            }
-
-            drc_assemble(cache_ptr + j, &trans_cache[j]);
+            drc_assemble(cache_ptr + j, &trans_cache[j], &inst_cache[i]);
         }
     }
 
-    block->size = num_arm_inst + pool_offset;
+    block->size = num_arm_inst * sizeof(translated_inst) / sizeof(drc_unit) + pool_offset;
 
 cleanup:
 #ifdef LITERAL_POOL
@@ -2393,7 +1330,7 @@ void drc_clearCache(void) {
 // Returns the entrypoint for the V810 instruction in location loc if it exists
 // and NULL if it needs to be translated. If p_block != NULL it will point to
 // the block structure.
-static WORD* drc_getEntry(WORD loc, exec_block **p_block) {
+drc_unit* drc_getEntry(WORD loc, exec_block **p_block) {
     unsigned int map_pos;
     exec_block *block;
 
@@ -2407,7 +1344,7 @@ static WORD* drc_getEntry(WORD loc, exec_block **p_block) {
 
 // Sets a new entrypoint for the V810 instruction in location loc and the
 // corresponding block
-void drc_setEntry(WORD loc, WORD *entry, exec_block *block) {
+void drc_setEntry(WORD loc, drc_unit *entry, exec_block *block) {
     unsigned int map_pos = ((loc&V810_ROM1.highaddr)>>1)&(BLOCK_MAP_COUNT-1);
     rom_block_map[map_pos] = block - block_ptr_start;
     rom_entry_map[map_pos] = entry - block->phys_offset;
@@ -2422,7 +1359,7 @@ void drc_init(void) {
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
     inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
-    trans_cache = linearAlloc(MAX_ARM_INST*sizeof(arm_inst));
+    trans_cache = linearAlloc(MAX_ARM_INST*sizeof(ir_inst));
 
     hbHaxInit();
 
@@ -2468,7 +1405,7 @@ exec_block* drc_getNextBlockStruct(void) {
 // Run V810 code until the next frame interrupt
 int drc_run(void) {
     exec_block* cur_block = NULL;
-    WORD* entrypoint;
+    drc_unit* entrypoint;
     WORD entry_PC;
 
     vb_state->v810_state.PC &= V810_ROM1.highaddr;
