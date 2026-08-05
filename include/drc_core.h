@@ -5,11 +5,20 @@
 #include "arm_emit.h"
 #include "v810_mem.h"
 
-#if __ARM_ARCH >= 6 && __arm__
+#if (__ARM_ARCH >= 6 && __arm__)
+#include "arm_types.h"
 #define DRC_AVAILABLE true
+typedef arm_inst ir_inst;
+typedef WORD translated_inst;
+typedef WORD drc_unit;
 #else
 #define DRC_AVAILABLE false
+typedef uint64_t ir_inst;
+typedef uint32_t translated_inst[2];
+typedef uint32_t drc_unit;
 #endif
+
+static_assert(alignof(drc_unit) >= alignof(translated_inst));
 
 #define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
 #define CACHE_SIZE  0x200000
@@ -50,7 +59,7 @@ enum {
 
 #define END_BLOCK 0xFF
 typedef struct {
-    WORD *phys_offset;
+    drc_unit *phys_offset;
     WORD size;
     // We can use ARM_NUM_CACHE_REGS registers at a time, r4-r10, and r11 will
     // have the address of v810_state
@@ -74,8 +83,10 @@ typedef struct {
     bool is_branch_target;
 } v810_instruction;
 
-extern WORD* cache_start;
-extern WORD* cache_pos;
+extern drc_unit* cache_start;
+extern drc_unit* cache_pos;
+
+extern BYTE reg_usage[32];
 
 int __divsi3(int a, int b);
 int __modsi3(int a, int b);
@@ -87,7 +98,8 @@ int drc_handleInterrupts(WORD cpsr, WORD* PC);
 void drc_relocTable(void);
 void drc_clearCache(void);
 
-void drc_setEntry(WORD loc, WORD *entry, exec_block *block);
+drc_unit* drc_getEntry(WORD loc, exec_block **p_block);
+void drc_setEntry(WORD loc, drc_unit *entry, exec_block *block);
 exec_block* drc_getNextBlockStruct(void);
 
 void drc_init(void);
@@ -97,5 +109,72 @@ int drc_run(void);
 void drc_loadSavedCache(void);
 void drc_dumpCache(char* filename);
 void drc_dumpDebugInfo(int code);
+
+void drc_prepare(exec_block *block);
+void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810);
+
+void drc_add_cycles(unsigned int *cycles);
+void drc_subtract_cycles_runtime(int cycles);
+void drc_halt(WORD next_PC, unsigned *cycles);
+void drc_busywait(v810_instruction *ins, unsigned *cycles);
+void drc_handle_interrupts(WORD ret_PC, unsigned *cycles);
+void drc_jump_short(v810_instruction *ins); // goes to instruction's branch offset
+void drc_jump_long(v810_instruction *ins); // goes to instruction's branch offset
+void drc_branch(v810_instruction *ins);
+void drc_link_reg(v810_instruction *ins);
+
+void drc_golf_hack(void);
+void drc_ballsort(void);
+void drc_ballscale_start(void);
+void drc_ballscale_end(void);
+void drc_vertical_force_hack(void);
+void drc_bowling_nikochan_hack(v810_instruction *ins, unsigned cycles);
+
+void drc_reti(void);
+void drc_nop(void);
+void drc_end_block(void);
+void drc_ld_b(v810_instruction *ins, bool access_time);
+void drc_ld_h(v810_instruction *ins, bool access_time);
+void drc_ld_w(v810_instruction *ins, bool access_time);
+void drc_st_b(v810_instruction *ins, bool access_time);
+void drc_st_h(v810_instruction *ins, bool access_time);
+void drc_st_w(v810_instruction *ins, bool access_time);
+void drc_bstr(v810_instruction *ins, unsigned *cycles);
+
+void drc_jmp(v810_instruction *ins);
+void drc_movhi(v810_instruction *ins);
+void drc_movea(v810_instruction *ins);
+void drc_mov(v810_instruction *ins);
+void drc_add(v810_instruction *ins);
+void drc_sub(v810_instruction *ins);
+void drc_cmp(v810_instruction *ins);
+void drc_shl(v810_instruction *ins);
+void drc_shr(v810_instruction *ins);
+void drc_sar(v810_instruction *ins);
+void drc_mul(v810_instruction *ins);
+void drc_mulu(v810_instruction *ins);
+void drc_div(v810_instruction *ins);
+void drc_divu(v810_instruction *ins);
+void drc_or(v810_instruction *ins);
+void drc_and(v810_instruction *ins);
+void drc_xor(v810_instruction *ins);
+void drc_not(v810_instruction *ins);
+void drc_mov_i(v810_instruction *ins);
+void drc_add_i(v810_instruction *ins);
+void drc_cmp_i(v810_instruction *ins);
+void drc_shl_i(v810_instruction *ins);
+void drc_shr_i(v810_instruction *ins);
+void drc_sar_i(v810_instruction *ins);
+void drc_andi(v810_instruction *ins);
+void drc_xori(v810_instruction *ins);
+void drc_ori(v810_instruction *ins);
+void drc_addi(v810_instruction *ins);
+void drc_ldsr(v810_instruction *ins);
+void drc_stsr(v810_instruction *ins);
+void drc_sei(v810_instruction *ins);
+void drc_cli(v810_instruction *ins);
+void drc_setf(v810_instruction *ins);
+void drc_fpp(v810_instruction *ins);
+
 
 #endif //DRC_CORE_H

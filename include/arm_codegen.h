@@ -374,7 +374,7 @@
 // NOTES:
 //  * BNH -> bcs + beq
 //  * BH  -> bcc + bne
-const BYTE cond_map[] = {
+static const BYTE cond_map[] = {
         // V810_OP_BV, V810_OP_BL, V810_OP_BE, V810_OP_BNH, V810_OP_BN, V810_OP_BR
         ARM_COND_VS, ARM_COND_CS, ARM_COND_EQ, ARM_COND_CS, ARM_COND_MI, ARM_COND_AL,
         // V810_OP_BLT, V810_OP_BLE, V810_OP_BNV, V810_OP_BNL, V810_OP_BNE, V810_OP_BH,
@@ -383,7 +383,7 @@ const BYTE cond_map[] = {
         ARM_COND_PL, ARM_COND_NV, ARM_COND_GE, ARM_COND_GT
 };
 
-static inline void drc_assemble(WORD* dst, arm_inst* src) {
+static inline void arm_assemble(WORD* dst, arm_inst* src) {
     switch (src->type) {
         case ARM_DATA_PROC_IMM:
             *dst = gen_data_proc_imm(src->cond, src->dpi.op, src->dpi.s, src->dpi.Rn, src->dpi.Rd, src->dpi.rot, src->dpi.imm);

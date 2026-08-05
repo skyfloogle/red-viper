@@ -3,5 +3,5 @@
 
 extern int free_block_count;
 
-WORD *drc_alloc(uint32_t inst_count);
+drc_unit *drc_alloc(uint32_t inst_count);
 void drc_free(exec_block *p_block);

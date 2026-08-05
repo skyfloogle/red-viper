@@ -3,19 +3,19 @@
 #include "drc_alloc.h"
 
 typedef struct {
-    WORD *start;
+    drc_unit *start;
     int size;
 } FreeBlock;
 
 FreeBlock free_blocks[MAX_NUM_BLOCKS];
 int free_block_count = 0;
 
-static void mark_block(WORD *start, WORD size, SHWORD id) {
+static void mark_block(drc_unit *start, WORD size, SHWORD id) {
     ((SHWORD*)(start - 1))[1] = id;
     ((SHWORD*)(start + size))[0] = id;
 }
 
-WORD *drc_alloc(uint32_t inst_count) {
+drc_unit *drc_alloc(uint32_t inst_count) {
     int block = -1;
     for (int i = 0; i < free_block_count; i++) {
         if (free_blocks[i].size == inst_count) {
@@ -29,7 +29,7 @@ WORD *drc_alloc(uint32_t inst_count) {
         }
     }
     if (block != -1) {
-        WORD *new_block = free_blocks[block].start;
+        drc_unit *new_block = free_blocks[block].start;
         free_blocks[block].size -= inst_count + 1;
         free_blocks[block].start += inst_count + 1;
         if (free_blocks[block].size < 0) {
@@ -42,9 +42,9 @@ WORD *drc_alloc(uint32_t inst_count) {
         mark_block(new_block, inst_count, -1);
         return new_block;
     }
-    if ((cache_pos - cache_start + inst_count)*4 >= CACHE_SIZE)
+    if ((cache_pos - cache_start + inst_count)*sizeof(drc_unit) >= CACHE_SIZE)
         return NULL;
-    WORD *new_block = cache_pos;
+    drc_unit *new_block = cache_pos;
     cache_pos += inst_count + 1;
     mark_block(new_block, inst_count, -1);
     // additionally set the next (unallocated) block
