@@ -1072,7 +1072,7 @@ static int drc_translateBlock(void) {
                 drc_ori(&inst_cache[i]);
                 break;
             case V810_OP_ADDI: // addi imm16, reg1, reg2
-                drc_andi(&inst_cache[i]);
+                drc_addi(&inst_cache[i]);
                 break;
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
             case V810_OP_IN_B: // in.b disp16 [reg1], reg2
