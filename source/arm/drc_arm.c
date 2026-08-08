@@ -137,12 +137,12 @@ void drc_prepare(exec_block *block) {
     else if(arm_reg2 != r) MOV(arm_reg2, r);
 
 void drc_add_cycles(unsigned int *cycles) {
-    if (cycles != 0) {
+    if (*cycles != 0) {
         LDR_IO(0, 11, offsetof(cpu_state, cycles_until_event_partial));
         SUB_I(0, 0, *cycles & 0xFF, 0);
         STR_IO(0, 11, offsetof(cpu_state, cycles_until_event_partial));
     }
-    cycles = 0;
+    *cycles = 0;
 }
 
 void drc_subtract_cycles_runtime(int cycles) {
