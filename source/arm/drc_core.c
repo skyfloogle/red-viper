@@ -851,7 +851,7 @@ static int drc_translateBlock(void) {
         // Golf hack: this function clears the screen, so we should do the same
         if (unlikely((is_golf_us && inst_cache[i].PC == 0x0700ca64) ||
                     (is_golf_jp && inst_cache[i].PC == 0x0701602a))) {
-            drc_golf_hack();
+            drc_bake_golf_hack();
         }
 
         // In Virtual League Baseball 2's overhead view, the draw order of the
@@ -859,10 +859,10 @@ static int drc_translateBlock(void) {
         // object, and every swap in the sort swaps the entire set of 32 bytes.
         // Replace with code that sorts the same array much more efficiently.
         if (unlikely(is_baseball_2 && inst_cache[i].PC == 0x07007428)) {
-            drc_ballsort();
+            drc_bake_ballsort();
             // skip to after sorting code
             inst_cache[i].branch_offset = 0x070074b8 - 0x07007428;
-            drc_jump_short(&inst_cache[i]);
+            drc_bake_jump_short(&inst_cache[i]);
         }
 
         // Waterworld hack: slow down the sample at the start.
@@ -884,24 +884,24 @@ static int drc_translateBlock(void) {
 
         switch (inst_cache[i].opcode) {
             case V810_OP_JMP: // jmp [reg1]
-                drc_add_cycles(&cycles);
-                drc_jmp(&inst_cache[i]);
+                drc_bake_add_cycles(&cycles);
+                drc_bake_jmp(&inst_cache[i]);
                 break;
             case V810_OP_JR: // jr imm26
                 if (abs(inst_cache[i].branch_offset) < 1024) {
                     if (inst_cache[i].busywait) {
-                        drc_halt(inst_cache[i].PC + inst_cache[i].branch_offset, &cycles);
+                        drc_bake_halt(inst_cache[i].PC + inst_cache[i].branch_offset, &cycles);
                     } else {
                         if (inst_cache[i].branch_offset <= 0) {
-                            drc_handle_interrupts(inst_cache[i].PC + inst_cache[i].branch_offset, &cycles);
+                            drc_bake_handle_interrupts(inst_cache[i].PC + inst_cache[i].branch_offset, &cycles);
                         } else {
-                            drc_add_cycles(&cycles);
+                            drc_bake_add_cycles(&cycles);
                         }
-                        drc_jump_short(&inst_cache[i]);
+                        drc_bake_jump_short(&inst_cache[i]);
                     }
                 } else {
-                    drc_add_cycles(&cycles);
-                    drc_jump_long(&inst_cache[i]);
+                    drc_bake_add_cycles(&cycles);
+                    drc_bake_jump_long(&inst_cache[i]);
                 }
                 break;
             case V810_OP_JAL: // jal disp26
@@ -912,7 +912,7 @@ static int drc_translateBlock(void) {
                     // Correct for intro video, but attract video is very slightly slow.
                     cycles += 24;
                 }
-                drc_add_cycles(&cycles);
+                drc_bake_add_cycles(&cycles);
 
                 bool ballscale = is_baseball_2 && inst_cache[i].PC + inst_cache[i].branch_offset == 0x070077ca;
 
@@ -921,22 +921,22 @@ static int drc_translateBlock(void) {
                     // the fielders are scaled in software.
                     // This algorithm is slow when recompiled, so we override it
                     // with a faster native implementation.
-                    drc_ballscale_start();
+                    drc_bake_ballscale_start();
                 }
 
-                drc_link_reg(&inst_cache[i]);
-                drc_jump_long(&inst_cache[i]);
+                drc_bake_link_reg(&inst_cache[i]);
+                drc_bake_jump_long(&inst_cache[i]);
                 // fix the skip if needed
-                if (unlikely(ballscale)) drc_ballscale_end();
+                if (unlikely(ballscale)) drc_bake_ballscale_end();
                 break;
             }
             case V810_OP_RETI:
-                drc_add_cycles(&cycles);
-                drc_reti();
+                drc_bake_add_cycles(&cycles);
+                drc_bake_reti();
                 break;
             case V810_OP_BR:
                 if (inst_cache[i].branch_offset == 0) {
-                    drc_halt(inst_cache[i].PC, &cycles);
+                    drc_bake_halt(inst_cache[i].PC, &cycles);
                     break;
                 }
                 // vertical force doesn't have a tight spinloop like most games, so we can't detect it
@@ -945,9 +945,9 @@ static int drc_translateBlock(void) {
                 if ((CHECK_GAMEID("01VH3E") || CHECK_GAMEID("18VH3J"))
                     && inst_cache[i].PC == 0x07000c08
                 ) {
-                    drc_vertical_force_hack();
-                    drc_handle_interrupts(inst_cache[i].PC + inst_cache[i].branch_offset, &cycles);
-                    drc_jump_short(&inst_cache[i]);
+                    drc_bake_vertical_force_hack();
+                    drc_bake_handle_interrupts(inst_cache[i].PC + inst_cache[i].branch_offset, &cycles);
+                    drc_bake_jump_short(&inst_cache[i]);
                     break;
                 }
             case V810_OP_BV:
@@ -965,7 +965,7 @@ static int drc_translateBlock(void) {
             case V810_OP_BNH:
             case V810_OP_BH:
                 if (inst_cache[i].busywait) {
-                    drc_busywait(&inst_cache[i], &cycles);
+                    drc_bake_busywait(&inst_cache[i], &cycles);
                 } else {
                     // If we just got back from a JAL, an interrupt check already happened, so don't bother.
                     if (inst_cache[i].branch_offset <= 0 && (inst_cache[i].is_branch_target || (i > 0 && inst_cache[i-1].opcode != V810_OP_JAL))) {
@@ -984,99 +984,99 @@ static int drc_translateBlock(void) {
                         if (is_jack_bros && !chcw_load_seen) {
                             cycles += 20;
                         }
-                        drc_handle_interrupts(inst_cache[i].PC, &cycles);
+                        drc_bake_handle_interrupts(inst_cache[i].PC, &cycles);
                     } else {
-                        drc_add_cycles(&cycles);
+                        drc_bake_add_cycles(&cycles);
                     }
-                    drc_branch(&inst_cache[i]);
+                    drc_bake_branch(&inst_cache[i]);
                 }
                 // branch not taken, so it only took 1 cycle
-                drc_subtract_cycles_runtime(2);
+                drc_bake_subtract_cycles_runtime(2);
                 break;
             case V810_OP_MOVHI: // movhi imm16, reg1, reg2:
-                drc_movhi(&inst_cache[i]);
+                drc_bake_movhi(&inst_cache[i]);
                 break;
             case V810_OP_MOVEA: // movea imm16, reg1, reg2
-                drc_movea(&inst_cache[i]);
+                drc_bake_movea(&inst_cache[i]);
                 break;
             case V810_OP_MOV: // mov reg1, reg2
-                drc_mov(&inst_cache[i]);
+                drc_bake_mov(&inst_cache[i]);
                 break;
             case V810_OP_ADD: // add reg1, reg2
-                drc_add(&inst_cache[i]);
+                drc_bake_add(&inst_cache[i]);
                 break;
             case V810_OP_SUB: // sub reg1, reg2
-                drc_sub(&inst_cache[i]);
+                drc_bake_sub(&inst_cache[i]);
                 break;
             case V810_OP_CMP: // cmp reg1, reg2
-                drc_cmp(&inst_cache[i]);
+                drc_bake_cmp(&inst_cache[i]);
                 break;
             case V810_OP_SHL: // shl reg1, reg2
-                drc_shl(&inst_cache[i]);
+                drc_bake_shl(&inst_cache[i]);
                 break;
             case V810_OP_SHR: // shr reg1, reg2
-                drc_shr(&inst_cache[i]);
+                drc_bake_shr(&inst_cache[i]);
                 break;
             case V810_OP_SAR: // sar reg1, reg2
-                drc_sar(&inst_cache[i]);
+                drc_bake_sar(&inst_cache[i]);
                 break;
             case V810_OP_MUL: // mul reg1, reg2
-                drc_mul(&inst_cache[i]);
+                drc_bake_mul(&inst_cache[i]);
                 break;
             case V810_OP_MULU: // mul reg1, reg2
-                drc_mulu(&inst_cache[i]);
+                drc_bake_mulu(&inst_cache[i]);
                 break;
             case V810_OP_DIV: // div reg1, reg2
-                drc_div(&inst_cache[i]);
+                drc_bake_div(&inst_cache[i]);
                 break;
             case V810_OP_DIVU: // divu reg1, reg2
-                drc_divu(&inst_cache[i]);
+                drc_bake_divu(&inst_cache[i]);
                 break;
             case V810_OP_OR: // or reg1, reg2
-                drc_or(&inst_cache[i]);
+                drc_bake_or(&inst_cache[i]);
                 break;
             case V810_OP_AND: // and reg1, reg2
-                drc_and(&inst_cache[i]);
+                drc_bake_and(&inst_cache[i]);
                 break;
             case V810_OP_XOR: // xor reg1, reg2
-                drc_xor(&inst_cache[i]);
+                drc_bake_xor(&inst_cache[i]);
                 break;
             case V810_OP_NOT: // not reg1, reg2
-                drc_not(&inst_cache[i]);
+                drc_bake_not(&inst_cache[i]);
                 break;
             case V810_OP_MOV_I: // mov imm5, reg2
-                drc_mov_i(&inst_cache[i]);
+                drc_bake_mov_i(&inst_cache[i]);
                 break;
             case V810_OP_ADD_I: // add imm5, reg2
-                drc_add_i(&inst_cache[i]);
+                drc_bake_add_i(&inst_cache[i]);
                 break;
             case V810_OP_CMP_I: // cmp imm5, reg2
-                drc_cmp_i(&inst_cache[i]);
+                drc_bake_cmp_i(&inst_cache[i]);
                 break;
             case V810_OP_SHL_I: // shl imm5, reg2
-                drc_shl_i(&inst_cache[i]);
+                drc_bake_shl_i(&inst_cache[i]);
                 break;
             case V810_OP_SHR_I: // shr imm5, reg2
-                drc_shr_i(&inst_cache[i]);
+                drc_bake_shr_i(&inst_cache[i]);
                 break;
             case V810_OP_SAR_I: // sar imm5, reg2
-                drc_sar_i(&inst_cache[i]);
+                drc_bake_sar_i(&inst_cache[i]);
                 break;
             case V810_OP_ANDI: // andi imm16, reg1, reg2
-                drc_andi(&inst_cache[i]);
+                drc_bake_andi(&inst_cache[i]);
                 break;
             case V810_OP_XORI: // xori imm16, reg1, reg2
-                drc_xori(&inst_cache[i]);
+                drc_bake_xori(&inst_cache[i]);
                 break;
             case V810_OP_ORI: // ori imm16, reg1, reg2
-                drc_ori(&inst_cache[i]);
+                drc_bake_ori(&inst_cache[i]);
                 break;
             case V810_OP_ADDI: // addi imm16, reg1, reg2
-                drc_addi(&inst_cache[i]);
+                drc_bake_addi(&inst_cache[i]);
                 break;
             case V810_OP_LD_B: // ld.b disp16 [reg1], reg2
             case V810_OP_IN_B: // in.b disp16 [reg1], reg2
-                drc_ld_b(&inst_cache[i], !is_pinball);
+                drc_bake_ld_b(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 2;
 
@@ -1091,7 +1091,7 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_LD_H: // ld.h disp16 [reg1], reg2
             case V810_OP_IN_H: // in.h disp16 [reg1], reg2
-                drc_ld_h(&inst_cache[i], !is_pinball);
+                drc_bake_ld_h(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 2;
 
@@ -1106,7 +1106,7 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_LD_W: // ld.w disp16 [reg1], reg2
             case V810_OP_IN_W: // in.w disp16 [reg1], reg2
-                drc_ld_w(&inst_cache[i], !is_pinball);
+                drc_bake_ld_w(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 4;
 
@@ -1121,7 +1121,7 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_ST_B:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_B: // out.h reg2, disp16 [reg1]
-                drc_st_b(&inst_cache[i], !is_pinball);
+                drc_bake_st_b(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 2;
 
@@ -1132,7 +1132,7 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_ST_H:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_H: // out.h reg2, disp16 [reg1]
-                drc_st_h(&inst_cache[i], !is_pinball);
+                drc_bake_st_h(&inst_cache[i], !is_pinball);
 
                 if (slow_memory) cycles += 2;
 
@@ -1144,7 +1144,7 @@ static int drc_translateBlock(void) {
                 break;
             case V810_OP_ST_W:  // st.h reg2, disp16 [reg1]
             case V810_OP_OUT_W: // out.h reg2, disp16 [reg1]
-                drc_st_w(&inst_cache[i], !is_pinball);
+                drc_bake_st_w(&inst_cache[i], !is_pinball);
 
 
                 if (slow_memory) cycles += 4;
@@ -1162,30 +1162,30 @@ static int drc_translateBlock(void) {
                 ) {
                     cycles += 5;
                     inst_cache[i].branch_offset = 8;
-                    drc_jump_short(&inst_cache[i]);
+                    drc_bake_jump_short(&inst_cache[i]);
                 }
                 break;
             case V810_OP_LDSR: // ldsr reg2, regID
                 if (inst_cache[i].imm == CHCW) chcw_load_seen = true;
-                drc_ldsr(&inst_cache[i]);
+                drc_bake_ldsr(&inst_cache[i]);
                 break;
             case V810_OP_STSR: // stsr regID, reg2
-                drc_stsr(&inst_cache[i]);
+                drc_bake_stsr(&inst_cache[i]);
                 break;
             case V810_OP_SEI: // sei
-                drc_sei(&inst_cache[i]);
+                drc_bake_sei(&inst_cache[i]);
                 break;
             case V810_OP_CLI: // cli
-                drc_cli(&inst_cache[i]);
+                drc_bake_cli(&inst_cache[i]);
                 break;
             case V810_OP_SETF: // setf imm5, reg2
-                drc_setf(&inst_cache[i]);
+                drc_bake_setf(&inst_cache[i]);
                 break;
             case V810_OP_HALT: // halt
-                drc_halt(inst_cache[i].PC, &cycles);
+                drc_bake_halt(inst_cache[i].PC, &cycles);
                 break;
             case V810_OP_BSTR:
-                drc_bstr(&inst_cache[i], &cycles);
+                drc_bake_bstr(&inst_cache[i], &cycles);
                 break;
             case V810_OP_FPP:
                 switch (inst_cache[i].imm) {
@@ -1205,18 +1205,18 @@ static int drc_translateBlock(void) {
                         cycles += 9;
                         break;
                 }
-                drc_fpp(&inst_cache[i]);
+                drc_bake_fpp(&inst_cache[i]);
                 break;
             case V810_OP_NOP:
-                drc_nop();
+                drc_bake_nop();
                 break;
             case END_BLOCK:
-                drc_end_block();
+                drc_bake_end_block();
                 break;
             default:
                 dprintf(0, "[DRC]: %s (0x%x) not implemented\n", optable[inst_cache[i].opcode].opname, inst_cache[i].opcode);
                 // Fill unimplemented instructions with a nop and hope the game still runs
-                drc_nop();
+                drc_bake_nop();
                 break;
         }
 
@@ -1225,7 +1225,7 @@ static int drc_translateBlock(void) {
                 // virtual lab hack
                 // interrupts don't save registers, and clearing levels relies on
                 // registers getting dirty
-                drc_halt(0x07002446, &cycles);
+                drc_bake_halt(0x07002446, &cycles);
             } else if (inst_cache[i+1].opcode == V810_OP_ST_B
                     && inst_cache[i+1].imm == 0x20
                     && inst_cache[i].opcode == V810_OP_MOVEA
@@ -1237,7 +1237,7 @@ static int drc_translateBlock(void) {
                 // if the timer is not zero at this point.
                 // Therefore, we need to handle the interrupt to update it,
                 // so that it doesn't accidentally run an extra time.
-                drc_bowling_nikochan_hack(&inst_cache[i], cycles);
+                drc_bake_bowling_nikochan_hack(&inst_cache[i], cycles);
                 cycles = 0;
             } else if (is_marios_tennis_multiplayer && inst_cache[i + 1].PC == 0x07010442) {
                 // Mario's Tennis multiplayer hack:
@@ -1245,15 +1245,15 @@ static int drc_translateBlock(void) {
                 // Getting out of this loop requires the two systems to be desynced:
                 // one system has to check CC-Rd while the other has CC-Wr off.
                 // To allow them to desync, we place an interrupt check between the writes.
-                drc_handle_interrupts(inst_cache[i + 1].PC, &cycles);
+                drc_bake_handle_interrupts(inst_cache[i + 1].PC, &cycles);
             } else if (cycles >= 200) {
-                drc_handle_interrupts(inst_cache[i + 1].PC, &cycles);
+                drc_bake_handle_interrupts(inst_cache[i + 1].PC, &cycles);
             } else if (cycles != 0 && (inst_cache[i + 1].is_branch_target || inst_cache[i + 1].opcode == V810_OP_BSTR)) {
                 // branch target or bitstring instruction coming up
-                drc_add_cycles(&cycles);
+                drc_bake_add_cycles(&cycles);
             } else if (inst_cache[i + 1].PC > (0xfffffe00 & V810_ROM1.highaddr) && !(inst_cache[i + 1].PC & 0xf)) {
                 // potential interrupt handler coming up
-                drc_add_cycles(&cycles);
+                drc_bake_add_cycles(&cycles);
             }
         }
 
