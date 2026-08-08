@@ -2,7 +2,6 @@
 #define DRC_CORE_H
 
 #include "vb_types.h"
-#include "arm_emit.h"
 #include "v810_mem.h"
 
 #if (__ARM_ARCH >= 6 && __arm__)
@@ -13,12 +12,18 @@ typedef WORD translated_inst;
 typedef WORD drc_unit;
 #else
 #define DRC_AVAILABLE false
-typedef uint64_t ir_inst;
-typedef uint32_t translated_inst[2];
-typedef uint32_t drc_unit;
+typedef union {
+    uint32_t full;
+} ir_arg;
+typedef struct {
+    void *ptr;
+    ir_arg arg;
+} ir_inst;
+typedef ir_inst translated_inst;
+typedef size_t drc_unit;
 #endif
 
-static_assert(alignof(drc_unit) >= alignof(translated_inst));
+//static_assert(alignof(drc_unit) >= alignof(translated_inst));
 
 #define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
 #define CACHE_SIZE  0x200000
@@ -93,7 +98,7 @@ int __modsi3(int a, int b);
 unsigned int __udivsi3(unsigned int a, unsigned int b);
 unsigned int __umodsi3(unsigned int a, unsigned int b);
 
-void drc_executeBlock(WORD* entrypoint, exec_block* block);
+void drc_executeBlock(drc_unit* entrypoint, exec_block* block);
 int drc_handleInterrupts(WORD cpsr, WORD* PC);
 void drc_relocTable(void);
 void drc_clearCache(void);

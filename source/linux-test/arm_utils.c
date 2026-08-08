@@ -21,9 +21,9 @@ void FlushInvalidateCache(void *addr, size_t len) {
     #endif
 }
 
-void detectCitra(WORD *cache_start) {}
+void detectCitra(void *cache_start) {}
 
-Result ReprotectMemory(u32* addr, u32 pages, u32 mode) {
+Result ReprotectMemory(void* addr, u32 pages, u32 mode) {
     int ret = mprotect(addr, pages*0x1000, PROT_READ | PROT_WRITE | PROT_EXEC);
     dprintf(0, "[DRC]: mprotect returned %d\n", ret);
     return ret;
