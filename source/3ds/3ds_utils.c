@@ -28,19 +28,19 @@ s32 k_flushCaches(void) {
 }
 
 bool is_citra = false;
-void detectCitra(WORD *test_code) {
+void detectCitra(void *test_code) {
     // only do the check once to prevent wackiness
     static bool tested = false;
     if (tested) return;
     tested = true;
 
     is_citra = false;
-    test_code[0] = 0xe3a00001; // mov r0, #1
-    test_code[1] = 0xe12fff1e; // bx lr
+    ((WORD*)test_code)[0] = 0xe3a00001; // mov r0, #1
+    ((WORD*)test_code)[1] = 0xe12fff1e; // bx lr
     FlushInvalidateCache(test_code, 8);
     bool (*code_func)() = (bool(*)())test_code;
     code_func();
-    test_code[0] = 0xe3a00000; // mov r0, #0
+    ((WORD*)test_code)[0] = 0xe3a00000; // mov r0, #0
     FlushInvalidateCache(test_code, 4);
     is_citra = code_func();
 }
@@ -71,7 +71,7 @@ void FlushInvalidateCache(void *addr, size_t len) {
     }
 }
 
-Result ReprotectMemory(u32* addr, u32 pages, u32 mode) {
+Result ReprotectMemory(void* addr, u32 pages, u32 mode) {
     Handle processHandle;
     svcDuplicateHandle(&processHandle, 0xFFFF8001);
     return svcControlProcessMemory(processHandle, (u32)addr, 0x0, pages*0x1000, MEMOP_PROT, mode);
