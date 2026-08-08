@@ -6,7 +6,7 @@
 static BYTE phys_regs[32];
 
 // Maps the most used registers in the block to V810 registers
-void drc_mapRegs(exec_block* block) {
+static void drc_mapRegs(exec_block* block) {
     int i, j, max, max_pos;
 
     block->reg_map = 0;
