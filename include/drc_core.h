@@ -112,6 +112,8 @@ void drc_dumpDebugInfo(int code);
 
 void drc_prepare(exec_block *block);
 void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810);
+void drc_flags_to_native(void);
+void drc_flags_to_v810(void);
 
 void drc_bake_add_cycles(unsigned int *cycles);
 void drc_bake_subtract_cycles_runtime(int cycles);

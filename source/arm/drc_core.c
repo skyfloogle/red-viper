@@ -1306,6 +1306,8 @@ static int drc_translateBlock(void) {
 
     block->size = num_arm_inst * sizeof(translated_inst) / sizeof(drc_unit) + pool_offset;
 
+    FlushInvalidateCache(block->phys_offset, block->size * sizeof(drc_unit));
+
 cleanup:
 #ifdef LITERAL_POOL
     linearFree(pool_cache_start);
@@ -1410,16 +1412,7 @@ int drc_run(void) {
 
     vb_state->v810_state.PC &= V810_ROM1.highaddr;
 
-    // set up arm flags
-    {
-        WORD psw = vb_state->v810_state.S_REG[PSW];
-        WORD cpsr;
-        asm volatile ("mrs %0, CPSR" : "=r" (cpsr));
-        cpsr &= 0x0fffffff;
-        cpsr |= (psw & 0x3) << 30;
-        cpsr |= (psw & 0xc) << 26;
-        vb_state->v810_state.flags = cpsr;
-    }
+    drc_flags_to_native();
 
     serviceInt(vb_state->v810_state.cycles, vb_state->v810_state.PC);
 
@@ -1448,8 +1441,6 @@ int drc_run(void) {
 
             entrypoint = drc_getEntry(entry_PC, &cur_block);
             dprintf(3, "[DRC]: ARM block size - %ld\n", cur_block->size);
-
-            FlushInvalidateCache(cur_block->phys_offset, cur_block->size * 4);
         }
         dprintf(3, "[DRC]: entry - 0x%lx (0x%x)\n", entry_PC, (int)(entrypoint - cache_start)*4);
         // entrypoint <= cache_start || entrypoint >= cache_start + CACHE_SIZE
@@ -1474,15 +1465,7 @@ int drc_run(void) {
         }
     }
 
-    // sync arm flags to PSW
-    {
-        WORD cpsr = vb_state->v810_state.flags;
-        WORD psw = vb_state->v810_state.S_REG[PSW];
-        psw &= ~0xf;
-        psw |= cpsr >> 30;
-        psw |= (cpsr >> 26) & 0xc;
-        vb_state->v810_state.S_REG[PSW] = psw;
-    }
+    drc_flags_to_v810();
 
     return 0;
 }
