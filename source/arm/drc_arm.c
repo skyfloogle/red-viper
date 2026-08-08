@@ -85,7 +85,7 @@ void drc_prepare(exec_block *block) {
     }
 
 #define BEGIN_INSTR(name) \
-    void drc_##name(v810_instruction *ins) { \
+    void drc_bake_##name(v810_instruction *ins) { \
         INST_SETUP
 
 #define END_INSTR() \
@@ -136,7 +136,7 @@ void drc_prepare(exec_block *block) {
     if (arm_reg2 < 4) STR_IO(r, 11, offsetof(cpu_state, P_REG[ins->reg2])); \
     else if(arm_reg2 != r) MOV(arm_reg2, r);
 
-void drc_add_cycles(unsigned int *cycles) {
+void drc_bake_add_cycles(unsigned int *cycles) {
     if (*cycles != 0) {
         LDR_IO(0, 11, offsetof(cpu_state, cycles_until_event_partial));
         SUB_I(0, 0, *cycles & 0xFF, 0);
@@ -145,14 +145,14 @@ void drc_add_cycles(unsigned int *cycles) {
     *cycles = 0;
 }
 
-void drc_subtract_cycles_runtime(int cycles) {
+void drc_bake_subtract_cycles_runtime(int cycles) {
     SUB_I(10, 10, cycles, 0);
 }
 
 #define HALT_LOOP_BODY 8
 #define HALT_SIZE HALT_LOOP_BODY + 2
 
-void drc_halt(WORD next_PC, unsigned *cycles) {
+void drc_bake_halt(WORD next_PC, unsigned *cycles) {
     MRS(0);
     /* LDW_I exploded to ensure a consistent loop size */
     MOV_I(1, (next_PC) & 0xff, 0);
@@ -167,7 +167,7 @@ void drc_halt(WORD next_PC, unsigned *cycles) {
     *cycles = 0;
 }
 
-void drc_busywait(v810_instruction *ins, unsigned *cycles) {
+void drc_bake_busywait(v810_instruction *ins, unsigned *cycles) {
     // Special case: bnh and bh can't be directly translated to ARM
     if (ins->opcode == V810_OP_BH) {
         Boff(ARM_COND_CS, HALT_SIZE + 2);
@@ -179,10 +179,10 @@ void drc_busywait(v810_instruction *ins, unsigned *cycles) {
     } else {
         Boff(cond_map[ins->opcode & 0xF] ^ 1, HALT_SIZE + 1);
     }
-    drc_halt(ins->PC + ins->branch_offset, cycles);
+    drc_bake_halt(ins->PC + ins->branch_offset, cycles);
 }
 
-void drc_handle_interrupts(WORD ret_PC, unsigned *cycles) {
+void drc_bake_handle_interrupts(WORD ret_PC, unsigned *cycles) {
     MRS(0);
     LDW_I(1, ret_PC);
     LDR_IO(2, 11, offsetof(cpu_state, cycles_until_event_partial));
@@ -196,18 +196,18 @@ void drc_handle_interrupts(WORD ret_PC, unsigned *cycles) {
     *cycles = 0;
 }
 
-void drc_jump_short(v810_instruction *ins) {
+void drc_bake_jump_short(v810_instruction *ins) {
     B(ARM_COND_AL, 0);
 }
 
-void drc_jump_long(v810_instruction *ins) {
+void drc_bake_jump_long(v810_instruction *ins) {
     LDW_I(0, ins->PC + ins->branch_offset);
     // Save the new PC
     STR_IO(0, 11, offsetof(cpu_state, PC));
     POP(1 << 15);
 }
 
-void drc_branch(v810_instruction *ins) {
+void drc_bake_branch(v810_instruction *ins) {
     // Special case: bnh and bh can't be directly translated to ARM
     if (ins->opcode == V810_OP_BH) {
         // Branch if C == 0 and Z == 0
@@ -223,7 +223,7 @@ void drc_branch(v810_instruction *ins) {
     }
 }
 
-void drc_link_reg(v810_instruction *ins) {
+void drc_bake_link_reg(v810_instruction *ins) {
     LDW_I(1, ins->PC + 4);
     if (phys_regs[31])
         MOV(phys_regs[31], 1);
@@ -231,13 +231,13 @@ void drc_link_reg(v810_instruction *ins) {
         STR_IO(1, 11, offsetof(cpu_state, P_REG[31]));
 }
 
-void drc_golf_hack() {
+void drc_bake_golf_hack() {
     LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
     LDR_IO(2, 2, DRC_RELOC_GOLFHACK*4);
     BLX(ARM_COND_AL, 2);
 }
 
-void drc_ballsort(void) {
+void drc_bake_ballsort(void) {
     LDR_IO(2, 11, offsetof(cpu_state, reloc_table));
     LDR_IO(2, 2, DRC_RELOC_BALLSORT*4);
     BLX(ARM_COND_AL, 2);
@@ -245,7 +245,7 @@ void drc_ballsort(void) {
 
 static arm_inst *branch_to_tweak;
 
-void drc_ballscale_start(void) {
+void drc_bake_ballscale_start(void) {
     // Verify that our values make sense, otherwise revert to original
     LOAD_REG(0, 17);
     LOAD_REG(1, 18);
@@ -264,16 +264,16 @@ void drc_ballscale_start(void) {
     Boff(ARM_COND_AL, 0);
 }
 
-void drc_ballscale_end(void) {
+void drc_bake_ballscale_end(void) {
     branch_to_tweak->b_bl.imm = inst_ptr - branch_to_tweak - 2;
 }
 
-void drc_vertical_force_hack(void) {
+void drc_bake_vertical_force_hack(void) {
     MOV_I(0, 1, 25);
     ADD(10, 10, 0);
 }
 
-void drc_bowling_nikochan_hack(v810_instruction *ins, unsigned cycles) {
+void drc_bake_bowling_nikochan_hack(v810_instruction *ins, unsigned cycles) {
     LDR_IO(2, 11, offsetof(cpu_state, irq_handler));
     MRS(0);
     LDW_I(1, ins[1].PC);
@@ -282,7 +282,7 @@ void drc_bowling_nikochan_hack(v810_instruction *ins, unsigned cycles) {
     MSR(0);
 }
 
-void drc_reti() {
+void drc_bake_reti() {
     LDR_IO(0, 11, offsetof(cpu_state, S_REG[PSW]));
     TST_I(0, PSW_NP >> 8, 24);
     // ldrne r1, S_REG[FEPC]
@@ -308,15 +308,15 @@ void drc_reti() {
     POP(1 << 15);
 }
 
-void drc_nop() {
+void drc_bake_nop() {
     NOP();
 }
 
-void drc_end_block() {
+void drc_bake_end_block() {
     POP(1 << 15);
 }
 
-void drc_ld_b(v810_instruction *ins, bool access_time) {
+void drc_bake_ld_b(v810_instruction *ins, bool access_time) {
     INST_SETUP
     if (arm_reg1 < 4) arm_reg1 = 0;
 
@@ -365,7 +365,7 @@ void drc_ld_b(v810_instruction *ins, bool access_time) {
     INST_TEARDOWN
 }
 
-void drc_ld_h(v810_instruction *ins, bool access_time) {
+void drc_bake_ld_h(v810_instruction *ins, bool access_time) {
     INST_SETUP
     if (arm_reg1 < 4) arm_reg1 = 0;
 
@@ -415,7 +415,7 @@ void drc_ld_h(v810_instruction *ins, bool access_time) {
 }
 
 
-void drc_ld_w(v810_instruction *ins, bool access_time) {
+void drc_bake_ld_w(v810_instruction *ins, bool access_time) {
     INST_SETUP
     if (arm_reg1 < 4) arm_reg1 = 0;
 
@@ -459,7 +459,7 @@ void drc_ld_w(v810_instruction *ins, bool access_time) {
     INST_TEARDOWN
 }
 
-void drc_st_b(v810_instruction *ins, bool access_time) {
+void drc_bake_st_b(v810_instruction *ins, bool access_time) {
     INST_SETUP
     if (arm_reg1 < 4) arm_reg1 = 0;
 
@@ -506,7 +506,7 @@ void drc_st_b(v810_instruction *ins, bool access_time) {
     INST_TEARDOWN
 }
 
-void drc_st_h(v810_instruction *ins, bool access_time) {
+void drc_bake_st_h(v810_instruction *ins, bool access_time) {
     INST_SETUP
     if (arm_reg1 < 4) arm_reg1 = 0;
 
@@ -553,7 +553,7 @@ void drc_st_h(v810_instruction *ins, bool access_time) {
     INST_TEARDOWN
 }
 
-void drc_st_w(v810_instruction *ins, bool access_time) {
+void drc_bake_st_w(v810_instruction *ins, bool access_time) {
     INST_SETUP
     if (arm_reg1 < 4) arm_reg1 = 0;
 
@@ -600,7 +600,7 @@ void drc_st_w(v810_instruction *ins, bool access_time) {
     INST_TEARDOWN
 }
 
-void drc_bstr(v810_instruction *ins, unsigned *cycles) {
+void drc_bake_bstr(v810_instruction *ins, unsigned *cycles) {
     MOV_I(2, 31, 0);
     if (ins->imm >= 4) {
         // non-search, we have a destination
@@ -661,7 +661,7 @@ void drc_bstr(v810_instruction *ins, unsigned *cycles) {
     } else {
         // add cycles and check interrupt
         ADD(10, 10, 0);
-        drc_handle_interrupts(ins->PC, cycles);
+        drc_bake_handle_interrupts(ins->PC, cycles);
         int len_reg = phys_regs[28];
         if (!len_reg) {
             LDR_IO(0, 11, offsetof(cpu_state, P_REG[28]));
