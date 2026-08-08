@@ -1348,3 +1348,22 @@ void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810) {
 
     arm_assemble(dst, ir);
 }
+
+void drc_flags_to_native(void) {
+    WORD psw = vb_state->v810_state.S_REG[PSW];
+    WORD cpsr;
+    asm volatile ("mrs %0, CPSR" : "=r" (cpsr));
+    cpsr &= 0x0fffffff;
+    cpsr |= (psw & 0x3) << 30;
+    cpsr |= (psw & 0xc) << 26;
+    vb_state->v810_state.flags = cpsr;
+}
+
+void drc_flags_to_v810(void) {
+    WORD cpsr = vb_state->v810_state.flags;
+    WORD psw = vb_state->v810_state.S_REG[PSW];
+    psw &= ~0xf;
+    psw |= cpsr >> 30;
+    psw |= (cpsr >> 26) & 0xc;
+    vb_state->v810_state.S_REG[PSW] = psw;
+}
