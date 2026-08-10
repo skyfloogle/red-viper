@@ -4,22 +4,38 @@
 #include "vb_types.h"
 #include "v810_mem.h"
 
+typedef struct interpret_inst_t interpret_inst;
+typedef union {
+    ssize_t full;
+    struct {
+        BYTE reg1, reg2;
+        SHWORD imm;
+    };
+    WORD target_PC;
+    interpret_inst *target_instr;
+} interpret_arg;
+struct interpret_inst_t {
+    interpret_inst *(*func)(cpu_state*, interpret_inst*, interpret_arg);
+    interpret_arg arg;
+};
+typedef struct {
+    interpret_inst *(*func)(cpu_state*, interpret_inst*, interpret_arg);
+    interpret_arg arg;
+    bool needs_branch;
+} interpret_ir_inst;
+
 #if (__ARM_ARCH >= 6 && __arm__)
 #include "arm_types.h"
 #define DRC_AVAILABLE true
+#define ARM_DRC true
 typedef arm_inst ir_inst;
 typedef WORD translated_inst;
 typedef WORD drc_unit;
 #else
-#define DRC_AVAILABLE false
-typedef union {
-    uint32_t full;
-} ir_arg;
-typedef struct {
-    void *ptr;
-    ir_arg arg;
-} ir_inst;
-typedef ir_inst translated_inst;
+#define DRC_AVAILABLE true
+#define ARM_DRC false
+typedef interpret_ir_inst ir_inst;
+typedef interpret_inst translated_inst;
 typedef size_t drc_unit;
 #endif
 

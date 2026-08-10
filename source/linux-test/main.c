@@ -19,12 +19,6 @@
 #define SDL_HINT_APP_NAME SDL_HINT_AUDIO_DEVICE_APP_NAME
 #endif
 
-#if DRC_AVAILABLE
-#else
-int drc_handleInterrupts(WORD cpsr, WORD* PC) { return 0; }
-void drc_relocTable(void) {}
-#endif
-
 SDL_Window *window;
 SDL_Surface *game_surface, *window_surface;
 
