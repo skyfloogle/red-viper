@@ -1,6 +1,8 @@
 #ifndef DRC_CORE_H
 #define DRC_CORE_H
 
+#include <stdalign.h>
+#include <assert.h>
 #include "vb_types.h"
 #include "v810_mem.h"
 
@@ -41,7 +43,7 @@ typedef size_t drc_unit;
 
 extern ir_inst *inst_ptr;
 
-//static_assert(alignof(drc_unit) >= alignof(translated_inst));
+static_assert(alignof(drc_unit) >= alignof(translated_inst));
 
 #define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
 #define CACHE_SIZE  0x200000
