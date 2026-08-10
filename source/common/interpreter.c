@@ -133,10 +133,10 @@ int interpreter_run(void) {
                     return 0;
                 }
                 case V810_OP_LDSR:
-                    interpret_ldsr(&vb_state->v810_state, reg1, reg2);
+                    interpret_ldsr(&vb_state->v810_state, reg2, reg1);
                     break;
                 case V810_OP_STSR:
-                    interpret_stsr(&vb_state->v810_state, reg1, reg2);
+                    interpret_stsr(&vb_state->v810_state, reg2, reg1);
                     break;
                 case V810_OP_SEI:
                     interpret_sei(&vb_state->v810_state);

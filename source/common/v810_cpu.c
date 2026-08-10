@@ -434,7 +434,7 @@ void predictEvent(bool increment) {
 static int serviceDisplayInt(unsigned int cycles, WORD PC);
 
 // Returns number of cycles until next timer interrupt.
-int serviceInt(unsigned int cycles, WORD PC) {
+bool serviceInt(unsigned int cycles, WORD PC) {
     bool pending_int = false;
 
     // hardware read timing
