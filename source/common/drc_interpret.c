@@ -3,6 +3,8 @@
 #include "v810_cpu.h"
 #include "v810_ins.h"
 
+#if !ARM_DRC
+
 void drc_prepare(exec_block *block) {
     // clear all IR instructions since we don't always update needs_branch
     memset(inst_ptr, 0, MAX_ARM_INST * sizeof(ir_inst));
@@ -509,3 +511,5 @@ void drc_bake_fpp(v810_instruction *ins) {
     inst_ptr->arg.reg2 = ins->reg2;
     inst_ptr++;
 }
+
+#endif
