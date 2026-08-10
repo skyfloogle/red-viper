@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "arm_emit.h"
 #include "arm_codegen.h"
 #include "drc_core.h"
