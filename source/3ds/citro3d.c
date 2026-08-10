@@ -519,7 +519,15 @@ void gpu_soft_to_texture(int displayed_fb) {
 	}
 }
 
-void gpu_clear_screen(int start_eye, int end_eye) {
+void gpu_clear_screen(bool outside_rendering) {
+    if (outside_rendering) C3D_FrameBegin(0);
+    for (int i = 0; i < 2; i++) {
+        C3D_RenderTargetClear(screenTargetHard[i], C3D_CLEAR_COLOR, 0, 0);
+    }
+    if (outside_rendering) C3D_FrameEnd(0);
+}
+
+void gpu_setup_screen(int start_eye, int end_eye) {
 	C3D_BindProgram(&sFinal);
 	gpu_set_opaque(true);
 

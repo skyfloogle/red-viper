@@ -155,7 +155,7 @@ void video_hard_render(int drawn_fb) {
 		tileMapCache[i].lvmax = tileMapCache[i].vmax;
 	}
 
-	gpu_clear_screen(start_eye, end_eye);
+	gpu_setup_screen(start_eye, end_eye);
 
 	gpu_setup_drawing();
 

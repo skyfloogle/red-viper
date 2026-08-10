@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -248,13 +249,14 @@ int main(void) {
         // drawing
         {
             vb_state = &vb_players[my_player_id];
-            bool is_golf = CHECK_GAMEID("01VVGE") || CHECK_GAMEID("E4VVGJ");
-            bool is_test_chamber = CHECK_GAMEID("PRCHMB");
 
-            // frameskip can cause bugs in golf when transitioning from VIP to software rendering
-            if (is_golf) just_lagged = false;
-            // frameskip causes visual glitches
-            if (is_test_chamber) just_lagged = false;
+            // Golf and Test Chamber have frameskip disabled.
+            // In Golf, it causes bugs when transitioning from GPU to software rendering.
+            // In Test Chamber, it just causes visual glitches.
+            // Either way, they have render hacks in video_render, which would be skipped by frameskip.
+            if (CHECK_GAMEID("01VVGE") || CHECK_GAMEID("E4VVGJ") || CHECK_GAMEID("PRCHMB")) {
+                just_lagged = false;
+            }
 
             // forcefully disable antiflicker if software rendering is in use
             // because we can't easily delay the fb update until afterwards
@@ -273,58 +275,6 @@ int main(void) {
                 // unless double buffer is on, in which case it seems too risky
                 if (C3D_FrameBegin(tVBOpt.DOUBLE_BUFFER ? 0 : C3D_FRAME_NONBLOCK)) {
                     guiUpdate(osTickCounterRead(&frameTickCounter), osTickCounterRead(&drcTickCounter));
-
-                    // Golf hack: switch to software rendering during gameplay.
-                    if (is_golf) {
-                        if (*(uint8_t*)(vb_state->V810_DISPLAY_RAM.off + 0x3dbc0) == 0x40 &&
-                            *(uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x3dbe6) == 0x48 &&
-                            memcmp((uint8_t*)vb_state->V810_DISPLAY_RAM.off + 0x3dbec, "\0\0\x80\x01\x1f\0\0\x80\0\0", 10) == 0
-                        ) {
-                            // looks like hills, do software rendering
-                            if (tVBOpt.RENDERMODE != RM_CPUONLY) {
-                                tVBOpt.RENDERMODE = RM_CPUONLY;
-                                clearCache();
-                            }
-                        } else {
-                            // switch back to hardware rendering
-                            if (tVBOpt.RENDERMODE != RM_TOGPU) {
-                                tVBOpt.RENDERMODE = RM_TOGPU;
-                                for (int i = 0; i < 3; i++) {
-                                    memset((uint8_t*)vb_state->V810_DISPLAY_RAM.off + (0x8000 * i), 0, 0x6000);
-                                }
-                            }
-                        }
-                    }
-                    // Test Chamber hack: switch to VIP downloading during gameplay.
-                    // Otherwise, the intro and ending will slow down.
-                    if (is_test_chamber) {
-                        WORLD *worlds = (WORLD *)(vb_state->V810_DISPLAY_RAM.off + 0x3d800);
-                        // Spot that we're in the emulator tester.
-                        bool vip_download = worlds[30].end;
-                        if (!vip_download) {
-                            // We assume we're in gameplay if there are affine worlds.
-                            for (int i = 31; i >= 0; i--) {
-                                if (worlds[i].end)
-                                    break;
-                                if (worlds[i].on == 0)
-                                    continue;
-                                if (worlds[i].bgm == 2) {
-                                    vip_download = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (vip_download) {
-                            tVBOpt.RENDERMODE = RM_TOCPU;
-                        } else {
-                            if (tVBOpt.RENDERMODE != RM_TOGPU) {
-                                tVBOpt.RENDERMODE = RM_TOGPU;
-                                for (int i = 0; i < 2; i++) {
-                                    C3D_RenderTargetClear(screenTargetHard[i], C3D_CLEAR_COLOR, 0, 0);
-                                }
-                            }
-                        }
-                    }
 
                     // if we just had a lagframe on which drawing happened, don't draw
                     if ((vb_state->tVIPREG.DPCTRL & 0x0002) && (!on_time || !just_lagged)) {

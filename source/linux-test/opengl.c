@@ -210,7 +210,15 @@ void gpu_init(void) {
     glDepthMask(GL_FALSE);
 }
 
-void gpu_clear_screen(int start_eye, int end_eye) {
+void gpu_clear_screen(bool outside_rendering) {
+    glClearColor(0, 0, 0, 0);
+    for (int i = 0; i < 2; i++) {
+        gpu_target_screen(i);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+}
+
+void gpu_setup_screen(int start_eye, int end_eye) {
     glClearColor(vb_state->tVIPREG.BKCOL == 1, vb_state->tVIPREG.BKCOL == 2, vb_state->tVIPREG.BKCOL == 3, vb_state->tVIPREG.BKCOL != 0);
     glClear(GL_COLOR_BUFFER_BIT);
 }

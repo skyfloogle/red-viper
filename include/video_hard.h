@@ -49,7 +49,8 @@ extern uint16_t *rgba4_framebuffers;
 void video_hard_init(void);
 
 void gpu_init(void);
-void gpu_clear_screen(int start_eye, int end_eye);
+void gpu_clear_screen(bool outside_rendering);
+void gpu_setup_screen(int start_eye, int end_eye);
 void gpu_setup_drawing(void);
 void gpu_setup_tile_drawing(void);
 void gpu_set_tile_offset(float xoffset, float yoffset);
