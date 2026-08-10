@@ -1,11 +1,12 @@
 #include <math.h>
 #include "v810_cpu.h"
+#include "v810_opt.h"
 
 int interpreter_run(void);
 
 static inline bool interpreter_get_cond(BYTE code, WORD psw) {
     bool cond = false;
-    switch (0x40 | (code & ~8)) {
+    switch (0x40 | (code & 7)) {
         case V810_OP_BV: cond = psw & 4; break;
         case V810_OP_BL: cond = psw & 8; break;
         case V810_OP_BE: cond = psw & 1; break;
@@ -209,6 +210,7 @@ BEGIN_REG2_IMM(cmp_i)
 END_INSTR()
 
 BEGIN_REG2_IMM(shl_i)
+    imm &= 31;
     WORD res = reg2_val << imm;
     bool z = res == 0;
     bool s = (SWORD)res < 0;
@@ -219,6 +221,7 @@ BEGIN_REG2_IMM(shl_i)
 END_INSTR()
 
 BEGIN_REG2_IMM(shr_i)
+    imm &= 31;
     WORD res = reg2_val >> imm;
     bool z = res == 0;
     bool s = (SWORD)res < 0;
@@ -233,29 +236,30 @@ BEGIN_NOARG(cli)
 END_INSTR()
 
 BEGIN_REG2_IMM(sar_i)
+    imm &= 31;
     WORD res = (SWORD)reg2_val >> imm;
     bool z = res == 0;
     bool s = (SWORD)res < 0;
     bool ov = false;
     bool cy = imm != 0 ? (reg2_val >> (imm - 1)) & 1 : 0;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | (s << 1) | (ov << 2) | (cy << 3);
-    vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | (s << 1) | (ov << 2) | (cy << 3);
+    v810_state->P_REG[reg2] = res;
 END_INSTR()
 
-BEGIN_REG12(ldsr)
-    vb_state->v810_state.S_REG[reg1] = reg2_val;
+BEGIN_REG2_IMM(ldsr)
+    v810_state->S_REG[imm & 31] = reg2_val;
 END_INSTR()
 
-BEGIN_REG12(stsr)
-    vb_state->v810_state.P_REG[reg2] = vb_state->v810_state.S_REG[reg1];
+BEGIN_REG2_IMM(stsr)
+    v810_state->P_REG[reg2] = v810_state->S_REG[imm & 31];
 END_INSTR()
 
 BEGIN_NOARG(sei)
-    vb_state->v810_state.S_REG[PSW] |= 1 << 12;
+    v810_state->S_REG[PSW] |= 1 << 12;
 END_INSTR()
 
 BEGIN_REG12_IMM(movea)
-    vb_state->v810_state.P_REG[reg2] = reg1_val + imm;
+    v810_state->P_REG[reg2] = reg1_val + imm;
 END_INSTR()
 
 BEGIN_REG12_IMM(addi)
@@ -264,30 +268,30 @@ BEGIN_REG12_IMM(addi)
     bool s = (SWORD)res < 0;
     bool ov = (SWORD)(~(reg1_val ^ imm) & (reg1_val ^ res)) < 0;
     bool cy = (unsigned)res < (unsigned)reg1_val;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | (s << 1) | (ov << 2) | (cy << 3);
-    vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | (s << 1) | (ov << 2) | (cy << 3);
+    v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG12_IMM(ori)
     WORD res = reg1_val | (WORD)imm;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
-    vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
+    v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG12_IMM(andi)
     WORD res = reg1_val & (WORD)imm;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
-    vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
+    v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG12_IMM(xori)
     WORD res = reg1_val ^ (WORD)imm;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
-    vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
+    v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG12_IMM(movhi)
-    vb_state->v810_state.P_REG[reg2] = reg1_val + ((WORD)imm << 16);
+    v810_state->P_REG[reg2] = reg1_val + ((WORD)imm << 16);
 END_INSTR()
 
 #pragma GCC diagnostic push
@@ -296,63 +300,63 @@ BEGIN_REG12(cvt_ws)
     float res = (float)(SWORD)reg1_val;
     bool z = res == 0;
     int scy = res < 0 ? 0xa : 0;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | scy;
-    *(float*)&vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+    *(float*)&v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG1F2(cvt_sw)
     SWORD res = round(reg1_val);
     bool z = res == 0;
     int scy = res < 0 ? 2 : 0;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | scy;
-    vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+    v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG1F2(trnc_sw)
     SWORD res = (SWORD)(reg1_val);
     bool z = res == 0;
     int scy = res < 0 ? 2 : 0;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | scy;
-    vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+    v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG1F2F(addf_s)
     float res = reg2_val + reg1_val;
     bool z = res == 0;
     int scy = res < 0 ? 0xa : 0;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | scy;
-    *(float*)&vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+    *(float*)&v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG1F2F(subf_s)
     float res = reg2_val - reg1_val;
     bool z = res == 0;
     int scy = res < 0 ? 0xa : 0;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | scy;
-    *(float*)&vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+    *(float*)&v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG1F2F(mulf_s)
     float res = reg2_val * reg1_val;
     bool z = res == 0;
     int scy = res < 0 ? 0xa : 0;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | scy;
-    *(float*)&vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+    *(float*)&v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG1F2F(divf_s)
     float res = reg2_val / reg1_val;
     bool z = res == 0;
     int scy = res < 0 ? 0xa : 0;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | scy;
-    *(float*)&vb_state->v810_state.P_REG[reg2] = res;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
+    *(float*)&v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG1F2F(cmpf_s)
     float res = reg2_val - reg1_val;
     bool z = res == 0;
     int scy = res < 0 ? 0xa : 0;
-    vb_state->v810_state.S_REG[PSW] = (vb_state->v810_state.S_REG[PSW] & ~0xf) | z | scy;
+    v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0xf) | z | scy;
 END_INSTR()
 
 #pragma GCC diagnostic pop
@@ -362,15 +366,15 @@ BEGIN_REG12(mpyhw)
 END_INSTR()
 
 BEGIN_REG12(rev)
-    vb_state->v810_state.P_REG[reg2] = reg1 ? ins_rev(vb_state->v810_state.P_REG[reg1]) : 0;
+    v810_state->P_REG[reg2] = reg1 ? ins_rev(v810_state->P_REG[reg1]) : 0;
 END_INSTR()
 
 BEGIN_REG12(xb)
-    vb_state->v810_state.P_REG[reg2] = (reg2_val & 0xFFFF0000) | ((reg2_val << 8) & 0xFF00) | ((reg2_val >> 8) & 0xFF);
+    v810_state->P_REG[reg2] = (reg2_val & 0xFFFF0000) | ((reg2_val << 8) & 0xFF00) | ((reg2_val >> 8) & 0xFF);
 END_INSTR()
 
 BEGIN_REG12(xh)
-    vb_state->v810_state.P_REG[reg2] = (reg2_val << 16) | (reg2_val >> 16);
+    v810_state->P_REG[reg2] = (reg2_val << 16) | (reg2_val >> 16);
 END_INSTR()
 
 #undef BEGIN_NOARG

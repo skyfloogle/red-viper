@@ -828,10 +828,10 @@ static int drc_translateBlock(void) {
     if (is_waterworld)
         drc_findWaterworldBusywait(num_v810_inst);
 
+    inst_ptr = &trans_cache[0];
+
     // Second pass: map the most used V810 registers to ARM registers
     drc_prepare(block);
-
-    inst_ptr = &trans_cache[0];
 #ifdef LITERAL_POOL
     pool_ptr = pool_cache_start;
 #endif

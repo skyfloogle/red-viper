@@ -23,6 +23,8 @@ typedef ir_inst translated_inst;
 typedef size_t drc_unit;
 #endif
 
+extern ir_inst *inst_ptr;
+
 //static_assert(alignof(drc_unit) >= alignof(translated_inst));
 
 #define BLOCK_MAP_COUNT (MAX_ROM_SIZE / 2 / 2)
