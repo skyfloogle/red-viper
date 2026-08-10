@@ -17,7 +17,7 @@ void hbHaxExit(void) {
 
 void FlushInvalidateCache(void *addr, size_t len) {
     #if DRC_AVAILABLE
-    __clear_cache(cache_start, cache_start + CACHE_SIZE - 1);
+    __builtin___clear_cache(addr, addr + len);
     #endif
 }
 

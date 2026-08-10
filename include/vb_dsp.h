@@ -109,7 +109,7 @@ typedef struct {
     u16 w, h, param, over;
     u16 _pad[5];
 } WORLD;
-static_assert(sizeof(WORLD) == 32);
+static_assert(sizeof(WORLD) == 32, "World array should be 32 bytes");
 
 // DPSTTS / DPCTRL
 #define DPRST   0x0001
