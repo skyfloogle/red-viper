@@ -27,25 +27,34 @@ void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810) {
 void drc_executeBlock(drc_unit *entrypoint, exec_block *block) {
     cpu_state *v810_state = &vb_state->v810_state;
     translated_inst *inst = (translated_inst*)entrypoint;
+    #if DRC_TAILCALL
+    inst->func(v810_state, inst, inst->arg);
+    #else
     do {
         inst = inst->func(v810_state, inst, inst->arg);
     } while (inst != NULL);
+    #endif
     v810_state->cycles += v810_state->cycles_until_event_full - v810_state->cycles_until_event_partial;
     v810_state->cycles_until_event_full = v810_state->cycles_until_event_partial;
 }
 
 #define ADD_CYCLES_RUNTIME(cycles) v810_state->cycles_until_event_partial -= cycles;
 
-#define DECLARE_INSTR(name) \
-    interpret_inst *drc_interpret_##name(cpu_state *v810_state, interpret_inst *inst, interpret_arg arg)
-
+#if DRC_TAILCALL
 #define BEGIN_INSTR(name) \
-    DECLARE_INSTR(name) { \
+    void drc_interpret_##name(cpu_state *v810_state, interpret_inst *inst, interpret_arg arg) { \
         interpret_inst *next_inst = inst + 1;
-
+#define END_INSTR() \
+        if (next_inst != NULL) [[clang::musttail]] return next_inst->func(v810_state, next_inst, next_inst->arg); \
+    }
+#else
+#define BEGIN_INSTR(name) \
+    interpret_inst *drc_interpret_##name(cpu_state *v810_state, interpret_inst *inst, interpret_arg arg) { \
+        interpret_inst *next_inst = inst + 1;
 #define END_INSTR() \
         return next_inst; \
     }
+#endif
 
 #define INSTR_NOARG(name) \
     BEGIN_INSTR(name) \

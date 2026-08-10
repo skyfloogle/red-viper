@@ -6,6 +6,10 @@
 #include "vb_types.h"
 #include "v810_mem.h"
 
+#define DRC_AVAILABLE true
+#define ARM_DRC (__ARM_ARCH >= 6 && __arm__)
+#define DRC_TAILCALL false
+
 typedef struct interpret_inst_t interpret_inst;
 typedef union {
     ssize_t full;
@@ -16,26 +20,29 @@ typedef union {
     WORD target_PC;
     interpret_inst *target_instr;
 } interpret_arg;
+
+#if DRC_TAILCALL
+typedef void (*interpret_func)(cpu_state*, interpret_inst*, interpret_arg);
+#else
+typedef interpret_inst *(*interpret_func)(cpu_state*, interpret_inst*, interpret_arg);
+#endif
+
 struct interpret_inst_t {
-    interpret_inst *(*func)(cpu_state*, interpret_inst*, interpret_arg);
+    interpret_func func;
     interpret_arg arg;
 };
 typedef struct {
-    interpret_inst *(*func)(cpu_state*, interpret_inst*, interpret_arg);
+    interpret_func func;
     interpret_arg arg;
     bool needs_branch;
 } interpret_ir_inst;
 
-#if (__ARM_ARCH >= 6 && __arm__)
+#if ARM_DRC
 #include "arm_types.h"
-#define DRC_AVAILABLE true
-#define ARM_DRC true
 typedef arm_inst ir_inst;
 typedef WORD translated_inst;
 typedef WORD drc_unit;
 #else
-#define DRC_AVAILABLE true
-#define ARM_DRC false
 typedef interpret_ir_inst ir_inst;
 typedef interpret_inst translated_inst;
 typedef size_t drc_unit;
