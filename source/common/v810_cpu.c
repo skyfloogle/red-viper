@@ -305,8 +305,10 @@ void v810_reset(void) {
 
         vb_state->tVIPREG.newframe = true;
 
+#if ARM_DRC
         vb_state->v810_state.irq_handler = &drc_handleInterrupts;
         vb_state->v810_state.reloc_table = &drc_relocTable;
+#endif
 
         vb_state->v810_state.P_REG[0]    =  0x00000000;
         vb_state->v810_state.PC          =  0xFFFFFFF0;
