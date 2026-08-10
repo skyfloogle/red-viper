@@ -273,19 +273,19 @@ BEGIN_REG12_IMM(addi)
 END_INSTR()
 
 BEGIN_REG12_IMM(ori)
-    WORD res = reg1_val | (WORD)imm;
+    WORD res = reg1_val | (HWORD)imm;
     v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
     v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG12_IMM(andi)
-    WORD res = reg1_val & (WORD)imm;
+    WORD res = reg1_val & (HWORD)imm;
     v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
     v810_state->P_REG[reg2] = res;
 END_INSTR()
 
 BEGIN_REG12_IMM(xori)
-    WORD res = reg1_val ^ (WORD)imm;
+    WORD res = reg1_val ^ (HWORD)imm;
     v810_state->S_REG[PSW] = (v810_state->S_REG[PSW] & ~0x7) | (res == 0) | (((SWORD)res < 0) << 1);
     v810_state->P_REG[reg2] = res;
 END_INSTR()
@@ -362,7 +362,7 @@ END_INSTR()
 #pragma GCC diagnostic pop
 
 BEGIN_REG12(mpyhw)
-    v810_state->P_REG[reg2] *= (reg1_val << 15) >> 15;
+    v810_state->P_REG[reg2] *= (SWORD)(reg1_val << 15) >> 15;
 END_INSTR()
 
 BEGIN_REG12(rev)
