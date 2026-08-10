@@ -128,10 +128,10 @@ void drc_bake_subtract_cycles_runtime(int cycles) {
 }
 
 BEGIN_INSTR(jmp)
-    WORD reg1_val = 0; \
-    if (arg.reg1) reg1_val = v810_state->P_REG[arg.reg1]; \
-    v810_state->PC = reg1_val; \
-    next_inst = NULL; \
+    WORD reg1_val = 0;
+    if (arg.reg1) reg1_val = v810_state->P_REG[arg.reg1];
+    v810_state->PC = reg1_val;
+    next_inst = NULL;
 END_INSTR()
 void drc_bake_jmp(v810_instruction *ins) {
     inst_ptr->func = drc_interpret_jmp;
