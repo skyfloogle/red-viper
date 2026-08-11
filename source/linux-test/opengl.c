@@ -514,9 +514,9 @@ void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
         for (int i = 0; i < 4; i++) {
             vTexCoords[i*2] += 0.5;
         }
-        glColorMask(false, false, true, true);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glColorMask(tVBOpt.ANAGLYPH_RIGHT & 1, tVBOpt.ANAGLYPH_RIGHT & 2, tVBOpt.ANAGLYPH_RIGHT & 4, true);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glColorMask(true, true, true, true);
     } else {
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
