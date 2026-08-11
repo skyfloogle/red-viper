@@ -203,15 +203,13 @@ int videoProcessingTime(void) {
 		}
 	}
 	// The title screen animation in Zero Racers has two fullscreen affine layers,
-	// leaving very little time for the CPU to calculate affine parameters.
-	// It only finishes part of them by the time GAMESTART happens.
-	// On hardware, it would simply continue calculating them during rendering,
-	// and everything is ready by the time the VIP needs the lower part.
-	// Here, however, we render based on a snapshot at GAMESTART time,
-	// leaving an ugly tear if we don't do something.
-	// To compensate, we manually give the CPU a little extra time.
+	// which in theory takes just 4141 cycles under 2 display frames.
+	// However, based on hardware recordings, it clearly takes 3 full frames.
+	// It's not currently clear what pushes it over the threshold.
+	// Therefore, we bump render time up a little so that it matches.
+	// If it takes just under 3 frames, screen tearing occurs.
 	if (CHECK_GAMEID("01VZRE") && time > 700000) {
-	    time -= 6000;
+	    time += 5000;
 	}
 	return time;
 }
