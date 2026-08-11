@@ -31,8 +31,6 @@ int interpreter_run(void) {
         cycles += opcycle[opcode];
         if (opcode < 0x20) {
             // small instr
-            WORD reg1_val = 0;
-            if (!(opcode & 0x10) && reg1) reg1_val = vb_state->v810_state.P_REG[reg1];
             switch (opcode) {
                 case V810_OP_MOV:
                     interpret_mov(&vb_state->v810_state, reg1, reg2);
@@ -52,9 +50,12 @@ int interpreter_run(void) {
                 case V810_OP_SHR:
                     interpret_shr(&vb_state->v810_state, reg1, reg2);
                     break;
-                case V810_OP_JMP:
+                case V810_OP_JMP: {
+                    WORD reg1_val = 0;
+                    if (reg1) reg1_val = vb_state->v810_state.P_REG[reg1];
                     PC = reg1_val;
                     break;
+                }
                 case V810_OP_SAR:
                     interpret_sar(&vb_state->v810_state, reg1, reg2);
                     break;
@@ -83,16 +84,16 @@ int interpreter_run(void) {
                     interpret_not(&vb_state->v810_state, reg1, reg2);
                     break;
                 case V810_OP_MOV_I:
-                    interpret_mov_i(&vb_state->v810_state, reg2, reg1 & 0x10 ? reg1 | 0xfffffff0 : reg1);
+                    interpret_mov_i(&vb_state->v810_state, reg2, sign_5(reg1));
                     break;
                 case V810_OP_ADD_I:
-                    interpret_add_i(&vb_state->v810_state, reg2, reg1 & 0x10 ? reg1 | 0xfffffff0 : reg1);
+                    interpret_add_i(&vb_state->v810_state, reg2, sign_5(reg1));
                     break;
                 case V810_OP_SETF:
                     interpret_setf(&vb_state->v810_state, reg2, reg1);
                     break;
                 case V810_OP_CMP_I:
-                    interpret_cmp_i(&vb_state->v810_state, reg2, reg1 & 0x10 ? reg1 | 0xfffffff0 : reg1);
+                    interpret_cmp_i(&vb_state->v810_state, reg2, sign_5(reg1));
                     break;
                 case V810_OP_SHL_I:
                     interpret_shl_i(&vb_state->v810_state, reg2, reg1);
