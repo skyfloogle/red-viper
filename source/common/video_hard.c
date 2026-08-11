@@ -495,7 +495,7 @@ void video_hard_render(int drawn_fb) {
 			object_group_id = (object_group_id - 1) & 3;
 
 			if (vcur - vbuf > VBUF_SIZE) dprintf(0, "VBUF OVERRUN - %i/%i\n", vcur - vbuf, VBUF_SIZE);
-			gpu_draw_tiles(vcur - vbuf - vcount, vcount);
+			if (vcount != 0) gpu_draw_tiles(vcur - vbuf - vcount, vcount);
 		}
 	}
 

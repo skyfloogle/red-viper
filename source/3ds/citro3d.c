@@ -588,7 +588,7 @@ void gpu_set_opaque(bool opaque) {
 }
 
 void gpu_draw_tiles(int first, int count) {
-    if (count != 0) C3D_DrawArrays(GPU_GEOMETRY_PRIM, first, count);
+    C3D_DrawArrays(GPU_GEOMETRY_PRIM, first, count);
 }
 
 
