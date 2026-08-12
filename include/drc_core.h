@@ -8,7 +8,11 @@
 
 #define DRC_AVAILABLE true
 #define ARM_DRC (__ARM_ARCH >= 6 && __arm__)
+#ifdef __has_c_attribute
+#define DRC_TAILCALL __has_c_attribute(clang::musttail)
+#else
 #define DRC_TAILCALL false
+#endif
 
 typedef struct interpret_inst_t interpret_inst;
 typedef union {
