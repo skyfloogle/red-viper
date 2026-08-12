@@ -198,6 +198,101 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
     }
 }
 
+template<bool over> void render_hbias_world(WORLD *world, int drawn_fb) {
+    uint8_t mapid = world->head & 0xf;
+    uint8_t scx_pow = ((world->head >> 10) & 3);
+    uint8_t scy_pow = ((world->head >> 8) & 3);
+    uint8_t scx = 1 << scx_pow;
+    uint8_t scy = 1 << scy_pow;
+    int scx_scy_mask = (scx - 1) | ((scy - 1) << 16);
+    int16_t base_gx = (s16)(world->gx << 6) >> 6;
+    int16_t gp = (s16)(world->gp << 6) >> 6;
+    int16_t gy = world->gy;
+    int16_t base_mx = (s16)(world->mx << 3) >> 3;
+    int16_t mp = (s16)(world->mp << 1) >> 1;
+    int16_t my = (s16)(world->my << 3) >> 3;
+    int16_t w = world->w + 1;
+    int16_t h = world->h + 1;
+    int16_t over_tile = world->over & 0x7ff;
+
+    u16 *tilemap = (u16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000);
+
+    u16 param_base = world->param;
+    s16 *params = (s16 *)(vb_state->V810_DISPLAY_RAM.off + 0x20000 + param_base * 2);
+
+    u8 *gplt = vb_state->tVIPREG.GPLT;
+
+    for (int eye = 0; eye < 2; eye++) {
+        if (!(world->head & (0x8000 >> eye)))
+            continue;
+
+        uint16_t *fb = (uint16_t*)(vb_state->V810_DISPLAY_RAM.off + 0x10000 * eye + 0x8000 * drawn_fb);
+
+        int eye_mx = base_mx + (eye == 0 ? -mp : mp);
+        int gx = base_gx + (eye == 0 ? -gp : gp);
+        for (int y = 0; likely(y < h); y++) {
+            if (unlikely(gy + y < 0)) continue;
+            if (unlikely(gy + y >= 224)) break;
+            int mx = base_mx + params[(y * 2) | eye];
+
+            int bpy = (my + y) & 7;
+            int ty = ((my + y) >> 3);
+            int mapy = ty >> 6;
+            ty &= 63;
+            int mapy_masked = (mapy & (scy - 1));
+            bool y_over = mapy_masked != mapy;
+            // premultiplied by 64
+            int ty_scaled = ty * 64;
+            // note: this is doubled because that does help
+            int dbpy = bpy * 2;
+
+            int out_shift = (((gy + y) & 3) * 2);
+
+            u8 *out_word = &((uint8_t*)(&fb[gx * 256 / 8]))[((gy + y) >> 2)];
+            u8 *end = out_word + w * 256 / 4;
+            if (gx < 0) {
+                mx += -gx;
+                out_word += -gx * 256 / 4;
+            }
+            if (gx + w > 384) {
+                end = ((uint8_t*)fb) + 0x6000;
+            }
+            int bpx = mx & 7;
+
+            for (; likely(out_word < end); ) {
+                int tx = mx >> 3;
+                int mapx = tx >> 6;
+                tx &= 63;
+                int mapx_masked = (mapx & (scx - 1));
+                bool x_over = mapx_masked != mapx;
+                int tile_pos;
+                if (over && unlikely(x_over || y_over)) {
+                    tile_pos = over_tile;
+                } else {
+                    int this_map = mapid + mapy_masked * scx + mapx_masked;
+                    tile_pos = this_map * 4096 + ty_scaled + tx;
+                }
+                u16 tile = tilemap[tile_pos];
+                u16 tileid = tile & 0x07ff;
+                int palette = tile >> 14;
+                int dpy = tile & 0x1000 ? (7 << 1) - dbpy : dbpy;
+                do {
+                    int px = tile & 0x2000 ? 7 - bpx : bpx;
+                    uint16_t tilecolumn = tileCache[tileid].indices.u16[px];
+                    int pxindex = (tilecolumn >> dpy) & 3;
+                    if (pxindex) {
+                        int pxvalue = (gplt[palette] >> (pxindex * 2)) & 3;
+                        *out_word = (*out_word & ~(3 << out_shift)) | (pxvalue << out_shift);
+                    }
+                    out_word += 256 / 4;
+                    mx++;
+                } while (++bpx < 8 && out_word < end);
+                bpx = 0;
+            }
+        }
+    }
+}
+
 template<bool over> void render_affine_world(WORLD *world, int drawn_fb) {
     uint8_t mapid = world->head & 0xf;
     uint8_t scx_pow = ((world->head >> 10) & 3);
@@ -367,7 +462,12 @@ void video_soft_render(int drawn_fb) {
             }
         } else if (worlds[wrld].bgm == 1) {
             // h-bias world
-            // TODO
+            bool over = worlds[wrld].is_over;
+            if (over) {
+                render_hbias_world<true>(&worlds[wrld], drawn_fb);
+            } else {
+                render_hbias_world<false>(&worlds[wrld], drawn_fb);
+            }
         } else if (worlds[wrld].bgm == 2) {
             // affine world
             bool over = worlds[wrld].is_over;
