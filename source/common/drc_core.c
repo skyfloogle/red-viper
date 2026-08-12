@@ -1296,7 +1296,9 @@ static int drc_translateBlock(void) {
 
     block->size = num_arm_inst * sizeof(translated_inst) / sizeof(drc_unit) + pool_offset;
 
+#if ARM_DRC
     FlushInvalidateCache(block->phys_offset, block->size * sizeof(drc_unit));
+#endif
 
 cleanup:
 #ifdef LITERAL_POOL
@@ -1353,11 +1355,14 @@ void drc_init(void) {
     inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
     trans_cache = linearAlloc(MAX_ARM_INST*sizeof(ir_inst));
 
-    hbHaxInit();
-
     cache_start = linearMemAlign(CACHE_SIZE, 0x1000);
-    ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7);
+#ifdef __3DS__
+    hbHaxInit();
     detectCitra(cache_start);
+#endif
+#if ARM_DRC
+    ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7);
+#endif
 
     *cache_start = -1;
     cache_pos = cache_start + 1;
@@ -1379,7 +1384,9 @@ void drc_exit(void) {
     linearFree(block_ptr_start);
     linearFree(trans_cache);
     linearFree(inst_cache);
+#ifdef __3DS__
     hbHaxExit();
+#endif
 }
 
 exec_block* drc_getNextBlockStruct(void) {
