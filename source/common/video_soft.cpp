@@ -153,7 +153,8 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
         uint16_t prev_out = 0;
         uint16_t prev_mask = 0xffff >> (16 - gy_shift);
 
-        for (int y = gy - (my & 7); likely(y < gy + h); y += 8) {
+        int y;
+        for (y = gy - (my & 7); likely(y < gy + h); y += 8) {
             if (unlikely(y >= 224)) break;
             bool use_over = over && ((mapx & (scx - 1)) != mapx || (mapy & (scy - 1)) != mapy);
             uint16_t tile = tilemap[use_over ? over_tile : (64 * 64) * current_map + 64 * ty + tx];
@@ -188,7 +189,7 @@ template<bool aligned, bool over> void render_normal_world(uint16_t *fb, WORLD *
             uint16_t *out_word = &column_out[y >> 3];
             *out_word = (*out_word & current_mask) | current_out;
         }
-        if (((gy & 7) + h) >= 8 && ((gy + h) & 7) != 0) {
+        if (y < 224 && ((gy & 7) + h) >= 8 && ((gy + h) & 7) != 0) {
             uint16_t current_out = prev_out;
             uint16_t current_mask = (-1 << gy_shift) | prev_mask;
             uint16_t *out_word = &column_out[(gy - (my & 7) + h) >> 3];
