@@ -1,7 +1,5 @@
 #include <GLES2/gl2.h>
 
-#include <SDL2/SDL.h>
-
 #include "video_hard.h"
 #include "vb_dsp.h"
 #include "v810_mem.h"
@@ -18,8 +16,6 @@ static u16 *screenTexSoftBuffer;
 GLuint sChar, sFinal, sAffine;
 
 static float palettes[8][3][3];
-
-extern SDL_Window *window;
 
 static GLuint build_shader(const char *vertex_source, const char *fragment_source) {
     GLint compiled, infoLen;
@@ -473,63 +469,65 @@ bool gpu_antiflicker_allowed(void) {
 }
 
 void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, 384*2, 224*2);
-    glScissor(0, 0, 384*2, 224*2);
-    glUseProgram(sFinal);
+    GLuint target_fbo = gl_get_target_fbo();
+    if (target_fbo != -1) {
+        glBindFramebuffer(GL_FRAMEBUFFER, gl_get_target_fbo());
+        glViewport(0, 0, 384*gl_get_output_scale(), 224*gl_get_output_scale());
+        glScissor(0, 0, 384*gl_get_output_scale(), 224*gl_get_output_scale());
+        glUseProgram(sFinal);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tVBOpt.RENDERMODE != RM_TOCPU ? screenTexHard[vip_displayed_fb] : transparentPixelTexture);
-    glUniform1i(glGetUniformLocation(sFinal, "sVip"), 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tVBOpt.RENDERMODE != RM_TOCPU ? screenTexHard[vip_displayed_fb] : transparentPixelTexture);
+        glUniform1i(glGetUniformLocation(sFinal, "sVip"), 0);
 
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, tDSPCACHE.DDSPDataState[displayed_fb] != GPU_CLEAR ? screenTexSoft[displayed_fb] : transparentPixelTexture);
-    glUniform1i(glGetUniformLocation(sFinal, "sSoft"), 1);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, tDSPCACHE.DDSPDataState[displayed_fb] != GPU_CLEAR ? screenTexSoft[displayed_fb] : transparentPixelTexture);
+        glUniform1i(glGetUniformLocation(sFinal, "sSoft"), 1);
 
-    glUniform1i(glGetUniformLocation(sFinal, "uVipOverSoft"), tVBOpt.VIP_OVER_SOFT);
+        glUniform1i(glGetUniformLocation(sFinal, "uVipOverSoft"), tVBOpt.VIP_OVER_SOFT);
 
-    float colors[4][3] = {
-        {0, 0, 0},
-        {vb_state->tVIPREG.BRTA / 128.0, 0, 0},
-        {vb_state->tVIPREG.BRTB / 128.0, 0, 0},
-        {(vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) / 128.0, 0, 0},
-    };
-    if (tVBOpt.ANAGLYPH) {
-        for (int c = 0; c < 4; c++) {
-            colors[c][1] = colors[c][2] = colors[c][0];
+        float colors[4][3] = {
+            {0, 0, 0},
+            {vb_state->tVIPREG.BRTA / 128.0, 0, 0},
+            {vb_state->tVIPREG.BRTB / 128.0, 0, 0},
+            {(vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) / 128.0, 0, 0},
+        };
+        if (tVBOpt.ANAGLYPH) {
+            for (int c = 0; c < 4; c++) {
+                colors[c][1] = colors[c][2] = colors[c][0];
+            }
+        }
+        glUniform3fv(glGetUniformLocation(sFinal, "uPalette"), 4, &colors[0][0]);
+
+        GLfloat vPositions[] = {
+            -1, -1,
+            1, -1,
+            -1, 1,
+            1, 1};
+        glVertexAttribPointer(glGetAttribLocation(sFinal, "aPosition"), 2, GL_FLOAT, GL_FALSE, 0, vPositions);
+        glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aPosition"));
+        GLfloat vTexCoords[] = {
+            224.0/512.0, 0,
+            224.0/512.0, 384.0/512.0,
+            0, 0,
+            0, 384.0/512.0};
+        glVertexAttribPointer(glGetAttribLocation(sFinal, "aTexCoord"), 2, GL_FLOAT, GL_FALSE, 0, vTexCoords);
+        glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aTexCoord"));
+
+        if (tVBOpt.ANAGLYPH) {
+            glColorMask(tVBOpt.ANAGLYPH_LEFT & 1, tVBOpt.ANAGLYPH_LEFT & 2, tVBOpt.ANAGLYPH_LEFT & 4, true);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            for (int i = 0; i < 4; i++) {
+                vTexCoords[i*2] += 0.5;
+            }
+            glColorMask(tVBOpt.ANAGLYPH_RIGHT & 1, tVBOpt.ANAGLYPH_RIGHT & 2, tVBOpt.ANAGLYPH_RIGHT & 4, true);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            glColorMask(true, true, true, true);
+        } else {
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         }
     }
-    glUniform3fv(glGetUniformLocation(sFinal, "uPalette"), 4, &colors[0][0]);
-
-    GLfloat vPositions[] = {
-        -1, -1,
-        1, -1,
-        -1, 1,
-        1, 1};
-    glVertexAttribPointer(glGetAttribLocation(sFinal, "aPosition"), 2, GL_FLOAT, GL_FALSE, 0, vPositions);
-    glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aPosition"));
-    GLfloat vTexCoords[] = {
-        224.0/512.0, 0,
-        224.0/512.0, 384.0/512.0,
-        0, 0,
-        0, 384.0/512.0};
-    glVertexAttribPointer(glGetAttribLocation(sFinal, "aTexCoord"), 2, GL_FLOAT, GL_FALSE, 0, vTexCoords);
-    glEnableVertexAttribArray(glGetAttribLocation(sFinal, "aTexCoord"));
-
-    if (tVBOpt.ANAGLYPH) {
-        glColorMask(tVBOpt.ANAGLYPH_LEFT & 1, tVBOpt.ANAGLYPH_LEFT & 2, tVBOpt.ANAGLYPH_LEFT & 4, true);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        for (int i = 0; i < 4; i++) {
-            vTexCoords[i*2] += 0.5;
-        }
-        glColorMask(tVBOpt.ANAGLYPH_RIGHT & 1, tVBOpt.ANAGLYPH_RIGHT & 2, tVBOpt.ANAGLYPH_RIGHT & 4, true);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        glColorMask(true, true, true, true);
-    } else {
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    }
-
-    SDL_GL_SwapWindow(window);
+    gl_flush();
 }
 
 void gpu_quit(void) {
