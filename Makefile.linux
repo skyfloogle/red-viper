@@ -2,7 +2,7 @@
 
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/common source/linux-test source/common/inih source/opengl
+SOURCES		:=	source/common source/linux-test source/common/inih source/gpu source/opengl
 INCLUDES	:=	include source/common/inih
 
 CFLAGS	:=	-Wall -Werror -Wno-unused-variable -Wno-format-truncation \

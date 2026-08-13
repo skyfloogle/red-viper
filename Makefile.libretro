@@ -2,7 +2,7 @@
 
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/common source/common/inih source/opengl source/libretro
+SOURCES		:=	source/common source/common/inih source/nogpu source/libretro
 INCLUDES	:=	include source/common/inih
 
 CFLAGS	:=	-Wall -Werror -Wno-unused-variable -Wno-format-truncation \
@@ -50,7 +50,7 @@ INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 CFLAGS	+=	$(INCLUDE)
 ASFLAGS	:=	-g $(ARCH)
-LIBS	:=	-lm -lminizip -lz -lSDL2 -lGLESv2
+LIBS	:=	-lm -lminizip -lz
 
 all: slowdebug
 release:	CFLAGS += -fvisibility=hidden -O3 -DDEBUGLEVEL=0
