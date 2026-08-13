@@ -100,6 +100,7 @@ void setDefaults(void) {
     tVBOpt.FASTFORWARD = 0;
     tVBOpt.FF_TOGGLE = 0;
     tVBOpt.RENDERMODE = RM_TOGPU;
+    tVBOpt.GPU_AVAILABLE = true;
     tVBOpt.PAUSE_RIGHT = 160;
     tVBOpt.TOUCH_AX = 250;
     tVBOpt.TOUCH_AY = 64;
