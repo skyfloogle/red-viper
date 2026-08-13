@@ -1470,13 +1470,13 @@ int drc_run(void) {
 void drc_loadSavedCache(void) {
     FILE* f;
     f = fopen("rom_block_map", "r");
-    fread(rom_block_map, sizeof(rom_block_map[0]), BLOCK_MAP_COUNT, f);
+    assert(fread(rom_block_map, sizeof(rom_block_map[0]), BLOCK_MAP_COUNT, f) == sizeof(rom_block_map[0]) * BLOCK_MAP_COUNT);
     fclose(f);
     f = fopen("rom_entry_map", "r");
-    fread(rom_entry_map, sizeof(rom_entry_map[0]), BLOCK_MAP_COUNT, f);
+    assert(fread(rom_entry_map, sizeof(rom_entry_map[0]), BLOCK_MAP_COUNT, f) == sizeof(rom_entry_map[0]) * BLOCK_MAP_COUNT);
     fclose(f);
     f = fopen("block_heap", "r");
-    fread(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
+    assert(fread(block_ptr_start, sizeof(exec_block), MAX_NUM_BLOCKS, f) == sizeof(exec_block) * MAX_NUM_BLOCKS);
     fclose(f);
 }
 
@@ -1493,7 +1493,7 @@ void drc_dumpCache(char* filename) {
     fwrite(rom_entry_map, sizeof(rom_entry_map[0]), BLOCK_MAP_COUNT, f);
     fclose(f);
     f = fopen("block_heap", "w");
-    fwrite(block_ptr_start, sizeof(exec_block*), MAX_NUM_BLOCKS, f);
+    fwrite(block_ptr_start, sizeof(exec_block), MAX_NUM_BLOCKS, f);
     fclose(f);
 }
 

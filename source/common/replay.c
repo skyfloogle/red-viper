@@ -85,15 +85,15 @@ void replay_load(char *fn) {
     current_replay = fopen(fn, "rb");
     if (!current_replay) return;
     uint32_t buf;
-    fread(&buf, 4, 1, current_replay);
+    if (fread(&buf, 4, 1, current_replay) != 4) goto err;
     if (buf != MAGIC) goto err;
-    fread(&buf, 4, 1, current_replay);
+    if (fread(&buf, 4, 1, current_replay) != 4) goto err;
     if (buf != REPLAY_VERSION) goto err;
-    fread(&buf, 4, 1, current_replay);
+    if (fread(&buf, 4, 1, current_replay) != 4) goto err;
     if (buf != tVBOpt.CRC32) goto err;
-    fread(&buf, 4, 1, current_replay);
+    if (fread(&buf, 4, 1, current_replay) != 4) goto err;
     if (buf > vb_state->V810_GAME_RAM.highaddr + 1 - vb_state->V810_GAME_RAM.lowaddr) goto err;
-    fread(vb_state->V810_GAME_RAM.pmemory, 1, buf, current_replay);
+    if (fread(vb_state->V810_GAME_RAM.pmemory, 1, buf, current_replay) != buf) goto err;
     return;
     err:
     fclose(current_replay);
@@ -107,8 +107,8 @@ bool replay_playing(void) {
 
 HWORD replay_read(void) {
     while (current_entry.count == 0) {
-        fread(&current_entry, 4, 1, current_replay);
-        if (feof(current_replay)) {
+        int read_count = fread(&current_entry, 4, 1, current_replay);
+        if (read_count != 4 || feof(current_replay)) {
             fclose(current_replay);
             current_replay = NULL;
             return 0;
