@@ -21,7 +21,7 @@ jobs:
         with:
           name: red-viper.3dsx
           path: red-viper.3dsx
-  
+
   test_interpreter:
     runs-on: ubuntu-latest
 
@@ -33,7 +33,7 @@ jobs:
           submodules: true
       - name: build Red Viper
         run: git config --global --add safe.directory $PWD && make -f Makefile.linux
-  
+
   test_dynarec:
     runs-on: ubuntu-latest
     container: debian
@@ -48,3 +48,15 @@ jobs:
           submodules: true
       - name: build Red Viper
         run: git config --global --add safe.directory $PWD && make -f Makefile.linux CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++
+
+  test_libretro:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install libminizip-dev -y
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: build Red Viper
+        run: git config --global --add safe.directory $PWD && make -f Makefile.libretro
