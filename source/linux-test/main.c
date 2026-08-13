@@ -1,4 +1,5 @@
 #include <SDL2/SDL_hints.h>
+#include <SDL2/SDL_video.h>
 #include <stdio.h>
 #include <unistd.h>
 #include "stdlib.h"
@@ -10,6 +11,7 @@
 #include "vb_dsp.h"
 #include "drc_core.h"
 #include "vb_sound.h"
+#include "video_hard.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
@@ -21,6 +23,18 @@
 
 SDL_Window *window;
 SDL_Surface *game_surface, *window_surface;
+
+GLuint gl_get_target_fbo() {
+    return 0;
+}
+
+int gl_get_output_scale() {
+    return 2;
+}
+
+void gl_flush() {
+    SDL_GL_SwapWindow(window);
+}
 
 void sdl_flush(bool displayed_fb, int player) {
     SDL_LockSurface(game_surface);

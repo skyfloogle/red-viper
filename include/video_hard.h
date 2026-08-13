@@ -69,3 +69,9 @@ void gpu_blend_default(void);
 bool gpu_antiflicker_allowed(void);
 void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb);
 void gpu_quit(void);
+
+#ifndef __3DS__
+int gl_get_output_scale(void);
+GLuint gl_get_target_fbo(void);
+void gl_flush(void);
+#endif
