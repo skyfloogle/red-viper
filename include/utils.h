@@ -5,12 +5,10 @@
 
 extern bool is_citra;
 
-s32 k_patchSVC(void);
-s32 k_flushCaches(void);
 void hbHaxInit(void);
 void detectCitra(void *code);
 void hbHaxExit(void);
 void FlushInvalidateCache(void *addr, size_t len);
-Result ReprotectMemory(void* addr, u32 pages, u32 mode);
+int32_t ReprotectMemory(void* addr, uint32_t pages, uint32_t mode);
 
 #endif // _UTILS_H
