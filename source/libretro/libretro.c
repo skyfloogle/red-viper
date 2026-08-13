@@ -229,9 +229,21 @@ unsigned retro_get_region() {
 }
 
 void *retro_get_memory_data(unsigned int id) {
+    switch (id) {
+        case RETRO_MEMORY_SAVE_RAM:
+            return vb_state->V810_GAME_RAM.pmemory;
+        case RETRO_MEMORY_SYSTEM_RAM:
+            return vb_state->V810_VB_RAM.pmemory;
+    }
     return NULL;
 }
 
 size_t retro_get_memory_size(unsigned int id) {
+    switch (id) {
+        case RETRO_MEMORY_SAVE_RAM:
+            return vb_state->V810_GAME_RAM.size;
+        case RETRO_MEMORY_SYSTEM_RAM:
+            return vb_state->V810_VB_RAM.size;
+    }
     return 0;
 }
