@@ -4,6 +4,7 @@ build
 *.3dsx
 *.cia
 *.elf
+*.so
 *.smdh
 *.lst
 *.vb
