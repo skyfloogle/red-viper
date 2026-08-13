@@ -5,6 +5,7 @@
 #include <string.h>
 #include <zlib.h>
 #include <3ds.h>
+#include "v810_cpu.h"
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vblink.h"
@@ -243,18 +244,7 @@ static void vblink_thread(void*) {
             strcpy(strrchr(tVBOpt.RAM_PATH, '.'), ".ram");
         }
 
-        V810_ROM1.size = size;
-        V810_ROM1.highaddr = 0x7000000 + size - 1;
-        // fill the rest of the address space with copies of the rom
-        for (int i = V810_ROM1.size; i < MAX_ROM_SIZE; i += V810_ROM1.size) {
-            memcpy(V810_ROM1.pmemory + i, V810_ROM1.pmemory, V810_ROM1.size);
-        }
-        is_sram = false;
-        gen_table();
-        tVBOpt.CRC32 = get_crc(size);
-        tVBOpt.GAME_ID = MAKE_GAMEID((char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)));
-        apply_patches();
-        v810_reset();
+        v810_load_finalize(size);
 
         vblink_progress = 100;
 

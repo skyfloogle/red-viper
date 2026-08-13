@@ -10,6 +10,7 @@
 #include "c2d/text.h"
 #include <citro2d.h>
 #include "drc_core.h"
+#include "v810_cpu.h"
 #include "vb_dsp.h"
 #include "vb_gui.h"
 #include "v810_mem.h"
@@ -1782,12 +1783,7 @@ static void multiplayer_dlplay(void) {
             }
             tVBOpt.RAM_PATH[0] = 0;
             game_running = true;
-            is_sram = false;
-            gen_table();
-            tVBOpt.CRC32 = get_crc(V810_ROM1.size);
-            tVBOpt.GAME_ID = MAKE_GAMEID((char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)));
-            apply_patches();
-            v810_reset();
+            v810_load_finalize(V810_ROM1.size);
 
             Packet *send_packet = new_packet_to_send();
             send_packet->packet_type = PACKET_LOADED;

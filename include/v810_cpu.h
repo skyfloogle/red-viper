@@ -112,6 +112,7 @@ void v810_exit(void);
 int v810_load_init(void);
 int v810_load_step(void);
 void v810_load_cancel(void);
+void v810_load_finalize(int rom_size);
 
 // Reset the registers
 void v810_reset(void);
