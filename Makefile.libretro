@@ -1,0 +1,81 @@
+# arm-linux makefile
+
+TARGET		:=	$(notdir $(CURDIR))
+BUILD		:=	build
+SOURCES		:=	source/common source/common/inih source/opengl source/libretro
+INCLUDES	:=	include source/common/inih
+
+CFLAGS	:=	-Wall -Werror -Wno-unused-variable -Wno-format-truncation \
+			-fomit-frame-pointer -ffast-math -fPIC -shared \
+			$(ARCH)
+
+# on 32-bit arm
+ifneq (,$(findstring armv,$(shell uname -m)))
+	SOURCES += source/arm
+	CFLAGS += -marm
+endif
+
+# on 64-bit arm with 32-bit userland
+ifeq ($(shell uname -m),aarch64)
+	ifeq ($(shell getconf LONG_BIT),32)
+		SOURCES += source/arm
+    	CFLAGS += -marm
+	endif
+endif
+
+# targeting 32-bit arm
+ifneq (,$(findstring arm,$(CC)))
+	SOURCES += source/arm
+	LIBDIRS += /usr/lib/arm-linux-gnueabihf
+	CFLAGS += -marm
+endif
+
+OUTPUT	:=	$(CURDIR)/$(TARGET)
+TOPDIR	:=	$(CURDIR)
+
+DEPSDIR	:=	$(CURDIR)/$(BUILD)
+VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
+			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+
+CFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+SFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+OFILES	:=	$(addprefix $(BUILD)/, \
+			$(addsuffix .o,$(BINFILES)) \
+			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o))
+
+INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			-I$(CURDIR)/$(BUILD)
+
+CFLAGS	+=	$(INCLUDE)
+ASFLAGS	:=	-g $(ARCH)
+LIBS	:=	-lm -lminizip -lz -lSDL2 -lGLESv2
+
+all: slowdebug
+release:	CFLAGS += -fvisibility=hidden -O3 -DDEBUGLEVEL=0
+testing:	CFLAGS += -O3 -DDEBUGLEVEL=1
+debug:		CFLAGS += -g -O0 -DDEBUGLEVEL=2
+slowdebug:	CFLAGS += -g -O0 -DDEBUGLEVEL=3
+
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11 -g
+
+release testing debug slowdebug: $(BUILD) $(OUTPUT).so
+
+$(BUILD)/%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: %.s
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD):
+	@[ -d $@ ] || mkdir -p $@
+
+$(OUTPUT).so: $(OFILES)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+
+clean:
+	@rm -rf build $(OUTPUT).so
