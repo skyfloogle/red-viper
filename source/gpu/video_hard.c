@@ -5,7 +5,7 @@
 #include "v810_cpu.h"
 #include "v810_mem.h"
 #include "vb_set.h"
-#include "video_hard.h"
+#include "video_hard_internal.h"
 
 AffineCacheEntry tileMapCache[AFFINE_CACHE_SIZE];
 

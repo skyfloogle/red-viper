@@ -32,14 +32,6 @@ bool sound_push_backend(int16_t *buf) {
     return true;
 }
 
-int gl_get_output_scale() {
-    return 1;
-}
-
-GLuint gl_get_target_fbo() {
-    return -1;
-}
-
 void gl_flush() {
     static uint32_t pixels[224][384];
     int displayed_fb = vb_state->tVIPREG.tDisplayedFB;

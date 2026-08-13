@@ -13,6 +13,7 @@
 #include "vb_sound.h"
 #include "video_hard.h"
 
+#include <GLES2/gl2.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
 

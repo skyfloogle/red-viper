@@ -1,7 +1,7 @@
 #include "vb_dsp.h"
 #include "v810_mem.h"
 #include "vb_set.h"
-#include "video_hard.h"
+#include "video_hard_internal.h"
 #include "n3ds_shaders.h"
 
 #include <tex3ds.h>

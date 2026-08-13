@@ -1,6 +1,6 @@
 #include <GLES2/gl2.h>
 
-#include "video_hard.h"
+#include "video_hard_internal.h"
 #include "vb_dsp.h"
 #include "v810_mem.h"
 #include "vb_set.h"
