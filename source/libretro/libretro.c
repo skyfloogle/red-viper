@@ -207,6 +207,7 @@ void retro_cheat_set(unsigned int index, bool enabled, const char *code) {
 }
 
 bool retro_load_game(const struct retro_game_info *game) {
+    if (game->data == NULL) return false;
     if (game->size < 0x10 || game->size > MAX_ROM_SIZE) return false;
     // require po2
     if ((game->size & (game->size - 1)) != 0) return false;
