@@ -62,9 +62,6 @@ void sdl_flush(bool displayed_fb, int player) {
     SDL_BlitScaled(game_surface, NULL, window_surface, &rect);
 }
 
-void video_init();
-void video_hard_render(int drawn_fb);
-
 int main(int argc, char* argv[]) {
     int err;
 
@@ -130,7 +127,7 @@ int main(int argc, char* argv[]) {
 
     sound_init();
 
-    video_init();
+    video_init(true);
 
     // make sure the window shows up if the game doesn't immediately enable drawing
     SDL_GL_SwapWindow(window);

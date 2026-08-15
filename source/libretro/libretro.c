@@ -125,7 +125,6 @@ void retro_set_input_state(retro_input_state_t cb) {
 void retro_init() {
     frontend_supports_bitmasks = environment_cb(RETRO_ENVIRONMENT_GET_INPUT_BITMASKS, NULL);
     setDefaults();
-    tVBOpt.GPU_AVAILABLE = false;
     v810_init();
     replay_init();
 
@@ -135,7 +134,7 @@ void retro_init() {
 
     clearCache();
     sound_init();
-    video_init();
+    video_init(false);
 }
 
 void retro_deinit() {}
