@@ -167,5 +167,5 @@ void video_flush(bool default_for_both) {
 }
 
 void video_quit(void) {
-	gpu_quit();
+	video_hard_quit();
 }

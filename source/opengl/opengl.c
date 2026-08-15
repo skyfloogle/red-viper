@@ -83,6 +83,10 @@ static GLuint build_shader(const char *name, bool is_es, const char *vertex_sour
         }
     }
 
+    // we no longer need these
+    glDeleteShader(vshader);
+    glDeleteShader(fshader);
+
     return program;
 }
 
@@ -232,6 +236,21 @@ void gpu_init(void) {
     glDepthMask(GL_FALSE);
 
     glEnable(0x8642); // GL_PROGRAM_POINT_SIZE - required for OpenGL Core; not available in ES headers
+}
+
+void gpu_quit(void) {
+    glDeleteProgram(sChar);
+    glDeleteProgram(sAffine);
+    glDeleteProgram(sFinal);
+    glDeleteTextures(1, &transparentPixelTexture);
+    glDeleteTextures(1, &tileTexture);
+    glDeleteTextures(2, screenTexHard);
+    glDeleteFramebuffers(2, screenTargetHard);
+    glDeleteTextures(2, screenTexSoft);
+    glDeleteTextures(1, &tileMapCache[0].tex);
+    glDeleteFramebuffers(1, &tileMapCache[0].target);
+    free(tileTextureBuffer);
+    free(screenTexSoftBuffer);
 }
 
 void gpu_clear_screen(bool outside_rendering) {
@@ -556,8 +575,4 @@ void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
         }
     }
     gl_flush();
-}
-
-void gpu_quit(void) {
-    // TODO
 }

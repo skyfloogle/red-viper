@@ -27,6 +27,13 @@ void video_hard_init(void) {
 	gpu_set_opaque(false);
 }
 
+void video_hard_quit() {
+    gpu_quit();
+    linearFree(vbuf);
+    linearFree(avbuf);
+    linearFree(rgba4_framebuffers);
+}
+
 // returns vertex count
 int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int umax, int vmin, int vmax) {
 	int vcount = 0;
