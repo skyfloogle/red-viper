@@ -2,7 +2,7 @@
 
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/common source/common/inih source/nogpu source/libretro
+SOURCES		:=	source/common source/common/inih source/libretro
 INCLUDES	:=	include source/common/inih
 
 CFLAGS	:=	-Wall -Werror -Wno-unused-variable -Wno-format-truncation \
@@ -30,6 +30,9 @@ ifneq (,$(findstring arm,$(CC)))
 	CFLAGS += -marm
 endif
 
+SOURCES += source/gpu source/opengl
+#SOURCES += source/nogpu
+
 OUTPUT	:=	$(CURDIR)/$(TARGET)
 TOPDIR	:=	$(CURDIR)
 
@@ -50,7 +53,7 @@ INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 CFLAGS	+=	$(INCLUDE)
 ASFLAGS	:=	-g $(ARCH)
-LIBS	:=	-lm -lminizip -lz
+LIBS	:=	-lm -lminizip -lz -lGL
 
 all: slowdebug
 release:	CFLAGS += -fvisibility=hidden -O3 -DDEBUGLEVEL=0

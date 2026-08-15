@@ -522,8 +522,10 @@ void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
     if (target_fbo != -1) {
         glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
         glViewport(0, 0, 384*gl_get_output_scale(), 224*gl_get_output_scale());
-        glScissor(0, 0, 384*gl_get_output_scale(), 224*gl_get_output_scale());
         glUseProgram(sFinal);
+
+        // In OpenGL 2.0, RetroArch doesn't reset the scissor mode.
+        gpu_set_scissor(false, 0, 0, 0, 0);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, tVBOpt.RENDERMODE != RM_TOCPU ? screenTexHard[vip_displayed_fb] : transparentPixelTexture);
@@ -532,6 +534,9 @@ void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, tDSPCACHE.DDSPDataState[displayed_fb] != GPU_CLEAR ? screenTexSoft[displayed_fb] : transparentPixelTexture);
         glUniform1i(glGetUniformLocation(sFinal, "sSoft"), 1);
+
+        // In OpenGL 2.0, RetroArch doesn't reset the active texture.
+        glActiveTexture(GL_TEXTURE0);
 
         glUniform1i(glGetUniformLocation(sFinal, "uVipOverSoft"), tVBOpt.VIP_OVER_SOFT);
 
