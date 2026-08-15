@@ -170,6 +170,7 @@ void retro_set_controller_port_device(unsigned int port, unsigned int device) {
 
 void retro_reset() {
     v810_reset();
+    sound_reset();
 }
 
 void retro_run() {
