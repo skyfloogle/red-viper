@@ -520,7 +520,7 @@ bool gpu_antiflicker_allowed(void) {
 void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb) {
     GLuint target_fbo = gl_get_target_fbo();
     if (target_fbo != -1) {
-        glBindFramebuffer(GL_FRAMEBUFFER, gl_get_target_fbo());
+        glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
         glViewport(0, 0, 384*gl_get_output_scale(), 224*gl_get_output_scale());
         glScissor(0, 0, 384*gl_get_output_scale(), 224*gl_get_output_scale());
         glUseProgram(sFinal);
