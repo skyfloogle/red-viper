@@ -12,6 +12,7 @@ void gpu_blend_default(void);
 bool gpu_antiflicker_allowed(void);
 void gpu_flush(bool default_for_both, int displayed_fb, int vip_displayed_fb);
 void gpu_quit(void);
+void video_hard_quit(void);
 
 #ifndef __3DS__
 void gl_flush(void);
