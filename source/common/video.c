@@ -104,7 +104,7 @@ void video_render(int displayed_fb, bool on_time) {
 
 	bool should_flush = antiflicker || (vb_state->tVIPREG.XPCTRL & XPEN) || tDSPCACHE.DDSPDataState[displayed_fb] == CPU_WROTE || tDSPCACHE.ColumnTableInvalid || tDSPCACHE.BrtPALMod;
 
-	if (tVBOpt.RENDERMODE == RM_TOGPU || ((tVBOpt.RENDERMODE == RM_TOCPU || tVBOpt.RENDERMODE == RM_CPUONLY))) {
+	if (tVBOpt.GPU_AVAILABLE && (tVBOpt.RENDERMODE == RM_TOGPU || tVBOpt.RENDERMODE == RM_TOCPU || tVBOpt.RENDERMODE == RM_CPUONLY)) {
 		// postproc (can be done early)
 		gpu_soft_to_texture(displayed_fb);
 	}
