@@ -7,11 +7,11 @@
 
 GLuint transparentPixelTexture;
 static GLuint tileTexture;
-static u16 *tileTextureBuffer;
+static u16 *tileTextureBuffer = NULL;
 GLuint screenTexHard[2];
 GLuint screenTargetHard[2];
 GLuint screenTexSoft[2];
-static u16 *screenTexSoftBuffer;
+static u16 *screenTexSoftBuffer = NULL;
 
 GLuint sChar, sFinal, sAffine;
 
@@ -196,7 +196,7 @@ void gpu_init(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
-    tileTextureBuffer = malloc(256 * 512 * sizeof(tileTextureBuffer[0]));
+    if (tileTextureBuffer == NULL) tileTextureBuffer = malloc(256 * 512 * sizeof(tileTextureBuffer[0]));
 
     glGenTextures(2, screenTexHard);
     glGenFramebuffers(2, screenTargetHard);
@@ -216,7 +216,7 @@ void gpu_init(void) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, NULL);
     }
-    screenTexSoftBuffer = malloc(512 * 512 * sizeof(screenTexSoftBuffer[0]));
+    if (screenTexSoftBuffer == NULL) screenTexSoftBuffer = malloc(512 * 512 * sizeof(screenTexSoftBuffer[0]));
 
     glGenTextures(1, &tileMapCache[0].tex);
     glGenFramebuffers(1, &tileMapCache[0].target);
@@ -250,7 +250,9 @@ void gpu_quit(void) {
     glDeleteTextures(1, &tileMapCache[0].tex);
     glDeleteFramebuffers(1, &tileMapCache[0].target);
     free(tileTextureBuffer);
+    tileTextureBuffer = NULL;
     free(screenTexSoftBuffer);
+    screenTexSoftBuffer = NULL;
 }
 
 void gpu_clear_screen(bool outside_rendering) {
