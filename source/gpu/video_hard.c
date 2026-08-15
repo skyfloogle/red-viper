@@ -150,6 +150,7 @@ int render_affine_cache(int mapid, vertex *vbuf, vertex *vcur, int umin, int uma
 }
 
 void video_hard_render(int drawn_fb) {
+    gpu_set_scissor(false, 0, 0, 0, 0);
 	gpu_target_screen(drawn_fb);
 
 	int start_eye = eye_count == 2 ? 0 : tVBOpt.DEFAULT_EYE;
