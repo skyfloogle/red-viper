@@ -17,7 +17,7 @@ GLuint sChar, sFinal, sAffine;
 
 static float palettes[8][3][3];
 
-static GLuint build_shader(const char *vertex_source, const char *fragment_source) {
+static GLuint build_shader(const char *name, const char *vertex_source, const char *fragment_source) {
     GLint compiled, infoLen;
 
     GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
@@ -25,7 +25,7 @@ static GLuint build_shader(const char *vertex_source, const char *fragment_sourc
     glCompileShader(vshader);
     glGetShaderiv(vshader, GL_COMPILE_STATUS, &compiled);
     if (!compiled) {
-        puts("Vertex shader failed to compile!");
+        printf("Vertex shader %s failed to compile!\n", name);
         glGetShaderiv(vshader, GL_INFO_LOG_LENGTH, &infoLen);
         if (infoLen > 0) {
             char *infoLog = malloc(infoLen);
@@ -40,7 +40,7 @@ static GLuint build_shader(const char *vertex_source, const char *fragment_sourc
     glCompileShader(fshader);
     glGetShaderiv(fshader, GL_COMPILE_STATUS, &compiled);
     if (!compiled) {
-        puts("Fragment shader failed to compile!");
+        printf("Fragment shader %s failed to compile!\n", name);
         glGetShaderiv(fshader, GL_INFO_LOG_LENGTH, &infoLen);
         if (infoLen > 0) {
             char *infoLog = malloc(infoLen);
@@ -57,7 +57,7 @@ static GLuint build_shader(const char *vertex_source, const char *fragment_sourc
     GLint linked;
     glGetProgramiv(program, GL_LINK_STATUS, &linked);
     if (!linked) {
-        puts("Shader program failed to link!");
+        printf("Shader program %s failed to link!\n", name);
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLen);
         if (infoLen > 0) {
             char *infoLog = malloc(infoLen);
@@ -72,6 +72,8 @@ static GLuint build_shader(const char *vertex_source, const char *fragment_sourc
 
 void gpu_init(void) {
     sChar = build_shader(
+        "sChar",
+
         "uniform vec2 uOffset;\n"
         "uniform mat3 uPalette[8];\n"
         "attribute vec2 aPosition;\n"
@@ -100,6 +102,8 @@ void gpu_init(void) {
     );
 
     sAffine = build_shader(
+        "sAffine",
+
         "attribute vec4 aParams;\n"
         "attribute vec2 aOffset;\n"
         "varying vec2 vTexCoord;\n"
@@ -133,6 +137,8 @@ void gpu_init(void) {
     );
 
     sFinal = build_shader(
+        "sFinal",
+
         "attribute vec4 aPosition;\n"
         "attribute vec2 aTexCoord;\n"
         "varying vec2 vTexCoord;\n"
