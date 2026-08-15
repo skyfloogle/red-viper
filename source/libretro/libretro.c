@@ -5,7 +5,7 @@
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_sound.h"
-#include "video_hard.h"
+#include "video_hard_internal.h"
 #include "replay.h"
 
 static retro_environment_t environment_cb;
@@ -32,32 +32,79 @@ bool sound_push_backend(int16_t *buf) {
     return true;
 }
 
+GLuint gl_get_target_fbo() {
+    return hw_context.get_current_framebuffer != NULL ? hw_context.get_current_framebuffer() : -1;
+}
+
+int gl_get_output_scale() {
+    return 1;
+}
+
 void gl_flush() {
-    static uint32_t pixels[224][384];
-    int displayed_fb = vb_state->tVIPREG.tDisplayedFB;
-    int src_eye = 0;
+    if (!tVBOpt.GPU_AVAILABLE) {
+        static uint32_t pixels[224][384];
+        int displayed_fb = vb_state->tVIPREG.tDisplayedFB;
+        int src_eye = 0;
 
-    u32 *inbuf = (u32*)(vb_state->V810_DISPLAY_RAM.off + 0x8000 * displayed_fb + 0x10000 * src_eye);
+        u32 *inbuf = (u32*)(vb_state->V810_DISPLAY_RAM.off + 0x8000 * displayed_fb + 0x10000 * src_eye);
 
-	u32 colors[4] = {
-		__builtin_bswap32(video_get_colour(0, 0)) >> 8,
-		__builtin_bswap32(video_get_colour(1, vb_state->tVIPREG.BRTA)) >> 8,
-		__builtin_bswap32(video_get_colour(2, vb_state->tVIPREG.BRTB)) >> 8,
-		__builtin_bswap32(video_get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC))) >> 8,
-	};
+    	u32 colors[4] = {
+    		__builtin_bswap32(video_get_colour(0, 0)) >> 8,
+    		__builtin_bswap32(video_get_colour(1, vb_state->tVIPREG.BRTA)) >> 8,
+    		__builtin_bswap32(video_get_colour(2, vb_state->tVIPREG.BRTB)) >> 8,
+    		__builtin_bswap32(video_get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC))) >> 8,
+    	};
 
-    for (int x = 0; x < 384; x++) {
-        for (int ty = 0; ty < 224 / 16; ty++) {
-            u32 intile = *inbuf++;
-            for (int p = 0; p < 16; p++) {
-                pixels[ty * 16 + p][x] = colors[intile & 3];
-                intile >>= 2;
+        for (int x = 0; x < 384; x++) {
+            for (int ty = 0; ty < 224 / 16; ty++) {
+                u32 intile = *inbuf++;
+                for (int p = 0; p < 16; p++) {
+                    pixels[ty * 16 + p][x] = colors[intile & 3];
+                    intile >>= 2;
+                }
             }
+            // inbuf is 256 tall = 32 extra pixels
+            inbuf += 2;
         }
-        // inbuf is 256 tall = 32 extra pixels
-        inbuf += 2;
+
+        video_refresh_cb(pixels, 384, 224, 384*4);
+    } else {
+        video_refresh_cb(RETRO_HW_FRAME_BUFFER_VALID, 384, 224, 0);
     }
-    video_refresh_cb(pixels, 384, 224, 384*4);
+}
+
+static void context_reset() {
+    video_hard_init();
+    clearCache();
+}
+
+static void context_destroy() {
+    video_hard_quit();
+}
+
+static void init_hw_context(void) {
+    hw_context.context_reset = context_reset;
+    hw_context.context_destroy = context_destroy;
+    hw_context.bottom_left_origin = true;
+    hw_context.version_major = 3;
+    hw_context.version_minor = 0;
+
+    enum retro_hw_context_type preferred = RETRO_HW_CONTEXT_NONE;
+    environment_cb(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER, &preferred);
+    hw_context.context_type = preferred;
+    if (preferred >= RETRO_HW_CONTEXT_OPENGL && preferred <= RETRO_HW_CONTEXT_OPENGLES_VERSION) {
+        if (environment_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_context)) return;
+    }
+    hw_context.context_type = RETRO_HW_CONTEXT_OPENGLES2;
+    if (environment_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_context)) return;
+    hw_context.context_type = RETRO_HW_CONTEXT_OPENGLES3;
+    if (environment_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_context)) return;
+    hw_context.context_type = RETRO_HW_CONTEXT_OPENGLES_VERSION;
+    if (environment_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_context)) return;
+    hw_context.context_type = RETRO_HW_CONTEXT_OPENGL;
+    if (environment_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_context)) return;
+    hw_context.context_type = RETRO_HW_CONTEXT_OPENGL_CORE;
+    if (environment_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_context)) return;
 }
 
 static void update_inputs(void) {
@@ -213,6 +260,7 @@ bool retro_load_game(const struct retro_game_info *game) {
     if ((game->size & (game->size - 1)) != 0) return false;
     memcpy(V810_ROM1.pmemory, game->data, game->size);
     v810_load_finalize(game->size);
+    init_hw_context();
     return true;
 }
 
