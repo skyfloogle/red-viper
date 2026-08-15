@@ -76,7 +76,7 @@ int main(void) {
 
     consoleDebugInit(debugDevice_3DMOO);
 
-    video_init();
+    video_init(true);
     input_init();
     guiInit();
 

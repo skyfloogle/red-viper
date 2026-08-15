@@ -7,8 +7,8 @@ VB_DSPCACHE tDSPCACHE; // Array of Display Cache info...
 
 int eye_count = 2;
 
-void video_init(void) {
-    video_hard_init();
+void video_init(bool also_gpu) {
+    if (also_gpu) video_hard_init();
 	setup_brightness_lut();
 }
 
@@ -167,5 +167,5 @@ void video_flush(bool default_for_both) {
 }
 
 void video_quit(void) {
-	video_hard_quit();
+	if (tVBOpt.GPU_AVAILABLE) video_hard_quit();
 }

@@ -16,6 +16,7 @@ uint16_t *rgba4_framebuffers;
 
 
 void video_hard_init(void) {
+    tVBOpt.GPU_AVAILABLE = true;
 	gpu_init();
 	gpu_blend_default();
 
