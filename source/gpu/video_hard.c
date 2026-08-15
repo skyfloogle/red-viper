@@ -29,10 +29,13 @@ void video_hard_init(void) {
 }
 
 void video_hard_quit() {
-    gpu_quit();
-    linearFree(vbuf);
-    linearFree(avbuf);
-    linearFree(rgba4_framebuffers);
+    if (tVBOpt.GPU_AVAILABLE) {
+        tVBOpt.GPU_AVAILABLE = false;
+        gpu_quit();
+        linearFree(vbuf);
+        linearFree(avbuf);
+        linearFree(rgba4_framebuffers);
+    }
 }
 
 // returns vertex count
