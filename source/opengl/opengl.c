@@ -17,11 +17,26 @@ GLuint sChar, sFinal, sAffine;
 
 static float palettes[8][3][3];
 
-static GLuint build_shader(const char *name, const char *vertex_source, const char *fragment_source) {
+static GLuint build_shader(const char *name, bool is_es, const char *vertex_source, const char *fragment_source) {
     GLint compiled, infoLen;
 
+    const char *header;
+    if (is_es) {
+        header =
+            "#version 100\n"
+            "#define FIXH(x) (!(x))\n";
+    } else {
+        header =
+            "#version 120\n"
+            "#define FIXH(x) (x)\n"
+            "#define lowp\n"
+            "#define mediump\n"
+            "#define highp\n";
+    }
+
     GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vshader, 1, &vertex_source, NULL);
+    const char *vertex_sources[2] = {header, vertex_source};
+    glShaderSource(vshader, 2, vertex_sources, NULL);
     glCompileShader(vshader);
     glGetShaderiv(vshader, GL_COMPILE_STATUS, &compiled);
     if (!compiled) {
@@ -36,7 +51,8 @@ static GLuint build_shader(const char *name, const char *vertex_source, const ch
     }
 
     GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fshader, 1, &fragment_source, NULL);
+    const char *fragment_sources[2] = {header, fragment_source};
+    glShaderSource(fshader, 2, fragment_sources, NULL);
     glCompileShader(fshader);
     glGetShaderiv(fshader, GL_COMPILE_STATUS, &compiled);
     if (!compiled) {
@@ -71,8 +87,11 @@ static GLuint build_shader(const char *name, const char *vertex_source, const ch
 }
 
 void gpu_init(void) {
+    bool is_es = strstr((char*)glGetString(GL_VERSION), "OpenGL ES") != NULL;
+
     sChar = build_shader(
         "sChar",
+        is_es,
 
         "uniform vec2 uOffset;\n"
         "uniform mat3 uPalette[8];\n"
@@ -93,9 +112,9 @@ void gpu_init(void) {
         "varying mediump mat3 vPalette;\n"
         "void main() {\n"\
         "   mediump vec2 tileCoord = gl_PointCoord.yx;\n"
-        "   if (vParams.z >= 2.0) tileCoord.x = 1.0 - tileCoord.x;\n"
+        "   if (FIXH(vParams.z >= 2.0)) tileCoord.x = 1.0 - tileCoord.x;\n"
         "   if (vParams.z == 1.0 || vParams.z == 3.0) tileCoord.y = 1.0 - tileCoord.y;\n"
-        "   mediump vec2 realCoord = (vParams.xy + vec2(1.0 - tileCoord.x, tileCoord.y)) / vec2(256.0 / 8.0, 512.0 / 8.0);\n"
+        "   mediump vec2 realCoord = (vParams.xy + vec2(tileCoord.x, tileCoord.y)) / vec2(256.0 / 8.0, 512.0 / 8.0);\n"
         "   lowp vec4 color = texture2D(sTex, realCoord);\n"
         "   gl_FragColor = vec4(vPalette * color.xyz, color.w);\n"
         "}\n"
@@ -103,6 +122,7 @@ void gpu_init(void) {
 
     sAffine = build_shader(
         "sAffine",
+        is_es,
 
         "attribute vec4 aParams;\n"
         "attribute vec2 aOffset;\n"
@@ -138,6 +158,7 @@ void gpu_init(void) {
 
     sFinal = build_shader(
         "sFinal",
+        is_es,
 
         "attribute vec4 aPosition;\n"
         "attribute vec2 aTexCoord;\n"
@@ -165,7 +186,6 @@ void gpu_init(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     u16 pixel = 0;
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, &pixel);
-
 
     glGenTextures(1, &tileTexture);
     glBindTexture(GL_TEXTURE_2D, tileTexture);
@@ -210,6 +230,8 @@ void gpu_init(void) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tileMapCache[0].tex, 0);
 
     glDepthMask(GL_FALSE);
+
+    glEnable(0x8642); // GL_PROGRAM_POINT_SIZE - required for OpenGL Core; not available in ES headers
 }
 
 void gpu_clear_screen(bool outside_rendering) {
