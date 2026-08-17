@@ -55,7 +55,15 @@ void gl_flush() {
     		__builtin_bswap32(video_get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC))) >> 8,
     	};
 
+        u8 *column_table = (u8*)vb_state->V810_DISPLAY_RAM.off + 0x3dc01;
+
         for (int x = 0; x < 384; x++) {
+            if (unlikely(x % 4 == 0)) {
+                int multiplier = 1 + column_table[src_eye * 512 + (255 - x / 4) * 2];
+                colors[1] = __builtin_bswap32(video_get_colour(1, vb_state->tVIPREG.BRTA * multiplier)) >> 8;
+				colors[2] = __builtin_bswap32(video_get_colour(2, vb_state->tVIPREG.BRTB * multiplier)) >> 8;
+				colors[3] = __builtin_bswap32(video_get_colour(3, (vb_state->tVIPREG.BRTA + vb_state->tVIPREG.BRTB + vb_state->tVIPREG.BRTC) * multiplier)) >> 8;
+            }
             for (int ty = 0; ty < 224 / 16; ty++) {
                 u32 intile = *inbuf++;
                 for (int p = 0; p < 16; p++) {
