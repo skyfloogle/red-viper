@@ -54,7 +54,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: sudo apt update && sudo apt install libminizip-dev libgl-dev -y
+        run: sudo apt update && sudo apt install libminizip-dev libgl-dev libgles-dev -y
       - uses: actions/checkout@v6
         with:
           submodules: true
