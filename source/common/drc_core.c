@@ -389,7 +389,7 @@ void baseball2_scaling(WORD in_img, WORD out_img, WORD scale_fixed) {
 }
 
 void baseball2_sort(void) {
-    u8 ids[13];
+    u8 ids[19];
     typedef struct {
         WORD padding1;
         HWORD key;
@@ -410,7 +410,7 @@ void baseball2_sort(void) {
         ids[j] = x;
     }
     for (int i = 0; i < sizeof(ids); i++) {
-        memcpy(&out[i], &originals[ids[i]], sizeof(out[i]));
+        if (i != ids[i]) memcpy(&out[i], &originals[ids[i]], sizeof(out[i]));
     }
 }
 
