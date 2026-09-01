@@ -442,11 +442,11 @@ void baseball2_scaling(WORD in_img, WORD out_img, WORD scale_fixed) {
 }
 
 void baseball2_sort(void) {
-    u8 ids[13];
+    u8 ids[19];
     typedef struct {
         WORD padding1;
         HWORD key;
-        HWORD padding2[sizeof(ids)];
+        HWORD padding2[13];
     } SortableItem;
     SortableItem *out = (SortableItem*)(vb_state->V810_VB_RAM.pmemory + 0x93a0);
     SortableItem originals[sizeof(ids)];
@@ -463,7 +463,7 @@ void baseball2_sort(void) {
         ids[j] = x;
     }
     for (int i = 0; i < sizeof(ids); i++) {
-        memcpy(&out[i], &originals[ids[i]], sizeof(out[i]));
+        if (i != ids[i]) memcpy(&out[i], &originals[ids[i]], sizeof(out[i]));
     }
 }
 
