@@ -1358,10 +1358,12 @@ void drc_init(void) {
     cache_start = linearMemAlign(CACHE_SIZE, 0x1000);
 #ifdef __3DS__
     hbHaxInit();
-    detectCitra(cache_start);
 #endif
 #if ARM_DRC
     ReprotectMemory(cache_start, CACHE_SIZE/0x1000, 0x7);
+#endif
+#ifdef __3DS__
+    detectCitra(cache_start);
 #endif
 
     *cache_start = -1;
