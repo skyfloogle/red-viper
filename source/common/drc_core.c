@@ -988,7 +988,7 @@ static int drc_translateBlock(void) {
                     if (is_jack_bros && !chcw_load_seen) {
                         // Ensure the cycle count is committed, so that we
                         // actually delay for the right amount of time.
-                        drc_bake_bowling_nikochan_hack(&inst_cache[i], cycles);
+                        drc_bake_force_interrupt_check(&inst_cache[i], cycles);
                         cycles = 0;
                     }
                 }
@@ -1239,7 +1239,7 @@ static int drc_translateBlock(void) {
                 // if the timer is not zero at this point.
                 // Therefore, we need to handle the interrupt to update it,
                 // so that it doesn't accidentally run an extra time.
-                drc_bake_bowling_nikochan_hack(&inst_cache[i], cycles);
+                drc_bake_force_interrupt_check(&inst_cache[i], cycles);
                 cycles = 0;
             } else if (is_marios_tennis_multiplayer && inst_cache[i + 1].PC == 0x07010442) {
                 // Mario's Tennis multiplayer hack:

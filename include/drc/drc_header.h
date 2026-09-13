@@ -24,7 +24,7 @@ static inline void drc_bake_ballsort(void);
 static inline void drc_bake_ballscale_start(void);
 static inline void drc_bake_ballscale_end(void);
 static inline void drc_bake_vertical_force_hack(void);
-static inline void drc_bake_bowling_nikochan_hack(v810_instruction *ins, unsigned cycles);
+static inline void drc_bake_force_interrupt_check(v810_instruction *ins, unsigned cycles);
 
 static inline void drc_bake_reti(void);
 static inline void drc_bake_nop(void);

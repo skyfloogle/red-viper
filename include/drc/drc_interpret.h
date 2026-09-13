@@ -327,7 +327,7 @@ BEGIN_INSTR(bowling_nikochan_hack)
         next_inst = NULL;
     }
 END_INSTR()
-void drc_bake_bowling_nikochan_hack(v810_instruction *ins, unsigned int cycles) {
+void drc_bake_force_interrupt_check(v810_instruction *ins, unsigned int cycles) {
     inst_ptr->func = drc_interpret_add_cycles_runtime;
     inst_ptr->arg.full = cycles;
     inst_ptr++;
