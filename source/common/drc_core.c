@@ -985,6 +985,12 @@ static int drc_translateBlock(void) {
                         drc_bake_add_cycles(&cycles);
                     }
                     drc_bake_branch(&inst_cache[i]);
+                    if (is_jack_bros && !chcw_load_seen) {
+                        // Ensure the cycle count is committed, so that we
+                        // actually delay for the right amount of time.
+                        drc_bake_bowling_nikochan_hack(&inst_cache[i], cycles);
+                        cycles = 0;
+                    }
                 }
                 // branch not taken, so it only took 1 cycle
                 drc_bake_subtract_cycles_runtime(2);
