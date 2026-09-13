@@ -42,8 +42,9 @@ static int get_readwrite_cycles(WORD addr) {
 }
 
 //The Instructions
-void ins_err(int arg1, int arg2) { //Mode1/2
+int ins_err(WORD arg1, WORD arg2, WORD arg3, SWORD arg4) { //Mode1/2
     //dtprintf(6,ferr,"\nInvalid code! err");
+    return 0;
 }
 
 //Bitstring routines, wrapper functions for bitstring instructions!
@@ -83,9 +84,10 @@ void set_bitstr(WORD *str, WORD dst, WORD dstoff, WORD len) {
 }
 
 //Bitstring SubOpcodes
-bool ins_sch0bsu (WORD src, WORD skipped, WORD len, WORD offs) {
+int ins_sch0bsu (WORD src, WORD skipped, WORD len, SWORD offs) {
     #define FLIP(x) ~(x)
     bool searching = true;
+    offs &= 31;
     if (offs != 0 && len > 32 - offs) {
         WORD data = mem_rword(src) & ~((1 << offs) - 1);
         data = FLIP(data) & ~((1 << offs) - 1);
@@ -159,9 +161,10 @@ bool ins_sch0bsu (WORD src, WORD skipped, WORD len, WORD offs) {
     return !searching;
 }
 
-bool ins_sch0bsd (WORD src, WORD skipped, WORD len, WORD offs) {
+int ins_sch0bsd (WORD src, WORD skipped, WORD len, SWORD offs) {
     #define FLIP(x) ~(x)
     bool searching = true;
+    offs &= 31;
     if (offs != 31 && len > offs) {
         WORD data = mem_rword(src) & ((1 << (offs + 1)) - 1);
         data = FLIP(data) & ((1 << (offs + 1)) - 1);
@@ -248,9 +251,10 @@ bool ins_sch0bsd (WORD src, WORD skipped, WORD len, WORD offs) {
     return !searching;
 }
 
-bool ins_sch1bsu (WORD src, WORD skipped, WORD len, WORD offs) {
+int ins_sch1bsu (WORD src, WORD skipped, WORD len, SWORD offs) {
     #define FLIP(x) (x)
     bool searching = true;
+    offs &= 31;
     if (offs != 0 && len > 32 - offs) {
         WORD data = mem_rword(src) & ~((1 << offs) - 1);
         data = FLIP(data) & ~((1 << offs) - 1);
@@ -324,9 +328,10 @@ bool ins_sch1bsu (WORD src, WORD skipped, WORD len, WORD offs) {
     return !searching;
 }
 
-bool ins_sch1bsd (WORD src, WORD skipped, WORD len, WORD offs) {
+int ins_sch1bsd (WORD src, WORD skipped, WORD len, SWORD offs) {
     #define FLIP(x) (x)
     bool searching = true;
+    offs &= 31;
     if (offs != 31 && len > offs) {
         WORD data = mem_rword(src) & ((1 << (offs + 1)) - 1);
         data = FLIP(data) & ((1 << (offs + 1)) - 1);

@@ -58,108 +58,107 @@ static BYTE am_size_table[] = {
 
 typedef struct {
     int addr_mode;               // Addressing mode
-    char * opname;               // Optcode name (string)
-    void (*func)(int, int, int); //pointer to handler func =)
+    const char * opname;         // Optcode name (string)
 } operation;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
 static operation optable[80] = {
-    { AM_I,       "mov  ", /*&(ins_mov)  */ &(ins_err) },           // 0x00
-    { AM_I,       "add  ", /*&(ins_add)  */ &(ins_err) },           // 0x01
-    { AM_I,       "sub  ", /*&(ins_sub)  */ &(ins_err) },           // 0x02
-    { AM_I,       "cmp  ", /*&(ins_cmp)  */ &(ins_err) },           // 0x03
-    { AM_I,       "shl  ", /*&(ins_shl)  */ &(ins_err) },           // 0x04
-    { AM_I,       "shr  ", /*&(ins_shr)  */ &(ins_err) },           // 0x05
-    { AM_I,       "jmp  ", /*&(ins_jmp)  */ &(ins_err) },           // 0x06
-    { AM_I,       "sar  ", /*&(ins_sar)  */ &(ins_err) },           // 0x07
-    { AM_I,       "mul  ", /*&(ins_mul)  */ &(ins_err) },           // 0x08
-    { AM_I,       "div  ", /*&(ins_div)  */ &(ins_err) },           // 0x09
-    { AM_I,       "mulu ", /*&(ins_mulu) */ &(ins_err) },           // 0x0A
-    { AM_I,       "divu ", /*&(ins_divu) */ &(ins_err) },           // 0x0B
-    { AM_I,       "or   ", /*&(ins_or)   */ &(ins_err) },           // 0x0C
-    { AM_I,       "and  ", /*&(ins_and)  */ &(ins_err) },           // 0x0D
-    { AM_I,       "xor  ", /*&(ins_xor)  */ &(ins_err) },           // 0x0E
-    { AM_I,       "not  ", /*&(ins_not)  */ &(ins_err) },           // 0x0F
+    { AM_I,       "mov  " },           // 0x00
+    { AM_I,       "add  " },           // 0x01
+    { AM_I,       "sub  " },           // 0x02
+    { AM_I,       "cmp  " },           // 0x03
+    { AM_I,       "shl  " },           // 0x04
+    { AM_I,       "shr  " },           // 0x05
+    { AM_I,       "jmp  " },           // 0x06
+    { AM_I,       "sar  " },           // 0x07
+    { AM_I,       "mul  " },           // 0x08
+    { AM_I,       "div  " },           // 0x09
+    { AM_I,       "mulu " },           // 0x0A
+    { AM_I,       "divu " },           // 0x0B
+    { AM_I,       "or   " },           // 0x0C
+    { AM_I,       "and  " },           // 0x0D
+    { AM_I,       "xor  " },           // 0x0E
+    { AM_I,       "not  " },           // 0x0F
 
-    { AM_II,      "mov  ", /*&(ins_mov_i)*/ &(ins_err) },           // 0x10  // Imediate
-    { AM_II,      "add  ", /*&(ins_add_i)*/ &(ins_err) },           // 0x11
-    { AM_II,      "setf ", /*&(ins_setf) */ &(ins_err) },           // 0x12
-    { AM_II,      "cmp  ", /*&(ins_cmp_i)*/ &(ins_err) },           // 0x13
-    { AM_II,      "shl  ", /*&(ins_shl_i)*/ &(ins_err) },           // 0x14
-    { AM_II,      "shr  ", /*&(ins_shr_i)*/ &(ins_err) },           // 0x15
-    { AM_II,      "cli  ", /*&(ins_ei)   */ &(ins_err) },           // 0x16
-    { AM_II,      "sar  ", /*&(ins_sar_i)*/ &(ins_err) },           // 0x17
-    { AM_II,      "trap ", /*&(ins_trap) */ &(ins_err) },           // 0x18
+    { AM_II,      "mov  " },           // 0x10  // Imediate
+    { AM_II,      "add  " },           // 0x11
+    { AM_II,      "setf " },           // 0x12
+    { AM_II,      "cmp  " },           // 0x13
+    { AM_II,      "shl  " },           // 0x14
+    { AM_II,      "shr  " },           // 0x15
+    { AM_II,      "cli  " },           // 0x16
+    { AM_II,      "sar  " },           // 0x17
+    { AM_II,      "trap " },           // 0x18
 
-    { AM_IX,      "reti ", /*&(ins_reti) */ &(ins_err) },           // 0x19  //BRKRETI
-    { AM_IX,      "halt ", /*&(ins_halt) */ &(ins_err) },           // 0x1A  //STBY
+    { AM_IX,      "reti " },           // 0x19  //BRKRETI
+    { AM_IX,      "halt " },           // 0x1A  //STBY
 
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x1B  // Unknown
-    { AM_II,      "ldsr ", /*&(ins_ldsr) */ &(ins_err) },           // 0x1C
-    { AM_II,      "stsr ", /*&(ins_stsr) */ &(ins_err) },           // 0x1D
-    { AM_II,      "sei  ", /*&(ins_di)   */ &(ins_err) },           // 0x1E
-    {AM_BSTR,     "BSTR ", /*&(ins_bstr) */ &(ins_err) },           // 0x1F  // Special Bit String Instructions
+    {AM_UDEF,     "???  " },           // 0x1B  // Unknown
+    { AM_II,      "ldsr " },           // 0x1C
+    { AM_II,      "stsr " },           // 0x1D
+    { AM_II,      "sei  " },           // 0x1E
+    {AM_BSTR,     "BSTR " },           // 0x1F  // Special Bit String Instructions
 
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x20  // Unknown   // This is a fudg on our part
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x21  // Unknown   // We have 6 and 7 bit instructions
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x22  // Unknown   // this is filled in by the Conditional Branch Instructions
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x23  // Unknown
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x24  // Unknown
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x25  // Unknown
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x26  // Unknown
-    {AM_UDEF,     "???  ", /*&(ins_err)  */ &(ins_err) },           // 0x27  // Unknown
+    {AM_UDEF,     "???  " },           // 0x20  // Unknown   // This is a fudg on our part
+    {AM_UDEF,     "???  " },           // 0x21  // Unknown   // We have 6 and 7 bit instructions
+    {AM_UDEF,     "???  " },           // 0x22  // Unknown   // this is filled in by the Conditional Branch Instructions
+    {AM_UDEF,     "???  " },           // 0x23  // Unknown
+    {AM_UDEF,     "???  " },           // 0x24  // Unknown
+    {AM_UDEF,     "???  " },           // 0x25  // Unknown
+    {AM_UDEF,     "???  " },           // 0x26  // Unknown
+    {AM_UDEF,     "???  " },           // 0x27  // Unknown
 
-    { AM_V,       "movea", /*&(ins_movea)*/ &(ins_err) },           // 0x28
-    { AM_V,       "addi ", /*&(ins_addi) */ &(ins_err) },           // 0x29
-    { AM_IV,      "jr   ", /*&(ins_jr)   */ &(ins_err) },           // 0x2A
-    { AM_IV,      "jal  ", /*&(ins_jal)  */ &(ins_err) },           // 0x2B
-    { AM_V,       "ori  ", /*&(ins_ori)  */ &(ins_err) },           // 0x2C
-    { AM_V,       "andi ", /*&(ins_andi) */ &(ins_err) },           // 0x2D
-    { AM_V,       "xori ", /*&(ins_xori) */ &(ins_err) },           // 0x2E
-    { AM_V,       "movhi", /*&(ins_movhi)*/ &(ins_err) },           // 0x2F
+    { AM_V,       "movea" },           // 0x28
+    { AM_V,       "addi " },           // 0x29
+    { AM_IV,      "jr   " },           // 0x2A
+    { AM_IV,      "jal  " },           // 0x2B
+    { AM_V,       "ori  " },           // 0x2C
+    { AM_V,       "andi " },           // 0x2D
+    { AM_V,       "xori " },           // 0x2E
+    { AM_V,       "movhi" },           // 0x2F
 
-    { AM_VIa,     "ld.b ", /*&(ins_ld_b) */ &(ins_err) },           // 0x30
-    { AM_VIa,     "ld.h ", /*&(ins_ld_h) */ &(ins_err) },           // 0x31
-    {AM_UDEF,     "muli ", /*&(ins_muli) */ &(ins_err) },           // 0x32  // Unknown
-    { AM_VIa,     "ld.w ", /*&(ins_ld_w) */ &(ins_err) },           // 0x33
-    { AM_VIb,     "st.b ", /*&(ins_st_b) */ &(ins_err) },           // 0x34
-    { AM_VIb,     "st.h ", /*&(ins_st_h) */ &(ins_err) },           // 0x35
-    {AM_UDEF,     "maci ", /*&(ins_maci) */ &(ins_err) },           // 0x36  // Unknown
-    { AM_VIb,     "st.w ", /*&(ins_st_w) */ &(ins_err) },           // 0x37
-    { AM_VIa,     "in.b ", /*&(ins_in_b) */ &(ins_err) },           // 0x38
-    { AM_VIa,     "in.h ", /*&(ins_in_h) */ &(ins_err) },           // 0x39
-    { AM_VIa,     "caxi ", /*&(ins_caxi) */ &(ins_err) },           // 0x3A
-    { AM_VIa,     "in.w ", /*&(ins_in_w) */ &(ins_err) },           // 0x3B
-    { AM_VIb,     "out.b", /*&(ins_out_b)*/ &(ins_err) },           // 0x3C
-    { AM_VIb,     "out.h", /*&(ins_out_h)*/ &(ins_err) },           // 0x3D
-    { AM_FPP,     "FPP  ", /*&(ins_fpp)  */ &(ins_err) },           // 0x3E  //Floating Point Instruction, Special Case
-    { AM_VIb,     "out.w", /*&(ins_out_w)*/ &(ins_err) },           // 0x3F
+    { AM_VIa,     "ld.b " },           // 0x30
+    { AM_VIa,     "ld.h " },           // 0x31
+    {AM_UDEF,     "muli " },           // 0x32  // Unknown
+    { AM_VIa,     "ld.w " },           // 0x33
+    { AM_VIb,     "st.b " },           // 0x34
+    { AM_VIb,     "st.h " },           // 0x35
+    {AM_UDEF,     "maci " },           // 0x36  // Unknown
+    { AM_VIb,     "st.w " },           // 0x37
+    { AM_VIa,     "in.b " },           // 0x38
+    { AM_VIa,     "in.h " },           // 0x39
+    { AM_VIa,     "caxi " },           // 0x3A
+    { AM_VIa,     "in.w " },           // 0x3B
+    { AM_VIb,     "out.b" },           // 0x3C
+    { AM_VIb,     "out.h" },           // 0x3D
+    { AM_FPP,     "FPP  " },           // 0x3E  //Floating Point Instruction, Special Case
+    { AM_VIb,     "out.w" },           // 0x3F
 
-    { AM_III,     "bv   ", /*&(ins_bv)   */ &(ins_err) },           // 0x40
-    { AM_III,     "bl   ", /*&(ins_bl)   */ &(ins_err) },           // 0x41  //BC  0x41
-    { AM_III,     "be   ", /*&(ins_be)   */ &(ins_err) },           // 0x42  //BZ  0x42
-    { AM_III,     "bnh  ", /*&(ins_bnh)  */ &(ins_err) },           // 0x43
-    { AM_III,     "bn   ", /*&(ins_bn)   */ &(ins_err) },           // 0x44
-    { AM_III,     "br   ", /*&(ins_br)   */ &(ins_err) },           // 0x45
-    { AM_III,     "blt  ", /*&(ins_blt)  */ &(ins_err) },           // 0x46
-    { AM_III,     "ble  ", /*&(ins_ble)  */ &(ins_err) },           // 0x47
-    { AM_III,     "bnv  ", /*&(ins_bnv)  */ &(ins_err) },           // 0x48
-    { AM_III,     "bnl  ", /*&(ins_bnl)  */ &(ins_err) },           // 0x49 //BNC 0x49
-    { AM_III,     "bne  ", /*&(ins_bne)  */ &(ins_err) },           // 0x4A //BNZ 0x4A
-    { AM_III,     "bh   ", /*&(ins_bh)   */ &(ins_err) },           // 0x4B
-    { AM_III,     "bp   ", /*&(ins_bp)   */ &(ins_err) },           // 0x4C
-    { AM_III,     "nop  ", /*&(ins_nop)  */ &(ins_err) },           // 0x4D
-    { AM_III,     "bge  ", /*&(ins_bge)  */ &(ins_err) },           // 0x4E
-    { AM_III,     "bgt  ", /*&(ins_bgt)  */ &(ins_err) },           // 0x4F
+    { AM_III,     "bv   " },           // 0x40
+    { AM_III,     "bl   " },           // 0x41  //BC  0x41
+    { AM_III,     "be   " },           // 0x42  //BZ  0x42
+    { AM_III,     "bnh  " },           // 0x43
+    { AM_III,     "bn   " },           // 0x44
+    { AM_III,     "br   " },           // 0x45
+    { AM_III,     "blt  " },           // 0x46
+    { AM_III,     "ble  " },           // 0x47
+    { AM_III,     "bnv  " },           // 0x48
+    { AM_III,     "bnl  " },           // 0x49 //BNC 0x49
+    { AM_III,     "bne  " },           // 0x4A //BNZ 0x4A
+    { AM_III,     "bh   " },           // 0x4B
+    { AM_III,     "bp   " },           // 0x4C
+    { AM_III,     "nop  " },           // 0x4D
+    { AM_III,     "bge  " },           // 0x4E
+    { AM_III,     "bgt  " },           // 0x4F
 };
 // All instructions greater than 0x50 are undefined (this should not be possible of course)
 
 
 // Structure for holding the SubOpcodes, Same as above, without the InsType.
 typedef struct {
-    char * opname;               // Optcode name (string)
-    void (*func)(int, int, int); //pointer to handler func =)
+    const char * opname;                   // Optcode name (string)
+    int (*func)(WORD, WORD, WORD, SWORD);  //pointer to handler func =)
 } suboperation;
 
 
@@ -195,7 +194,7 @@ static suboperation fpsuboptable[16] = {
     { "divf.s ", &(ins_err) },           // 0x07
     { "xb     ", &(ins_err) },           // 0x08  // Undocumented opcode XB -- Special case, NOT an FPU opcode
     { "xh     ", &(ins_err) },           // 0x09  // Undocumented opcode XH -- Special case, NOT an FPU opcode
-    { "rev    ", &(ins_rev) },           // 0x0A  // Undocumented opcode XH -- Special case, NOT an FPU opcode
+    { "rev    ", &(ins_err) },           // 0x0A  // Undocumented opcode XH -- Special case, NOT an FPU opcode
     { "trnc.sw", &(ins_err) },           // 0x0B
     { "mpyhw  ", &(ins_err) },           // 0x0C  // Undocumented opcode MPYHW -- Special case, NOT an FPU opcode
     { "FErrorD", &(ins_err) },           // 0x0D  // Unknown
