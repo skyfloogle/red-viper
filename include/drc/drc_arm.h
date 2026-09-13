@@ -1350,6 +1350,12 @@ void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810) {
     arm_assemble(dst, ir);
 }
 
+void drc_arm_executeBlock(drc_unit *entrypoint, exec_block *block);
+
+void drc_executeBlock(drc_unit *entrypoint, exec_block *block) {
+    drc_arm_executeBlock(entrypoint, block);
+}
+
 void drc_flags_to_native(void) {
     WORD psw = vb_state->v810_state.S_REG[PSW];
     WORD cpsr;

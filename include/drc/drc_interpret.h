@@ -3,8 +3,6 @@
 #include "v810_cpu.h"
 #include "v810_ins.h"
 
-#if !ARM_DRC
-
 void drc_prepare(exec_block *block) {
     // clear all IR instructions since we don't always update needs_branch
     memset(inst_ptr, 0, MAX_ARM_INST * sizeof(ir_inst));
@@ -44,14 +42,14 @@ void drc_executeBlock(drc_unit *entrypoint, exec_block *block) {
 
 #if DRC_TAILCALL
 #define BEGIN_INSTR(name) \
-    void drc_interpret_##name(cpu_state *v810_state, interpret_inst *inst, interpret_arg arg) { \
+    static void drc_interpret_##name(cpu_state *v810_state, interpret_inst *inst, interpret_arg arg) { \
         interpret_inst *next_inst = inst + 1;
 #define END_INSTR() \
         if (next_inst != NULL) [[clang::musttail]] return next_inst->func(v810_state, next_inst, next_inst->arg); \
     }
 #else
 #define BEGIN_INSTR(name) \
-    interpret_inst *drc_interpret_##name(cpu_state *v810_state, interpret_inst *inst, interpret_arg arg) { \
+    static interpret_inst *drc_interpret_##name(cpu_state *v810_state, interpret_inst *inst, interpret_arg arg) { \
         interpret_inst *next_inst = inst + 1;
 #define END_INSTR() \
         return next_inst; \
@@ -511,5 +509,3 @@ void drc_bake_fpp(v810_instruction *ins) {
     inst_ptr->arg.reg2 = ins->reg2;
     inst_ptr++;
 }
-
-#endif

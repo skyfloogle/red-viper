@@ -3,6 +3,12 @@
 
 #include "drc_core.h"
 
+static inline void drc_prepare(exec_block *block);
+static inline void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810);
+static inline void drc_flags_to_native(void);
+static inline void drc_flags_to_v810(void);
+static inline void drc_executeBlock(drc_unit* entrypoint, exec_block* block);
+
 static inline void drc_bake_add_cycles(unsigned int *cycles);
 static inline void drc_bake_subtract_cycles_runtime(int cycles);
 static inline void drc_bake_halt(WORD next_PC, unsigned *cycles);

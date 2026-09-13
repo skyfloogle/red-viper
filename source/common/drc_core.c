@@ -49,6 +49,12 @@
 
 #include "vb_dsp.h"
 
+#if ARM_DRC
+#include "drc/drc_arm.h"
+#else
+#include "drc/drc_interpret.h"
+#endif
+
 HWORD* rom_block_map;
 HWORD* rom_entry_map;
 BYTE* rom_data_code_map;
