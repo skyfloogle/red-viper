@@ -274,7 +274,7 @@ void drc_bake_vertical_force_hack(void) {
     ADD(10, 10, 0);
 }
 
-void drc_bake_bowling_nikochan_hack(v810_instruction *ins, unsigned cycles) {
+void drc_bake_force_interrupt_check(v810_instruction *ins, unsigned cycles) {
     LDR_IO(2, 11, offsetof(cpu_state, irq_handler));
     MRS(0);
     LDW_I(1, ins[1].PC);
