@@ -110,28 +110,27 @@ static bool drc_isCode(WORD PC) {
 static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
     WORD start_PC = *p_start_PC & V810_ROM1.highaddr;
     WORD end_PC = start_PC;
-    WORD cur_PC;
-    WORD branch_addr;
-    int branch_offset;
-    BYTE opcode;
-    bool finished;
-    BYTE lowB, highB, lowB2, highB2;
+    WORD cur_PC = start_PC;
+    bool finished = false;
 
-    cur_PC = start_PC;
-    finished = false;
     while(!finished) {
         bool potentiallyDone = false;
 
         exec_block *existing_block;
         if (drc_getEntry(cur_PC, &existing_block) != cache_start) {
+            // we're scanning over a block that already exists,
+            // so we'll expand it
             drc_free(existing_block);
             WORD existing_start = existing_block->start_pc;
             WORD existing_end = existing_start + existing_block->pc_range;
             if (cur_PC < existing_start || cur_PC > existing_end) {
+                // PC is outside of the existing range, so this block is
+                // from a different part of the ROM entirely
                 for (WORD PC = existing_start; PC <= existing_end; PC += 2)
                     drc_markData(PC);
                 if (existing_start < cur_PC) cur_PC = start_PC;
             } else {
+                // expand our current bounds to cover the existing block
                 if (existing_start < start_PC) start_PC = existing_start;
                 if (existing_end > end_PC) end_PC = existing_end;
             }
@@ -142,73 +141,19 @@ static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
             end_PC = cur_PC;
 
         cur_PC = (cur_PC & V810_ROM1.highaddr);
-        lowB   = ((BYTE *)(V810_ROM1.off + cur_PC))[0];
-        highB  = ((BYTE *)(V810_ROM1.off + cur_PC))[1];
-        lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
-        highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
-
-        if ((highB & 0xE0) == 0x80)
-            opcode = highB>>1;
-        else
-            opcode = highB>>2;
-
-        switch (opcode) {
-            case V810_OP_JR:
-                branch_offset = (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                if (abs(branch_offset) < 1024) {
-                    branch_addr = cur_PC + branch_offset;
-                    bool should_backjump = false;
-                    if (branch_addr < start_PC) {
-                        start_PC = branch_addr;
-                        should_backjump = true;
-                    } else if (branch_addr > end_PC) {
-                        end_PC = branch_addr;
-                    }
-
-                    bool was_code = drc_isCode(branch_addr);
-                    drc_markCode(branch_addr);
-                    if (branch_offset < 0) {
-                        if (!was_code) {
-                            // Not already scanned, so scan it.
-                            cur_PC = branch_addr;
-                            continue;
-                        } else {
-                            // Was previously scanned, so as long as we scanned it just now,
-                            // anything following from it should be accounted for.
-                            if (should_backjump) {
-                                cur_PC = branch_addr;
-                                continue;
-                            }
-                        }
-                    }
-
-                    potentiallyDone = true;
-                    break;
-                }
-            case V810_OP_JAL:
-                branch_addr = cur_PC + (signed)sign_26(((highB & 0x3) << 24) + (lowB << 16) + (highB2 << 8) + lowB2);
-                if (is_byte_getter(branch_addr) || is_hword_getter(branch_addr)) break;
-            case V810_OP_JMP:
-            case V810_OP_RETI:
+        HWORD instr = *(HWORD*)(V810_ROM1.off + cur_PC);
+        WORD next_PC = cur_PC + 2;
+        BYTE opcode = instr >> 10;
+        if (opcode < 0x20) {
+            // short instr
+            if (opcode == V810_OP_JMP || opcode == V810_OP_RETI) {
                 potentiallyDone = true;
-                break;
-            case V810_OP_BV:
-            case V810_OP_BL:
-            case V810_OP_BE:
-            case V810_OP_BNH:
-            case V810_OP_BN:
-            case V810_OP_BR:
-            case V810_OP_BLT:
-            case V810_OP_BLE:
-            case V810_OP_BNV:
-            case V810_OP_BNL:
-            case V810_OP_BNE:
-            case V810_OP_BH:
-            case V810_OP_BP:
-            case V810_OP_BGE:
-            case V810_OP_BGT:
-                branch_offset = (signed)sign_9(((highB & 0x1) << 8) + (lowB & 0xFE));
-                branch_addr = cur_PC + branch_offset;
+            }
+        } else if (opcode < 0x28) {
+            // branch
+            if ((instr >> 9) != V810_OP_NOP) {
+                SHWORD branch_offset = instr & (1 << 8) ? (instr | 0xfe00) : (instr & ~0xfe00);
+                WORD branch_addr = cur_PC + branch_offset;
                 bool should_backjump = false;
                 if (branch_addr < start_PC) {
                     start_PC = branch_addr;
@@ -237,7 +182,48 @@ static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
                         }
                     }
                 }
-                break;
+            }
+        } else {
+            // long instr
+            HWORD instr2 = *(HWORD*)(V810_ROM1.off + cur_PC + 2);
+            next_PC += 2;
+            if (opcode == V810_OP_JR || opcode == V810_OP_JAL) {
+                SWORD branch_offset = instr2 | ((SWORD)instr << 16);
+                if (branch_offset & 0x02000000) branch_offset |= 0xfc000000;
+                else branch_offset &= ~(0xfc000000);
+                WORD branch_addr = cur_PC + branch_offset;
+                if (opcode == V810_OP_JR && abs(branch_offset) < 1024) {
+                    bool should_backjump = false;
+                    if (branch_addr < start_PC) {
+                        start_PC = branch_addr;
+                        should_backjump = true;
+                    } else if (branch_addr > end_PC) {
+                        end_PC = branch_addr;
+                    }
+
+                    bool was_code = drc_isCode(branch_addr);
+                    drc_markCode(branch_addr);
+                    if (branch_offset < 0) {
+                        if (!was_code) {
+                            // Not already scanned, so scan it.
+                            cur_PC = branch_addr;
+                            continue;
+                        } else {
+                            // Was previously scanned, so as long as we scanned it just now,
+                            // anything following from it should be accounted for.
+                            if (should_backjump) {
+                                cur_PC = branch_addr;
+                                continue;
+                            }
+                        }
+                    }
+                    potentiallyDone = true;
+                } else {
+                    if (!is_byte_getter(branch_addr) && !is_hword_getter(branch_addr)) {
+                        potentiallyDone = true;
+                    }
+                }
+            }
         }
 
         if (potentiallyDone) {
@@ -251,7 +237,7 @@ static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
                 } while (!drc_isCode(cur_PC));
             }
         } else {
-            cur_PC += am_size_table[optable[opcode].addr_mode];
+            cur_PC = next_PC;
         }
     }
 
