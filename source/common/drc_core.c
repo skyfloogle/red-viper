@@ -788,12 +788,6 @@ static int drc_translateBlock(void) {
 
     exec_block *block = NULL;
 
-#ifdef LITERAL_POOL
-    WORD* pool_cache_start = NULL;
-    pool_cache_start = linearAlloc(256*4);
-#endif
-    WORD pool_offset = 0;
-
     drc_scanBlockBounds(&start_PC, &end_PC);
     dprintf(3, "[DRC]: new block - 0x%lx->0x%lx\n", start_PC, end_PC);
 
@@ -821,9 +815,6 @@ static int drc_translateBlock(void) {
 
     // Second pass: map the most used V810 registers to ARM registers
     drc_prepare(block);
-#ifdef LITERAL_POOL
-    pool_ptr = pool_cache_start;
-#endif
 
     // Third pass: generate ARM instructions
     for (i = 0; i < num_v810_inst; i++) {
@@ -832,7 +823,7 @@ static int drc_translateBlock(void) {
         // However, let's keep some buffer, just in case.
         if (inst_ptr - trans_cache >= MAX_ARM_INST - 64) break;
 
-        inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache + pool_offset);
+        inst_cache[i].start_pos = (HWORD) (inst_ptr - trans_cache);
         inst_ptr_start = inst_ptr;
         cycles += opcycle[inst_cache[i].opcode];
 
@@ -1253,21 +1244,6 @@ static int drc_translateBlock(void) {
         }
 
         inst_cache[i].trans_size = (BYTE) (inst_ptr - inst_ptr_start);
-
-#ifdef LITERAL_POOL
-        if ((inst_ptr - trans_cache) >= (1<<10) || (i == num_v810_inst-1 && (pool_ptr != pool_start))) {
-            int pool_size = (int)(pool_ptr-pool_cache_start);
-            // FIXME: Implement branch instructions
-            ADD_I(15, 15, (BYTE)(pool_size-2), 30);
-
-            num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
-            pool_start = &block->phys_loc[num_arm_inst];
-            memcpy(pool_start, pool_cache_start, pool_size*sizeof(WORD));
-
-            pool_ptr = pool_cache_start;
-            pool_offset += pool_size;
-        }
-#endif
     }
 
     num_arm_inst = (unsigned int)(inst_ptr - trans_cache);
@@ -1288,14 +1264,6 @@ static int drc_translateBlock(void) {
     for (i = 0; i < num_v810_inst; i++) {
         HWORD start_pos = inst_cache[i].start_pos;
         for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
-#ifdef LITERAL_POOL
-            if (trans_cache[j].needs_pool) {
-                // The literal pool is located at the end of the current block
-                // Figure out the offset from the pc register, which points two
-                // instructions ahead of the current one
-                trans_cache[j].ldst_io.imm = (HWORD) ((trans_cache[j].pool_start + trans_cache[j].pool_pos) - (&block->phys_loc[j + 2]));
-            }
-#endif
             if (link_cursor < link_table_size && &trans_cache[j] == link_table[link_cursor]) {
                 link_cursor++;
                 WORD v810_dest = inst_cache[i].PC + inst_cache[i].branch_offset;
@@ -1310,16 +1278,13 @@ static int drc_translateBlock(void) {
         }
     }
 
-    block->size = num_arm_inst * sizeof(translated_inst) / sizeof(drc_unit) + pool_offset;
+    block->size = num_arm_inst * sizeof(translated_inst) / sizeof(drc_unit);
 
 #if ARM_DRC
     FlushInvalidateCache(block->phys_offset, block->size * sizeof(drc_unit));
 #endif
 
 cleanup:
-#ifdef LITERAL_POOL
-    linearFree(pool_cache_start);
-#endif
     return err;
 }
 

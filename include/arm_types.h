@@ -253,12 +253,7 @@ typedef struct {
     arm_inst_type type;
     BYTE cond;
     WORD PC;
-    bool needs_pool;
     bool needs_branch;
-#ifdef LITERAL_POOL
-    WORD* pool_start;
-    HWORD pool_pos;
-#endif
     union {
         arm_inst_dpi dpi;
         arm_inst_dpis dpis;
