@@ -3,7 +3,14 @@
 
 #include "drc_core.h"
 
+// Provided helpers
+
+static void drc_mark_linkable(ir_inst *ir);
+
+// Implementation headers
+
 static inline void drc_prepare(exec_block *block);
+static inline void drc_link(ir_inst *src_ir, translated_inst *src, translated_inst *dest);
 static inline void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810);
 static inline void drc_flags_to_native(void);
 static inline void drc_flags_to_v810(void);

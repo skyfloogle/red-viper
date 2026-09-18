@@ -67,6 +67,12 @@ int block_pos = 1;
 v810_instruction *inst_cache;
 static ir_inst *trans_cache;
 ir_inst *inst_ptr;
+static ir_inst **link_table;
+static int link_table_size;
+
+static void drc_mark_linkable(ir_inst *inst) {
+    link_table[link_table_size++] = inst;
+}
 
 static bool is_byte_getter(WORD start_PC) {
     static BYTE byte_getter_func[] = {
@@ -811,6 +817,7 @@ static int drc_translateBlock(void) {
         drc_findWaterworldBusywait(num_v810_inst);
 
     inst_ptr = &trans_cache[0];
+    link_table_size = 0;
 
     // Second pass: map the most used V810 registers to ARM registers
     drc_prepare(block);
@@ -1277,6 +1284,7 @@ static int drc_translateBlock(void) {
     }
 
     // Fifth pass: assemble and link
+    int link_cursor = 0;
     for (i = 0; i < num_v810_inst; i++) {
         HWORD start_pos = inst_cache[i].start_pos;
         for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
@@ -1288,6 +1296,16 @@ static int drc_translateBlock(void) {
                 trans_cache[j].ldst_io.imm = (HWORD) ((trans_cache[j].pool_start + trans_cache[j].pool_pos) - (&block->phys_loc[j + 2]));
             }
 #endif
+            if (link_cursor < link_table_size && &trans_cache[j] == link_table[link_cursor]) {
+                link_cursor++;
+                WORD v810_dest = inst_cache[i].PC + inst_cache[i].branch_offset;
+                drc_unit* translated_dest = drc_getEntry(v810_dest, NULL);
+                if (translated_dest == cache_start) {
+                    // Should be fixed, but just in case
+                    dprintf(0, "WARN:can't jump from %lx to %lx\n", inst_cache[i].PC, v810_dest);
+                }
+                drc_link(&trans_cache[j], cache_ptr + j, (translated_inst*)translated_dest);
+            }
             drc_assemble(cache_ptr + j, &trans_cache[j], &inst_cache[i]);
         }
     }
@@ -1352,6 +1370,7 @@ void drc_init(void) {
 
     inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
     trans_cache = linearAlloc(MAX_ARM_INST*sizeof(ir_inst));
+    link_table = linearAlloc(MAX_ARM_INST*sizeof(ir_inst*));
 
     cache_start = linearMemAlign(CACHE_SIZE, 0x1000);
 #ifdef __3DS__

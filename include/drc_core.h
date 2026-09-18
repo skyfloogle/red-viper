@@ -35,11 +35,6 @@ struct interpret_inst_t {
     interpret_func func;
     interpret_arg arg;
 };
-typedef struct {
-    interpret_func func;
-    interpret_arg arg;
-    bool needs_branch;
-} interpret_ir_inst;
 
 #if ARM_DRC
 #include "arm_types.h"
@@ -47,7 +42,7 @@ typedef arm_inst ir_inst;
 typedef WORD translated_inst;
 typedef WORD drc_unit;
 #else
-typedef interpret_ir_inst ir_inst;
+typedef interpret_inst ir_inst;
 typedef interpret_inst translated_inst;
 typedef size_t drc_unit;
 #endif
