@@ -7,13 +7,8 @@ void drc_prepare(exec_block *block) {}
 void drc_flags_to_native() {}
 void drc_flags_to_v810() {}
 
-void drc_link(ir_inst *src_ir, translated_inst *src, translated_inst *dest) {
+void drc_link(translated_inst *src_ir, translated_inst *src, translated_inst *dest) {
     src_ir->arg.target_instr = dest;
-}
-
-void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810) {
-    dst->func = ir->func;
-    dst->arg.full = ir->arg.full;
 }
 
 void drc_executeBlock(drc_unit *entrypoint, exec_block *block) {
@@ -299,7 +294,7 @@ BEGIN_INSTR(ballscale)
         next_inst = inst + arg.full;
     }
 END_INSTR()
-static ir_inst *ballscale_start_inst;
+static translated_inst *ballscale_start_inst;
 void drc_bake_ballscale_start() {
     ballscale_start_inst = inst_ptr;
     inst_ptr++->func = drc_interpret_ballscale;

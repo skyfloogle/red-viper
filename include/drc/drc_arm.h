@@ -244,7 +244,7 @@ void drc_bake_ballsort(void) {
     BLX(ARM_COND_AL, 2);
 }
 
-static arm_inst *branch_to_tweak;
+static translated_inst *branch_to_tweak;
 
 void drc_bake_ballscale_start(void) {
     // Verify that our values make sense, otherwise revert to original
@@ -266,7 +266,7 @@ void drc_bake_ballscale_start(void) {
 }
 
 void drc_bake_ballscale_end(void) {
-    branch_to_tweak->b_bl.imm = inst_ptr - branch_to_tweak - 2;
+    *branch_to_tweak |= (inst_ptr - branch_to_tweak - 2) | 0xffffff;
 }
 
 void drc_bake_vertical_force_hack(void) {
@@ -1333,13 +1333,9 @@ BEGIN_INSTR(fpp)
     }
 END_INSTR()
 
-void drc_link(ir_inst *src_ir, translated_inst *src, translated_inst *dest) {
+void drc_link(translated_inst *src_ir, translated_inst *src, translated_inst *dest) {
     int arm_offset = (int)(dest - (src) - 2);
-    src_ir->b_bl.imm = arm_offset & 0xffffff;
-}
-
-void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810) {
-    arm_assemble(dst, ir);
+    *src_ir |= arm_offset & 0xffffff;
 }
 
 void drc_arm_executeBlock(drc_unit *entrypoint, exec_block *block);

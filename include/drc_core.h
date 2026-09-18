@@ -38,16 +38,14 @@ struct interpret_inst_t {
 
 #if ARM_DRC
 #include "arm_types.h"
-typedef arm_inst ir_inst;
 typedef WORD translated_inst;
 typedef WORD drc_unit;
 #else
-typedef interpret_inst ir_inst;
 typedef interpret_inst translated_inst;
 typedef size_t drc_unit;
 #endif
 
-extern ir_inst *inst_ptr;
+extern translated_inst *inst_ptr;
 
 static_assert(alignof(drc_unit) >= alignof(translated_inst), "translated_inst should fit into drc_unit alignment");
 
