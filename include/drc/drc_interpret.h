@@ -3,23 +3,15 @@
 #include "v810_cpu.h"
 #include "v810_ins.h"
 
-void drc_prepare(exec_block *block) {
-    // clear all IR instructions since we don't always update needs_branch
-    memset(inst_ptr, 0, MAX_ARM_INST * sizeof(ir_inst));
-}
+void drc_prepare(exec_block *block) {}
 void drc_flags_to_native() {}
 void drc_flags_to_v810() {}
 
+void drc_link(ir_inst *src_ir, translated_inst *src, translated_inst *dest) {
+    src_ir->arg.target_instr = dest;
+}
+
 void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810) {
-    if (ir->needs_branch) {
-        WORD v810_dest = v810->PC + v810->branch_offset;
-        drc_unit* translated_dest = drc_getEntry(v810_dest, NULL);
-        if (translated_dest == cache_start) {
-            // Should be fixed, but just in case
-            dprintf(0, "WARN:can't jump from %lx to %lx\n", v810->PC, v810_dest);
-        }
-        ir->arg.target_instr = (translated_inst*)translated_dest;
-    }
     dst->func = ir->func;
     dst->arg.full = ir->arg.full;
 }
@@ -153,7 +145,7 @@ BEGIN_INSTR(jump_short)
 END_INSTR()
 void drc_bake_jump_short(v810_instruction *ins) {
     inst_ptr->func = drc_interpret_jump_short;
-    inst_ptr->needs_branch = true;
+    drc_mark_linkable(inst_ptr);
     inst_ptr++;
 }
 
@@ -208,7 +200,7 @@ void drc_bake_branch(v810_instruction *ins) {
         case V810_OP_BGE: inst_ptr->func = drc_interpret_bge; break;
         case V810_OP_BGT: inst_ptr->func = drc_interpret_bgt; break;
     }
-    inst_ptr->needs_branch = true;
+    drc_mark_linkable(inst_ptr);
     inst_ptr++;
 }
 
@@ -436,7 +428,7 @@ void drc_bake_bstr(v810_instruction *ins, unsigned int *cycles) {
         drc_bake_handle_interrupts(ins->PC, cycles);
         inst_ptr->func = drc_interpret_bstr_check_length;
         inst_ptr->arg.target_PC = ins->PC;
-        inst_ptr->needs_branch = true;
+        drc_mark_linkable(inst_ptr);
         inst_ptr++;
     }
 }

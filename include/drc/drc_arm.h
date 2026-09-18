@@ -1333,20 +1333,12 @@ BEGIN_INSTR(fpp)
     }
 END_INSTR()
 
+void drc_link(ir_inst *src_ir, translated_inst *src, translated_inst *dest) {
+    int arm_offset = (int)(dest - (src) - 2);
+    src_ir->b_bl.imm = arm_offset & 0xffffff;
+}
+
 void drc_assemble(translated_inst *dst, ir_inst *ir, v810_instruction *v810) {
-    if (ir->needs_branch) {
-        WORD v810_dest = v810->PC + v810->branch_offset;
-        translated_inst* arm_dest = drc_getEntry(v810_dest, NULL);
-        int arm_offset = (int)(arm_dest - (dst) - 2);
-
-        if (arm_dest == cache_start) {
-            // Should be fixed, but just in case
-            dprintf(0, "WARN:can't jump from %lx to %lx\n", v810->PC, v810_dest);
-        }
-
-        ir->b_bl.imm = arm_offset & 0xffffff;
-    }
-
     arm_assemble(dst, ir);
 }
 
