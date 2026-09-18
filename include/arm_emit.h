@@ -28,337 +28,106 @@
 #define ARM_EMIT_H
 
 #include "arm_types.h"
+#include "arm_codegen.h"
 
-extern arm_inst* inst_ptr;
+extern WORD* inst_ptr;
 
 // Conditional instructions
 
 // Data processing immediate
 static inline void new_data_proc_imm(BYTE cond, BYTE op, BYTE s, BYTE Rn, BYTE Rd, BYTE rot, BYTE imm) {
-    inst_ptr->type = ARM_DATA_PROC_IMM;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->dpi = (arm_inst_dpi) {
-            op,
-            s,
-            Rn,
-            Rd,
-            rot,
-            imm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_data_proc_imm(cond, op, s, Rn, Rd, rot, imm);
 }
 
 // Data processing immediate shift
 static inline void new_data_proc_imm_shift(BYTE cond, BYTE opcode, BYTE s, BYTE Rn, BYTE Rd, BYTE shift_imm, BYTE shift, BYTE Rm) {
-    inst_ptr->type = ARM_DATA_PROC_IMM_SHIFT;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->dpis = (arm_inst_dpis) {
-            opcode,
-            s,
-            Rn,
-            Rd,
-            shift_imm,
-            shift,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_data_proc_imm_shift(cond, opcode, s, Rn, Rd, shift_imm, shift, Rm);
 }
 
 // Data processing register shift
 static inline void new_data_proc_reg_shift(BYTE cond, BYTE opcode, BYTE s, BYTE Rn, BYTE Rd, BYTE Rs, BYTE shift, BYTE Rm) {
-    inst_ptr->type = ARM_DATA_PROC_REG_SHIFT;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->dprs = (arm_inst_dprs) {
-            opcode,
-            s,
-            Rn,
-            Rd,
-            Rs,
-            shift,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_data_proc_reg_shift(cond, opcode, s, Rn, Rd, Rs, shift, Rm);
 }
 
 // Multiply
 static inline void new_multiply(BYTE cond, BYTE a, BYTE s, BYTE Rd, BYTE Rn, BYTE Rs, BYTE Rm) {
-    inst_ptr->type = ARM_MUL;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->mul = (arm_inst_mul) {
-            a,
-            s,
-            Rd,
-            Rn,
-            Rs,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_multiply(cond, a, s, Rd, Rn, Rs, Rm);
 }
 
 // Multiply long
 static inline void new_multiply_long(BYTE cond, BYTE u, BYTE a, BYTE s, BYTE RdHi, BYTE RdLo, BYTE Rn, BYTE Rm) {
-    inst_ptr->type = ARM_MULL;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->mull = (arm_inst_mull) {
-            u,
-            a,
-            s,
-            RdHi,
-            RdLo,
-            Rn,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_multiply_long(cond, u, a, s, RdHi, RdLo, Rn, Rm);
 }
 
 // Media
 static inline void new_media(BYTE cond, BYTE op1, BYTE Rn, BYTE Rd, BYTE op2, BYTE Rm) {
-    inst_ptr->type = ARM_MEDIA;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->media = (arm_inst_media) {
-        op1,
-        Rn,
-        Rd,
-        op2,
-        Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_media(cond, op1, Rn, Rd, op2, Rm);
 }
 
 // Extend
 static inline void new_extend(BYTE cond, BYTE op, BYTE Rn, BYTE Rd, BYTE rot, BYTE Rm) {
-    inst_ptr->type = ARM_EXTEND;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->extend = (arm_inst_extend) {
-        op,
-        Rn,
-        Rd,
-        rot,
-        Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_extend(cond, op, Rn, Rd, rot, Rm);
 }
 
 // Move from status register
 static inline void new_move_from_cpsr(BYTE cond, BYTE r, BYTE sbo, BYTE Rd, HWORD sbz) {
-    inst_ptr->type = ARM_MOV_FROM_CPSR;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->mfcpsr = (arm_inst_mfcpsr) {
-            r,
-            sbo,
-            Rd,
-            sbz
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_move_from_cpsr(cond, r, sbo, Rd, sbz);
 }
 
 // Move immediate to status register
 static inline void new_move_imm_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, BYTE rot, BYTE imm) {
-    inst_ptr->type = ARM_MOV_IMM_CPSR;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->micpsr = (arm_inst_micpsr) {
-            r,
-            mask,
-            sbo,
-            rot,
-            imm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_move_imm_to_cpsr(cond, r, mask, sbo, rot, imm);
 }
 
 // Move register to status register
 static inline void new_move_reg_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, BYTE sbz, BYTE Rm) {
-    inst_ptr->type = ARM_MOV_REG_CPSR;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->mrcpsr = (arm_inst_mrcpsr) {
-            r,
-            mask,
-            sbo,
-            sbz,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_move_reg_to_cpsr(cond, r, mask, sbo, sbz, Rm);
 }
 
 // Branch/exchange instruction set
 static inline void new_branch_exchange(BYTE cond, BYTE l, BYTE Rm) {
-    inst_ptr->type = ARM_BR;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->br = (arm_inst_br) {
-            l,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_branch_exchange(cond, l, Rm);
 }
 
 // Load/store multiple
 static inline void new_ldst_imm_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, BYTE l, BYTE Rn, BYTE Rd, HWORD imm) {
-    inst_ptr->type = ARM_LDST_IMM_OFF;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->ldst_io = (arm_inst_ldst_io) {
-            p,
-            u,
-            b,
-            w,
-            l,
-            Rn,
-            Rd,
-            imm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_ldst_imm_off(cond, p, u, b, w, l, Rn, Rd, imm);
 }
 
 // Load/store register offset
 static inline void new_ldst_reg_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, BYTE l, BYTE Rn, BYTE Rd, BYTE shift_imm, BYTE shift, BYTE Rm) {
-    inst_ptr->type = ARM_LDST_REG_OFF;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->ldst_ro = (arm_inst_ldst_ro) {
-            p,
-            u,
-            b,
-            w,
-            l,
-            Rn,
-            Rd,
-            shift_imm,
-            shift,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_ldst_reg_off(cond, p, u, b, w, l, Rn, Rd, shift_imm, shift, Rm);
 }
 
 // Load/store halfword/signed byte
 static inline void new_ldst_hb1(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE Rn, BYTE Rd, BYTE high_off, BYTE s, BYTE h, BYTE Rm) {
-    inst_ptr->type = ARM_LDST_HB1;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->ldst_hb1 = (arm_inst_ldst_hb1) {
-            p,
-            u,
-            w,
-            l,
-            Rn,
-            Rd,
-            high_off,
-            s,
-            h,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_ldst_hb1(cond, p, u, w, l, Rn, Rd, high_off, s, h, Rm);
 }
 
 // Load/store halfword/signed byte
 static inline void new_ldst_hb2(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE Rn, BYTE Rd, BYTE sbz, BYTE s, BYTE h, BYTE Rm) {
-    inst_ptr->type = ARM_LDST_HB2;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->ldst_hb2 = (arm_inst_ldst_hb2) {
-            p,
-            u,
-            w,
-            l,
-            Rn,
-            Rd,
-            sbz,
-            s,
-            h,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_ldst_hb2(cond, p, u, w, l, Rn, Rd, sbz, s, h, Rm);
 }
 
 // Swab/swap byte
 static inline void new_swap_byte(BYTE cond, BYTE b, BYTE Rn, BYTE Rd, BYTE sbz, BYTE Rm) {
-    inst_ptr->type = ARM_SWAP;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->swp = (arm_inst_swp) {
-            b,
-            Rn,
-            Rd,
-            sbz,
-            Rm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_swap_byte(cond, b, Rn, Rd, sbz, Rm);
 }
 
 // Load/store multiple
 static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, BYTE l, BYTE Rn, HWORD regs) {
-    inst_ptr->type = ARM_LDST_MULT;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->ldstm = (arm_inst_ldstm) {
-            p,
-            u,
-            s,
-            w,
-            l,
-            Rn,
-            regs
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_ldst_multiple(cond, p, u, s, w, l, Rn, regs);
 }
 
 // Branch and branch with link
 static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
-    inst_ptr->type = ARM_BRANCH_LINK;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->b_bl = (arm_inst_b_bl) {
-            l,
-            imm
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_branch_link(cond, l, imm);
 }
 
 
 // Floating-point data-processing instructions
 static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12, BYTE b8, BYTE opc3, BYTE b4, BYTE opc4) {
-    inst_ptr->type = ARM_FLOATING_POINT;
-    inst_ptr->cond = cond;
-    inst_ptr->needs_branch = false;
-    inst_ptr->fp = (arm_inst_fp) {
-            opc1,
-            opc2,
-            b12,
-            b8,
-            opc3,
-            b4,
-            opc4
-    };
-
-    inst_ptr++;
+    *inst_ptr++ = gen_floating_point(cond, opc1, opc2, b12, b8, opc3, b4, opc4);
 }
 
 /**

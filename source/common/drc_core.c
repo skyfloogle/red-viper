@@ -65,12 +65,12 @@ exec_block* block_ptr_start;
 int block_pos = 1;
 
 v810_instruction *inst_cache;
-static ir_inst *trans_cache;
-ir_inst *inst_ptr;
-static ir_inst **link_table;
+static translated_inst *trans_cache;
+translated_inst *inst_ptr;
+static translated_inst **link_table;
 static int link_table_size;
 
-static void drc_mark_linkable(ir_inst *inst) {
+static void drc_mark_linkable(translated_inst *inst) {
     link_table[link_table_size++] = inst;
 }
 
@@ -757,7 +757,7 @@ static int drc_translateBlock(void) {
     bool reg1_modified;
     bool reg2_modified;
     // The value of inst_ptr at the start of a V810 instruction
-    ir_inst* inst_ptr_start;
+    translated_inst* inst_ptr_start;
 
     // Games with specific hacks; additional explanation follows where each check is used.
     bool is_waterworld = CHECK_GAMEID("67VWEE");
@@ -1274,9 +1274,9 @@ static int drc_translateBlock(void) {
                 }
                 drc_link(&trans_cache[j], cache_ptr + j, (translated_inst*)translated_dest);
             }
-            drc_assemble(cache_ptr + j, &trans_cache[j], &inst_cache[i]);
         }
     }
+    memcpy(cache_ptr, trans_cache, num_arm_inst * sizeof(translated_inst));
 
     block->size = num_arm_inst * sizeof(translated_inst) / sizeof(drc_unit);
 
@@ -1334,8 +1334,8 @@ void drc_init(void) {
     block_ptr_start = linearAlloc(MAX_NUM_BLOCKS*sizeof(exec_block));
 
     inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
-    trans_cache = linearAlloc(MAX_ARM_INST*sizeof(ir_inst));
-    link_table = linearAlloc(MAX_ARM_INST*sizeof(ir_inst*));
+    trans_cache = linearAlloc(MAX_ARM_INST*sizeof(translated_inst));
+    link_table = linearAlloc(MAX_ARM_INST*sizeof(translated_inst*));
 
     cache_start = linearMemAlign(CACHE_SIZE, 0x1000);
 #ifdef __3DS__
