@@ -29,10 +29,6 @@
 
 #include "arm_types.h"
 
-#ifdef LITERAL_POOL
-WORD* pool_ptr;
-WORD* pool_start;
-#endif
 extern arm_inst* inst_ptr;
 
 // Conditional instructions
@@ -41,7 +37,6 @@ extern arm_inst* inst_ptr;
 static inline void new_data_proc_imm(BYTE cond, BYTE op, BYTE s, BYTE Rn, BYTE Rd, BYTE rot, BYTE imm) {
     inst_ptr->type = ARM_DATA_PROC_IMM;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->dpi = (arm_inst_dpi) {
             op,
@@ -59,7 +54,6 @@ static inline void new_data_proc_imm(BYTE cond, BYTE op, BYTE s, BYTE Rn, BYTE R
 static inline void new_data_proc_imm_shift(BYTE cond, BYTE opcode, BYTE s, BYTE Rn, BYTE Rd, BYTE shift_imm, BYTE shift, BYTE Rm) {
     inst_ptr->type = ARM_DATA_PROC_IMM_SHIFT;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->dpis = (arm_inst_dpis) {
             opcode,
@@ -78,7 +72,6 @@ static inline void new_data_proc_imm_shift(BYTE cond, BYTE opcode, BYTE s, BYTE 
 static inline void new_data_proc_reg_shift(BYTE cond, BYTE opcode, BYTE s, BYTE Rn, BYTE Rd, BYTE Rs, BYTE shift, BYTE Rm) {
     inst_ptr->type = ARM_DATA_PROC_REG_SHIFT;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->dprs = (arm_inst_dprs) {
             opcode,
@@ -97,7 +90,6 @@ static inline void new_data_proc_reg_shift(BYTE cond, BYTE opcode, BYTE s, BYTE 
 static inline void new_multiply(BYTE cond, BYTE a, BYTE s, BYTE Rd, BYTE Rn, BYTE Rs, BYTE Rm) {
     inst_ptr->type = ARM_MUL;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->mul = (arm_inst_mul) {
             a,
@@ -115,7 +107,6 @@ static inline void new_multiply(BYTE cond, BYTE a, BYTE s, BYTE Rd, BYTE Rn, BYT
 static inline void new_multiply_long(BYTE cond, BYTE u, BYTE a, BYTE s, BYTE RdHi, BYTE RdLo, BYTE Rn, BYTE Rm) {
     inst_ptr->type = ARM_MULL;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->mull = (arm_inst_mull) {
             u,
@@ -134,7 +125,6 @@ static inline void new_multiply_long(BYTE cond, BYTE u, BYTE a, BYTE s, BYTE RdH
 static inline void new_media(BYTE cond, BYTE op1, BYTE Rn, BYTE Rd, BYTE op2, BYTE Rm) {
     inst_ptr->type = ARM_MEDIA;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->media = (arm_inst_media) {
         op1,
@@ -151,7 +141,6 @@ static inline void new_media(BYTE cond, BYTE op1, BYTE Rn, BYTE Rd, BYTE op2, BY
 static inline void new_extend(BYTE cond, BYTE op, BYTE Rn, BYTE Rd, BYTE rot, BYTE Rm) {
     inst_ptr->type = ARM_EXTEND;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->extend = (arm_inst_extend) {
         op,
@@ -168,7 +157,6 @@ static inline void new_extend(BYTE cond, BYTE op, BYTE Rn, BYTE Rd, BYTE rot, BY
 static inline void new_move_from_cpsr(BYTE cond, BYTE r, BYTE sbo, BYTE Rd, HWORD sbz) {
     inst_ptr->type = ARM_MOV_FROM_CPSR;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->mfcpsr = (arm_inst_mfcpsr) {
             r,
@@ -184,7 +172,6 @@ static inline void new_move_from_cpsr(BYTE cond, BYTE r, BYTE sbo, BYTE Rd, HWOR
 static inline void new_move_imm_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, BYTE rot, BYTE imm) {
     inst_ptr->type = ARM_MOV_IMM_CPSR;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->micpsr = (arm_inst_micpsr) {
             r,
@@ -201,7 +188,6 @@ static inline void new_move_imm_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, 
 static inline void new_move_reg_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, BYTE sbz, BYTE Rm) {
     inst_ptr->type = ARM_MOV_REG_CPSR;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->mrcpsr = (arm_inst_mrcpsr) {
             r,
@@ -218,7 +204,6 @@ static inline void new_move_reg_to_cpsr(BYTE cond, BYTE r, BYTE mask, BYTE sbo, 
 static inline void new_branch_exchange(BYTE cond, BYTE l, BYTE Rm) {
     inst_ptr->type = ARM_BR;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->br = (arm_inst_br) {
             l,
@@ -232,7 +217,6 @@ static inline void new_branch_exchange(BYTE cond, BYTE l, BYTE Rm) {
 static inline void new_ldst_imm_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, BYTE l, BYTE Rn, BYTE Rd, HWORD imm) {
     inst_ptr->type = ARM_LDST_IMM_OFF;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->ldst_io = (arm_inst_ldst_io) {
             p,
@@ -252,7 +236,6 @@ static inline void new_ldst_imm_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, B
 static inline void new_ldst_reg_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, BYTE l, BYTE Rn, BYTE Rd, BYTE shift_imm, BYTE shift, BYTE Rm) {
     inst_ptr->type = ARM_LDST_REG_OFF;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->ldst_ro = (arm_inst_ldst_ro) {
             p,
@@ -274,7 +257,6 @@ static inline void new_ldst_reg_off(BYTE cond, BYTE p, BYTE u, BYTE b, BYTE w, B
 static inline void new_ldst_hb1(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE Rn, BYTE Rd, BYTE high_off, BYTE s, BYTE h, BYTE Rm) {
     inst_ptr->type = ARM_LDST_HB1;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->ldst_hb1 = (arm_inst_ldst_hb1) {
             p,
@@ -296,7 +278,6 @@ static inline void new_ldst_hb1(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE 
 static inline void new_ldst_hb2(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE Rn, BYTE Rd, BYTE sbz, BYTE s, BYTE h, BYTE Rm) {
     inst_ptr->type = ARM_LDST_HB2;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->ldst_hb2 = (arm_inst_ldst_hb2) {
             p,
@@ -318,7 +299,6 @@ static inline void new_ldst_hb2(BYTE cond, BYTE p, BYTE u, BYTE w, BYTE l, BYTE 
 static inline void new_swap_byte(BYTE cond, BYTE b, BYTE Rn, BYTE Rd, BYTE sbz, BYTE Rm) {
     inst_ptr->type = ARM_SWAP;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->swp = (arm_inst_swp) {
             b,
@@ -335,7 +315,6 @@ static inline void new_swap_byte(BYTE cond, BYTE b, BYTE Rn, BYTE Rd, BYTE sbz, 
 static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, BYTE l, BYTE Rn, HWORD regs) {
     inst_ptr->type = ARM_LDST_MULT;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->ldstm = (arm_inst_ldstm) {
             p,
@@ -354,7 +333,6 @@ static inline void new_ldst_multiple(BYTE cond, BYTE p, BYTE u, BYTE s, BYTE w, 
 static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
     inst_ptr->type = ARM_BRANCH_LINK;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->b_bl = (arm_inst_b_bl) {
             l,
@@ -369,7 +347,6 @@ static inline void new_branch_link(BYTE cond, BYTE l, WORD imm) {
 static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12, BYTE b8, BYTE opc3, BYTE b4, BYTE opc4) {
     inst_ptr->type = ARM_FLOATING_POINT;
     inst_ptr->cond = cond;
-    inst_ptr->needs_pool = false;
     inst_ptr->needs_branch = false;
     inst_ptr->fp = (arm_inst_fp) {
             opc1,
@@ -791,16 +768,7 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     MSR(0); \
 }
 
-// Load word into register using a literal pool
-#ifdef LITERAL_POOL
-#define LDW_I(reg, word) { \
-    *(pool_ptr++) = word; \
-    LDR_IO(reg, 15, 0); \
-    (inst_ptr-1)->needs_pool = true; \
-    (inst_ptr-1)->pool_start = pool_start; \
-    (inst_ptr-1)->pool_pos = pool_ptr - pool_start; \
-}
-#else
+// Load word into register
 #define LDW_I(reg, word) { \
     MOV_I(reg, (WORD)(word) & 0x000000FF, 0); \
     if ((WORD)(word) & 0x0000FF00) \
@@ -810,7 +778,6 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
     if ((WORD)(word) & 0xFF000000) \
         ORR_I(reg, reg, ((WORD)(word) & 0xFF000000)>>24, 8); \
 }
-#endif
 
 #define ADDCYCLES() { \
     if (cycles != 0) { \
