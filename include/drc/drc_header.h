@@ -5,7 +5,7 @@
 
 // Provided helpers
 
-static void drc_mark_linkable(translated_inst *ir);
+static void drc_mark_linkable(translated_inst *translated_src, v810_instruction *v810_src);
 
 // Implementation headers
 
