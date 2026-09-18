@@ -67,11 +67,18 @@ int block_pos = 1;
 v810_instruction *inst_cache;
 static translated_inst *trans_cache;
 translated_inst *inst_ptr;
-static translated_inst **link_table;
+
+typedef struct {
+    int translated_pos;
+    v810_instruction *v810_src;
+} link_table_entry;
+static link_table_entry *link_table;
 static int link_table_size;
 
-static void drc_mark_linkable(translated_inst *inst) {
-    link_table[link_table_size++] = inst;
+static void drc_mark_linkable(translated_inst *translated_src, v810_instruction *v810_src) {
+    link_table[link_table_size].translated_pos = translated_src - trans_cache;
+    link_table[link_table_size].v810_src = v810_src;
+    link_table_size++;
 }
 
 static bool is_byte_getter(WORD start_PC) {
@@ -1259,23 +1266,19 @@ static int drc_translateBlock(void) {
         drc_setEntry(inst_cache[i].PC, (drc_unit*)(cache_ptr + inst_cache[i].start_pos), block);
     }
 
-    // Fifth pass: assemble and link
-    int link_cursor = 0;
-    for (i = 0; i < num_v810_inst; i++) {
-        HWORD start_pos = inst_cache[i].start_pos;
-        for (j = start_pos; j < (start_pos + inst_cache[i].trans_size); j++) {
-            if (link_cursor < link_table_size && &trans_cache[j] == link_table[link_cursor]) {
-                link_cursor++;
-                WORD v810_dest = inst_cache[i].PC + inst_cache[i].branch_offset;
-                drc_unit* translated_dest = drc_getEntry(v810_dest, NULL);
-                if (translated_dest == cache_start) {
-                    // Should be fixed, but just in case
-                    dprintf(0, "WARN:can't jump from %lx to %lx\n", inst_cache[i].PC, v810_dest);
-                }
-                drc_link(&trans_cache[j], cache_ptr + j, (translated_inst*)translated_dest);
-            }
+    // Fifth pass: link
+    for (i = 0; i < link_table_size; i++) {
+        v810_instruction *v810_src = link_table[i].v810_src;
+        int translated_pos = link_table[i].translated_pos;
+        WORD v810_dest = v810_src->PC + v810_src->branch_offset;
+        drc_unit* translated_dest = drc_getEntry(v810_dest, NULL);
+        if (translated_dest == cache_start) {
+            // Should be fixed, but just in case
+            dprintf(0, "WARN:can't jump from %lx to %lx\n", v810_src->PC, v810_dest);
         }
+        drc_link(&trans_cache[translated_pos], cache_ptr + translated_pos, (translated_inst*)translated_dest);
     }
+
     memcpy(cache_ptr, trans_cache, num_arm_inst * sizeof(translated_inst));
 
     block->size = num_arm_inst * sizeof(translated_inst) / sizeof(drc_unit);
@@ -1335,7 +1338,7 @@ void drc_init(void) {
 
     inst_cache = linearAlloc(MAX_V810_INST*sizeof(v810_instruction));
     trans_cache = linearAlloc(MAX_ARM_INST*sizeof(translated_inst));
-    link_table = linearAlloc(MAX_ARM_INST*sizeof(translated_inst*));
+    link_table = linearAlloc(MAX_ARM_INST*sizeof(link_table[0]));
 
     cache_start = linearMemAlign(CACHE_SIZE, 0x1000);
 #ifdef __3DS__

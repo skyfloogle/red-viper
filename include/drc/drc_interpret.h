@@ -140,7 +140,7 @@ BEGIN_INSTR(jump_short)
 END_INSTR()
 void drc_bake_jump_short(v810_instruction *ins) {
     inst_ptr->func = drc_interpret_jump_short;
-    drc_mark_linkable(inst_ptr);
+    drc_mark_linkable(inst_ptr, ins);
     inst_ptr++;
 }
 
@@ -195,7 +195,7 @@ void drc_bake_branch(v810_instruction *ins) {
         case V810_OP_BGE: inst_ptr->func = drc_interpret_bge; break;
         case V810_OP_BGT: inst_ptr->func = drc_interpret_bgt; break;
     }
-    drc_mark_linkable(inst_ptr);
+    drc_mark_linkable(inst_ptr, ins);
     inst_ptr++;
 }
 
@@ -423,7 +423,7 @@ void drc_bake_bstr(v810_instruction *ins, unsigned int *cycles) {
         drc_bake_handle_interrupts(ins->PC, cycles);
         inst_ptr->func = drc_interpret_bstr_check_length;
         inst_ptr->arg.target_PC = ins->PC;
-        drc_mark_linkable(inst_ptr);
+        drc_mark_linkable(inst_ptr, ins);
         inst_ptr++;
     }
 }

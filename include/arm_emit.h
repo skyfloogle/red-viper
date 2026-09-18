@@ -501,7 +501,7 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define B(cond, imm){ \
     new_branch_link(cond, 0, (imm) & 0xFFFFFF); \
     if (!(imm)) \
-        drc_mark_linkable(inst_ptr-1); \
+        drc_mark_linkable(inst_ptr-1, ins); \
 }
 
 #define Boff(cond, off) \
@@ -512,7 +512,7 @@ static inline void new_floating_point(BYTE cond, BYTE opc1, BYTE opc2, BYTE b12,
 #define BL(cond, imm) {\
     new_branch_link(cond, 1, imm & 0xFFFFFF); \
     if (!imm) \
-        drc_mark_linkable(inst_ptr-1); \
+        drc_mark_linkable(inst_ptr-1, ins); \
 }
 
 // blx<cond> Rm
