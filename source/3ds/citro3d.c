@@ -278,9 +278,9 @@ static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures
 	BufInfo_Init(bufInfo);
 	BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 4, 0x3210);
 
-	int map1_y = (int)bgmap_offsets[0].y & (scy - 1);
-	int map2_y = (int)bgmap_offsets[0].w & (scy - 1);
-	int map3_y = (int)bgmap_offsets[!use_masks].y & (scy - 1);
+	int map1_y = (int)-bgmap_offsets[0].y & (scy - 1);
+	int map2_y = (int)-bgmap_offsets[0].w & (scy - 1);
+	int map3_y = (int)-bgmap_offsets[!use_masks].y & (scy - 1);
 
 	for (int eye = 0; eye < 2; eye++) {
 		if (vbufs[eye] != NULL) {
