@@ -564,10 +564,6 @@ static unsigned int drc_decodeInstructions(exec_block *block, WORD start_PC, WOR
         lowB2  = ((BYTE *)(V810_ROM1.off + cur_PC))[2];
         highB2 = ((BYTE *)(V810_ROM1.off + cur_PC))[3];
 
-        if (cur_PC == 0x07004e1a) {
-            dprintf(0, "iaupsdfhjasdjklfhasdlf %lx", cur_PC);
-        }
-
         inst_cache[i].PC = cur_PC;
         inst_cache[i].save_flags = false;
         inst_cache[i].busywait = false;
