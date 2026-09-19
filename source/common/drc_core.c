@@ -407,7 +407,7 @@ void baseball2_sort(void) {
     // insertion sort
     for (int i = 1; i < sizeof(ids); i++) {
         u8 x = ids[i];
-        u8 key = originals[x].key;
+        HWORD key = originals[x].key;
         int j;
         for (j = i; j > 0 && originals[ids[j - 1]].key > key; j--) {
             ids[j] = ids[j - 1];
