@@ -8,7 +8,9 @@ struct n3ds_uniform_locations {
         pal1tex, pal2tex, pal3col,
         offset,
         bgmap_offsets,
-        shading_offset;
+        shading_offset,
+        a_offset,
+        left;
 };
 
 extern struct n3ds_uniform_locations uLoc;

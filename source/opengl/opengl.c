@@ -97,7 +97,7 @@ void gpu_init(void) {
         "sChar",
         is_es,
 
-        "uniform vec2 uOffset;\n"
+        "uniform vec2 uPosOffset;\n"
         "uniform mat3 uPalette[8];\n"
         "attribute vec2 aPosition;\n"
         "attribute vec4 aParams;\n"
@@ -106,7 +106,7 @@ void gpu_init(void) {
         "void main() {\n"
         "   vParams = aParams.xyw;\n"
         "   vPalette = uPalette[int(aParams.z)];\n"
-        "   vec2 realPos = aPosition * (1.0/256.0) - (1.0 - 4.0/256.0) + uOffset;\n"
+        "   vec2 realPos = aPosition * (1.0/256.0) - (1.0 - 4.0/256.0) + uPosOffset;\n"
         "   gl_Position = vec4(realPos.y, realPos.x, 0.0, 1.0);\n"
         "   gl_PointSize = 8.0;\n"
         "}\n",
@@ -128,12 +128,14 @@ void gpu_init(void) {
         "sAffine",
         is_es,
 
+        "uniform bool uRight;\n"
+        "uniform vec2 uPosOffset;\n"
         "attribute vec4 aParams;\n"
-        "attribute vec2 aOffset;\n"
+        "attribute vec4 aTexOffsets;\n"
         "varying vec2 vTexCoord;\n"
         "void main() {\n"
-        "   gl_Position = vec4(aParams.yx / 256.0 - 1.0, 0.0, 1.0);\n"
-        "   vTexCoord = (aParams.zw + aOffset) / 4096.0;\n"
+        "   gl_Position = vec4((aParams.yx + uPosOffset.yx) / 256.0 - 1.0, 0.0, 1.0);\n"
+        "   vTexCoord = (aParams.zw + aTexOffsets.xy + (uRight ? aTexOffsets.zw : vec2(0.0, 0.0))) / 4096.0;\n"
         "}\n",
 
         "uniform sampler2D sTex;\n"
@@ -301,7 +303,7 @@ void gpu_setup_tile_drawing(void) {
 }
 
 void gpu_set_tile_offset(float xoffset, float yoffset) {
-    glUniform2f(glGetUniformLocation(sChar, "uOffset"), xoffset, yoffset);
+    glUniform2f(glGetUniformLocation(sChar, "uPosOffset"), xoffset, yoffset);
 }
 
 void gpu_target_screen(int drawn_fb) {
@@ -332,7 +334,7 @@ void gpu_draw_tiles(int first, int count) {
     glDrawArrays(GL_POINTS, first, count);
 }
 
-void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, avertex *vbufs[], bool visible[]) {
+void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, bool visible[]) {
 	uint8_t mapid = world->head & 0xf;
 	uint8_t scx_pow = ((world->head >> 10) & 3);
 	uint8_t scy_pow = ((world->head >> 8) & 3);
@@ -353,10 +355,12 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
 
     glUseProgram(sAffine);
 
+    avertex *current_avbuf = avcur - h;
+
     glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aParams"));
-    glVertexAttribPointer(glGetAttribLocation(sAffine, "aParams"), 4, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, avbuf);
-    glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aOffset"));
-    glVertexAttribPointer(glGetAttribLocation(sAffine, "aOffset"), 2, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, (u8*)avbuf + 8);
+    glVertexAttribPointer(glGetAttribLocation(sAffine, "aParams"), 4, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, current_avbuf);
+    glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aTexOffsets"));
+    glVertexAttribPointer(glGetAttribLocation(sAffine, "aTexOffsets"), 4, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, (u8*)current_avbuf + 8);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tileMapCache[0].tex);
@@ -372,12 +376,14 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
     glUniform1iv(glGetUniformLocation(sAffine, "uMapVisible"), map_count, uVisible);
 
     for (int eye = 0; eye < 2; eye++) {
-        if (vbufs[eye] != NULL) {
+        if (world->on & (2 >> eye)) {
             int gx = base_gx + (eye == 0 ? -gp : gp);
+            glUniform1i(glGetUniformLocation(sAffine, "uRight"), eye);
+            glUniform2f(glGetUniformLocation(sAffine, "uPosOffset"), eye == 0 ? -gp : gp, eye * 256);
 
             // note: transposed
             gpu_set_scissor(true, 256 * eye + (gy >= 0 ? gy : 0), gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
-            glDrawArrays(GL_LINES, (vbufs[eye] - avbuf) * 2, h * 2);
+            glDrawArrays(GL_LINES, 0, h * 2);
         }
     }
 }
