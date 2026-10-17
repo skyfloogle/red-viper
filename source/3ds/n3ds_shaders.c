@@ -39,6 +39,8 @@ static YATT_ShaderUniform uniforms[] = {
     { .name = "offset",         .loc_pointer = &uLoc.offset         },
     { .name = "bgmap_offsets",  .loc_pointer = &uLoc.bgmap_offsets  },
     { .name = "shading_offset", .loc_pointer = &uLoc.shading_offset },
+    { .name = "a_offset",       .loc_pointer = &uLoc.a_offset       },
+    { .name = "left",           .loc_pointer = &uLoc.left           },
 };
 
 void n3ds_shaders_init(void)

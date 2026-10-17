@@ -236,7 +236,7 @@ void gpu_set_tile_offset(float xoffset, float yoffset) {
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset, xoffset, yoffset, 0, 0);
 }
 
-static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
+static void draw_affine_layer(int drawn_fb, u8 eyes_used, C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
 	C3D_BindProgram(&sAffine);
 
 	if (!use_masks) {
@@ -270,26 +270,29 @@ static void draw_affine_layer(int drawn_fb, avertex *vbufs[], C3D_Tex **textures
 	C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
 	AttrInfo_Init(attrInfo);
 	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4);
-	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 2);
+	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 4);
 	AttrInfo_AddLoader(attrInfo, 2, GPU_SHORT, 4);
-	AttrInfo_AddLoader(attrInfo, 3, GPU_SHORT, 2);
+	AttrInfo_AddLoader(attrInfo, 3, GPU_SHORT, 4);
 
 	C3D_BufInfo *bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
 	BufInfo_Add(bufInfo, avbuf, sizeof(avertex), 4, 0x3210);
 
 	for (int eye = 0; eye < 2; eye++) {
-		if (vbufs[eye] != NULL) {
+		if (eyes_used & (2 >> eye)) {
 			int gx = base_gx + (eye == 0 ? -gp : gp);
+
+			C3D_BoolUnifSet(GPU_VERTEX_SHADER, uLoc.left, eye == 0);
+			C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.a_offset, eye == 0 ? -gp : gp, eye * 256, 0, 0);
 
 			// note: transposed
 			gpu_set_scissor(true, 256 * eye + (gy >= 0 ? gy : 0), gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
-			C3D_DrawArrays(GPU_GEOMETRY_PRIM, vbufs[eye] - avbuf, h);
+			C3D_DrawArrays(GPU_GEOMETRY_PRIM, avcur - avbuf - h, h);
 		}
 	}
 }
 
-void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, avertex *vbufs[], bool visible[]) {
+void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, bool visible[]) {
 	uint8_t mapid = world->head & 0xf;
 	uint8_t scx_pow = ((world->head >> 10) & 3);
 	uint8_t scy_pow = ((world->head >> 8) & 3);
@@ -386,7 +389,7 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
 				bgmap_offsets[tex_count / 2].c[3 - 2 * (tex_count % 2) - 1] = base_v >> 9;
 				textures[tex_count] = &tileMapCache[cache_id].tex;
 				if (++tex_count == (use_masks ? 2 : 3)) {
-					draw_affine_layer(drawn_fb, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
+					draw_affine_layer(drawn_fb, world->on, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 					tex_count = 0;
 				}
 			}
@@ -394,7 +397,7 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
 	}
 	// clean up any leftovers
 	if (tex_count != 0) {
-		draw_affine_layer(drawn_fb, vbufs, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
+		draw_affine_layer(drawn_fb, world->on, textures, tex_count, base_gx, gp, gy, w, h, use_masks);
 	}
 }
 

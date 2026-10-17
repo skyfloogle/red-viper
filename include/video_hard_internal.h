@@ -34,8 +34,8 @@ typedef struct {
 } __attribute__((aligned(4))) vertex;
 
 typedef struct {
-	short x1, y1, u1, v1, uoff1, voff1;
-	short x2, y2, u2, v2, uoff2, voff2;
+	short x1, y1, u1, v1, uoff1, voff1, uright1, vright1;
+	short x2, y2, u2, v2, uoff2, voff2, uright2, vright2;
 } avertex;
 
 #define VBUF_SIZE 64 * 64 * 2 * 32
@@ -61,4 +61,4 @@ void gpu_target_screen(int drawn_fb);
 void gpu_target_affine(int cache_id);
 void gpu_set_scissor(bool enabled, u32 left, u32 top, u32 right, u32 bottom);
 void gpu_draw_tiles(int first, int count);
-void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, avertex *vbufs[], bool visible[]);
+void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, bool visible[]);
