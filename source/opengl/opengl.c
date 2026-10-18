@@ -1,5 +1,6 @@
-#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 
+#include <stddef.h>
 #include "video_hard_internal.h"
 #include "vb_dsp.h"
 #include "v810_mem.h"
@@ -14,6 +15,8 @@ GLuint screenTexSoft[2];
 static u16 *screenTexSoftBuffer = NULL;
 
 GLuint sChar, sFinal, sAffine;
+
+static bool instanced_available;
 
 static float palettes[8][3][3];
 
@@ -33,10 +36,11 @@ static GLuint build_shader(const char *name, bool is_es, const char *vertex_sour
             "#define mediump\n"
             "#define highp\n";
     }
+    const char *instanced_def = instanced_available ? "#define INSTANCED_AVAILABLE\n" : "";
 
     GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
-    const char *vertex_sources[2] = {header, vertex_source};
-    glShaderSource(vshader, 2, vertex_sources, NULL);
+    const char *vertex_sources[3] = {header, instanced_def, vertex_source};
+    glShaderSource(vshader, 3, vertex_sources, NULL);
     glCompileShader(vshader);
     glGetShaderiv(vshader, GL_COMPILE_STATUS, &compiled);
     if (!compiled) {
@@ -91,7 +95,13 @@ static GLuint build_shader(const char *name, bool is_es, const char *vertex_sour
 }
 
 void gpu_init(void) {
-    bool is_es = strstr((char*)glGetString(GL_VERSION), "OpenGL ES") != NULL;
+    const char *version_string = (const char*)glGetString(GL_VERSION);
+    bool is_es = strstr(version_string, "OpenGL ES") != NULL;
+    instanced_available = is_es
+        // ES: "OpenGL ES x.y ..."
+        ? version_string[10] >= '3' || version_string[11] != '.'
+        // Non-ES: "x.y ..."
+        : version_string[0] > '3' || version_string[1] != '.' || (version_string[0] == '3' && version_string[2] >= '1');
 
     sChar = build_shader(
         "sChar",
@@ -132,10 +142,22 @@ void gpu_init(void) {
         "uniform vec2 uPosOffset;\n"
         "attribute vec4 aParams;\n"
         "attribute vec4 aTexOffsets;\n"
+        "#ifdef INSTANCED_AVAILABLE\n"
+        "attribute vec2 aEndPos;\n"
+        "attribute vec2 aOffsetValue;\n"
+        "#endif\n"
         "varying vec2 vTexCoord;\n"
         "void main() {\n"
-        "   gl_Position = vec4((aParams.yx + uPosOffset.yx) / 256.0 - 1.0, 0.0, 1.0);\n"
-        "   vTexCoord = (aParams.zw + aTexOffsets.xy + (uRight ? aTexOffsets.zw : vec2(0.0, 0.0))) / 4096.0;\n"
+        "   #ifdef INSTANCED_AVAILABLE\n"
+        "   vec2 posOffset = aOffsetValue * (aEndPos - aParams.xy);\n"
+        "   vec2 texOffset = aOffsetValue * aTexOffsets.xy;\n"
+        "   #else\n"
+        "   vec2 posOffset = vec2(0, 0);\n"
+        "   vec2 texOffset = aTexOffsets.xy;\n"
+        "   #endif\n"
+        "   if (uRight) texOffset += aTexOffsets.zw;\n"
+        "   gl_Position = vec4((aParams.yx + uPosOffset.yx + posOffset.yx) / 256.0 - 1.0, 0.0, 1.0);\n"
+        "   vTexCoord = (aParams.zw + texOffset) / 4096.0;\n"
         "}\n",
 
         "uniform sampler2D sTex;\n"
@@ -334,6 +356,10 @@ void gpu_draw_tiles(int first, int count) {
     glDrawArrays(GL_POINTS, first, count);
 }
 
+bool gpu_can_chunk() {
+    return instanced_available;
+}
+
 void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, bool visible[]) {
 	uint8_t mapid = world->head & 0xf;
 	uint8_t scx_pow = ((world->head >> 10) & 3);
@@ -356,11 +382,31 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
     glUseProgram(sAffine);
 
     avertex *current_avbuf = avcur - h;
+    int vertex_size = instanced_available ? sizeof(avertex) : sizeof(avertex) / 2;
 
     glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aParams"));
-    glVertexAttribPointer(glGetAttribLocation(sAffine, "aParams"), 4, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, current_avbuf);
+    glVertexAttribPointer(glGetAttribLocation(sAffine, "aParams"), 4, GL_SHORT, GL_FALSE, vertex_size, current_avbuf);
     glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aTexOffsets"));
-    glVertexAttribPointer(glGetAttribLocation(sAffine, "aTexOffsets"), 4, GL_SHORT, GL_FALSE, sizeof(avertex) / 2, (u8*)current_avbuf + 8);
+    glVertexAttribPointer(glGetAttribLocation(sAffine, "aTexOffsets"), 4, GL_SHORT, GL_FALSE, vertex_size, (u8*)current_avbuf + (instanced_available ? offsetof(avertex, uoff2) : offsetof(avertex, uoff1)));
+    if (instanced_available) {
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aParams"), 1);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aTexOffsets"), 1);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aEndPos"), 1);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aOffsetValue"), 0);
+
+        glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aEndPos"));
+        glVertexAttribPointer(glGetAttribLocation(sAffine, "aEndPos"), 2, GL_SHORT, GL_FALSE, vertex_size, (u8*)current_avbuf + offsetof(avertex, x2));
+        u8 rectangle[] = {
+            0, 0,
+            1, 0,
+            0, 1,
+            0, 1,
+            1, 0,
+            1, 1,
+        };
+        glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aOffsetValue"));
+        glVertexAttribPointer(glGetAttribLocation(sAffine, "aOffsetValue"), 2, GL_BYTE, GL_FALSE, 2, rectangle);
+    }
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tileMapCache[0].tex);
@@ -383,8 +429,20 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
 
             // note: transposed
             gpu_set_scissor(true, 256 * eye + (gy >= 0 ? gy : 0), gx >= 0 ? gx : 0, (gy + h < 256 ? gy + h : 256) + 256 * eye, gx + w);
-            glDrawArrays(GL_LINES, 0, h * 2);
+            if (instanced_available) {
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 6, h);
+            } else {
+                glDrawArrays(GL_LINES, 0, h * 2);
+            }
         }
+    }
+
+    if (instanced_available) {
+        // reset to no divisor
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aParams"), 0);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aTexOffsets"), 0);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aEndPos"), 0);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aOffsetValue"), 0);
     }
 }
 

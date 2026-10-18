@@ -236,6 +236,10 @@ void gpu_set_tile_offset(float xoffset, float yoffset) {
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, uLoc.offset, xoffset, yoffset, 0, 0);
 }
 
+bool gpu_can_chunk() {
+    return true;
+}
+
 static void draw_affine_layer(int drawn_fb, u8 eyes_used, C3D_Tex **textures, int count, int base_gx, int gp, int gy, int w, int h, bool use_masks) {
 	C3D_BindProgram(&sAffine);
 

@@ -61,4 +61,5 @@ void gpu_target_screen(int drawn_fb);
 void gpu_target_affine(int cache_id);
 void gpu_set_scissor(bool enabled, u32 left, u32 top, u32 right, u32 bottom);
 void gpu_draw_tiles(int first, int count);
+bool gpu_can_chunk(void);
 void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int drawn_fb, bool visible[]);
