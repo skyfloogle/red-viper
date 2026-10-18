@@ -20,7 +20,7 @@
     add r0.xy, a_offset.xy, v0.xy
     add r0.zw, a_offset.xyxy, v2.xyxy
     mul r0.xyzw, const1.xxxx, r0.xyzw
-    add r0.xyzw, const1.wwwy, r0.xyzw
+    add r0.xyzw, const1.wwww, r0.xyzw
     mov outpos.xyzw, r0.yxwz
     ; texcoord: 0..size -> 0..1
     mov r0.xy, v0.zw

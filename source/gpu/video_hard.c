@@ -371,7 +371,7 @@ void video_hard_render(int drawn_fb) {
 						avcur->x1 = base_gx;
 						avcur->y1 = gy + y;
 						avcur->x2 = base_gx + w;
-						avcur->y2 = gy + y;
+						avcur->y2 = gy + y + gpu_can_chunk();
 						avcur->u1 = avcur->u2 = mx - (mp < 0 ? (mp * dx >> 6) : 0);
 						avcur->v1 = avcur->v2 = my - (mp < 0 ? (mp * dy >> 6) : 0);
 						avcur->uright1 = avcur->uright2 = mp * dx >> 6;
