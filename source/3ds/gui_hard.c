@@ -12,6 +12,7 @@
 #include "drc_core.h"
 #include "vb_dsp.h"
 #include "vb_gui.h"
+#include "rcheevos_integration.h"
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_sound.h"
@@ -101,11 +102,23 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
+// RetroAchievements overlay state
+static C2D_TextBuf ra_textbuf;
+static C2D_Text ra_title_text, ra_desc_text, ra_progress_text;
+static uint32_t ra_text_serial = 0, ra_progress_serial = 0;
+static bool ra_progress_parsed = false;
+static C3D_Tex ra_badge_tex;
+static bool ra_badge_tex_ready = false;
+static Tex3DS_SubTexture ra_badge_subtex;
+static C2D_Image ra_badge_img;
+static uint32_t ra_badge_id = 0;
+
+
 static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R,
                 text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_nintendo_3ds,
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
                 text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
-                text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
+                text_areyousure_reset, text_areyousure_exit, text_areyousure_hardcore, text_ra_login, text_ra_logout, text_savestate_menu, text_save, text_load,
                 text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink, text_preset, text_custom,
                 text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo,
                 text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off,
@@ -183,6 +196,7 @@ static inline int handle_buttons(Button buttons[], int count);
         C2D_SceneBegin(screen); \
         C2D_Prepare(); \
         hidScanInput(); \
+        ra_idle(); \
 
 #define DEFAULT_RETURN
 
@@ -490,6 +504,18 @@ static Button options_buttons[] = {
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
     #define OPTIONS_DEBUG 11
     {.str="Save debug info", .x=170, .y=208, .w=150, .h=32},
+    #define OPTIONS_RA 12
+    {.str="RA Login", .x=52, .y=208, .w=114, .h=32},
+};
+
+static void ra_options(int initial_button);
+static Button ra_options_buttons[] = {
+    #define RA_OPTIONS_LOGIN 0
+    {.str="Log in", .x=16, .y=48, .w=288, .h=48},
+    #define RA_OPTIONS_HARDCORE 1
+    {.str="Hardcore mode", .x=16, .y=112, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define RA_OPTIONS_BACK 2
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static void video_settings(int initial_button);
@@ -692,6 +718,7 @@ static Button forwarder_error_buttons[] = {
     SETUP_BUTTONS(custom_3ds_mappings_buttons); \
     SETUP_BUTTONS(custom_vb_mappings_buttons); \
     SETUP_BUTTONS(options_buttons); \
+    SETUP_BUTTONS(ra_options_buttons); \
     SETUP_BUTTONS(video_settings_buttons); \
     SETUP_BUTTONS(barrier_settings_buttons); \
     SETUP_BUTTONS(anaglyph_settings_buttons); \
@@ -1733,6 +1760,7 @@ static void multiplayer_dlplay(void) {
     appdata.rom_name[sizeof(appdata.rom_name) - 1] = 0;
 
     game_running = false;
+    ra_unload_game();
     bool size_received = false;
     int dlplay_progress = 0;
     LOOP_BEGIN(multiplayer_dlplay_buttons, -1);
@@ -1788,6 +1816,7 @@ static void multiplayer_dlplay(void) {
             tVBOpt.GAME_ID = MAKE_GAMEID((char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)));
             apply_patches();
             v810_reset();
+            ra_load_game();
 
             Packet *send_packet = new_packet_to_send();
             send_packet->packet_type = PACKET_LOADED;
@@ -2792,6 +2821,7 @@ static void multicolour_settings(int palette_id, int initial_button) {
 }
 
 static bool vblink_transfer() {
+    ra_unload_game();
     C2D_Text fname;
     C2D_TextBufClear(dynamic_textbuf);
     C2D_TextParse(&fname, dynamic_textbuf, vblink_fname);
@@ -2810,6 +2840,7 @@ static bool vblink_transfer() {
             game_running = true;
             loadGameOptions();
             last_savestate = 0;
+            ra_load_game();
             loop = false;
         } else if (vblink_progress < 0 || vblink_error) {
             vblink_error = 0;
@@ -3002,6 +3033,62 @@ static void options(int initial_button) {
             loadFileOptions();
             if (game_running) loadGameOptions();
             [[gnu::musttail]] return options(OPTIONS_BACK);
+        case OPTIONS_RA:
+            [[gnu::musttail]] return ra_options(0);
+    }
+}
+
+static void ra_options(int initial_button) {
+    bool logged_in = ra_is_logged_in();
+    ra_options_buttons[RA_OPTIONS_LOGIN].text = logged_in ? text_ra_logout : text_ra_login;
+    ra_options_buttons[RA_OPTIONS_HARDCORE].toggle = ra_get_hardcore_enabled();
+    ra_options_buttons[RA_OPTIONS_HARDCORE].hidden = !logged_in || !ra_hardcore_available();
+
+    C2D_Text status;
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_TextParse(&status, dynamic_textbuf,
+        !logged_in ? "Not logged in." :
+        !ra_hardcore_available() ? "Hardcore is unavailable in emulators." :
+        "Hardcore disables loading savestates.");
+    C2D_TextOptimize(&status);
+
+    LOOP_BEGIN(ra_options_buttons, initial_button);
+        C2D_DrawText(&status, C2D_AlignCenter | C2D_WithColor, 320 / 2, 172, 0, 0.5, 0.5, TINT_COLOR);
+    LOOP_END(ra_options_buttons);
+    switch (button) {
+        case RA_OPTIONS_LOGIN:
+            if (ra_is_logged_in()) {
+                ra_logout();
+            } else {
+                char ra_user[64] = {0};
+                char ra_pass[256] = {0};
+                SwkbdState swkbd;
+                toggleVsync(false);
+                swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, sizeof(ra_user) - 1);
+                swkbdSetHintText(&swkbd, "RetroAchievements username");
+                if (swkbdInputText(&swkbd, ra_user, sizeof(ra_user)) == SWKBD_BUTTON_RIGHT) {
+                    swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, sizeof(ra_pass) - 1);
+                    swkbdSetHintText(&swkbd, "Password");
+                    swkbdSetPasswordMode(&swkbd, SWKBD_PASSWORD_HIDE_DELAY);
+                    if (swkbdInputText(&swkbd, ra_pass, sizeof(ra_pass)) == SWKBD_BUTTON_RIGHT) {
+                        ra_login_with_password(ra_user, ra_pass);
+                    }
+                }
+                memset(ra_pass, 0, sizeof(ra_pass));
+                toggleVsync(tVBOpt.VSYNC);
+            }
+            [[gnu::musttail]] return ra_options(RA_OPTIONS_LOGIN);
+        case RA_OPTIONS_HARDCORE:
+            if (ra_get_hardcore_enabled()) {
+                // hardcore -> softcore is allowed at any time
+                ra_set_hardcore_enabled(false);
+            } else if (!ra_has_game() || areyousure(&text_areyousure_hardcore)) {
+                // softcore -> hardcore resets the game (via RC_CLIENT_EVENT_RESET)
+                ra_set_hardcore_enabled(true);
+            }
+            [[gnu::musttail]] return ra_options(RA_OPTIONS_HARDCORE);
+        case RA_OPTIONS_BACK:
+            [[gnu::musttail]] return options(OPTIONS_RA);
     }
 }
 
@@ -3219,9 +3306,13 @@ static void savestate_menu(int initial_button, int selected_state) {
                 [[gnu::musttail]] return savestate_confirm("Save complete!", SAVE_SAVESTATE, selected_state);
             }
         case LOAD_SAVESTATE:
+            if (!ra_allow_load_state()) {
+                [[gnu::musttail]] return savestate_error("Loading states is disabled\nin Hardcore mode.", LOAD_SAVESTATE, selected_state);
+            }
             if (emulation_lstate(selected_state) != 0) {
                 [[gnu::musttail]] return savestate_error("Could not load state", LOAD_SAVESTATE, selected_state);
             } else {
+                ra_state_loaded();
                 [[gnu::musttail]] return savestate_confirm("Load complete!", LOAD_SAVESTATE, selected_state);
             }
         case DELETE_SAVESTATE:
@@ -3284,6 +3375,7 @@ static void forwarder_error(int err) {
 
 static bool load_rom(char *rom_message) {
     if (save_thread) threadJoin(save_thread, U64_MAX);
+    ra_unload_game();
     int ret;
     if ((ret = v810_load_init())) {
         // instant fail
@@ -3330,6 +3422,7 @@ static bool load_rom(char *rom_message) {
         game_running = true;
         loadGameOptions();
         last_savestate = 0;
+        ra_load_game();
         return true;
     } else {
         game_running = false;
@@ -3580,6 +3673,7 @@ void guiInit(void) {
 
     static_textbuf = C2D_TextBufNew(4096);
     dynamic_textbuf = C2D_TextBufNew(4096);
+    ra_textbuf = C2D_TextBufNew(512);
     STATIC_TEXT(&text_A, "A")
     STATIC_TEXT(&text_B, "B")
     STATIC_TEXT(&text_btn_A, "\uE000")
@@ -3611,6 +3705,9 @@ void guiInit(void) {
     STATIC_TEXT(&text_yes, "Yes")
     STATIC_TEXT(&text_no, "No")
     STATIC_TEXT(&text_areyousure_reset, "Are you sure you want to reset?")
+    STATIC_TEXT(&text_areyousure_hardcore, "Enabling Hardcore will reset\nthe game. Continue?")
+    STATIC_TEXT(&text_ra_login, "Log in")
+    STATIC_TEXT(&text_ra_logout, "Log out")
     STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?")
     STATIC_TEXT(&text_areyousure_leave, "Are you sure you want to\nexit multiplayer?")
     STATIC_TEXT(&text_version_mismatch, "Your emulator version doesn't\nmatch the host's.\nThis can cause desyncs.")
@@ -4032,6 +4129,104 @@ void drawTouchControls(int inputs) {
 
 extern int input_state;
 
+// ---------------------------------------------------------------------------
+// RetroAchievements overlay (bottom screen)
+// ---------------------------------------------------------------------------
+static bool ra_upload_badge(const uint8_t *rgba, int w, int h) {
+    int tw = 8, th = 8;
+    while (tw < w) tw <<= 1;
+    while (th < h) th <<= 1;
+    if (ra_badge_tex_ready && (ra_badge_tex.width != tw || ra_badge_tex.height != th)) {
+        C3D_TexDelete(&ra_badge_tex);
+        ra_badge_tex_ready = false;
+    }
+    if (!ra_badge_tex_ready) {
+        if (!C3D_TexInit(&ra_badge_tex, tw, th, GPU_RGBA8)) return false;
+        C3D_TexSetFilter(&ra_badge_tex, GPU_LINEAR, GPU_LINEAR);
+        ra_badge_tex_ready = true;
+    }
+    u8 *dst = (u8 *)ra_badge_tex.data;
+    memset(dst, 0, ra_badge_tex.size);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            // 3DS textures are tiled in 8x8 Morton order, ABGR byte order
+            u32 pos = ((((y >> 3) * (tw >> 3) + (x >> 3)) << 6) +
+                       ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3))) * 4;
+            const u8 *src = rgba + (y * w + x) * 4;
+            dst[pos + 0] = src[3];
+            dst[pos + 1] = src[2];
+            dst[pos + 2] = src[1];
+            dst[pos + 3] = src[0];
+        }
+    }
+    C3D_TexFlush(&ra_badge_tex);
+    ra_badge_subtex.width = w;
+    ra_badge_subtex.height = h;
+    ra_badge_subtex.left = 0.0f;
+    ra_badge_subtex.top = 1.0f;
+    ra_badge_subtex.right = w / (float)tw;
+    ra_badge_subtex.bottom = 1.0f - h / (float)th;
+    ra_badge_img.tex = &ra_badge_tex;
+    ra_badge_img.subtex = &ra_badge_subtex;
+    return true;
+}
+
+static void ra_draw_overlay(void) {
+    if (!ra_textbuf) return;
+    ra_popup_t popup;
+    bool have_popup = ra_get_popup(&popup);
+    char progress[64];
+    uint32_t progress_serial = 0;
+    bool have_progress = ra_get_progress(progress, sizeof(progress), &progress_serial);
+    if (!have_popup && !have_progress) return;
+
+    if ((have_popup && popup.serial != ra_text_serial) ||
+        (have_progress && (!ra_progress_parsed || progress_serial != ra_progress_serial))) {
+        C2D_TextBufClear(ra_textbuf);
+        ra_text_serial = 0;
+        ra_progress_parsed = false;
+        if (have_popup) {
+            C2D_TextParse(&ra_title_text, ra_textbuf, popup.title);
+            C2D_TextOptimize(&ra_title_text);
+            C2D_TextParse(&ra_desc_text, ra_textbuf, popup.description);
+            C2D_TextOptimize(&ra_desc_text);
+            ra_text_serial = popup.serial;
+        }
+        if (have_progress) {
+            C2D_TextParse(&ra_progress_text, ra_textbuf, progress);
+            C2D_TextOptimize(&ra_progress_text);
+            ra_progress_serial = progress_serial;
+            ra_progress_parsed = true;
+        }
+    }
+
+    C2D_Flush();
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+
+    if (have_progress) {
+        C2D_DrawRectSolid(36, 168, 0, 284, 20, C2D_Color32(0, 0, 0, 255));
+        C2D_DrawText(&ra_progress_text, C2D_AlignRight | C2D_WithColor, 316, 170, 0, 0.45f, 0.45f, TINT_COLOR);
+    }
+
+    if (have_popup) {
+        C2D_DrawRectSolid(0, 190, 0, 320, 50, C2D_Color32(0, 0, 0, 255));
+        C2D_DrawRectSolid(0, 190, 0, 320, 1, TINT_COLOR);
+        float text_x = 8;
+        if (popup.badge_id && popup.badge_rgba) {
+            if (popup.badge_id != ra_badge_id && ra_upload_badge(popup.badge_rgba, popup.badge_w, popup.badge_h))
+                ra_badge_id = popup.badge_id;
+            if (popup.badge_id == ra_badge_id) {
+                int dim = popup.badge_w > popup.badge_h ? popup.badge_w : popup.badge_h;
+                float scale = 42.0f / dim;
+                C2D_DrawImageAt(ra_badge_img, 4, 194, 0, NULL, scale, scale);
+                text_x = 52;
+            }
+        }
+        C2D_DrawText(&ra_title_text, C2D_WithColor, text_x, 196, 0, 0.55f, 0.55f, TINT_COLOR);
+        C2D_DrawText(&ra_desc_text, C2D_WithColor, text_x, 216, 0, 0.45f, 0.45f, C2D_Color32(255, 255, 255, 255));
+    }
+}
+
 void guiUpdate(float total_time, float drc_time) {
     if (!backlightEnabled) return;
 
@@ -4049,7 +4244,9 @@ void guiUpdate(float total_time, float drc_time) {
     if (replay_playing() != last_replay) shouldRedrawMenu = true;
     last_replay = replay_playing();
 
-    if (!shouldRedrawMenu && !tVBOpt.PERF_INFO && !tVBOpt.INPUTS)
+    if (ra_overlay_take_dirty()) shouldRedrawMenu = true;
+
+    if (!shouldRedrawMenu && !tVBOpt.PERF_INFO && !tVBOpt.INPUTS && !ra_overlay_active())
         return;
 
     // unclear why this is necessary, but omitting it can lead to weird graphical glitches
@@ -4155,6 +4352,8 @@ void guiUpdate(float total_time, float drc_time) {
             if ((1<<i) == VB_KEY_R)      C2D_DrawCircleSolid(320/2+8,  12, 0, 2, cols[mods[i]]);
         }
     }
+
+    ra_draw_overlay();
 
     C2D_Flush();
 

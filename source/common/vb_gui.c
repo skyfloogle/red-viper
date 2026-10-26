@@ -14,6 +14,9 @@
 #include "vb_gui.h"
 #include "vb_set.h"
 #include "vb_sound.h"
+#ifdef __3DS__
+#include "rcheevos_integration.h"
+#endif
 
 #ifdef __3DS__
 #define GUI_STUB(void) { \
@@ -207,6 +210,9 @@ int emulation_sstate(int state) {
 }
 
 int emulation_lstate(int state) {
+    // RetroAchievements hardcore: loading states is never allowed
+    if (!ra_allow_load_state()) return 1;
+
     int i;
     int ret;
     uint32_t size;

@@ -1,6 +1,9 @@
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "patches.h"
+#ifdef __3DS__
+#include "rcheevos_integration.h"
+#endif
 
 typedef struct {
     const char gameid[6];
@@ -127,6 +130,10 @@ static const Patch patches[] = {
 };
 
 void apply_patches() {
+#ifdef __3DS__
+    // RetroAchievements identifies games by the hash of the unmodified ROM
+    ra_capture_rom_hash();
+#endif
     for (int i = 0; i < sizeof(patches) / sizeof(patches[0]); i++) {
         char *gameid = (char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9));
         if (CHECK_GAMEID(patches[i].gameid)) {
