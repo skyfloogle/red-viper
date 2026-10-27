@@ -38,9 +38,13 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/common source/arm source/3ds source/common/inih source/3ds/yattlib-3d/src
+RCHEEVOS	:=	source/common/rcheevos
+RCHEEVOS_SOURCES	:=	$(RCHEEVOS)/src $(RCHEEVOS)/src/rcheevos $(RCHEEVOS)/src/rapi $(RCHEEVOS)/src/rhash
+SOURCES		:=	source/common source/arm source/3ds source/common/inih source/3ds/yattlib-3d/src \
+			$(RCHEEVOS_SOURCES)
 DATA		:=	data
-INCLUDES	:=	include source/common/inih source/3ds/yattlib-3d/include
+INCLUDES	:=	include source/common/inih source/3ds/yattlib-3d/include \
+			$(RCHEEVOS)/include source/3ds/stb
 GRAPHICS	:=	gfx gfx/maps
 GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs
@@ -70,6 +74,7 @@ CFLAGS	:=	-g -Wall -Wno-format-truncation -Werror -O3 -mword-relocations -Wswitc
 			-Wno-unused-variable \
 			-ffunction-sections \
 			-DVERSION=\"$(FULL_VERSION)\" \
+			-DRA_UA_VERSION=\"$(VERSION)\" \
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -D__3DS__ $(EXTRA_CFLAGS)
@@ -126,6 +131,12 @@ PICAFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.v.pica)))
 SHLISTFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.shlist)))
 GFXFILES	:=	$(foreach dir,$(GRAPHICS),$(notdir $(wildcard $(dir)/*.t3s)))
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+
+# rc_libretro.c is RetroArch-specific
+CFILES		:=	$(filter-out rc_libretro.c,$(CFILES))
+# third-party code is built without -Werror
+export THIRDPARTY_OFILES	:=	ra_stb_image.o \
+			$(patsubst %.c,%.o,$(filter-out rc_libretro.c,$(foreach dir,$(RCHEEVOS_SOURCES),$(notdir $(wildcard $(dir)/*.c)))))
 
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C
@@ -222,6 +233,9 @@ endif
 $(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
 
 $(OFILES_SOURCES) : $(HFILES)
+
+# third-party code: relax warnings that newer GCC treats as errors
+$(THIRDPARTY_OFILES) : CFLAGS += -Wno-error -Wno-incompatible-pointer-types -Wno-format -Wno-unused-function
 
 $(OUTPUT).elf	:	$(OFILES) $(ROMFS_T3XFILES)
 

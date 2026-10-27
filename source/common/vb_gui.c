@@ -14,6 +14,9 @@
 #include "vb_gui.h"
 #include "vb_set.h"
 #include "vb_sound.h"
+#ifdef __3DS__
+#include "rcheevos_integration.h"
+#endif
 
 #ifdef __3DS__
 #define GUI_STUB(void) { \
@@ -194,6 +197,8 @@ int emulation_sstate(int state) {
     WRITE_MEMORY(V810_SOUND_RAM);
     WRITE_MEMORY(V810_VB_RAM);
     WRITE_MEMORY(V810_GAME_RAM);
+    // RetroAchievements progress (hit counts etc.), optional trailing block
+    if (ra_write_progress(state_file) != 0) goto bail;
     #undef WRITE_MEMORY
     #undef WRITE_VAR
     #undef FWRITE
@@ -207,6 +212,9 @@ int emulation_sstate(int state) {
 }
 
 int emulation_lstate(int state) {
+    // RetroAchievements hardcore: loading states is never allowed
+    if (!ra_allow_load_state()) return 1;
+
     int i;
     int ret;
     uint32_t size;
@@ -451,8 +459,15 @@ int emulation_lstate(int state) {
     #undef READ_MEMORY
     #undef READ_VAR
 
+    // optional RetroAchievements progress block
+    void *ra_progress = NULL;
+    if (ra_read_progress(state_file, &ra_progress) != 0) goto bail;
+
     fgetc(state_file); // set eof flag
-    if (!feof(state_file)) goto bail;
+    if (!feof(state_file)) {
+        free(ra_progress);
+        goto bail;
+    }
 
     fclose(state_file);
 
@@ -472,6 +487,9 @@ int emulation_lstate(int state) {
     APPLY_MEMORY(V810_VB_RAM);
     APPLY_MEMORY(V810_GAME_RAM);
     #undef APPLY_MEMORY
+
+    // restores achievement progress, or resets it for states without any
+    ra_apply_progress(ra_progress);
 
     // frametime was moved to end-of-frame in version 2
     if (ver < 2) {

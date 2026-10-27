@@ -4,3 +4,9 @@
 [submodule "source/3ds/yattlib-3d"]
 	path = source/3ds/yattlib-3d
 	url = https://github.com/Wyatt-James/yattlib-3d
+[submodule "source/common/rcheevos"]
+	path = source/common/rcheevos
+	url = https://github.com/RetroAchievements/rcheevos.git
+[submodule "source/3ds/stb"]
+	path = source/3ds/stb
+	url = https://github.com/nothings/stb.git

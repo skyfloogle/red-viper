@@ -12,6 +12,7 @@
 #include "drc_core.h"
 #include "vb_dsp.h"
 #include "vb_gui.h"
+#include "rcheevos_integration.h"
 #include "v810_mem.h"
 #include "vb_set.h"
 #include "vb_sound.h"
@@ -101,11 +102,33 @@ static C3D_RenderTarget *screen;
 static C2D_TextBuf static_textbuf;
 static C2D_TextBuf dynamic_textbuf;
 
+// RetroAchievements overlay state
+static C2D_TextBuf ra_textbuf;
+static C2D_Text ra_title_text, ra_desc_text, ra_progress_text;
+static uint32_t ra_text_serial = 0, ra_progress_serial = 0;
+static bool ra_progress_parsed = false;
+static C2D_TextBuf ra_hud_textbuf;
+static C2D_Text ra_tracker_text[RA_MAX_TRACKERS];
+static uint32_t ra_hud_serial = 0;
+static bool ra_hud_parsed = false;
+
+#define RA_TEX_SLOTS 12
+typedef struct {
+    C3D_Tex tex;
+    Tex3DS_SubTexture sub;
+    C2D_Image img;
+    uint32_t id, used;
+    bool ready;
+} RaTexSlot;
+static RaTexSlot ra_tex[RA_TEX_SLOTS];
+static uint32_t ra_tex_clock = 0;
+
+
 static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R,
                 text_switch, text_saving, text_on, text_off, text_toggle, text_hold, text_nintendo_3ds,
                 text_vbipd, text_left, text_right, text_sound_error, text_anykeyexit, text_about,
                 text_debug_filenames, text_loading, text_loaderr, text_unloaded, text_yes, text_no,
-                text_areyousure_reset, text_areyousure_exit, text_savestate_menu, text_save, text_load,
+                text_areyousure_reset, text_areyousure_exit, text_areyousure_hardcore, text_ra_login, text_ra_logout, text_savestate_menu, text_save, text_load,
                 text_vb_lpad, text_vb_rpad, text_mirror_abxy, text_vblink, text_preset, text_custom,
                 text_error, text_3ds, text_vb, text_map, text_currently_mapped_to, text_normal, text_turbo,
                 text_current_default, text_anaglyph, text_depth, text_cpp_on, text_cpp_off,
@@ -183,6 +206,7 @@ static inline int handle_buttons(Button buttons[], int count);
         C2D_SceneBegin(screen); \
         C2D_Prepare(); \
         hidScanInput(); \
+        ra_idle(); \
 
 #define DEFAULT_RETURN
 
@@ -226,6 +250,15 @@ static Button game_menu_buttons[] = {
     {.str="Reset", .x=8, .y=64, .w=80 + 16, .h=80},
     #define MAIN_MENU_SAVESTATES 6
     {.str="Savestates", .x=112, .y=64, .w=80 + 16, .h=80},
+    #define MAIN_MENU_ACHIEVEMENTS 7
+    {.str="Achievements", .x=88, .y=150, .w=144, .h=32},
+};
+
+static void ra_achievements_menu(void);
+static bool ra_draw_badge(const char *key, float x, float y, float size);
+static Button ra_achievements_buttons[] = {
+    #define RA_ACH_BACK 0
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static void multiplayer_menu(int initial_button);
@@ -490,6 +523,18 @@ static Button options_buttons[] = {
     {.str="Back", .x=0, .y=208, .w=48, .h=32},
     #define OPTIONS_DEBUG 11
     {.str="Save debug info", .x=170, .y=208, .w=150, .h=32},
+    #define OPTIONS_RA 12
+    {.str="RA Login", .x=52, .y=208, .w=114, .h=32},
+};
+
+static void ra_options(int initial_button);
+static Button ra_options_buttons[] = {
+    #define RA_OPTIONS_LOGIN 0
+    {.str="Log in", .x=16, .y=48, .w=288, .h=48},
+    #define RA_OPTIONS_HARDCORE 1
+    {.str="Hardcore mode", .x=16, .y=112, .w=288, .h=48, .show_toggle=true, .toggle_text_on=&text_on, .toggle_text_off=&text_off},
+    #define RA_OPTIONS_BACK 2
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static void video_settings(int initial_button);
@@ -692,6 +737,8 @@ static Button forwarder_error_buttons[] = {
     SETUP_BUTTONS(custom_3ds_mappings_buttons); \
     SETUP_BUTTONS(custom_vb_mappings_buttons); \
     SETUP_BUTTONS(options_buttons); \
+    SETUP_BUTTONS(ra_options_buttons); \
+    SETUP_BUTTONS(ra_achievements_buttons); \
     SETUP_BUTTONS(video_settings_buttons); \
     SETUP_BUTTONS(barrier_settings_buttons); \
     SETUP_BUTTONS(anaglyph_settings_buttons); \
@@ -799,6 +846,8 @@ static void game_menu(int initial_button) {
         game_menu_buttons[MAIN_MENU_SAVESTATES].x = 224 - 48;
         game_menu_buttons[MAIN_MENU_SAVESTATES].w = 80 + 48;
     }
+    game_menu_buttons[MAIN_MENU_ACHIEVEMENTS].hidden = !ra_has_game();
+    if (initial_button == MAIN_MENU_ACHIEVEMENTS && !ra_has_game()) initial_button = MAIN_MENU_RESUME;
     LOOP_BEGIN(game_menu_buttons, initial_button);
         if (!tVBOpt.FORWARDER && (hidKeysDown() & KEY_Y)) loop = false;
     LOOP_END(game_menu_buttons);
@@ -839,6 +888,9 @@ static void game_menu(int initial_button) {
             } else [[gnu::musttail]] return game_menu(MAIN_MENU_RESET);
         case MAIN_MENU_SAVESTATES:
             [[gnu::musttail]] return savestate_menu(0, last_savestate);
+        case MAIN_MENU_ACHIEVEMENTS:
+            ra_achievements_menu();
+            [[gnu::musttail]] return game_menu(MAIN_MENU_ACHIEVEMENTS);
     }
 }
 
@@ -1733,6 +1785,7 @@ static void multiplayer_dlplay(void) {
     appdata.rom_name[sizeof(appdata.rom_name) - 1] = 0;
 
     game_running = false;
+    ra_unload_game();
     bool size_received = false;
     int dlplay_progress = 0;
     LOOP_BEGIN(multiplayer_dlplay_buttons, -1);
@@ -1788,6 +1841,7 @@ static void multiplayer_dlplay(void) {
             tVBOpt.GAME_ID = MAKE_GAMEID((char*)(V810_ROM1.off + (V810_ROM1.highaddr & 0xFFFFFDF9)));
             apply_patches();
             v810_reset();
+            ra_load_game();
 
             Packet *send_packet = new_packet_to_send();
             send_packet->packet_type = PACKET_LOADED;
@@ -2792,6 +2846,7 @@ static void multicolour_settings(int palette_id, int initial_button) {
 }
 
 static bool vblink_transfer() {
+    ra_unload_game();
     C2D_Text fname;
     C2D_TextBufClear(dynamic_textbuf);
     C2D_TextParse(&fname, dynamic_textbuf, vblink_fname);
@@ -2810,6 +2865,7 @@ static bool vblink_transfer() {
             game_running = true;
             loadGameOptions();
             last_savestate = 0;
+            ra_load_game();
             loop = false;
         } else if (vblink_progress < 0 || vblink_error) {
             vblink_error = 0;
@@ -3002,6 +3058,62 @@ static void options(int initial_button) {
             loadFileOptions();
             if (game_running) loadGameOptions();
             [[gnu::musttail]] return options(OPTIONS_BACK);
+        case OPTIONS_RA:
+            [[gnu::musttail]] return ra_options(0);
+    }
+}
+
+static void ra_options(int initial_button) {
+    bool logged_in = ra_is_logged_in();
+    ra_options_buttons[RA_OPTIONS_LOGIN].text = logged_in ? text_ra_logout : text_ra_login;
+    ra_options_buttons[RA_OPTIONS_HARDCORE].toggle = ra_get_hardcore_enabled();
+    ra_options_buttons[RA_OPTIONS_HARDCORE].hidden = !logged_in || !ra_hardcore_available();
+
+    C2D_Text status;
+    C2D_TextBufClear(dynamic_textbuf);
+    C2D_TextParse(&status, dynamic_textbuf,
+        !logged_in ? "Not logged in." :
+        !ra_hardcore_available() ? "Hardcore is unavailable in emulators." :
+        "Hardcore disables loading savestates.");
+    C2D_TextOptimize(&status);
+
+    LOOP_BEGIN(ra_options_buttons, initial_button);
+        C2D_DrawText(&status, C2D_AlignCenter | C2D_WithColor, 320 / 2, 172, 0, 0.5, 0.5, TINT_COLOR);
+    LOOP_END(ra_options_buttons);
+    switch (button) {
+        case RA_OPTIONS_LOGIN:
+            if (ra_is_logged_in()) {
+                ra_logout();
+            } else {
+                char ra_user[64] = {0};
+                char ra_pass[256] = {0};
+                SwkbdState swkbd;
+                toggleVsync(false);
+                swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, sizeof(ra_user) - 1);
+                swkbdSetHintText(&swkbd, "RetroAchievements username");
+                if (swkbdInputText(&swkbd, ra_user, sizeof(ra_user)) == SWKBD_BUTTON_RIGHT) {
+                    swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, sizeof(ra_pass) - 1);
+                    swkbdSetHintText(&swkbd, "Password");
+                    swkbdSetPasswordMode(&swkbd, SWKBD_PASSWORD_HIDE_DELAY);
+                    if (swkbdInputText(&swkbd, ra_pass, sizeof(ra_pass)) == SWKBD_BUTTON_RIGHT) {
+                        ra_login_with_password(ra_user, ra_pass);
+                    }
+                }
+                memset(ra_pass, 0, sizeof(ra_pass));
+                toggleVsync(tVBOpt.VSYNC);
+            }
+            [[gnu::musttail]] return ra_options(RA_OPTIONS_LOGIN);
+        case RA_OPTIONS_HARDCORE:
+            if (ra_get_hardcore_enabled()) {
+                // hardcore -> softcore is allowed at any time
+                ra_set_hardcore_enabled(false);
+            } else if (!ra_has_game() || areyousure(&text_areyousure_hardcore)) {
+                // softcore -> hardcore resets the game (via RC_CLIENT_EVENT_RESET)
+                ra_set_hardcore_enabled(true);
+            }
+            [[gnu::musttail]] return ra_options(RA_OPTIONS_HARDCORE);
+        case RA_OPTIONS_BACK:
+            [[gnu::musttail]] return options(OPTIONS_RA);
     }
 }
 
@@ -3219,6 +3331,9 @@ static void savestate_menu(int initial_button, int selected_state) {
                 [[gnu::musttail]] return savestate_confirm("Save complete!", SAVE_SAVESTATE, selected_state);
             }
         case LOAD_SAVESTATE:
+            if (!ra_allow_load_state()) {
+                [[gnu::musttail]] return savestate_error("Loading states is disabled\nin Hardcore mode.", LOAD_SAVESTATE, selected_state);
+            }
             if (emulation_lstate(selected_state) != 0) {
                 [[gnu::musttail]] return savestate_error("Could not load state", LOAD_SAVESTATE, selected_state);
             } else {
@@ -3235,6 +3350,111 @@ static void savestate_menu(int initial_button, int selected_state) {
         case NEXT_SAVESTATE:
             [[gnu::musttail]] return savestate_menu(NEXT_SAVESTATE, selected_state == 9 ? 0 : selected_state + 1);
     }
+}
+
+// RetroAchievements achievement list
+static void ra_achievements_menu(void) {
+    char summary[128];
+    ra_list_entry_t *entries = NULL;
+    int count = ra_list_build(&entries, summary, sizeof(summary));
+
+    C2D_TextBuf textbuf = C2D_TextBufNew(4096);
+    if (!textbuf) {
+        ra_list_free(entries);
+        return;
+    }
+
+    const float top = 40, bottom = 206;
+    const float header_h = 22, item_h = 54;
+    float total_h = 0;
+    for (int i = 0; i < count; i++) total_h += entries[i].is_header ? header_h : item_h;
+    float max_scroll = total_h - (bottom - top);
+    if (max_scroll < 0) max_scroll = 0;
+    float scroll = 0, speed = 0;
+    int last_py = 0;
+    bool dragging = false;
+
+    buttonLock = true;
+    LOOP_BEGIN(ra_achievements_buttons, -1);
+        // input: d-pad / circle pad scroll, touch drag
+        u32 held = hidKeysHeld();
+        if (held & (KEY_DOWN | KEY_CPAD_DOWN)) scroll += 6;
+        if (held & (KEY_UP | KEY_CPAD_UP)) scroll -= 6;
+        if (hidKeysDown() & KEY_RIGHT) scroll += bottom - top;
+        if (hidKeysDown() & KEY_LEFT) scroll -= bottom - top;
+        touchPosition touch;
+        hidTouchRead(&touch);
+        if ((hidKeysDown() & KEY_TOUCH) && touch.py < 206) {
+            dragging = true;
+            last_py = touch.py;
+            speed = 0;
+        } else if (dragging && (held & KEY_TOUCH)) {
+            speed = last_py - touch.py;
+            last_py = touch.py;
+        } else {
+            dragging = false;
+            speed *= 0.9f;
+            if (speed > -0.5f && speed < 0.5f) speed = 0;
+        }
+        scroll += speed;
+        if (scroll < 0) scroll = 0;
+        if (scroll > max_scroll) scroll = max_scroll;
+
+        // list
+        C2D_TextBufClear(textbuf);
+        float y = top - scroll;
+        C2D_Text t;
+        for (int i = 0; i < count; i++) {
+            ra_list_entry_t *e = &entries[i];
+            float h = e->is_header ? header_h : item_h;
+            if (y + h > top && y < bottom) {
+                if (e->is_header) {
+                    C2D_DrawRectSolid(0, y, 0, 320, h - 2, TINT_50);
+                    C2D_TextParse(&t, textbuf, e->title);
+                    C2D_TextOptimize(&t);
+                    C2D_DrawText(&t, C2D_WithColor, 6, y + 3, 0, 0.5f, 0.5f, C2D_Color32(0, 0, 0, 255));
+                } else {
+                    ra_request_badge(e->badge_key, e->badge_url);
+                    if (!ra_draw_badge(e->badge_key, 4, y + 5, 44))
+                        C2D_DrawRectSolid(4, y + 5, 0, 44, 44, TINT_50);
+                    u32 col = e->unlocked ? TINT_COLOR : C2D_Color32(160, 160, 160, 255);
+                    C2D_TextParse(&t, textbuf, e->title);
+                    C2D_TextOptimize(&t);
+                    C2D_DrawText(&t, C2D_WithColor, 54, y + 3, 0, 0.5f, 0.5f, col);
+                    C2D_TextParse(&t, textbuf, e->status);
+                    C2D_TextOptimize(&t);
+                    C2D_DrawText(&t, C2D_AlignRight | C2D_WithColor, 316, y + 38, 0, 0.4f, 0.4f, col);
+                    C2D_TextParse(&t, textbuf, e->description);
+                    C2D_TextOptimize(&t);
+                    C2D_DrawText(&t, C2D_WithColor | C2D_WordWrap, 54, y + 19, 0, 0.4f, 0.4f, C2D_Color32(220, 220, 220, 255), 262.0f);
+                    C2D_DrawRectSolid(54, y + h - 1, 0, 262, 1, C2D_Color32(64, 64, 64, 255));
+                }
+            }
+            y += h;
+        }
+        if (count == 0) {
+            C2D_TextParse(&t, textbuf, "No achievements to show.");
+            C2D_TextOptimize(&t);
+            C2D_DrawText(&t, C2D_AlignCenter | C2D_WithColor, 160, 110, 0, 0.6f, 0.6f, TINT_COLOR);
+        }
+
+        // header and footer drawn on top to hide rows scrolled under them
+        C2D_DrawRectSolid(0, 0, 0, 320, top, C2D_Color32(0, 0, 0, 255));
+        C2D_DrawRectSolid(0, top - 2, 0, 320, 1, TINT_COLOR);
+        C2D_TextParse(&t, textbuf, summary);
+        C2D_TextOptimize(&t);
+        C2D_DrawText(&t, C2D_AlignCenter | C2D_WithColor, 160, 2, 0, 0.5f, 0.5f, TINT_COLOR);
+        C2D_DrawRectSolid(0, bottom, 0, 320, 240 - bottom, C2D_Color32(0, 0, 0, 255));
+        if (max_scroll > 0) {
+            float bar_h = (bottom - top) * (bottom - top) / total_h;
+            if (bar_h < 8) bar_h = 8;
+            C2D_DrawRectSolid(318, top + (bottom - top - bar_h) * (scroll / max_scroll), 0, 2, bar_h, TINT_COLOR);
+        }
+    LOOP_END(ra_achievements_buttons);
+    buttonLock = false;
+
+    C2D_TextBufDelete(textbuf);
+    ra_list_free(entries);
 }
 
 static void about(void) {
@@ -3284,6 +3504,7 @@ static void forwarder_error(int err) {
 
 static bool load_rom(char *rom_message) {
     if (save_thread) threadJoin(save_thread, U64_MAX);
+    ra_unload_game();
     int ret;
     if ((ret = v810_load_init())) {
         // instant fail
@@ -3330,6 +3551,7 @@ static bool load_rom(char *rom_message) {
         game_running = true;
         loadGameOptions();
         last_savestate = 0;
+        ra_load_game();
         return true;
     } else {
         game_running = false;
@@ -3580,6 +3802,8 @@ void guiInit(void) {
 
     static_textbuf = C2D_TextBufNew(4096);
     dynamic_textbuf = C2D_TextBufNew(4096);
+    ra_textbuf = C2D_TextBufNew(512);
+    ra_hud_textbuf = C2D_TextBufNew(256);
     STATIC_TEXT(&text_A, "A")
     STATIC_TEXT(&text_B, "B")
     STATIC_TEXT(&text_btn_A, "\uE000")
@@ -3611,6 +3835,9 @@ void guiInit(void) {
     STATIC_TEXT(&text_yes, "Yes")
     STATIC_TEXT(&text_no, "No")
     STATIC_TEXT(&text_areyousure_reset, "Are you sure you want to reset?")
+    STATIC_TEXT(&text_areyousure_hardcore, "Enabling Hardcore will reset\nthe game. Continue?")
+    STATIC_TEXT(&text_ra_login, "Log in")
+    STATIC_TEXT(&text_ra_logout, "Log out")
     STATIC_TEXT(&text_areyousure_exit, "Are you sure you want to exit?")
     STATIC_TEXT(&text_areyousure_leave, "Are you sure you want to\nexit multiplayer?")
     STATIC_TEXT(&text_version_mismatch, "Your emulator version doesn't\nmatch the host's.\nThis can cause desyncs.")
@@ -4032,6 +4259,157 @@ void drawTouchControls(int inputs) {
 
 extern int input_state;
 
+// ---------------------------------------------------------------------------
+// RetroAchievements overlay (bottom screen)
+// ---------------------------------------------------------------------------
+// Uploads decoded badges into a small LRU cache of GPU textures.
+static const C2D_Image *ra_badge_image(uint32_t id, const uint8_t *rgba, int w, int h) {
+    RaTexSlot *slot = NULL;
+    for (int i = 0; i < RA_TEX_SLOTS; i++) {
+        if (ra_tex[i].ready && ra_tex[i].id == id) {
+            ra_tex[i].used = ++ra_tex_clock;
+            return &ra_tex[i].img;
+        }
+    }
+    for (int i = 0; i < RA_TEX_SLOTS; i++) {
+        if (!ra_tex[i].ready) { slot = &ra_tex[i]; break; }
+        if (!slot || ra_tex[i].used < slot->used) slot = &ra_tex[i];
+    }
+    int tw = 8, th = 8;
+    while (tw < w) tw <<= 1;
+    while (th < h) th <<= 1;
+    if (slot->ready && (slot->tex.width != tw || slot->tex.height != th)) {
+        C3D_TexDelete(&slot->tex);
+        slot->ready = false;
+    }
+    if (!slot->ready) {
+        if (!C3D_TexInit(&slot->tex, tw, th, GPU_RGBA8)) return NULL;
+        C3D_TexSetFilter(&slot->tex, GPU_LINEAR, GPU_LINEAR);
+        slot->ready = true;
+    }
+    u8 *dst = (u8 *)slot->tex.data;
+    memset(dst, 0, slot->tex.size);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            // 3DS textures are tiled in 8x8 Morton order, ABGR byte order
+            u32 pos = ((((y >> 3) * (tw >> 3) + (x >> 3)) << 6) +
+                       ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3))) * 4;
+            const u8 *src = rgba + (y * w + x) * 4;
+            dst[pos + 0] = src[3];
+            dst[pos + 1] = src[2];
+            dst[pos + 2] = src[1];
+            dst[pos + 3] = src[0];
+        }
+    }
+    C3D_TexFlush(&slot->tex);
+    slot->sub.width = w;
+    slot->sub.height = h;
+    slot->sub.left = 0.0f;
+    slot->sub.top = 1.0f;
+    slot->sub.right = w / (float)tw;
+    slot->sub.bottom = 1.0f - h / (float)th;
+    slot->img.tex = &slot->tex;
+    slot->img.subtex = &slot->sub;
+    slot->id = id;
+    slot->used = ++ra_tex_clock;
+    return &slot->img;
+}
+
+// Draws a badge scaled to size x size. Returns false if it isn't downloaded yet.
+static bool ra_draw_badge(const char *key, float x, float y, float size) {
+    const uint8_t *rgba;
+    int w, h;
+    uint32_t id;
+    if (!key || !key[0] || !ra_find_badge(key, &rgba, &w, &h, &id)) return false;
+    const C2D_Image *img = ra_badge_image(id, rgba, w, h);
+    if (!img) return false;
+    int dim = w > h ? w : h;
+    C2D_DrawImageAt(*img, x, y, 0, NULL, size / dim, size / dim);
+    return true;
+}
+
+static void ra_draw_overlay(void) {
+    if (!ra_textbuf) return;
+    ra_popup_t popup;
+    bool have_popup = ra_get_popup(&popup);
+    char progress[64];
+    uint32_t progress_serial = 0;
+    bool have_progress = ra_get_progress(progress, sizeof(progress), &progress_serial);
+    ra_hud_t hud;
+    bool have_hud = ra_get_hud(&hud);
+    if (!have_popup && !have_progress && !have_hud) return;
+
+    if ((have_popup && popup.serial != ra_text_serial) ||
+        (have_progress && (!ra_progress_parsed || progress_serial != ra_progress_serial))) {
+        C2D_TextBufClear(ra_textbuf);
+        ra_text_serial = 0;
+        ra_progress_parsed = false;
+        if (have_popup) {
+            C2D_TextParse(&ra_title_text, ra_textbuf, popup.title);
+            C2D_TextOptimize(&ra_title_text);
+            C2D_TextParse(&ra_desc_text, ra_textbuf, popup.description);
+            C2D_TextOptimize(&ra_desc_text);
+            ra_text_serial = popup.serial;
+        }
+        if (have_progress) {
+            C2D_TextParse(&ra_progress_text, ra_textbuf, progress);
+            C2D_TextOptimize(&ra_progress_text);
+            ra_progress_serial = progress_serial;
+            ra_progress_parsed = true;
+        }
+    }
+
+    if (have_hud && (!ra_hud_parsed || hud.serial != ra_hud_serial)) {
+        C2D_TextBufClear(ra_hud_textbuf);
+        for (int i = 0; i < hud.num_trackers; i++) {
+            C2D_TextParse(&ra_tracker_text[i], ra_hud_textbuf, hud.trackers[i]);
+            C2D_TextOptimize(&ra_tracker_text[i]);
+        }
+        ra_hud_serial = hud.serial;
+        ra_hud_parsed = true;
+    }
+
+    C2D_Flush();
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+
+    if (have_hud) {
+        // leaderboard trackers, top right
+        for (int i = 0; i < hud.num_trackers; i++) {
+            C2D_DrawRectSolid(204, 2 + i * 18, 0, 114, 16, C2D_Color32(0, 0, 0, 255));
+            C2D_DrawText(&ra_tracker_text[i], C2D_AlignRight | C2D_WithColor, 314, 3 + i * 18, 0, 0.45f, 0.45f, TINT_COLOR);
+        }
+        // challenge indicators, below the backlight icon
+        for (int i = 0; i < hud.num_challenges; i++) {
+            float x = 2 + i * 30, y = 36;
+            C2D_DrawRectSolid(x, y, 0, 28, 28, C2D_Color32(0, 0, 0, 255));
+            if (!ra_draw_badge(hud.challenge_keys[i], x + 1, y + 1, 26))
+                C2D_DrawRectSolid(x + 2, y + 2, 0, 24, 24, TINT_50);
+        }
+    }
+
+    if (have_progress) {
+        C2D_DrawRectSolid(36, 168, 0, 284, 20, C2D_Color32(0, 0, 0, 255));
+        C2D_DrawText(&ra_progress_text, C2D_AlignRight | C2D_WithColor, 316, 170, 0, 0.45f, 0.45f, TINT_COLOR);
+    }
+
+    if (have_popup) {
+        C2D_DrawRectSolid(0, 190, 0, 320, 50, C2D_Color32(0, 0, 0, 255));
+        C2D_DrawRectSolid(0, 190, 0, 320, 1, TINT_COLOR);
+        float text_x = 8;
+        if (popup.badge_id && popup.badge_rgba) {
+            const C2D_Image *img = ra_badge_image(popup.badge_id, popup.badge_rgba, popup.badge_w, popup.badge_h);
+            if (img) {
+                int dim = popup.badge_w > popup.badge_h ? popup.badge_w : popup.badge_h;
+                float scale = 42.0f / dim;
+                C2D_DrawImageAt(*img, 4, 194, 0, NULL, scale, scale);
+                text_x = 52;
+            }
+        }
+        C2D_DrawText(&ra_title_text, C2D_WithColor, text_x, 196, 0, 0.55f, 0.55f, TINT_COLOR);
+        C2D_DrawText(&ra_desc_text, C2D_WithColor, text_x, 216, 0, 0.45f, 0.45f, C2D_Color32(255, 255, 255, 255));
+    }
+}
+
 void guiUpdate(float total_time, float drc_time) {
     if (!backlightEnabled) return;
 
@@ -4049,7 +4427,9 @@ void guiUpdate(float total_time, float drc_time) {
     if (replay_playing() != last_replay) shouldRedrawMenu = true;
     last_replay = replay_playing();
 
-    if (!shouldRedrawMenu && !tVBOpt.PERF_INFO && !tVBOpt.INPUTS)
+    if (ra_overlay_take_dirty()) shouldRedrawMenu = true;
+
+    if (!shouldRedrawMenu && !tVBOpt.PERF_INFO && !tVBOpt.INPUTS && !ra_overlay_active())
         return;
 
     // unclear why this is necessary, but omitting it can lead to weird graphical glitches
@@ -4155,6 +4535,8 @@ void guiUpdate(float total_time, float drc_time) {
             if ((1<<i) == VB_KEY_R)      C2D_DrawCircleSolid(320/2+8,  12, 0, 2, cols[mods[i]]);
         }
     }
+
+    ra_draw_overlay();
 
     C2D_Flush();
 

@@ -20,6 +20,7 @@
 #include "vblink.h"
 #include "multiplayer.h"
 #include "video_hard.h"
+#include "rcheevos_integration.h"
 
 char rom_path[256] = "sdmc:/vb/";
 char rom_name[128];
@@ -82,6 +83,8 @@ int main(void) {
     v810_init();
 
     sound_init();
+
+    ra_init();
 
     if (is_citra) {
         tVBOpt.VSYNC = false;
@@ -169,7 +172,7 @@ int main(void) {
         hidScanInput();
         int keys = hidKeysDown();
 
-        if ((keys & KEY_TOUCH) && guiShouldPause() && !waiting_for_menu) {
+        if ((keys & KEY_TOUCH) && guiShouldPause() && !waiting_for_menu && ra_can_pause()) {
             waiting_for_menu = true;
             needs_menu_message = is_multiplayer;
         }
@@ -198,11 +201,14 @@ int main(void) {
             if (guiop & GUIEXIT) {
                 goto exit;
             }
+            // e.g. hardcore was enabled while a game was loaded
+            if (ra_take_reset_request()) guiop |= VBRESET;
             if (guiop & VBRESET) {
                 V810_RControll(true);
                 v810_reset();
                 clearCache();
                 frame = 0;
+                ra_reset();
             }
             if (guiop & AKILL) {
                 clearCache();
@@ -399,6 +405,9 @@ int main(void) {
         osTickCounterStart(&drcTickCounter);
         err = v810_run();
         osTickCounterUpdate(&drcTickCounter);
+
+        ra_do_frame();
+        ra_tick_popup();
         if (err) {
             showError(err);
             do {
@@ -443,6 +452,7 @@ int main(void) {
     save_sram();
 
 exit:
+    ra_shutdown();
     aptUnhook(&cookie);
     toggleVsync(false);
     sound_close();
