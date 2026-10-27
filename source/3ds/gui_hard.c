@@ -107,11 +107,21 @@ static C2D_TextBuf ra_textbuf;
 static C2D_Text ra_title_text, ra_desc_text, ra_progress_text;
 static uint32_t ra_text_serial = 0, ra_progress_serial = 0;
 static bool ra_progress_parsed = false;
-static C3D_Tex ra_badge_tex;
-static bool ra_badge_tex_ready = false;
-static Tex3DS_SubTexture ra_badge_subtex;
-static C2D_Image ra_badge_img;
-static uint32_t ra_badge_id = 0;
+static C2D_TextBuf ra_hud_textbuf;
+static C2D_Text ra_tracker_text[RA_MAX_TRACKERS];
+static uint32_t ra_hud_serial = 0;
+static bool ra_hud_parsed = false;
+
+#define RA_TEX_SLOTS 12
+typedef struct {
+    C3D_Tex tex;
+    Tex3DS_SubTexture sub;
+    C2D_Image img;
+    uint32_t id, used;
+    bool ready;
+} RaTexSlot;
+static RaTexSlot ra_tex[RA_TEX_SLOTS];
+static uint32_t ra_tex_clock = 0;
 
 
 static C2D_Text text_A, text_B, text_btn_A, text_btn_B, text_btn_X, text_btn_L, text_btn_R,
@@ -240,6 +250,15 @@ static Button game_menu_buttons[] = {
     {.str="Reset", .x=8, .y=64, .w=80 + 16, .h=80},
     #define MAIN_MENU_SAVESTATES 6
     {.str="Savestates", .x=112, .y=64, .w=80 + 16, .h=80},
+    #define MAIN_MENU_ACHIEVEMENTS 7
+    {.str="Achievements", .x=88, .y=150, .w=144, .h=32},
+};
+
+static void ra_achievements_menu(void);
+static bool ra_draw_badge(const char *key, float x, float y, float size);
+static Button ra_achievements_buttons[] = {
+    #define RA_ACH_BACK 0
+    {.str="Back", .x=0, .y=208, .w=48, .h=32},
 };
 
 static void multiplayer_menu(int initial_button);
@@ -719,6 +738,7 @@ static Button forwarder_error_buttons[] = {
     SETUP_BUTTONS(custom_vb_mappings_buttons); \
     SETUP_BUTTONS(options_buttons); \
     SETUP_BUTTONS(ra_options_buttons); \
+    SETUP_BUTTONS(ra_achievements_buttons); \
     SETUP_BUTTONS(video_settings_buttons); \
     SETUP_BUTTONS(barrier_settings_buttons); \
     SETUP_BUTTONS(anaglyph_settings_buttons); \
@@ -826,6 +846,8 @@ static void game_menu(int initial_button) {
         game_menu_buttons[MAIN_MENU_SAVESTATES].x = 224 - 48;
         game_menu_buttons[MAIN_MENU_SAVESTATES].w = 80 + 48;
     }
+    game_menu_buttons[MAIN_MENU_ACHIEVEMENTS].hidden = !ra_has_game();
+    if (initial_button == MAIN_MENU_ACHIEVEMENTS && !ra_has_game()) initial_button = MAIN_MENU_RESUME;
     LOOP_BEGIN(game_menu_buttons, initial_button);
         if (!tVBOpt.FORWARDER && (hidKeysDown() & KEY_Y)) loop = false;
     LOOP_END(game_menu_buttons);
@@ -866,6 +888,9 @@ static void game_menu(int initial_button) {
             } else [[gnu::musttail]] return game_menu(MAIN_MENU_RESET);
         case MAIN_MENU_SAVESTATES:
             [[gnu::musttail]] return savestate_menu(0, last_savestate);
+        case MAIN_MENU_ACHIEVEMENTS:
+            ra_achievements_menu();
+            [[gnu::musttail]] return game_menu(MAIN_MENU_ACHIEVEMENTS);
     }
 }
 
@@ -3312,7 +3337,6 @@ static void savestate_menu(int initial_button, int selected_state) {
             if (emulation_lstate(selected_state) != 0) {
                 [[gnu::musttail]] return savestate_error("Could not load state", LOAD_SAVESTATE, selected_state);
             } else {
-                ra_state_loaded();
                 [[gnu::musttail]] return savestate_confirm("Load complete!", LOAD_SAVESTATE, selected_state);
             }
         case DELETE_SAVESTATE:
@@ -3326,6 +3350,111 @@ static void savestate_menu(int initial_button, int selected_state) {
         case NEXT_SAVESTATE:
             [[gnu::musttail]] return savestate_menu(NEXT_SAVESTATE, selected_state == 9 ? 0 : selected_state + 1);
     }
+}
+
+// RetroAchievements achievement list
+static void ra_achievements_menu(void) {
+    char summary[128];
+    ra_list_entry_t *entries = NULL;
+    int count = ra_list_build(&entries, summary, sizeof(summary));
+
+    C2D_TextBuf textbuf = C2D_TextBufNew(4096);
+    if (!textbuf) {
+        ra_list_free(entries);
+        return;
+    }
+
+    const float top = 40, bottom = 206;
+    const float header_h = 22, item_h = 54;
+    float total_h = 0;
+    for (int i = 0; i < count; i++) total_h += entries[i].is_header ? header_h : item_h;
+    float max_scroll = total_h - (bottom - top);
+    if (max_scroll < 0) max_scroll = 0;
+    float scroll = 0, speed = 0;
+    int last_py = 0;
+    bool dragging = false;
+
+    buttonLock = true;
+    LOOP_BEGIN(ra_achievements_buttons, -1);
+        // input: d-pad / circle pad scroll, touch drag
+        u32 held = hidKeysHeld();
+        if (held & (KEY_DOWN | KEY_CPAD_DOWN)) scroll += 6;
+        if (held & (KEY_UP | KEY_CPAD_UP)) scroll -= 6;
+        if (hidKeysDown() & KEY_RIGHT) scroll += bottom - top;
+        if (hidKeysDown() & KEY_LEFT) scroll -= bottom - top;
+        touchPosition touch;
+        hidTouchRead(&touch);
+        if ((hidKeysDown() & KEY_TOUCH) && touch.py < 206) {
+            dragging = true;
+            last_py = touch.py;
+            speed = 0;
+        } else if (dragging && (held & KEY_TOUCH)) {
+            speed = last_py - touch.py;
+            last_py = touch.py;
+        } else {
+            dragging = false;
+            speed *= 0.9f;
+            if (speed > -0.5f && speed < 0.5f) speed = 0;
+        }
+        scroll += speed;
+        if (scroll < 0) scroll = 0;
+        if (scroll > max_scroll) scroll = max_scroll;
+
+        // list
+        C2D_TextBufClear(textbuf);
+        float y = top - scroll;
+        C2D_Text t;
+        for (int i = 0; i < count; i++) {
+            ra_list_entry_t *e = &entries[i];
+            float h = e->is_header ? header_h : item_h;
+            if (y + h > top && y < bottom) {
+                if (e->is_header) {
+                    C2D_DrawRectSolid(0, y, 0, 320, h - 2, TINT_50);
+                    C2D_TextParse(&t, textbuf, e->title);
+                    C2D_TextOptimize(&t);
+                    C2D_DrawText(&t, C2D_WithColor, 6, y + 3, 0, 0.5f, 0.5f, C2D_Color32(0, 0, 0, 255));
+                } else {
+                    ra_request_badge(e->badge_key, e->badge_url);
+                    if (!ra_draw_badge(e->badge_key, 4, y + 5, 44))
+                        C2D_DrawRectSolid(4, y + 5, 0, 44, 44, TINT_50);
+                    u32 col = e->unlocked ? TINT_COLOR : C2D_Color32(160, 160, 160, 255);
+                    C2D_TextParse(&t, textbuf, e->title);
+                    C2D_TextOptimize(&t);
+                    C2D_DrawText(&t, C2D_WithColor, 54, y + 3, 0, 0.5f, 0.5f, col);
+                    C2D_TextParse(&t, textbuf, e->status);
+                    C2D_TextOptimize(&t);
+                    C2D_DrawText(&t, C2D_AlignRight | C2D_WithColor, 316, y + 38, 0, 0.4f, 0.4f, col);
+                    C2D_TextParse(&t, textbuf, e->description);
+                    C2D_TextOptimize(&t);
+                    C2D_DrawText(&t, C2D_WithColor | C2D_WordWrap, 54, y + 19, 0, 0.4f, 0.4f, C2D_Color32(220, 220, 220, 255), 262.0f);
+                    C2D_DrawRectSolid(54, y + h - 1, 0, 262, 1, C2D_Color32(64, 64, 64, 255));
+                }
+            }
+            y += h;
+        }
+        if (count == 0) {
+            C2D_TextParse(&t, textbuf, "No achievements to show.");
+            C2D_TextOptimize(&t);
+            C2D_DrawText(&t, C2D_AlignCenter | C2D_WithColor, 160, 110, 0, 0.6f, 0.6f, TINT_COLOR);
+        }
+
+        // header and footer drawn on top to hide rows scrolled under them
+        C2D_DrawRectSolid(0, 0, 0, 320, top, C2D_Color32(0, 0, 0, 255));
+        C2D_DrawRectSolid(0, top - 2, 0, 320, 1, TINT_COLOR);
+        C2D_TextParse(&t, textbuf, summary);
+        C2D_TextOptimize(&t);
+        C2D_DrawText(&t, C2D_AlignCenter | C2D_WithColor, 160, 2, 0, 0.5f, 0.5f, TINT_COLOR);
+        C2D_DrawRectSolid(0, bottom, 0, 320, 240 - bottom, C2D_Color32(0, 0, 0, 255));
+        if (max_scroll > 0) {
+            float bar_h = (bottom - top) * (bottom - top) / total_h;
+            if (bar_h < 8) bar_h = 8;
+            C2D_DrawRectSolid(318, top + (bottom - top - bar_h) * (scroll / max_scroll), 0, 2, bar_h, TINT_COLOR);
+        }
+    LOOP_END(ra_achievements_buttons);
+    buttonLock = false;
+
+    C2D_TextBufDelete(textbuf);
+    ra_list_free(entries);
 }
 
 static void about(void) {
@@ -3674,6 +3803,7 @@ void guiInit(void) {
     static_textbuf = C2D_TextBufNew(4096);
     dynamic_textbuf = C2D_TextBufNew(4096);
     ra_textbuf = C2D_TextBufNew(512);
+    ra_hud_textbuf = C2D_TextBufNew(256);
     STATIC_TEXT(&text_A, "A")
     STATIC_TEXT(&text_B, "B")
     STATIC_TEXT(&text_btn_A, "\uE000")
@@ -4132,21 +4262,33 @@ extern int input_state;
 // ---------------------------------------------------------------------------
 // RetroAchievements overlay (bottom screen)
 // ---------------------------------------------------------------------------
-static bool ra_upload_badge(const uint8_t *rgba, int w, int h) {
+// Uploads decoded badges into a small LRU cache of GPU textures.
+static const C2D_Image *ra_badge_image(uint32_t id, const uint8_t *rgba, int w, int h) {
+    RaTexSlot *slot = NULL;
+    for (int i = 0; i < RA_TEX_SLOTS; i++) {
+        if (ra_tex[i].ready && ra_tex[i].id == id) {
+            ra_tex[i].used = ++ra_tex_clock;
+            return &ra_tex[i].img;
+        }
+    }
+    for (int i = 0; i < RA_TEX_SLOTS; i++) {
+        if (!ra_tex[i].ready) { slot = &ra_tex[i]; break; }
+        if (!slot || ra_tex[i].used < slot->used) slot = &ra_tex[i];
+    }
     int tw = 8, th = 8;
     while (tw < w) tw <<= 1;
     while (th < h) th <<= 1;
-    if (ra_badge_tex_ready && (ra_badge_tex.width != tw || ra_badge_tex.height != th)) {
-        C3D_TexDelete(&ra_badge_tex);
-        ra_badge_tex_ready = false;
+    if (slot->ready && (slot->tex.width != tw || slot->tex.height != th)) {
+        C3D_TexDelete(&slot->tex);
+        slot->ready = false;
     }
-    if (!ra_badge_tex_ready) {
-        if (!C3D_TexInit(&ra_badge_tex, tw, th, GPU_RGBA8)) return false;
-        C3D_TexSetFilter(&ra_badge_tex, GPU_LINEAR, GPU_LINEAR);
-        ra_badge_tex_ready = true;
+    if (!slot->ready) {
+        if (!C3D_TexInit(&slot->tex, tw, th, GPU_RGBA8)) return NULL;
+        C3D_TexSetFilter(&slot->tex, GPU_LINEAR, GPU_LINEAR);
+        slot->ready = true;
     }
-    u8 *dst = (u8 *)ra_badge_tex.data;
-    memset(dst, 0, ra_badge_tex.size);
+    u8 *dst = (u8 *)slot->tex.data;
+    memset(dst, 0, slot->tex.size);
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
             // 3DS textures are tiled in 8x8 Morton order, ABGR byte order
@@ -4159,15 +4301,30 @@ static bool ra_upload_badge(const uint8_t *rgba, int w, int h) {
             dst[pos + 3] = src[0];
         }
     }
-    C3D_TexFlush(&ra_badge_tex);
-    ra_badge_subtex.width = w;
-    ra_badge_subtex.height = h;
-    ra_badge_subtex.left = 0.0f;
-    ra_badge_subtex.top = 1.0f;
-    ra_badge_subtex.right = w / (float)tw;
-    ra_badge_subtex.bottom = 1.0f - h / (float)th;
-    ra_badge_img.tex = &ra_badge_tex;
-    ra_badge_img.subtex = &ra_badge_subtex;
+    C3D_TexFlush(&slot->tex);
+    slot->sub.width = w;
+    slot->sub.height = h;
+    slot->sub.left = 0.0f;
+    slot->sub.top = 1.0f;
+    slot->sub.right = w / (float)tw;
+    slot->sub.bottom = 1.0f - h / (float)th;
+    slot->img.tex = &slot->tex;
+    slot->img.subtex = &slot->sub;
+    slot->id = id;
+    slot->used = ++ra_tex_clock;
+    return &slot->img;
+}
+
+// Draws a badge scaled to size x size. Returns false if it isn't downloaded yet.
+static bool ra_draw_badge(const char *key, float x, float y, float size) {
+    const uint8_t *rgba;
+    int w, h;
+    uint32_t id;
+    if (!key || !key[0] || !ra_find_badge(key, &rgba, &w, &h, &id)) return false;
+    const C2D_Image *img = ra_badge_image(id, rgba, w, h);
+    if (!img) return false;
+    int dim = w > h ? w : h;
+    C2D_DrawImageAt(*img, x, y, 0, NULL, size / dim, size / dim);
     return true;
 }
 
@@ -4178,7 +4335,9 @@ static void ra_draw_overlay(void) {
     char progress[64];
     uint32_t progress_serial = 0;
     bool have_progress = ra_get_progress(progress, sizeof(progress), &progress_serial);
-    if (!have_popup && !have_progress) return;
+    ra_hud_t hud;
+    bool have_hud = ra_get_hud(&hud);
+    if (!have_popup && !have_progress && !have_hud) return;
 
     if ((have_popup && popup.serial != ra_text_serial) ||
         (have_progress && (!ra_progress_parsed || progress_serial != ra_progress_serial))) {
@@ -4200,8 +4359,33 @@ static void ra_draw_overlay(void) {
         }
     }
 
+    if (have_hud && (!ra_hud_parsed || hud.serial != ra_hud_serial)) {
+        C2D_TextBufClear(ra_hud_textbuf);
+        for (int i = 0; i < hud.num_trackers; i++) {
+            C2D_TextParse(&ra_tracker_text[i], ra_hud_textbuf, hud.trackers[i]);
+            C2D_TextOptimize(&ra_tracker_text[i]);
+        }
+        ra_hud_serial = hud.serial;
+        ra_hud_parsed = true;
+    }
+
     C2D_Flush();
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+
+    if (have_hud) {
+        // leaderboard trackers, top right
+        for (int i = 0; i < hud.num_trackers; i++) {
+            C2D_DrawRectSolid(204, 2 + i * 18, 0, 114, 16, C2D_Color32(0, 0, 0, 255));
+            C2D_DrawText(&ra_tracker_text[i], C2D_AlignRight | C2D_WithColor, 314, 3 + i * 18, 0, 0.45f, 0.45f, TINT_COLOR);
+        }
+        // challenge indicators, below the backlight icon
+        for (int i = 0; i < hud.num_challenges; i++) {
+            float x = 2 + i * 30, y = 36;
+            C2D_DrawRectSolid(x, y, 0, 28, 28, C2D_Color32(0, 0, 0, 255));
+            if (!ra_draw_badge(hud.challenge_keys[i], x + 1, y + 1, 26))
+                C2D_DrawRectSolid(x + 2, y + 2, 0, 24, 24, TINT_50);
+        }
+    }
 
     if (have_progress) {
         C2D_DrawRectSolid(36, 168, 0, 284, 20, C2D_Color32(0, 0, 0, 255));
@@ -4213,12 +4397,11 @@ static void ra_draw_overlay(void) {
         C2D_DrawRectSolid(0, 190, 0, 320, 1, TINT_COLOR);
         float text_x = 8;
         if (popup.badge_id && popup.badge_rgba) {
-            if (popup.badge_id != ra_badge_id && ra_upload_badge(popup.badge_rgba, popup.badge_w, popup.badge_h))
-                ra_badge_id = popup.badge_id;
-            if (popup.badge_id == ra_badge_id) {
+            const C2D_Image *img = ra_badge_image(popup.badge_id, popup.badge_rgba, popup.badge_w, popup.badge_h);
+            if (img) {
                 int dim = popup.badge_w > popup.badge_h ? popup.badge_w : popup.badge_h;
                 float scale = 42.0f / dim;
-                C2D_DrawImageAt(ra_badge_img, 4, 194, 0, NULL, scale, scale);
+                C2D_DrawImageAt(*img, 4, 194, 0, NULL, scale, scale);
                 text_x = 52;
             }
         }

@@ -14,6 +14,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /* Lifecycle */
 void ra_init(void);
@@ -51,6 +52,16 @@ void ra_set_hardcore_enabled(bool enabled);
 bool ra_get_hardcore_enabled(void);
 bool ra_allow_load_state(void);     /* false in hardcore */
 bool ra_has_game(void);             /* an achievement set is currently loaded */
+bool ra_can_pause(void);            /* hardcore pause-spam limiter, call when the user pauses */
+
+/* Savestates: achievement progress is stored after the emulator state */
+int  ra_write_progress(FILE *f);              /* 0 on success */
+int  ra_read_progress(FILE *f, void **out);   /* 0 on success, *out may be NULL */
+void ra_apply_progress(void *progress);       /* takes ownership, NULL resets progress */
+
+/* Badge images (main thread). key identifies the image, url is where to get it. */
+void ra_request_badge(const char *key, const char *url);
+bool ra_find_badge(const char *key, const uint8_t **rgba, int *w, int *h, uint32_t *id);
 
 /* Overlay (polled by the GUI on the main thread) */
 typedef struct {
@@ -62,12 +73,36 @@ typedef struct {
     uint32_t serial;            /* changes whenever the text changes */
 } ra_popup_t;
 
+#define RA_MAX_TRACKERS   4
+#define RA_MAX_CHALLENGES 6
+
+typedef struct {
+    int num_trackers;
+    char trackers[RA_MAX_TRACKERS][32];
+    int num_challenges;
+    char challenge_keys[RA_MAX_CHALLENGES][40];
+    uint32_t serial;            /* changes whenever trackers/challenges change */
+} ra_hud_t;
+
 bool ra_overlay_active(void);
 bool ra_get_popup(ra_popup_t *out);
 bool ra_get_progress(char *out, int out_size, uint32_t *serial);
+bool ra_get_hud(ra_hud_t *out);
 bool ra_overlay_take_dirty(void);   /* true once when the bottom screen needs a clear */
 
-void ra_state_loaded(void);   /* call after a savestate is loaded */
-bool ra_can_pause(void);      /* hardcore pause-spam limiter */
+/* Achievement list */
+typedef struct {
+    bool is_header;
+    bool unlocked;
+    char title[72];
+    char description[136];
+    char status[40];            /* "Unlocked", "12/50", "Locked", "Unsupported" */
+    char badge_key[40];
+    char badge_url[192];
+} ra_list_entry_t;
+
+/* Builds a snapshot of the achievement list. Free with ra_list_free(). */
+int  ra_list_build(ra_list_entry_t **out, char *summary, int summary_size);
+void ra_list_free(ra_list_entry_t *entries);
 
 #endif /* RCHEEVOS_INTEGRATION_H */

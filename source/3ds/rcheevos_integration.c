@@ -31,7 +31,7 @@
 #include "stb_image.h"
 
 #ifndef RA_UA_VERSION
-#error "RA_UA_VERSION must be defined by the Makefile (e.g. -DRA_UA_VERSION=\\\"v1.2.5\\\")"
+#error "RA_UA_VERSION must be defined by the Makefile"
 #endif
 
 /* ------------------------------------------------------------------
@@ -40,14 +40,19 @@
 
 #define RA_DIR              "sdmc:/red-viper"
 #define RA_CREDENTIALS_PATH RA_DIR "/ra_login.bin"
+#define RA_SETTINGS_PATH    RA_DIR "/ra_settings.txt"
 #define RA_BADGE_DIR        RA_DIR "/ra_badges"
 
 #define FPS                 50
 #define POPUP_FRAMES        (FPS * 4)
 #define PROGRESS_FRAMES     (FPS * 2)
 #define POPUP_QUEUE_LEN     8
-#define IMAGE_CACHE_LEN     8
+#define IMAGE_CACHE_LEN     48
+#define BADGE_PENDING_LEN   48
 #define MAX_BADGE_DIM       128
+/* minimum unpaused time between pauses in hardcore, on top of rc_client_can_pause */
+#define MIN_UNPAUSED_FRAMES (FPS * 1)
+#define MAX_PROGRESS_SIZE   (1024 * 1024)
 
 /* ------------------------------------------------------------------
  * State
@@ -61,6 +66,9 @@ static char s_rom_hash[33];
 static volatile bool s_rom_hash_valid = false;
 
 static bool s_reset_requested = false;
+static bool s_hardcore_pref = true;      /* what the user chose */
+static bool s_hardcore_auto_off = false; /* disabled because the game has no achievements */
+static uint32_t s_unpaused_frames = 0xFFFFFFFF;
 
 /* ---- worker thread / job queues ---- */
 
@@ -103,11 +111,9 @@ typedef struct {
 static image_t s_images[IMAGE_CACHE_LEN];
 static uint32_t s_next_image_id = 1;
 static uint32_t s_image_age = 0;
+static char s_badge_pending[BADGE_PENDING_LEN][40];
 
-/* badges requested but not yet returned */
-static char s_badge_pending[POPUP_QUEUE_LEN * 2][40];
-
-/* ---- popups (main thread) ---- */
+/* ---- popups / HUD (main thread) ---- */
 
 typedef struct {
     char title[96];
@@ -126,6 +132,14 @@ static bool s_dirty = false;
 static char s_progress[64];
 static int s_progress_frames = 0;
 static uint32_t s_progress_serial = 0;
+
+typedef struct { uint32_t id; char display[32]; } tracker_t;
+typedef struct { uint32_t id; char key[40]; } challenge_t;
+static tracker_t s_trackers[RA_MAX_TRACKERS];
+static int s_num_trackers = 0;
+static challenge_t s_challenges[RA_MAX_CHALLENGES];
+static int s_num_challenges = 0;
+static uint32_t s_hud_serial = 0;
 
 /* ------------------------------------------------------------------
  * Small helpers
@@ -156,11 +170,17 @@ static void ensure_dirs(void)
     mkdir(RA_BADGE_DIR, 0777);
 }
 
+static void set_progress_text(const char *text)
+{
+    snprintf(s_progress, sizeof(s_progress), "%s", text);
+    s_progress_frames = PROGRESS_FRAMES;
+    s_progress_serial++;
+}
+
 /* ------------------------------------------------------------------
  * Popups
  * ------------------------------------------------------------------ */
 
-static void request_badge(const char *key, const char *url);
 static void advance_popup(void);
 
 static void push_popup(const char *title, const char *desc, const char *key, const char *image_url)
@@ -178,7 +198,7 @@ static void push_popup(const char *title, const char *desc, const char *key, con
     s_q_count++;
 
     if (key && key[0] && image_url && image_url[0])
-        request_badge(key, image_url);
+        ra_request_badge(key, image_url);
 
     /* make it visible right away if nothing is showing */
     if (!s_cur_active) advance_popup();
@@ -193,15 +213,23 @@ static const image_t *find_image(const char *key)
     return NULL;
 }
 
+static bool image_in_use(const char *key)
+{
+    if (s_cur_active && strcmp(s_cur.key, key) == 0) return true;
+    for (int i = 0; i < s_num_challenges; i++)
+        if (strcmp(s_challenges[i].key, key) == 0) return true;
+    return false;
+}
+
 static void store_image(const char *key, uint8_t *rgba, int w, int h)
 {
     image_t *slot = NULL;
     for (int i = 0; i < IMAGE_CACHE_LEN && !slot; i++)
         if (!s_images[i].rgba) slot = &s_images[i];
     if (!slot) {
-        /* evict the oldest image that is not on screen */
+        /* evict the least recently stored image that is not on screen */
         for (int i = 0; i < IMAGE_CACHE_LEN; i++) {
-            if (s_cur_active && strcmp(s_images[i].key, s_cur.key) == 0) continue;
+            if (image_in_use(s_images[i].key)) continue;
             if (!slot || s_images[i].age < slot->age) slot = &s_images[i];
         }
         if (!slot) { free(rgba); return; }
@@ -214,7 +242,7 @@ static void store_image(const char *key, uint8_t *rgba, int w, int h)
     slot->id = s_next_image_id++;
     slot->age = ++s_image_age;
 
-    if (s_cur_active && strcmp(s_cur.key, key) == 0) s_dirty = true;
+    if (image_in_use(key)) s_dirty = true;
 }
 
 /* ------------------------------------------------------------------
@@ -336,7 +364,10 @@ static void badge_fetch(job_t *j)
     int w = 0, h = 0, n = 0;
     uint8_t *rgba = stbi_load_from_memory((const stbi_uc *)png, (int)png_len, &w, &h, &n, 4);
     free(png);
-    if (!rgba) return;
+    if (!rgba) {
+        remove(path); /* corrupt cache entry */
+        return;
+    }
     if (w <= 0 || h <= 0 || w > MAX_BADGE_DIM || h > MAX_BADGE_DIM) {
         stbi_image_free(rgba);
         return;
@@ -412,14 +443,14 @@ static void pump(void)
             resp.body = j->body;
             resp.body_length = j->body_len;
             if (j->http_status == 0) {
-                // timeout / no Wi-Fi: let rc_client queue a retry
+                /* timeout / no Wi-Fi: let rc_client queue a retry */
                 resp.http_status_code = RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR;
                 resp.body = "Network error";
                 resp.body_length = strlen(resp.body);
             }
             j->callback(&resp, j->callback_data);
         } else {
-            for (int i = 0; i < (int)(sizeof(s_badge_pending) / sizeof(s_badge_pending[0])); i++)
+            for (int i = 0; i < BADGE_PENDING_LEN; i++)
                 if (strcmp(s_badge_pending[i], j->key) == 0) s_badge_pending[i][0] = 0;
             if (j->rgba) {
                 store_image(j->key, j->rgba, j->w, j->h);
@@ -430,11 +461,12 @@ static void pump(void)
     }
 }
 
-static void request_badge(const char *key, const char *url)
+void ra_request_badge(const char *key, const char *url)
 {
+    if (!key || !key[0] || !url || !url[0] || !s_thread) return;
     if (find_image(key)) return;
     int free_slot = -1;
-    for (int i = 0; i < (int)(sizeof(s_badge_pending) / sizeof(s_badge_pending[0])); i++) {
+    for (int i = 0; i < BADGE_PENDING_LEN; i++) {
         if (strcmp(s_badge_pending[i], key) == 0) return;
         if (!s_badge_pending[i][0] && free_slot < 0) free_slot = i;
     }
@@ -448,6 +480,17 @@ static void request_badge(const char *key, const char *url)
     if (!j->url) { free_job(j); return; }
     snprintf(s_badge_pending[free_slot], sizeof(s_badge_pending[0]), "%s", key);
     enqueue(j);
+}
+
+bool ra_find_badge(const char *key, const uint8_t **rgba, int *w, int *h, uint32_t *id)
+{
+    const image_t *img = find_image(key);
+    if (!img) return false;
+    *rgba = img->rgba;
+    *w = img->w;
+    *h = img->h;
+    *id = img->id;
+    return true;
 }
 
 /* rc_client server callback: runs on the main thread, must not block */
@@ -468,6 +511,9 @@ static void ra_server_call(const rc_api_request_t *request,
         free_job(j);
         rc_api_server_response_t resp;
         memset(&resp, 0, sizeof(resp));
+        resp.http_status_code = RC_API_SERVER_RESPONSE_CLIENT_ERROR;
+        resp.body = "Out of memory";
+        resp.body_length = strlen(resp.body);
         callback(&resp, callback_data);
         return;
     }
@@ -527,7 +573,7 @@ static uint32_t ra_read_memory(uint32_t address, uint8_t *buffer,
 }
 
 /* ------------------------------------------------------------------
- * Credentials (username + API token, never the password)
+ * Persistence (username + API token, never the password)
  * ------------------------------------------------------------------ */
 
 static void save_credentials(const char *username, const char *token)
@@ -552,26 +598,81 @@ static bool load_credentials(char *user, size_t usize, char *token, size_t tsize
     return user[0] && token[0];
 }
 
+static void save_settings(void)
+{
+    ensure_dirs();
+    FILE *f = fopen(RA_SETTINGS_PATH, "w");
+    if (f) {
+        fprintf(f, "hardcore=%d\n", s_hardcore_pref ? 1 : 0);
+        fclose(f);
+    }
+}
+
+static void load_settings(void)
+{
+    FILE *f = fopen(RA_SETTINGS_PATH, "r");
+    if (!f) return; /* default: hardcore on */
+    char line[64];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "hardcore=", 9) == 0) s_hardcore_pref = atoi(line + 9) != 0;
+    }
+    fclose(f);
+}
+
+/* hardcore as it should be with no game loaded */
+static void apply_hardcore_pref(void)
+{
+    s_hardcore_auto_off = false;
+    if (s_client)
+        rc_client_set_hardcore_enabled(s_client, (s_hardcore_pref && ra_hardcore_available()) ? 1 : 0);
+}
+
 /* ------------------------------------------------------------------
  * Callbacks (main thread)
  * ------------------------------------------------------------------ */
 
-static void game_popup(const char *title)
+static void game_badge(char *key, size_t key_size, char *url, size_t url_size)
 {
     const rc_client_game_t *game = rc_client_get_game_info(s_client);
-    char desc[160] = "";
-    char url[256] = "";
-    char key[40] = "";
-    if (game) {
-        rc_client_user_game_summary_t sum;
-        memset(&sum, 0, sizeof(sum));
-        rc_client_get_user_game_summary(s_client, &sum);
-        snprintf(desc, sizeof(desc), "%.100s - %u/%u", game->title,
+    key[0] = url[0] = 0;
+    if (game && rc_client_game_get_image_url(game, url, url_size) == RC_OK)
+        snprintf(key, key_size, "g%s", game->badge_name);
+}
+
+static void game_placard(void)
+{
+    const rc_client_game_t *game = rc_client_get_game_info(s_client);
+    if (!game) return;
+    rc_client_user_game_summary_t sum;
+    memset(&sum, 0, sizeof(sum));
+    rc_client_get_user_game_summary(s_client, &sum);
+
+    char title[96], desc[160], key[40], url[256];
+    snprintf(title, sizeof(title), "%.70s", game->title);
+    const char *mode = s_hardcore_auto_off ? "Hardcore off (no achievements)"
+                     : ra_get_hardcore_enabled() ? "Hardcore" : "Softcore";
+    if (sum.num_core_achievements == 0)
+        snprintf(desc, sizeof(desc), "%s - This game has no achievements.", mode);
+    else
+        snprintf(desc, sizeof(desc), "%s - %u of %u unlocked", mode,
                  (unsigned)sum.num_unlocked_achievements, (unsigned)sum.num_core_achievements);
-        if (rc_client_game_get_image_url(game, url, sizeof(url)) == RC_OK)
-            snprintf(key, sizeof(key), "g%s", game->badge_name);
-    }
+    game_badge(key, sizeof(key), url, sizeof(url));
     push_popup(title, desc, key, url);
+}
+
+static void mastery_popup(const char *what, const char *name)
+{
+    const rc_client_user_t *user = rc_client_get_user_info(s_client);
+    char title[96], key[40], url[256];
+    snprintf(title, sizeof(title), "%s %.70s", what, name);
+    game_badge(key, sizeof(key), url, sizeof(url));
+    push_popup(title, user ? user->display_name : "", key, url);
+}
+
+static void hud_changed(void)
+{
+    s_hud_serial++;
+    s_dirty = true;
 }
 
 static void event_handler(const rc_client_event_t *event, rc_client_t *client)
@@ -583,33 +684,90 @@ static void event_handler(const rc_client_event_t *event, rc_client_t *client)
     switch (event->type) {
     case RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED: {
         const rc_client_achievement_t *a = event->achievement;
-        snprintf(buf, sizeof(buf), "%.120s (%u)", a->title, (unsigned)a->points);
+        snprintf(buf, sizeof(buf), "%.110s (%u)", a->title, (unsigned)a->points);
         url[0] = 0;
         rc_client_achievement_get_image_url(a, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED, url, sizeof(url));
-        push_popup("Achievement Unlocked", buf, a->badge_name, url);
+        push_popup(a->category == RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL
+                       ? "Unofficial Achievement Unlocked" : "Achievement Unlocked",
+                   buf, a->badge_name, url);
         break;
     }
-    case RC_CLIENT_EVENT_GAME_COMPLETED:
-        game_popup(ra_get_hardcore_enabled() ? "Game Mastered!" : "Game Completed!");
+    case RC_CLIENT_EVENT_GAME_COMPLETED: {
+        const rc_client_game_t *game = rc_client_get_game_info(s_client);
+        mastery_popup(ra_get_hardcore_enabled() ? "Mastered" : "Completed", game ? game->title : "");
+        break;
+    }
+    case RC_CLIENT_EVENT_SUBSET_COMPLETED:
+        mastery_popup(ra_get_hardcore_enabled() ? "Mastered" : "Completed",
+                      event->subset ? event->subset->title : "");
         break;
 
     case RC_CLIENT_EVENT_LEADERBOARD_STARTED:
-        push_popup("Leaderboard Attempt Started", event->leaderboard->title, NULL, NULL);
+        snprintf(buf, sizeof(buf), "%.70s - %.80s", event->leaderboard->title, event->leaderboard->description);
+        push_popup("Leaderboard Attempt Started", buf, NULL, NULL);
         break;
     case RC_CLIENT_EVENT_LEADERBOARD_FAILED:
         push_popup("Leaderboard Attempt Failed", event->leaderboard->title, NULL, NULL);
         break;
     case RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED:
-        snprintf(buf, sizeof(buf), "%.100s: %s", event->leaderboard->title, event->leaderboard->tracker_value);
-        push_popup("Leaderboard Submitted", buf, NULL, NULL);
+        snprintf(buf, sizeof(buf), "Submitted %.30s for %.100s", event->leaderboard->tracker_value, event->leaderboard->title);
+        push_popup("Leaderboard", buf, NULL, NULL);
+        break;
+
+    case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW:
+        if (s_num_trackers < RA_MAX_TRACKERS) {
+            s_trackers[s_num_trackers].id = event->leaderboard_tracker->id;
+            snprintf(s_trackers[s_num_trackers].display, sizeof(s_trackers[0].display), "%s", event->leaderboard_tracker->display);
+            s_num_trackers++;
+            hud_changed();
+        }
+        break;
+    case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE:
+        for (int i = 0; i < s_num_trackers; i++) {
+            if (s_trackers[i].id == event->leaderboard_tracker->id) {
+                snprintf(s_trackers[i].display, sizeof(s_trackers[0].display), "%s", event->leaderboard_tracker->display);
+                s_hud_serial++;
+            }
+        }
+        break;
+    case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE:
+        for (int i = 0; i < s_num_trackers; i++) {
+            if (s_trackers[i].id == event->leaderboard_tracker->id) {
+                memmove(&s_trackers[i], &s_trackers[i + 1], (s_num_trackers - i - 1) * sizeof(tracker_t));
+                s_num_trackers--;
+                hud_changed();
+                break;
+            }
+        }
+        break;
+
+    case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW:
+        if (s_num_challenges < RA_MAX_CHALLENGES) {
+            const rc_client_achievement_t *a = event->achievement;
+            s_challenges[s_num_challenges].id = a->id;
+            snprintf(s_challenges[s_num_challenges].key, sizeof(s_challenges[0].key), "%s", a->badge_name);
+            s_num_challenges++;
+            url[0] = 0;
+            rc_client_achievement_get_image_url(a, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED, url, sizeof(url));
+            ra_request_badge(a->badge_name, url);
+            hud_changed();
+        }
+        break;
+    case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE:
+        for (int i = 0; i < s_num_challenges; i++) {
+            if (s_challenges[i].id == event->achievement->id) {
+                memmove(&s_challenges[i], &s_challenges[i + 1], (s_num_challenges - i - 1) * sizeof(challenge_t));
+                s_num_challenges--;
+                hud_changed();
+                break;
+            }
+        }
         break;
 
     case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW:
     case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE:
-        snprintf(s_progress, sizeof(s_progress), "%.40s %s",
-                 event->achievement->title, event->achievement->measured_progress);
-        s_progress_frames = PROGRESS_FRAMES;
-        s_progress_serial++;
+        snprintf(buf, sizeof(buf), "%.40s %s", event->achievement->title, event->achievement->measured_progress);
+        set_progress_text(buf);
         break;
     case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE:
         if (s_progress_frames) s_dirty = true;
@@ -621,8 +779,12 @@ static void event_handler(const rc_client_event_t *event, rc_client_t *client)
         break;
 
     case RC_CLIENT_EVENT_SERVER_ERROR:
-        push_popup("RetroAchievements Error",
-                   event->server_error ? event->server_error->error_message : "Unknown error", NULL, NULL);
+        if (event->server_error) {
+            snprintf(buf, sizeof(buf), "%.40s: %.110s",
+                     event->server_error->api ? event->server_error->api : "",
+                     event->server_error->error_message ? event->server_error->error_message : "");
+            push_popup("RetroAchievements Error", buf, NULL, NULL);
+        }
         break;
     case RC_CLIENT_EVENT_DISCONNECTED:
         push_popup("RetroAchievements", "Connection lost. Unlocks will be retried.", NULL, NULL);
@@ -649,7 +811,8 @@ static void login_callback(int result, const char *error_message, rc_client_t *c
         const rc_client_user_t *user = rc_client_get_user_info(client);
         if (user && user->token) save_credentials(user->username, user->token);
         char buf[160];
-        snprintf(buf, sizeof(buf), "Logged in as %s", user ? user->display_name : "?");
+        snprintf(buf, sizeof(buf), "Logged in as %s (%u points)",
+                 user ? user->display_name : "?", user ? (unsigned)user->score : 0);
         push_popup("RetroAchievements", buf, NULL, NULL);
         /* game was started before login finished */
         if (game_running && !rc_client_get_game_info(client)) ra_load_game();
@@ -660,9 +823,14 @@ static void login_callback(int result, const char *error_message, rc_client_t *c
 
 static void load_game_callback(int result, const char *error_message, rc_client_t *client, void *userdata)
 {
-    (void)client; (void)userdata;
+    (void)userdata;
     if (result == RC_OK) {
-        game_popup(ra_get_hardcore_enabled() ? "Hardcore Mode" : "Softcore Mode");
+        /* recommended: no hardcore restrictions for games without RA content */
+        if (ra_get_hardcore_enabled() && !rc_client_is_processing_required(client)) {
+            rc_client_set_hardcore_enabled(client, 0);
+            s_hardcore_auto_off = true;
+        }
+        game_placard();
     } else if (result == RC_NO_GAME_LOADED) {
         char buf[160];
         snprintf(buf, sizeof(buf), "Unknown game. Hash %s", s_rom_hash);
@@ -701,8 +869,9 @@ void ra_init(void)
     rc_client_enable_logging(s_client, RC_CLIENT_LOG_LEVEL_INFO, log_callback);
     rc_client_set_event_handler(s_client, event_handler);
 
-    /* Hardcore on by default, never under an emulator */
-    rc_client_set_hardcore_enabled(s_client, ra_hardcore_available() ? 1 : 0);
+    /* Hardcore on by default (remembered between sessions), never under an emulator */
+    load_settings();
+    apply_hardcore_pref();
 
     char user[128], token[128];
     if (load_credentials(user, sizeof(user), token, sizeof(token)))
@@ -746,10 +915,29 @@ void ra_capture_rom_hash(void)
     }
 }
 
+static void clear_hud(void)
+{
+    if (s_num_trackers || s_num_challenges || s_progress_frames) s_dirty = true;
+    s_num_trackers = 0;
+    s_num_challenges = 0;
+    s_progress_frames = 0;
+    s_hud_serial++;
+}
+
+void ra_unload_game(void)
+{
+    if (s_client) {
+        rc_client_unload_game(s_client);
+        if (s_hardcore_auto_off) apply_hardcore_pref();
+    }
+    clear_hud();
+}
+
 void ra_load_game(void)
 {
     if (!s_client || !ra_is_logged_in()) return;
-    if (rc_client_get_game_info(s_client)) rc_client_unload_game(s_client);
+    if (rc_client_get_game_info(s_client)) ra_unload_game();
+    s_unpaused_frames = 0xFFFFFFFF;
     if (!s_rom_hash_valid) {
         push_popup("RetroAchievements", "Could not hash ROM.", NULL, NULL);
         return;
@@ -757,15 +945,10 @@ void ra_load_game(void)
     rc_client_begin_load_game(s_client, s_rom_hash, load_game_callback, NULL);
 }
 
-void ra_unload_game(void)
-{
-    if (s_client) rc_client_unload_game(s_client);
-    s_progress_frames = 0;
-}
-
 void ra_reset(void)
 {
     if (s_client) rc_client_reset(s_client);
+    clear_hud();
 }
 
 bool ra_take_reset_request(void)
@@ -778,6 +961,7 @@ bool ra_take_reset_request(void)
 void ra_do_frame(void)
 {
     if (!s_client) return;
+    if (s_unpaused_frames != 0xFFFFFFFF) s_unpaused_frames++;
     pump();
     rc_client_do_frame(s_client);
 }
@@ -817,7 +1001,11 @@ void ra_login_with_password(const char *username, const char *password)
 
 void ra_logout(void)
 {
-    if (s_client) rc_client_logout(s_client);
+    if (s_client) {
+        rc_client_logout(s_client);
+        if (s_hardcore_auto_off) apply_hardcore_pref();
+    }
+    clear_hud();
     remove(RA_CREDENTIALS_PATH);
 }
 
@@ -835,6 +1023,9 @@ void ra_set_hardcore_enabled(bool enabled)
 {
     if (!s_client) return;
     if (enabled && !ra_hardcore_available()) return;
+    s_hardcore_pref = enabled;
+    s_hardcore_auto_off = false;
+    save_settings();
     /* With a game loaded, enabling hardcore raises RC_CLIENT_EVENT_RESET */
     rc_client_set_hardcore_enabled(s_client, enabled ? 1 : 0);
 }
@@ -854,9 +1045,84 @@ bool ra_has_game(void)
     return s_client && rc_client_get_game_info(s_client) != NULL;
 }
 
+bool ra_can_pause(void)
+{
+    if (!s_client || !ra_get_hardcore_enabled() || !ra_has_game()) return true;
+
+    uint32_t remaining = 0;
+    bool ok;
+    if (s_unpaused_frames < MIN_UNPAUSED_FRAMES) {
+        ok = false;
+        remaining = MIN_UNPAUSED_FRAMES - s_unpaused_frames;
+    } else {
+        ok = rc_client_can_pause(s_client, &remaining) != 0;
+    }
+
+    if (ok) {
+        s_unpaused_frames = 0;
+    } else {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "Hardcore: pause available in %.1fs", remaining / (float)FPS);
+        set_progress_text(buf);
+    }
+    return ok;
+}
+
+/* ------------------------------------------------------------------
+ * Savestates
+ * ------------------------------------------------------------------ */
+
+int ra_write_progress(FILE *f)
+{
+    if (!ra_has_game()) return 0;
+    size_t size = rc_client_progress_size(s_client);
+    if (size == 0 || size > MAX_PROGRESS_SIZE) return 0;
+    uint8_t *buf = (uint8_t *)malloc(size);
+    if (!buf) return 0;
+    int ret = 0;
+    if (rc_client_serialize_progress(s_client, buf) == RC_OK) {
+        uint32_t size32 = (uint32_t)size;
+        if (fwrite("RCHV", 1, 4, f) != 4 ||
+            fwrite(&size32, 1, 4, f) != 4 ||
+            fwrite(buf, 1, size, f) != size)
+            ret = 1;
+    }
+    free(buf);
+    return ret;
+}
+
+int ra_read_progress(FILE *f, void **out)
+{
+    *out = NULL;
+    char marker[4];
+    size_t n = fread(marker, 1, 4, f);
+    if (n == 0 && feof(f)) return 0;   /* older state, no achievement data */
+    if (n != 4 || memcmp(marker, "RCHV", 4) != 0) return 1;
+    uint32_t size = 0;
+    if (fread(&size, 1, 4, f) != 4 || size == 0 || size > MAX_PROGRESS_SIZE) return 1;
+    uint8_t *buf = (uint8_t *)malloc(size);
+    if (!buf) return 1;
+    if (fread(buf, 1, size, f) != size) { free(buf); return 1; }
+    *out = buf;
+    return 0;
+}
+
+void ra_apply_progress(void *progress)
+{
+    /* NULL resets the runtime, as required when a state has no achievement data */
+    if (ra_has_game())
+        rc_client_deserialize_progress(s_client, (const uint8_t *)progress);
+    free(progress);
+    clear_hud();
+}
+
+/* ------------------------------------------------------------------
+ * Overlay queries
+ * ------------------------------------------------------------------ */
+
 bool ra_overlay_active(void)
 {
-    return s_cur_active || s_progress_frames > 0;
+    return s_cur_active || s_progress_frames > 0 || s_num_trackers > 0 || s_num_challenges > 0;
 }
 
 bool ra_get_popup(ra_popup_t *out)
@@ -887,6 +1153,19 @@ bool ra_get_progress(char *out, int out_size, uint32_t *serial)
     return true;
 }
 
+bool ra_get_hud(ra_hud_t *out)
+{
+    if (s_num_trackers == 0 && s_num_challenges == 0) return false;
+    out->num_trackers = s_num_trackers;
+    for (int i = 0; i < s_num_trackers; i++)
+        memcpy(out->trackers[i], s_trackers[i].display, sizeof(out->trackers[i]));
+    out->num_challenges = s_num_challenges;
+    for (int i = 0; i < s_num_challenges; i++)
+        memcpy(out->challenge_keys[i], s_challenges[i].key, sizeof(out->challenge_keys[i]));
+    out->serial = s_hud_serial;
+    return true;
+}
+
 bool ra_overlay_take_dirty(void)
 {
     bool d = s_dirty;
@@ -894,13 +1173,73 @@ bool ra_overlay_take_dirty(void)
     return d;
 }
 
-void ra_state_loaded(void)
+/* ------------------------------------------------------------------
+ * Achievement list
+ * ------------------------------------------------------------------ */
+
+int ra_list_build(ra_list_entry_t **out, char *summary, int summary_size)
 {
-    // our savestates don't contain achievement progress, so reset it
-    if (s_client) rc_client_deserialize_progress(s_client, NULL);
+    *out = NULL;
+    if (summary_size > 0) summary[0] = 0;
+    if (!ra_has_game()) return 0;
+
+    const rc_client_game_t *game = rc_client_get_game_info(s_client);
+    rc_client_user_game_summary_t sum;
+    memset(&sum, 0, sizeof(sum));
+    rc_client_get_user_game_summary(s_client, &sum);
+    snprintf(summary, summary_size, "%.60s\n%u of %u unlocked - %s", game->title,
+             (unsigned)sum.num_unlocked_achievements, (unsigned)sum.num_core_achievements,
+             s_hardcore_auto_off ? "Hardcore off" : ra_get_hardcore_enabled() ? "Hardcore" : "Softcore");
+
+    rc_client_achievement_list_t *list = rc_client_create_achievement_list(s_client,
+        RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+    if (!list) return 0;
+
+    int count = 0;
+    for (uint32_t i = 0; i < list->num_buckets; i++)
+        count += 1 + (int)list->buckets[i].num_achievements;
+
+    ra_list_entry_t *e = count ? (ra_list_entry_t *)calloc(count, sizeof(ra_list_entry_t)) : NULL;
+    if (!e) {
+        rc_client_destroy_achievement_list(list);
+        return 0;
+    }
+
+    int n = 0;
+    for (uint32_t i = 0; i < list->num_buckets; i++) {
+        e[n].is_header = true;
+        snprintf(e[n].title, sizeof(e[n].title), "%s", list->buckets[i].label ? list->buckets[i].label : "");
+        n++;
+        for (uint32_t k = 0; k < list->buckets[i].num_achievements; k++) {
+            const rc_client_achievement_t *a = list->buckets[i].achievements[k];
+            ra_list_entry_t *x = &e[n++];
+            x->unlocked = a->unlocked != 0;
+            snprintf(x->title, sizeof(x->title), "%s (%u)", a->title, (unsigned)a->points);
+            snprintf(x->description, sizeof(x->description), "%s", a->description ? a->description : "");
+            if (a->state == RC_CLIENT_ACHIEVEMENT_STATE_DISABLED)
+                snprintf(x->status, sizeof(x->status), "Unsupported");
+            else if (x->unlocked)
+                snprintf(x->status, sizeof(x->status), "Unlocked");
+            else if (a->measured_percent > 0)
+                snprintf(x->status, sizeof(x->status), "%s", a->measured_progress);
+            else
+                snprintf(x->status, sizeof(x->status), "Locked");
+            if (x->unlocked) {
+                snprintf(x->badge_key, sizeof(x->badge_key), "%s", a->badge_name);
+                rc_client_achievement_get_image_url(a, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED, x->badge_url, sizeof(x->badge_url));
+            } else {
+                snprintf(x->badge_key, sizeof(x->badge_key), "%s_lock", a->badge_name);
+                rc_client_achievement_get_image_url(a, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE, x->badge_url, sizeof(x->badge_url));
+            }
+        }
+    }
+
+    rc_client_destroy_achievement_list(list);
+    *out = e;
+    return n;
 }
 
-bool ra_can_pause(void)
+void ra_list_free(ra_list_entry_t *entries)
 {
-    return !s_client || rc_client_can_pause(s_client, NULL);
+    free(entries);
 }
