@@ -1,15 +1,18 @@
 ; 1/256, -255/256, 1/512, -1
 .constf const1(0.00390625, -0.99609375, 0.000244140625, -1.0)
+; 0, -1, 1/64, 0
+.constf const2(0.0, -1.0, 0.015625, 0.0)
 
 .bool left
 .fvec a_offset
 
 ; position is transposed
-; v0: (x1, y1, u1, v1)
-; v1: (uoff1, voff1, uright1, vright1)
-; v2: (x2, y2, u2, v2)
-; v3: (uoff2, voff2, uright2, vright2)
-; uoff1 & voff1 are always 0, the other uv values are identical for 1 and 2
+; v0: (x1, y1, mx1, my1)
+; v1: (dx1, dy1, mp1, off1)
+; v2: (x2, y2, mx2, my2)
+; v3: (dx2, dy2, mp2, off2)
+; mx*, my*, dx*, dy*, mp* are identical
+; off1 is always 0
 
 .out outpos dummy
 .out outtc0 dummy
@@ -22,13 +25,26 @@
     mul r0.xyzw, const1.xxxx, r0.xyzw
     add r0.xyzw, const1.wwww, r0.xyzw
     mov outpos.xyzw, r0.yxwz
-    ; texcoord: 0..size -> 0..1
-    mov r0.xy, v0.zw
-    mov r0.zw, v2.zwzw
-    add r0.zw, r0.zwzw, v3.xyxy
-    jmpu left, postright
-    add r0.xyzw, r0.xyzw, v1.zwzw
-    postright:
+    ; texcoord: calculate offset
+    ; calculate left offset into r0.x, right offset into r0.y
+    mov r0.xy, v1.wz
+    cmp const2.x, lt, lt, r0.y
+    jmpc cmp.x, postneg
+    mul r0.xy, const2.yx, r0.yx
+    postneg:
+    ; spread final offset across r0
+    ifu left
+        mov r0.xyzw, r0.xxxx
+    .else
+        mov r0.xyzw, r0.yyyy
+    .end
+    ; add width to zw
+    add r0.zw, r0.zw, v3.wwww
+    ; multiply with dx/dy
+    mul r0.xyzw, r0.xyzw, v1.xyxy
+    ; multiply and add mx/my
+    mad r0.xyzw, r0.xyzw, const2.zzzz, v0.zwzw
+    ; 0..size -> 0..1
     mul r0.xyzw, const1.zzzz, r0.xyzw
     mov outtc0, r0
     end
