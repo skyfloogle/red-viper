@@ -289,17 +289,17 @@ static void draw_affine_layer(int drawn_fb, u8 eyes_used, C3D_Tex **textures, in
 	// crop offscreen lines
 	int start = 0;
 	while (start < h
-	    && (avcur[start - h].v1 >> 12) == ((avcur[start - h].v2 + avcur[start - h].voff2) >> 12)
-		&& ((avcur[start - h].v1 >> 12) & (scy - 1)) != map1_y
-		&& ((avcur[start - h].v1 >> 12) & (scy - 1)) != map2_y
-		&& ((avcur[start - h].v1 >> 12) & (scy - 1)) != map3_y
+	    && avcur[start - h].dy1 == 0
+		&& ((avcur[start - h].my1 >> 12) & (scy - 1)) != map1_y
+		&& ((avcur[start - h].my1 >> 12) & (scy - 1)) != map2_y
+		&& ((avcur[start - h].my1 >> 12) & (scy - 1)) != map3_y
 	) start++;
 	int end = h;
 	while (end > start
-        && (avcur[end - 1 - h].v1 >> 12) == ((avcur[end - 1 - h].v2 + avcur[end - 1 - h].voff2) >> 12)
-        && ((avcur[end - 1 - h].v1 >> 12) & (scy - 1)) != map1_y
-        && ((avcur[end - 1 - h].v1 >> 12) & (scy - 1)) != map2_y
-        && ((avcur[end - 1 - h].v1 >> 12) & (scy - 1)) != map3_y
+        && avcur[end - 1 - h].dy1 == 0
+        && ((avcur[end - 1 - h].my1 >> 12) & (scy - 1)) != map1_y
+        && ((avcur[end - 1 - h].my1 >> 12) & (scy - 1)) != map2_y
+        && ((avcur[end - 1 - h].my1 >> 12) & (scy - 1)) != map3_y
 	) end--;
 
 	if (start < end) {

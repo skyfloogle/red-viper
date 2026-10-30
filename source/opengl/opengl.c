@@ -140,8 +140,8 @@ void gpu_init(void) {
 
         "uniform bool uRight;\n"
         "uniform vec2 uPosOffset;\n"
-        "attribute vec4 aParams;\n"
-        "attribute vec4 aTexOffsets;\n"
+        "attribute vec4 aOrigins;\n"
+        "attribute vec4 aOffsets;\n"
         "#ifdef INSTANCED_AVAILABLE\n"
         "attribute vec2 aEndPos;\n"
         "attribute vec2 aOffsetValue;\n"
@@ -149,15 +149,15 @@ void gpu_init(void) {
         "varying vec2 vTexCoord;\n"
         "void main() {\n"
         "   #ifdef INSTANCED_AVAILABLE\n"
-        "   vec2 posOffset = aOffsetValue * (aEndPos - aParams.xy);\n"
-        "   vec2 texOffset = aOffsetValue * aTexOffsets.xy;\n"
+        "   vec2 posOffset = aOffsetValue * (aEndPos - aOrigins.xy);\n"
+        "   float texOffset = aOffsetValue.x * aOffsets.w;\n"
         "   #else\n"
         "   vec2 posOffset = vec2(0, 0);\n"
-        "   vec2 texOffset = aTexOffsets.xy;\n"
+        "   float texOffset = aOffsets.w;\n"
         "   #endif\n"
-        "   if (uRight) texOffset += aTexOffsets.zw;\n"
-        "   gl_Position = vec4((aParams.yx + uPosOffset.yx + posOffset.yx) / 256.0 - 1.0, 0.0, 1.0);\n"
-        "   vTexCoord = (aParams.zw + texOffset) / 4096.0;\n"
+        "   if (uRight != (aOffsets.z < 0.0)) texOffset += abs(aOffsets.z);\n"
+        "   gl_Position = vec4((aOrigins.yx + uPosOffset.yx + posOffset.yx) / 256.0 - 1.0, 0.0, 1.0);\n"
+        "   vTexCoord = (aOrigins.zw + (aOffsets.xy * texOffset) / 64.0) / 4096.0;\n"
         "}\n",
 
         "uniform sampler2D sTex;\n"
@@ -384,13 +384,13 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
     avertex *current_avbuf = avcur - h;
     int vertex_size = instanced_available ? sizeof(avertex) : sizeof(avertex) / 2;
 
-    glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aParams"));
-    glVertexAttribPointer(glGetAttribLocation(sAffine, "aParams"), 4, GL_SHORT, GL_FALSE, vertex_size, current_avbuf);
-    glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aTexOffsets"));
-    glVertexAttribPointer(glGetAttribLocation(sAffine, "aTexOffsets"), 4, GL_SHORT, GL_FALSE, vertex_size, (u8*)current_avbuf + (instanced_available ? offsetof(avertex, uoff2) : offsetof(avertex, uoff1)));
+    glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aOrigins"));
+    glVertexAttribPointer(glGetAttribLocation(sAffine, "aOrigins"), 4, GL_SHORT, GL_FALSE, vertex_size, current_avbuf);
+    glEnableVertexAttribArray(glGetAttribLocation(sAffine, "aOffsets"));
+    glVertexAttribPointer(glGetAttribLocation(sAffine, "aOffsets"), 4, GL_SHORT, GL_FALSE, vertex_size, (u8*)current_avbuf + (instanced_available ? offsetof(avertex, dx2) : offsetof(avertex, dx1)));
     if (instanced_available) {
-        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aParams"), 1);
-        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aTexOffsets"), 1);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aOrigins"), 1);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aOffsets"), 1);
         glVertexAttribDivisor(glGetAttribLocation(sAffine, "aEndPos"), 1);
         glVertexAttribDivisor(glGetAttribLocation(sAffine, "aOffsetValue"), 0);
 
@@ -439,8 +439,8 @@ void gpu_draw_affine(WORLD *world, int umin, int vmin, int umax, int vmax, int d
 
     if (instanced_available) {
         // reset to no divisor
-        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aParams"), 0);
-        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aTexOffsets"), 0);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aOrigins"), 0);
+        glVertexAttribDivisor(glGetAttribLocation(sAffine, "aOffsets"), 0);
         glVertexAttribDivisor(glGetAttribLocation(sAffine, "aEndPos"), 0);
         glVertexAttribDivisor(glGetAttribLocation(sAffine, "aOffsetValue"), 0);
     }

@@ -352,12 +352,14 @@ void video_hard_render(int drawn_fb) {
 						if (uright < umin) umin = uright;
 						if (uleft + w > umax) umax = uleft + w;
 						if (uright + w > umax) umax = uright + w;
-						avcur->u1 = avcur->u2 = uleft * 8;
-						avcur->uright1 = avcur->uright2 = (uright - uleft) * 8;
-						avcur->v1 = avcur->v2 = (my + y) * 8;
-						avcur->vright1 = avcur->vright2 = 0;
-						avcur->uoff1 = avcur->voff1 = avcur->voff2 = 0;
-						avcur->uoff2 = w * 8;
+						// adjust to the language of affine worlds
+						avcur->mx1 = avcur->mx2 = (uleft < uright ? uright : uleft) << 3;
+						avcur->mp1 = avcur->mp2 = uright - uleft;
+						avcur->my1 = avcur->my2 = (my + y) << 3;
+						avcur->dx1 = avcur->dx2 = 1 << 6;
+						avcur->dy1 = avcur->dy2 = 0;
+						avcur->off1 = 0;
+						avcur->off2 = w;
 						avcur++;
 					}
 				} else {
@@ -372,24 +374,20 @@ void video_hard_render(int drawn_fb) {
 						avcur->y1 = gy + y;
 						avcur->x2 = base_gx + w;
 						avcur->y2 = gy + y + gpu_can_chunk();
-						avcur->u1 = avcur->u2 = mx - (mp < 0 ? (mp * dx >> 6) : 0);
-						avcur->v1 = avcur->v2 = my - (mp < 0 ? (mp * dy >> 6) : 0);
-						avcur->uright1 = avcur->uright2 = mp * dx >> 6;
-						avcur->vright1 = avcur->vright2 = mp * dy >> 6;
-						avcur->uoff1 = avcur->voff1 = 0;
-						avcur->uoff2 = (dx * w >> 6);
-						avcur->voff2 = (dy * w >> 6);
+						avcur->mx1 = avcur->mx2 = mx;
+						avcur->my1 = avcur->my2 = my;
+						avcur->dx1 = avcur->dx2 = dx;
+						avcur->dy1 = avcur->dy2 = dy;
+						avcur->mp1 = avcur->mp2 = mp;
+						avcur->off1 = 0;
+						avcur->off2 = w;
 						#define MINMAX(c,val) \
 						    if (c##min > (val)) c##min = (val); \
 							if (c##max < (val)) c##max = (val);
-						MINMAX(u, avcur->u1 >> 3);
-						MINMAX(u, (avcur->u1 + avcur->uright1) >> 3);
-						MINMAX(u, (avcur->u2 + avcur->uoff2) >> 3);
-						MINMAX(u, (avcur->u2 + avcur->uright2 + avcur->uoff2) >> 3);
-						MINMAX(v, avcur->v1 >> 3);
-						MINMAX(v, (avcur->v1 + avcur->vright1) >> 3);
-						MINMAX(v, (avcur->v2 + avcur->voff2) >> 3);
-						MINMAX(v, (avcur->v2 + avcur->vright2 + avcur->voff2) >> 3);
+						MINMAX(u, (mx) >> 3);
+						MINMAX(u, (mx + ((w + abs(mp)) * dx >> 6)) >> 3);
+						MINMAX(v, (my) >> 3);
+						MINMAX(v, (my + ((w + abs(mp)) * dy >> 6)) >> 3);
 						#undef MINMAX
 						avcur++;
 					}
