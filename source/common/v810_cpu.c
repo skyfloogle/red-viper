@@ -65,6 +65,7 @@ void v810_init(void) {
 
     // Initialize our rom tables.... (USA)
     V810_ROM1.lowaddr  = 0x07000000;
+    V810_ROM1.highaddr = 0x07FFFFFF;
     V810_ROM1.off = (size_t)V810_ROM1.pmemory - V810_ROM1.lowaddr;
     // Offset + Lowaddr = pmemory
 
@@ -287,7 +288,6 @@ void v810_load_cancel(void) {
 
 void v810_load_finalize(int rom_size) {
     V810_ROM1.size = rom_size;
-    V810_ROM1.highaddr = 0x7000000 + rom_size - 1;
 
     // fill the rest of the address space with copies of the rom
     for (int i = V810_ROM1.size; i < MAX_ROM_SIZE; i += V810_ROM1.size) {
