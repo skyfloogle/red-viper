@@ -1760,7 +1760,6 @@ static void multiplayer_dlplay(void) {
                     [[gnu::musttail]] return multiplayer_error(0, &text_multi_init_error, true);
                 }
                 V810_ROM1.size = rom_size;
-                V810_ROM1.highaddr = 0x7000000 + rom_size - 1;
                 size_received = true;
             }
         }
