@@ -173,7 +173,6 @@ int v810_load_init(void) {
     }
     ok:
     V810_ROM1.size = rom_size;
-    V810_ROM1.highaddr = 0x07000000 + rom_size - 1;
 
     load_sram = fopen(tVBOpt.RAM_PATH, "rb");
     if (load_sram) {
@@ -193,7 +192,7 @@ int v810_load_init(void) {
 
 int v810_load_step(void) {
     int chunk_size = 0x10000;
-    int rom_size = V810_ROM1.highaddr + 1 - V810_ROM1.lowaddr;
+    int rom_size = V810_ROM1.size;
     int ram_size = load_sram_size;
     int all_size = rom_size + ram_size;
     if (load_pos < rom_size) {
