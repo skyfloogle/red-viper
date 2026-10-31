@@ -1390,8 +1390,6 @@ int drc_run(void) {
     drc_unit* entrypoint;
     WORD entry_PC;
 
-    vb_state->v810_state.PC &= V810_ROM1.highaddr;
-
     drc_flags_to_native();
 
     serviceInt(vb_state->v810_state.cycles, vb_state->v810_state.PC);
@@ -1430,8 +1428,6 @@ int drc_run(void) {
         }
 
         drc_executeBlock(entrypoint, cur_block);
-
-        vb_state->v810_state.PC &= V810_ROM1.highaddr;
 
         dprintf(4, "[DRC]: end - 0x%lx\n", vb_state->v810_state.PC);
         if (unlikely(vb_state->v810_state.PC - V810_ROM1.lowaddr >= V810_ROM1.size)) {
