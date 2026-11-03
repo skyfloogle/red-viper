@@ -156,6 +156,10 @@ void gpu_init(void) {
         "   float texOffset = aOffsets.w;\n"
         "   #endif\n"
         "   if (uRight != (aOffsets.z < 0.0)) texOffset += abs(aOffsets.z);\n"
+        "   // Add half a pixel to ensure pixel coordinates line up.\n"
+        "   // To prevent hitting texel boundaries, we subtract half of the\n"
+        "   // smallest offset the VB can provide.\n"
+        "   posOffset += 0.5 - 1.0/512.0;\n"
         "   gl_Position = vec4((aOrigins.yx + uPosOffset.yx + posOffset.yx) / 256.0 - 1.0, 0.0, 1.0);\n"
         "   vTexCoord = (aOrigins.zw + (aOffsets.xy * texOffset) / 64.0) / 4096.0;\n"
         "}\n",
