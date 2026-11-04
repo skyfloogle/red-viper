@@ -175,7 +175,7 @@ static void drc_scanBlockBounds(WORD* p_start_PC, WORD* p_end_PC) {
                     end_PC = branch_addr;
                 }
 
-                if (opcode == V810_OP_BR) {
+                if ((instr >> 9) == V810_OP_BR) {
                     potentiallyDone = true;
                 }
 
@@ -802,7 +802,7 @@ static int drc_translateBlock(void) {
         return DRC_ERR_NO_BLOCKS;
     block->free = false;
 
-    block->start_pc = start_PC;
+    block->start_pc = start_PC & V810_ROM1.highaddr;
     block->pc_range = end_PC - start_PC;
 
     // First pass: decode V810 instructions
@@ -1401,10 +1401,10 @@ int drc_run(void) {
             if (unlikely(vb_state->v810_state.ret)) break;
         }
 
-        entry_PC = vb_state->v810_state.PC;
+        entry_PC = vb_state->v810_state.PC & V810_ROM1.highaddr;
 
         // Try to find a cached block
-        entrypoint = drc_getEntry(vb_state->v810_state.PC, &cur_block);
+        entrypoint = drc_getEntry(entry_PC, &cur_block);
         // entry_PC < cur_block->start_pc || entry_PC > cur_block->end_pc
         if (unlikely(entrypoint == cache_start || entry_PC - cur_block->start_pc > cur_block->pc_range)) {
             int result = drc_translateBlock();
@@ -1430,7 +1430,7 @@ int drc_run(void) {
         drc_executeBlock(entrypoint, cur_block);
 
         dprintf(4, "[DRC]: end - 0x%lx\n", vb_state->v810_state.PC);
-        if (unlikely(vb_state->v810_state.PC - V810_ROM1.lowaddr >= V810_ROM1.size)) {
+        if (unlikely((vb_state->v810_state.PC & 0x07000000) != 0x07000000)) {
             dprintf(0, "Last entry: 0x%lx\n", entry_PC);
             //return DRC_ERR_BAD_PC;
             break;
