@@ -102,6 +102,7 @@ void gpu_init(void) {
         ? version_string[10] >= '3' || version_string[11] != '.'
         // Non-ES: "x.y ..."
         : version_string[0] > '3' || version_string[1] != '.' || (version_string[0] == '3' && version_string[2] >= '1');
+    instanced_available = false;
 
     sChar = build_shader(
         "sChar",

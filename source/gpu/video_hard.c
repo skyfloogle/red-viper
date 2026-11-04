@@ -356,7 +356,7 @@ void video_hard_render(int drawn_fb) {
 						avcur->mx1 = avcur->mx2 = (uleft < uright ? uright : uleft) << 3;
 						avcur->mp1 = avcur->mp2 = uright - uleft;
 						avcur->my1 = avcur->my2 = (my + y) << 3;
-						avcur->dx1 = avcur->dx2 = 1 << 6;
+						avcur->dx1 = avcur->dx2 = 1 << 9;
 						avcur->dy1 = avcur->dy2 = 0;
 						avcur->off1 = 0;
 						avcur->off2 = w;
